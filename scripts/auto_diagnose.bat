@@ -143,6 +143,16 @@ echo.
 call "%SCRIPT_DIR%classify_root_cause.bat" --no-pause
 echo.
 
+call :log "Running fix recommendation engine..."
+call :log ""
+
+echo ============================================================
+echo  Fix Recommendation Engine (safest next action)
+echo ============================================================
+echo.
+call "%SCRIPT_DIR%recommend_fix.bat" --no-pause
+echo.
+
 (
     echo ISSUE_CODE=%ISSUE_CODE%
     echo ISSUE_NAME=%ISSUE_NAME%

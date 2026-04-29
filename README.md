@@ -65,6 +65,7 @@ Common examples:
 | `auto_diagnose.bat` | Read-only | Collect evidence and recommend the likely fix. |
 | `auto_fix.bat` | Guided repair | Diagnose first, then ask before running the recommended repair. |
 | `classify_root_cause.bat` | Decision | Automatically infers root cause from diagnostic data. |
+| `recommend_fix.bat` | Decision | Suggests safest fix based on diagnosis. |
 | `check_network.bat` | Read-only | Run a simpler manual connectivity check. |
 | `monitor_connections.bat` | Observability | Real-time TCP connection monitoring. |
 | `check_connection_exhaustion.bat` | Read-only | Detects socket leaks and connection exhaustion issues. |
