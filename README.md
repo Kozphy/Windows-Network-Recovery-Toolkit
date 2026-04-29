@@ -45,6 +45,48 @@ It checks:
 
 `auto_fix.bat` runs the diagnosis first, shows the recommendation, asks for confirmation, and then calls the matching repair script. It never runs `reset_firewall.bat` automatically.
 
+## Root Cause Monitoring Mode
+
+Some network failures are not immediate. The system can work at startup, then fail later after proxy policy changes, process startup, or connectivity transitions.
+
+Use `monitor_network.ps1` to capture these state changes over time.
+
+What it monitors:
+
+- WinHTTP proxy state
+- User proxy registry values (`ProxyEnable`, `ProxyServer`, `AutoConfigURL`, `AutoDetect`)
+- TCP 443 reachability (`Test-NetConnection`)
+- HTTPS status (`curl`)
+- Recent process starts (last 5)
+
+How to run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\monitor_network.ps1
+```
+
+Optional interval (script clamps to 5-10 seconds):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\monitor_network.ps1 -IntervalSeconds 8
+```
+
+Log file:
+
+- `logs/network_monitor.log`
+
+How to interpret logs:
+
+- Each cycle appends a full snapshot with timestamped sections.
+- `!!! CHANGE DETECTED !!!` means monitored state changed since previous cycle.
+- Focus on transitions:
+  - `ProxyEnable` changes
+  - `ProxyServer` appears
+  - `AutoDetect` flips from `0` to `1`
+  - TCP 443 changes from `True` to `False`
+  - `curl` changes from success to timeout/failure
+- Correlate these changes with the "Recent Processes" block to identify likely triggers.
+
 ## When To Use This
 
 Use this toolkit when Windows says the network is connected, but internet access is still broken or inconsistent.
@@ -69,6 +111,7 @@ Common examples:
 | `check_network.bat` | Read-only | Run a simpler manual connectivity check. |
 | `monitor_connections.bat` | Observability | Real-time TCP connection monitoring. |
 | `anomaly_monitor.bat` | Observability | Detects abnormal connection behavior. |
+| `monitor_network.ps1` | Root Cause Monitoring | Tracks proxy and connectivity state changes over time. |
 | `check_connection_exhaustion.bat` | Read-only | Detects socket leaks and connection exhaustion issues. |
 | `detect_code_leak.bat` | Dev Tool | Detects possible connection leak patterns in code. |
 | `reset_dns.bat` | Targeted repair | Flush DNS cache and show DNS configuration. |

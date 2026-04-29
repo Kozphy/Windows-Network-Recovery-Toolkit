@@ -17,10 +17,11 @@ set "EST_HISTORY="
 set "PS_FILE=%TEMP%\wnrt_anomaly_monitor_%RANDOM%%RANDOM%.ps1"
 
 (
+echo param^( [string]$TwHistoryCsv = '', [string]$EstHistoryCsv = '' ^)
 echo $twHistory = @^(^)
-echo if ^($env:TW_HISTORY^) { $twHistory = $env:TW_HISTORY -split ',' ^| Where-Object { $_ -match '^[0-9]+$' } ^| ForEach-Object { [int]$_ } }
+echo if ^($TwHistoryCsv^) { $twHistory = $TwHistoryCsv -split ',' ^| Where-Object { $_ -match '^[0-9]+$' } ^| ForEach-Object { [int]$_ } }
 echo $estHistory = @^(^)
-echo if ^($env:EST_HISTORY^) { $estHistory = $env:EST_HISTORY -split ',' ^| Where-Object { $_ -match '^[0-9]+$' } ^| ForEach-Object { [int]$_ } }
+echo if ^($EstHistoryCsv^) { $estHistory = $EstHistoryCsv -split ',' ^| Where-Object { $_ -match '^[0-9]+$' } ^| ForEach-Object { [int]$_ } }
 echo $twRapid = $false
 echo $twSpike = $false
 echo if ^($twHistory.Count -ge 2^) {
@@ -89,7 +90,7 @@ if defined EST_HISTORY (
 for /f %%A in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "$a = '!TW_HISTORY!' -split ',' ^| Where-Object { $_ -match '^[0-9]+$' }; if($a.Count -gt 10){$a=$a[-10..-1]}; $a -join ','"') do set "TW_HISTORY=%%A"
 for /f %%A in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "$a = '!EST_HISTORY!' -split ',' ^| Where-Object { $_ -match '^[0-9]+$' }; if($a.Count -gt 10){$a=$a[-10..-1]}; $a -join ','"') do set "EST_HISTORY=%%A"
 
-for /f "tokens=1,* delims==" %%A in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%PS_FILE%"') do (
+for /f "tokens=1,* delims==" %%A in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%PS_FILE%" -TwHistoryCsv "!TW_HISTORY!" -EstHistoryCsv "!EST_HISTORY!"') do (
     set "%%A=%%B"
 )
 

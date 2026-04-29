@@ -61,7 +61,7 @@ for /f "tokens=1-3 delims=|" %%A in ('powershell -NoProfile -ExecutionPolicy Byp
     set "TOP_CONN=%%C"
 )
 
-echo(!TOP_CONN!| findstr /r "^[0-9][0-9]*$" >nul 2>&1
+echo !TOP_CONN! | findstr /r "^[0-9][0-9]*$" >nul 2>&1
 if not errorlevel 1 if !TOP_CONN! GTR 500 (
     echo.
     echo Bonus hint:
