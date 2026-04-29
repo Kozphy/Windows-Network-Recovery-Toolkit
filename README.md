@@ -20,6 +20,66 @@ Beginner-friendly Windows 10/11 network diagnosis and repair scripts for common 
 6. To apply a guided repair, right-click `auto_fix.bat` and select **Run as administrator**.
 7. Restart Windows if the script tells you to.
 
+## Run Full Stack Locally (Backend + Frontend + Agent)
+
+This section is optional. If you only need the Windows repair toolkit, use the `Quick Start` and `.bat` scripts above.
+
+If you want to run the SaaS demo stack in this repository, start three terminals in this order.
+
+From PowerShell:
+
+```powershell
+cd C:\Users\Zixsa\Kozphy\Windows-Network-Recovery-Toolkit
+```
+
+Terminal A - Backend (FastAPI):
+
+```powershell
+cd C:\Users\Zixsa\Kozphy\Windows-Network-Recovery-Toolkit
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+
+# Local development auth bypass (optional but useful for local testing)
+$env:AUTH_BYPASS_USER_ID="dev-user-1"
+$env:AUTH_BYPASS_EMAIL="dev@example.com"
+
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Backend URLs:
+
+- `http://localhost:8000`
+- `http://localhost:8000/docs`
+
+Terminal B - Frontend (Next.js):
+
+```powershell
+cd C:\Users\Zixsa\Kozphy\Windows-Network-Recovery-Toolkit\frontend
+Copy-Item .env.local.example .env.local -Force
+npm install
+npm run dev
+```
+
+Frontend URL:
+
+- `http://localhost:3000`
+
+Terminal C - Agent (Python):
+
+```powershell
+cd C:\Users\Zixsa\Kozphy\Windows-Network-Recovery-Toolkit
+.\.venv\Scripts\Activate.ps1
+pip install -r agent\requirements.txt
+python agent\agent.py --api http://localhost:8000 --loop --interval 10
+```
+
+Quick health check:
+
+- Open `http://localhost:8000/docs` to confirm backend is running.
+- Open `http://localhost:3000` to confirm frontend is running.
+- Confirm the agent terminal prints diagnose and monitor responses.
+
 ## Recommended Workflow
 
 Use the smallest safe action that matches the diagnosis.

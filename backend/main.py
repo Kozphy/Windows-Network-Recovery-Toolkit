@@ -15,10 +15,10 @@ from .db import (
     get_subscription,
     get_usage,
     init_db,
-    increment_usage,
     insert_diagnosis,
     insert_metric,
     month_key,
+    try_increment_usage_with_limit,
     update_subscription,
 )
 from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
@@ -86,18 +86,11 @@ def _resolve_project(user: AuthUser, requested_project_id: Optional[str]) -> dic
     return project
 
 
-def _enforce_usage_limit(org_id: str) -> dict:
+def _get_plan_limit(org_id: str) -> dict:
     sub = get_subscription(org_id)
-    usage = get_usage(org_id, month=month_key())
     plan = (sub.get("plan") or "free").lower()
     limit = PLAN_LIMITS.get(plan, 10)
-    current = int(usage["diagnosis_count"])
-    if limit != -1 and current >= limit:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Usage limit reached for plan '{plan}' ({limit}/month).",
-        )
-    return {"plan": plan, "limit": limit, "current": current}
+    return {"plan": plan, "limit": limit}
 
 
 @app.post("/diagnose", response_model=DiagnoseResponse)
@@ -106,7 +99,15 @@ def diagnose(req: DiagnoseRequest, user: AuthUser = Depends(get_current_user)) -
     org_id = project["org_id"]
     project_id = project["project_id"]
 
-    _enforce_usage_limit(org_id)
+    plan_info = _get_plan_limit(org_id)
+    plan = plan_info["plan"]
+    limit = plan_info["limit"]
+    current_count = try_increment_usage_with_limit(org_id=org_id, limit=limit, month=month_key())
+    if current_count is None:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Usage limit reached for plan '{plan}' ({limit}/month).",
+        )
 
     recent_metrics = get_recent_metrics(project_id=project_id, limit=10)
     anomaly = detect_anomaly(req.time_wait, req.established, recent_metrics)
@@ -124,10 +125,6 @@ def diagnose(req: DiagnoseRequest, user: AuthUser = Depends(get_current_user)) -
     result["anomaly"] = anomaly
     insert_diagnosis(project_id=project_id, input_data=req.model_dump(), result=result)
     insert_metric(project_id=project_id, time_wait=req.time_wait, established=req.established)
-    current_count = increment_usage(org_id)
-    sub = get_subscription(org_id)
-    plan = (sub.get("plan") or "free").lower()
-    limit = PLAN_LIMITS.get(plan, 10)
     result["usage"] = {
         "org_id": org_id,
         "plan": plan,
@@ -142,9 +139,9 @@ def diagnose(req: DiagnoseRequest, user: AuthUser = Depends(get_current_user)) -
 def monitor(req: MonitorRequest, user: AuthUser = Depends(get_current_user)) -> dict:
     project = _resolve_project(user, req.project_id)
     project_id = project["project_id"]
-    metric_id = insert_metric(project_id=project_id, time_wait=req.time_wait, established=req.established)
     recent_metrics = get_recent_metrics(project_id=project_id, limit=10)
-    anomaly = detect_anomaly(req.time_wait, req.established, recent_metrics[1:])
+    anomaly = detect_anomaly(req.time_wait, req.established, recent_metrics)
+    metric_id = insert_metric(project_id=project_id, time_wait=req.time_wait, established=req.established)
     return {
         "id": metric_id,
         "timestamp": datetime.utcnow().isoformat() + "Z",

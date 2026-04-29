@@ -83,7 +83,7 @@ def classify_root_cause(data: DiagnoseInput, anomaly: dict) -> dict:
             "risk": "LOW",
         }
 
-    if data.proxy:
+    if data.proxy and not data.https:
         return {
             "root_cause": "Proxy misconfiguration",
             "confidence": "high",

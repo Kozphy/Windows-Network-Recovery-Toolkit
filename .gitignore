@@ -1,0 +1,64 @@
+# -----------------------------
+# OS / Editor
+# -----------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# -----------------------------
+# Python (backend + agent)
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# -----------------------------
+# Backend local data / secrets
+# -----------------------------
+backend/toolkit.db
+backend/*.db
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# -----------------------------
+# Node / Next.js (frontend)
+# -----------------------------
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+!frontend/.env.local.example
+
+# -----------------------------
+# Logs / runtime outputs
+# -----------------------------
+*.log
+logs/*
+!logs/.gitignore
+
+# -----------------------------
+# Temp files
+# -----------------------------
+*.tmp
+*.temp
