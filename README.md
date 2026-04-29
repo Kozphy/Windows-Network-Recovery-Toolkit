@@ -64,7 +64,11 @@ Common examples:
 | --- | --- | --- |
 | `auto_diagnose.bat` | Read-only | Collect evidence and recommend the likely fix. |
 | `auto_fix.bat` | Guided repair | Diagnose first, then ask before running the recommended repair. |
+| `classify_root_cause.bat` | Decision | Automatically infers root cause from diagnostic data. |
 | `check_network.bat` | Read-only | Run a simpler manual connectivity check. |
+| `monitor_connections.bat` | Observability | Real-time TCP connection monitoring. |
+| `check_connection_exhaustion.bat` | Read-only | Detects socket leaks and connection exhaustion issues. |
+| `detect_code_leak.bat` | Dev Tool | Detects possible connection leak patterns in code. |
 | `reset_dns.bat` | Targeted repair | Flush DNS cache and show DNS configuration. |
 | `reset_proxy.bat` | Targeted repair | Clear WinHTTP and user-level proxy settings. |
 | `one_click_fix.bat` | Full repair | Reset Winsock, TCP/IP, DNS cache, and proxy settings. |

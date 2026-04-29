@@ -65,7 +65,8 @@ Does HTTPS work with curl?
                     |          Recommendation: check VPN, antivirus, proxy inspection, or firewall software
                     |
                     +-- Yes --> Network path looks healthy
-                               Recommendation: try another browser or reset browser settings
+                               If browser fails only after time, run check_connection_exhaustion.bat
+                               Otherwise try another browser or reset browser settings
 ```
 
 ## Case: Ping Works But Curl Fails
@@ -126,6 +127,32 @@ Recommended action:
 3. Try another network, such as a mobile hotspot.
 4. If unsure, run `one_click_fix.bat` and restart.
 
+## Case: Ping, DNS, And HTTPS Work But Browser Fails After Time
+
+If ping, DNS, TCP 443, and HTTPS checks all work, but browsers start failing after the computer has been running for a while, check for connection exhaustion.
+
+Possible signs:
+
+- Browser works after reboot, then times out later.
+- API clients, scripts, bots, Docker, WSL, or browser tabs use many network connections.
+- `curl` may work during diagnosis, but browsers become unreliable during heavy activity.
+- Restarting the heavy application temporarily fixes the issue.
+
+Recommended action:
+
+```bat
+scripts\check_connection_exhaustion.bat
+```
+
+This read-only script checks:
+
+- `TIME_WAIT` connection count
+- `ESTABLISHED` connection count
+- Top processes using TCP connections
+- Ephemeral TCP port range
+
+If connection exhaustion is detected, restart the application using the network heavily and check for connection reuse bugs, such as missing `requests.Session` usage in Python.
+
 ## Case: Reboot Works But Later Timeout Returns
 
 If the network works after reboot but times out again later, the issue may be caused by something that starts after Windows boots.
@@ -136,15 +163,17 @@ Possible causes:
 - Antivirus web filtering
 - Proxy auto-config returning bad settings
 - Browser extension changing proxy settings
+- Socket leaks or ephemeral port exhaustion
 - Router or DNS instability
 
 Recommended action:
 
 1. Run `auto_diagnose.bat` when the issue is happening.
 2. Check the log for proxy values or failed HTTPS tests.
-3. Temporarily disable VPN or antivirus web filtering for testing.
-4. Try a different network, such as a mobile hotspot.
-5. Review startup apps that may change network settings.
+3. Run `check_connection_exhaustion.bat` if browser failures appear after long uptime or heavy app usage.
+4. Temporarily disable VPN or antivirus web filtering for testing.
+5. Try a different network, such as a mobile hotspot.
+6. Review startup apps that may change network settings.
 
 ## Proxy Auto-Config, VPN, And Antivirus Notes
 

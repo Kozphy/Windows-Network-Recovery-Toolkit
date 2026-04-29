@@ -12,6 +12,7 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 
 - `diagnosis_decision_tree.md`: how automatic diagnosis chooses a recommendation.
 - `troubleshooting_flow.md`: manual troubleshooting flow.
+- `script_reference.md`: includes the connection exhaustion check for socket leaks and ephemeral port exhaustion.
 
 ## Common Problems
 

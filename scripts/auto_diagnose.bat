@@ -132,6 +132,16 @@ call :log ""
 call :log "Saved full diagnostic log to:"
 call :log "%LOG_FILE%"
 call :log ""
+call :log "Running rule-based root cause classifier..."
+call :log ""
+
+echo.
+echo ============================================================
+echo  Root Cause Classifier (additional read-only analysis)
+echo ============================================================
+echo.
+call "%SCRIPT_DIR%classify_root_cause.bat" --no-pause
+echo.
 
 (
     echo ISSUE_CODE=%ISSUE_CODE%
@@ -186,7 +196,7 @@ if "%HTTPS_STATUS%"=="FAIL" (
 if "%PING_STATUS%"=="OK" if "%DNS_STATUS%"=="OK" if "%TCP443_STATUS%"=="OK" if "%HTTPS_STATUS%"=="OK" (
     set "ISSUE_CODE=BROWSER"
     set "ISSUE_NAME=Browser-specific problem"
-    set "RECOMMENDATION=Try another browser or reset Edge settings."
+    set "RECOMMENDATION=Try another browser or reset Edge settings. If failures happen after the system has been running for a while, run check_connection_exhaustion.bat."
     exit /b
 )
 

@@ -9,6 +9,7 @@ This document explains what each script does, when to run it, and what to expect
 | `auto_diagnose.bat` | No | No | First step for most users. |
 | `auto_fix.bat` | Only after confirmation | Sometimes | Guided diagnosis and repair. |
 | `check_network.bat` | No | No | Simple manual connectivity check. |
+| `check_connection_exhaustion.bat` | No | No | Detect socket leaks or ephemeral port exhaustion. |
 | `reset_dns.bat` | Yes | Usually no | DNS cache or name lookup issues. |
 | `reset_proxy.bat` | Yes | Usually no | Proxy errors or unwanted proxy settings. |
 | `one_click_fix.bat` | Yes | Yes | Full fallback repair for stack issues. |
@@ -63,6 +64,26 @@ It tests:
 - HTTP access with `curl`
 - WinHTTP proxy state
 - User proxy registry values
+
+It does not change network settings.
+
+## `check_connection_exhaustion.bat`
+
+Use this when the network works at first but browsers or apps start timing out after heavy usage or long uptime.
+
+It checks:
+
+- `TIME_WAIT` connection count
+- `ESTABLISHED` connection count
+- Top processes using TCP connections
+- IPv4 dynamic TCP port range
+
+What it produces:
+
+- Raw command output
+- Human-readable interpretation
+- Common causes
+- Suggested actions
 
 It does not change network settings.
 
