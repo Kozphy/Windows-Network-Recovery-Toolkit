@@ -68,6 +68,7 @@ Common examples:
 | `recommend_fix.bat` | Decision | Suggests safest fix based on diagnosis. |
 | `check_network.bat` | Read-only | Run a simpler manual connectivity check. |
 | `monitor_connections.bat` | Observability | Real-time TCP connection monitoring. |
+| `anomaly_monitor.bat` | Observability | Detects abnormal connection behavior. |
 | `check_connection_exhaustion.bat` | Read-only | Detects socket leaks and connection exhaustion issues. |
 | `detect_code_leak.bat` | Dev Tool | Detects possible connection leak patterns in code. |
 | `reset_dns.bat` | Targeted repair | Flush DNS cache and show DNS configuration. |
@@ -104,6 +105,7 @@ For more detail, read `docs/safety_model.md`.
 - `docs/diagnosis_decision_tree.md`: how automatic diagnosis maps symptoms to recommendations.
 - `docs/operational_runbook.md`: step-by-step runbook for real troubleshooting.
 - `docs/design_principles.md`: design goals, safety boundaries, and tradeoffs.
+- `docs/system_architecture.md`: high-level architecture, layered model, and decision flow.
 - `docs/faq.md`: beginner-friendly answers to common questions.
 - `docs/troubleshooting_flow.md`: manual troubleshooting flow.
 - `docs/proxy_error.md`: `ERR_PROXY_CONNECTION_FAILED` explanation and fixes.

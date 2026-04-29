@@ -86,37 +86,56 @@ set "STATUS_LINE=No large spike detected in this sampling window."
 set "CAUSE_1=Normal network usage."
 set "CAUSE_2=Short-lived connections are within expected range."
 set "CAUSE_3=Continue monitoring if failures are intermittent."
+set /a WARN_COUNT=0
+set "WARN_DETAILS="
 
 if "%WARN_SPIKE%"=="YES" (
-    set "STATUS=[WARN] Connection spike detected"
-    set "STATUS_LINE=TIME_WAIT increased rapidly."
-    set "CAUSE_1=API polling loop or retry storm."
-    set "CAUSE_2=WebSocket flood or connection churn."
-    set "CAUSE_3=Unclosed connections in application code."
+    set /a WARN_COUNT+=1
+    if defined WARN_DETAILS (
+        set "WARN_DETAILS=!WARN_DETAILS!; TIME_WAIT rapid spike"
+    ) else (
+        set "WARN_DETAILS=TIME_WAIT rapid spike"
+    )
 )
 
 if "%WARN_GROWTH%"=="YES" (
-    set "STATUS=[WARN] Abnormal TIME_WAIT growth"
-    set "STATUS_LINE=TIME_WAIT rose sharply relative to the previous sample."
-    set "CAUSE_1=Potential socket leak behavior."
-    set "CAUSE_2=Excessive short-lived outbound connections."
-    set "CAUSE_3=Ephemeral ports may be consumed too quickly."
+    set /a WARN_COUNT+=1
+    if defined WARN_DETAILS (
+        set "WARN_DETAILS=!WARN_DETAILS!; TIME_WAIT abnormal growth"
+    ) else (
+        set "WARN_DETAILS=TIME_WAIT abnormal growth"
+    )
 )
 
 if "%WARN_DOMINANT%"=="YES" (
-    set "STATUS=[WARN] Single process dominates TCP usage"
-    set "STATUS_LINE=%TOP_NAME% (PID %TOP_PID%) currently owns most active connections."
-    set "CAUSE_1=A single app may be saturating network sessions."
-    set "CAUSE_2=Inspect app retry logic, pooling, and connection lifecycle."
-    set "CAUSE_3=Stop or restart the process for a quick A/B check."
+    set /a WARN_COUNT+=1
+    if defined WARN_DETAILS (
+        set "WARN_DETAILS=!WARN_DETAILS!; dominant process !TOP_NAME! (PID !TOP_PID!)"
+    ) else (
+        set "WARN_DETAILS=dominant process !TOP_NAME! (PID !TOP_PID!)"
+    )
 )
 
 if "%WARN_TOP_INCREASING%"=="YES" (
-    set "STATUS=[WARN] Dominant process is still increasing"
-    set "STATUS_LINE=%TOP_NAME% connection count is rising quickly."
-    set "CAUSE_1=Persistent growth pattern can precede exhaustion."
-    set "CAUSE_2=Check application logs for repeated outbound attempts."
-    set "CAUSE_3=Consider restarting the process and monitoring trend reset."
+    set /a WARN_COUNT+=1
+    if defined WARN_DETAILS (
+        set "WARN_DETAILS=!WARN_DETAILS!; dominant process connection count increasing"
+    ) else (
+        set "WARN_DETAILS=dominant process connection count increasing"
+    )
+)
+
+if !WARN_COUNT! GTR 0 (
+    if !WARN_COUNT! EQU 1 (
+        set "STATUS=[WARN] Connection anomaly detected"
+        set "STATUS_LINE=Triggered signal: !WARN_DETAILS!."
+    ) else (
+        set "STATUS=[WARN] Multiple anomalies detected"
+        set "STATUS_LINE=Triggered signals: !WARN_DETAILS!."
+    )
+    set "CAUSE_1=Connection behavior shows warning patterns that may share a root cause."
+    set "CAUSE_2=Review all triggered signals together before choosing a mitigation."
+    set "CAUSE_3=Check retry loops, socket reuse, and dominant-process behavior."
 )
 
 for /f %%A in ('powershell -NoProfile -Command "Get-Date -Format \"yyyy-MM-dd HH:mm:ss\""') do set "NOW_TS=%%A"
