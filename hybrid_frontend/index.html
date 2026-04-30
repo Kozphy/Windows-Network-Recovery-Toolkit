@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hybrid Agent - Network Recovery UI</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Windows Network Recovery Toolkit</h1>
+      <p class="subtitle">Hybrid AI Network Diagnostic Agent (Phase 4 UI)</p>
+
+      <section class="card">
+        <h2>Backend Connection</h2>
+        <label for="apiBase">FastAPI Base URL</label>
+        <input id="apiBase" type="text" value="http://localhost:8010" />
+        <p class="hint">Set this to where `network_agent.api` is running.</p>
+      </section>
+
+      <section class="card">
+        <h2>Run Diagnosis</h2>
+        <button id="runDiagnosisBtn">Run Diagnosis</button>
+        <p id="diagnoseStatus" class="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>Diagnosis Results</h2>
+        <div id="resultsEmpty">No diagnosis yet. Click "Run Diagnosis".</div>
+        <div id="resultsPanel" class="hidden">
+          <p><strong>Report ID:</strong> <span id="reportIdText">-</span></p>
+          <p><strong>Issue:</strong> <span id="issueText">-</span></p>
+          <p><strong>Confidence:</strong> <span id="confidenceText">-</span></p>
+          <p><strong>Recommended Action:</strong> <span id="actionText">-</span></p>
+
+          <h3>Evidence</h3>
+          <ul id="evidenceList"></ul>
+
+          <div class="actions">
+            <button id="previewBtn" disabled>Repair Preview</button>
+            <button id="executeBtn" disabled>Repair Execute</button>
+          </div>
+
+          <div id="previewPanel" class="preview hidden">
+            <h3>Repair Preview</h3>
+            <pre id="previewJson"></pre>
+            <p class="warning">
+              Warning: Repair actions may modify network settings. This toolkit never executes automatically.
+            </p>
+            <label class="confirm">
+              <input id="confirmCheckbox" type="checkbox" />
+              I understand and explicitly confirm execution.
+            </label>
+          </div>
+
+          <div id="executePanel" class="preview hidden">
+            <h3>Execution Result</h3>
+            <pre id="executeJson"></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Report Viewer</h2>
+        <label for="reportIdInput">Report ID</label>
+        <input id="reportIdInput" type="text" placeholder="Paste report_id here" />
+        <button id="loadReportBtn">Load Report</button>
+        <pre id="reportViewer"></pre>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
