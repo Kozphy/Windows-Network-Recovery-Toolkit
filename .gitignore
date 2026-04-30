@@ -57,6 +57,10 @@ frontend/pnpm-debug.log*
 logs/*
 !logs/.gitignore
 
+# Generated diagnosis reports stay local unless explicitly tracked
+reports/*
+!reports/.gitignore
+
 # -----------------------------
 # Temp files
 # -----------------------------

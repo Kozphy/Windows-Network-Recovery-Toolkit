@@ -5,10 +5,95 @@ Beginner-friendly Windows 10/11 network diagnosis and repair scripts for common 
 ## Project Status
 
 - Platform: Windows 10 and Windows 11
-- Dependencies: built-in Windows commands only
-- Primary interface: `.bat` scripts
+- Dependencies (interactive toolkit): built-in Windows commands for `.bat` flows
+- Optional: Python **3.10+** standard library only for the `src/` decision engine (CLI)
+- Primary interface: `.bat` scripts plus `scripts\decision_engine.bat` wrappers
 - Default mode: diagnose first, repair only after confirmation
 - Safety boundary: does not disable adapter bindings and does not reset firewall automatically
+
+## Decision Architecture v1 (auditable CLI)
+
+Structured decision layer adds **features → scores → explanations → tiered repairs → audit/feedback**.
+It is deliberately small: readable rules with explicit evidence strings, probability-like scores in `[0.0, 1.0]`, and append-only JSONL logs that never leave your machine unless you choose to upload them manually.
+
+Concise implementation plan (what landed in-repo):
+
+| Layer | Role |
+| --- | --- |
+| `src/diagnostics/` | Windows probes (`ping`, `nslookup`, `curl`, WinHTTP/registry/PowerShell) → normalized `FeatureVector` |
+| `src/decision_engine/` | Deterministic bumps + clamps per hypothesis (DNS/proxy/Winsock/firewall/adapter/ISP‑router/browser-only) |
+| `src/recommendations/` | Safe vs guided vs advanced script pointers (advanced items are informational only here) |
+| `src/logging/` | `logs/decision_audit.jsonl` + `logs/decision_feedback.jsonl` |
+| `reports/` | `last_diagnosis.json` snapshot for subsequent subcommands |
+
+### Features (representative signals)
+
+Examples: `ping_ip_ok`, `ping_domain_ok`, `nslookup_ok`, `tcp_443_ok`, `browser_http_ok` (HTTPS `curl`), `proxy_enabled`,
+`winhttp_proxy_enabled`, `dns_servers_detected`, `adapter_connected`, `gateway_reachable`, workload counters (`time_wait_*`).
+
+Machine identity in audit logs is a **truncated SHA-256 fingerprint** derived from hostname + kernel version + CPU arch (never raw hostnames).
+
+### CLI entry points (`python -m src <subcommand>`)
+
+| Command | Purpose |
+| --- | --- |
+| `diagnose` | Probe or load `--fixture`, score, persist `reports/last_diagnosis.json`, append audit JSONL |
+| `explain` | Print the rationale + evidence bullets for last snapshot |
+| `recommend` | Print tier buckets (diagnose / repair-safe / guided / advanced) |
+| `repair-safe` | Preview safe-tier items; `--apply` can launch the **first LOW-risk `.bat`** after typing `RUN` |
+| `feedback` | Persist outcome rows for calibration (`diagnosis_id`, action, outcome) |
+| `export-report` | Human-readable plaintext under `reports/` |
+
+Beginner wrappers live in `scripts\decision_engine.bat` forwarding to Python.
+
+Safety notes for this CLI (mirrors toolkit policy):
+
+- No automatic firewall reset, no disabling adapters silently, no external log upload wiring.
+- `repair-safe --apply` only considers scripts under `scripts/` with **LOW** risk flagged by the recommendation engine.
+- Guided/advanced actions stay in batch tooling (`auto_fix.bat`, targeted scripts) where humans confirm changes.
+
+Example (offline scoring using a bundled fixture):
+
+```powershell
+cd C:\Users\Zixsa\Kozphy\Windows-Network-Recovery-Toolkit
+
+python -m src diagnose --fixture tests\fixtures\features_dns_issue.json
+python -m src explain
+python -m src recommend
+python -m src export-report
+```
+
+Example (live Windows probes):
+
+```powershell
+cd C:\Users\Zixsa\Kozphy\Windows-Network-Recovery-Toolkit
+
+python -m src diagnose
+python -m src repair-safe              # preview only
+python -m src repair-safe --apply      # prompts before launching first LOW-risk .bat
+
+python -m src feedback --diagnosis-id "<uuid-from-last-run>" `
+  --recommended-action "scripts/reset_dns.bat" `
+  --user-feedback-fixed true `
+  --notes "flush fixed browser"
+```
+
+Sample console output (fixture run, trimmed):
+
+```text
+=== Windows Network Recovery Toolkit - Decision Architecture ===
+Diagnosis ID: <uuid>
+
+Dns Issue confidence 0.84 because IP reachability succeeds while nslookup google.com fails.
+(ping_ip=ok, nslookup=fail, curl_https=fail, proxy=off, adapter_up=yes).
+
+Root cause ranking (confidence):
+  - dns_issue: 0.84
+  - browser_only_issue: 0.06
+  ...
+```
+
+Unit tests for scoring live in `tests/test_decision_scoring.py` with JSON fixtures under `tests/fixtures/features_*.json`.
 
 ## Quick Start
 
@@ -168,6 +253,7 @@ Common examples:
 | `auto_fix.bat` | Guided repair | Diagnose first, then ask before running the recommended repair. |
 | `classify_root_cause.bat` | Decision | Automatically infers root cause from diagnostic data. |
 | `recommend_fix.bat` | Decision | Suggests safest fix based on diagnosis. |
+| `decision_engine.bat` | Decision | Python decision architecture (`diagnose`, `explain`, `recommend`, `repair-safe`, `feedback`, `export-report`). |
 | `check_network.bat` | Read-only | Run a simpler manual connectivity check. |
 | `monitor_connections.bat` | Observability | Real-time TCP connection monitoring. |
 | `anomaly_monitor.bat` | Observability | Detects abnormal connection behavior. |
@@ -224,6 +310,14 @@ Windows-Network-Recovery-Toolkit/
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── docs/
+├── agent/                 # optional SaaS demo agent (unchanged)
+├── src/                   # decision architecture (Python stdlib)
+│   ├── diagnostics/
+│   ├── decision_engine/
+│   ├── recommendations/
+│   └── logging/
+├── tests/                 # pytest + feature fixtures
+├── reports/               # generated diagnosis snapshots (gitignored)
 ├── logs/
 └── scripts/
 ```

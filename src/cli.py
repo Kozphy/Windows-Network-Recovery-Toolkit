@@ -1,0 +1,515 @@
+"""Command-line interface for the decision architecture."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import platform
+import subprocess
+import sys
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from .diagnostics.collector import collect_features, load_features_json
+from .diagnostics.features import FeatureVector
+from .decision_engine.scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
+from .logging.audit import append_jsonl
+from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
+from .recommendations.engine import RecommendationBundle, build_recommendations
+from .version import SCRIPT_VERSION
+
+
+def _repo_root(explicit: Path | None) -> Path:
+    if explicit:
+        return explicit.resolve()
+    return Path(__file__).resolve().parent.parent
+
+
+def _fingerprint() -> dict[str, str]:
+    raw = f"{platform.node()}|{platform.release()}|{platform.machine()}".encode()
+    digest = hashlib.sha256(raw).hexdigest()[:16]
+    return {"host_key_hash16": digest}
+
+
+def _scores_dict(result: DecisionResult) -> dict[str, float]:
+    return {k: v.confidence for k, v in result.scores_by_cause.items()}
+
+
+def _serialize_cause(score: CauseScore) -> dict[str, Any]:
+    return {
+        "cause": score.cause,
+        "confidence": score.confidence,
+        "evidence": list(score.evidence),
+    }
+
+
+def _serialize_bundle(bundle: RecommendationBundle) -> dict[str, Any]:
+    def pack(items: tuple[Any, ...]) -> list[dict[str, Any]]:
+        return [
+            {
+                "title": r.title,
+                "detail": r.detail,
+                "script": r.script_relative,
+                "tier": r.tier,
+                "risk": r.risk,
+                "reversible_notes": r.reversible_notes,
+            }
+            for r in items
+        ]
+
+    return {
+        "diagnose": pack(bundle.diagnose),
+        "repair_safe": pack(bundle.safe),
+        "guided_repair": pack(bundle.guided),
+        "advanced_repair": pack(bundle.advanced),
+    }
+
+
+def _build_payload(
+    *,
+    diagnosis_id: str,
+    features: FeatureVector,
+    decision: DecisionResult,
+    bundle: RecommendationBundle,
+    commands_executed: list[dict[str, str]],
+) -> dict[str, Any]:
+    primary = decision.primary()
+    return {
+        "diagnosis_id": diagnosis_id,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "script_version": SCRIPT_VERSION,
+        "machine": _fingerprint(),
+        "features": features.to_dict(),
+        "confidence_by_cause": _scores_dict(decision),
+        "ranked_root_causes": [_serialize_cause(s) for s in decision.ranked()],
+        "selected_root_cause": primary.cause,
+        "selected_confidence": primary.confidence,
+        "selected_evidence": list(primary.evidence),
+        "explain_sentence": explain_primary(primary, features),
+        "recommendations": _serialize_bundle(bundle),
+        "commands_executed": commands_executed,
+    }
+
+
+def _write_last_diagnosis(repo: Path, payload: dict[str, Any]) -> Path:
+    reports = repo / "reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    path = reports / "last_diagnosis.json"
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def _read_last_diagnosis(repo: Path) -> dict[str, Any]:
+    path = repo / "reports" / "last_diagnosis.json"
+    if not path.is_file():
+        raise FileNotFoundError("No last_diagnosis.json - run diagnose first.")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _audit(repo: Path, payload: dict[str, Any]) -> None:
+    audit_path = repo / "logs" / "decision_audit.jsonl"
+    record = {
+        "type": "diagnosis",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "diagnosis_id": payload["diagnosis_id"],
+        "script_version": SCRIPT_VERSION,
+        "machine": payload["machine"],
+        "features": payload["features"],
+        "scores": payload["confidence_by_cause"],
+        "selected_root_cause": payload["selected_root_cause"],
+        "confidence": payload["selected_confidence"],
+        "evidence": payload["selected_evidence"],
+        "recommended_actions": payload["recommendations"],
+        "commands_executed": payload["commands_executed"],
+    }
+    append_jsonl(audit_path, record)
+
+
+def cmd_diagnose(args: argparse.Namespace) -> int:
+    repo = _repo_root(args.repo_root)
+    if args.fixture:
+        features = load_features_json(Path(args.fixture))
+        commands_executed = [
+            {"label": "fixture", "cmd": str(Path(args.fixture).resolve())},
+        ]
+    else:
+        features, meta = collect_features(repo_root=repo)
+        commands_executed = list(meta.get("commands_executed") or [])
+
+    decision = score_root_causes(features)
+    primary = decision.primary()
+    bundle = build_recommendations(primary, features, repo)
+    diagnosis_id = str(uuid.uuid4())
+    payload = _build_payload(
+        diagnosis_id=diagnosis_id,
+        features=features,
+        decision=decision,
+        bundle=bundle,
+        commands_executed=commands_executed,
+    )
+    _audit(repo, payload)
+    last_path = _write_last_diagnosis(repo, payload)
+
+    human = [
+        "=== Windows Network Recovery Toolkit - Decision Architecture ===",
+        f"Diagnosis ID: {diagnosis_id}",
+        "",
+        payload["explain_sentence"],
+        "",
+        "Root cause ranking (confidence):",
+    ]
+    for item in payload["ranked_root_causes"][:7]:
+        human.append(f"  - {item['cause']}: {item['confidence']:.2f}")
+    human.extend(
+        [
+            "",
+            "Tiered recommendations:",
+            "  - Diagnose:",
+        ]
+    )
+    for rec in bundle.diagnose:
+        human.append(f"    - [{rec.risk}] {rec.title}")
+    human.append("  - Repair-safe:")
+    for rec in bundle.safe:
+        human.append(f"    - [{rec.risk}] {rec.title}")
+    human.extend(["  - Guided repair:"])
+    for rec in bundle.guided:
+        human.append(f"    - [{rec.risk}] {rec.title}")
+    human.extend(["  - Advanced repair (manual confirmation outside this CLI):"])
+    for rec in bundle.advanced:
+        human.append(f"    - [{rec.risk}] {rec.title}")
+    human.extend(
+        [
+            "",
+            f"Structured snapshot: {last_path}",
+            f"Audit log appended: logs\\decision_audit.jsonl",
+        ]
+    )
+
+    print("\n".join(human))
+    if args.json:
+        print("\nJSON_PAYLOAD_START")
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        print("JSON_PAYLOAD_END")
+    return 0
+
+
+def cmd_explain(args: argparse.Namespace) -> int:
+    repo = _repo_root(args.repo_root)
+    payload = _read_last_diagnosis(repo)
+    sentence = payload.get("explain_sentence", "")
+    print(sentence if sentence else "No explanation available.")
+    print("\nEvidence:")
+    for line in payload.get("selected_evidence", []):
+        print(f"- {line}")
+    return 0
+
+
+def cmd_recommend(args: argparse.Namespace) -> int:
+    repo = _repo_root(args.repo_root)
+    payload = _read_last_diagnosis(repo)
+    blob = payload.get("recommendations") or {}
+    sections = ("diagnose", "repair_safe", "guided_repair", "advanced_repair")
+    for section in sections:
+        print(section.upper())
+        for item in blob.get(section, []):
+            print(f"  [{item.get('risk')}] {item.get('title')}")
+            detail = item.get("detail") or ""
+            if detail:
+                print(f"      {detail}")
+            script = item.get("script")
+            if script:
+                print(f"      script: {script}")
+        print()
+    return 0
+
+
+def cmd_repair_safe(args: argparse.Namespace) -> int:
+    repo = _repo_root(args.repo_root)
+    payload = _read_last_diagnosis(repo)
+    safe_items = payload.get("recommendations", {}).get("repair_safe") or []
+
+    printable = []
+    runnable = []
+    for item in safe_items:
+        printable.append(item)
+        if item.get("script") and item.get("risk") == "LOW":
+            runnable.append(item)
+
+    if not printable:
+        print("No safe-tier recommendations captured in last diagnosis.")
+        return 0
+
+    print("repair-safe tier preview (nothing executed yet unless --apply was passed):")
+    for item in printable:
+        print(f"- [{item.get('risk')}] {item.get('title')}")
+        if item.get("script"):
+            print(f"    Script: {item['script']}")
+        rev = item.get("reversible_notes")
+        if rev:
+            print(f"    Reversibility: {rev}")
+
+    if not runnable:
+        print("\nNothing executable automatically in this tier (advisory-only actions).")
+        return 0
+
+    if not getattr(args, "apply", False):
+        print('\nAppend `--apply` to optionally launch the first LOW-risk *.bat script after confirming "RUN".')
+        return 0
+
+    print(
+        "\nSafety policy: destructive operations and firewall resets are never launched from this CLI. "
+        "Only LOW-risk scripts listed above are eligible."
+    )
+
+    diag_id = payload.get("diagnosis_id", "unknown-diagnosis-id")
+    first = runnable[0]
+    script_rel = Path(first["script"])
+    target = (repo / script_rel).resolve()
+    scripts_root = (repo / "scripts").resolve()
+    try:
+        target.relative_to(scripts_root)
+    except ValueError:
+        print("Refusing to execute script outside scripts/ directory.")
+        return 2
+
+    if not target.is_file():
+        print(f"Script not found: {target}")
+        return 2
+
+    answer = input("Type RUN to execute the first LOW-risk repair script listed above: ")
+    if answer.strip().upper() != "RUN":
+        print("Cancelled.")
+        return 1
+
+    print(f"\nLaunching elevated batch via PowerShell.Start-Process: {target}")
+    ps = (
+        f"Start-Process -FilePath '{target}' "
+        "-Verb RunAs -Wait"
+    )
+    subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=False)
+
+    note = (
+        f"Ran safe-tier script `{script_rel}` for diagnosis `{diag_id}` under interactive confirmation.\n\n"
+        "Was the connectivity issue resolved? Re-run diagnostics if unsure."
+    )
+    answer_fix = (
+        input("Did that fix your issue? [y/N/unknown]: ").strip().lower() or "unknown"
+    )
+    if answer_fix in {"y", "yes"}:
+        state: FeedbackState = "true"
+    elif answer_fix in {"n", "no"}:
+        state = "false"
+    else:
+        state = "unknown"
+
+    user_notes = input("Optional notes (blank to skip): ").strip()
+    fb = FeedbackRecord(
+        diagnosis_id=diag_id,
+        recommended_action=str(script_rel.as_posix()),
+        user_feedback_fixed=state,
+        notes=user_notes or "post-repair safe-tier feedback",
+    )
+    append_feedback(repo / "logs" / "decision_feedback.jsonl", fb)
+    print(f"Saved feedback entry to logs\\decision_feedback.jsonl (diagnosis_id={diag_id}).")
+    return 0
+
+
+def cmd_feedback(args: argparse.Namespace) -> int:
+    repo = _repo_root(args.repo_root)
+    state_raw = args.user_feedback_fixed.lower()
+    if state_raw in {"true", "t", "y", "yes"}:
+        fb_state: FeedbackState = "true"
+    elif state_raw in {"false", "f", "n", "no"}:
+        fb_state = "false"
+    else:
+        fb_state = "unknown"
+
+    record = FeedbackRecord(
+        diagnosis_id=args.diagnosis_id,
+        recommended_action=args.recommended_action,
+        user_feedback_fixed=fb_state,
+        notes=args.notes or "",
+    )
+    append_feedback(repo / "logs" / "decision_feedback.jsonl", record)
+    print("Recorded feedback.")
+    return 0
+
+
+def cmd_export_report(args: argparse.Namespace) -> int:
+    repo = _repo_root(args.repo_root)
+    payload = _read_last_diagnosis(repo)
+    ranked = payload.get("ranked_root_causes") or []
+    blob = payload.get("recommendations") or {}
+
+    lines: list[str] = []
+    lines.extend(
+        [
+            "WINDOWS NETWORK RECOVERY TOOLKIT — DIAGNOSIS REPORT",
+            f"Generated (UTC): {payload.get('generated_at_utc')}",
+            f"Toolkit version : {payload.get('script_version')}",
+            f"Diagnosis ID    : {payload.get('diagnosis_id')}",
+            "",
+            "SUMMARY",
+            "-------",
+            payload.get("explain_sentence") or "",
+            "",
+            "ROOT CAUSE RANKING",
+            "------------------",
+        ]
+    )
+    for idx, item in enumerate(ranked, start=1):
+        lines.append(f"{idx}. {item.get('cause')} — {float(item.get('confidence', 0)):.2f}")
+        evidence = item.get("evidence") or []
+        for bullet in evidence:
+            lines.append(f"   • {bullet}")
+    lines.extend(
+        [
+            "",
+            "SELECTED HYPOTHESIS",
+            "-------------------",
+            f"Cause       : {payload.get('selected_root_cause')}",
+            f"Confidence  : {float(payload.get('selected_confidence') or 0):.2f}",
+            "",
+            "EVIDENCE",
+            "--------",
+        ]
+    )
+    for bullet in payload.get("selected_evidence") or []:
+        lines.append(f"- {bullet}")
+    lines.extend(
+        [
+            "",
+            "RECOMMENDED ACTIONS (tiered)",
+            "-----------------------------",
+            "Modes: diagnose (read-only), repair-safe (reversible/low risk), ",
+            "guided repair (confirmation in batch wrappers), ",
+            "advanced repair (destructive/policy sensitive — manual only).",
+            "",
+            "Diagnostics:",
+        ]
+    )
+    for item in blob.get("diagnose", []):
+        lines.append(f"  • [{item.get('risk')}] {item.get('title')}")
+        if item.get("script"):
+            lines.append(f"      Command/script: {item['script']}")
+    lines.extend(["", "Repair-safe:"])
+    for item in blob.get("repair_safe", []):
+        lines.append(f"  • [{item.get('risk')}] {item.get('title')}")
+        lines.append(f"      {item.get('detail')}")
+        if item.get("script"):
+            lines.append(f"      Script: {item['script']}")
+        lines.append(f"      Risk: {item.get('risk')} — {item.get('reversible_notes')}")
+    lines.extend(["", "Guided repair:"])
+    for item in blob.get("guided_repair", []):
+        lines.append(f"  • [{item.get('risk')}] {item.get('title')}")
+        if item.get("script"):
+            lines.append(f"      Script: {item['script']}")
+    lines.extend(["", "Advanced repair (never auto-applied):"])
+    for item in blob.get("advanced_repair", []):
+        lines.append(f"  • [{item.get('risk')}] {item.get('title')}")
+        if item.get("script"):
+            lines.append(f"      Script reference: {item['script']}")
+    lines.extend(
+        [
+            "",
+            "COMMANDS EXECUTED (labels only)",
+            "--------------------------------",
+        ]
+    )
+    for cmd in payload.get("commands_executed") or []:
+        lines.append(f"- {cmd.get('label')}: {cmd.get('cmd')}")
+    lines.extend(
+        [
+            "",
+            "NEXT STEPS",
+            "----------",
+            "1) Execute the safest matching recommendation first.",
+            "2) Record feedback via `python -m src feedback ...` after trying a repair.",
+            "3) Re-run diagnose to validate post-change signals.",
+            "",
+            "NOTICE: This report stays on-disk; upload only if your policy permits.",
+        ]
+    )
+
+    report_dir = repo / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    outfile = Path(args.out) if args.out else report_dir / f"diagnosis_report_{ts}.txt"
+    outfile.write_text("\n".join(lines), encoding="utf-8")
+    print(f"Wrote {outfile}")
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="python -m src",
+        description="Decision architecture CLI for Windows network diagnostics.",
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        help="Explicit repository root (defaults to toolkit checkout).",
+    )
+
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_diag = sub.add_parser("diagnose", help="Collect features, score, audit, persist last snapshot.")
+    p_diag.add_argument(
+        "--fixture",
+        type=str,
+        default=None,
+        help="Load features JSON instead of probing live Windows state.",
+    )
+    p_diag.add_argument("--json", action="store_true", help="Print machine-readable payload after summary.")
+    p_diag.set_defaults(func=cmd_diagnose)
+
+    sub.add_parser("explain", help="Print natural-language rationale for the last diagnose run.").set_defaults(
+        func=cmd_explain
+    )
+
+    sub.add_parser("recommend", help="Show tiered recommendations from last diagnose run.").set_defaults(
+        func=cmd_recommend
+    )
+
+    p_safe = sub.add_parser(
+        "repair-safe",
+        help="Preview safe-tier fixes from the last diagnose run.",
+    )
+    p_safe.add_argument(
+        "--apply",
+        action="store_true",
+        help="Prompt to launch the first LOW-risk *.bat recommendation (otherwise preview only).",
+    )
+    p_safe.set_defaults(func=cmd_repair_safe)
+
+    p_fb = sub.add_parser("feedback", help="Persist structured outcome feedback tied to diagnosis_id.")
+    p_fb.add_argument("--diagnosis-id", required=True, dest="diagnosis_id")
+    p_fb.add_argument("--recommended-action", required=True, dest="recommended_action")
+    p_fb.add_argument("--user-feedback-fixed", required=True, dest="user_feedback_fixed")
+    p_fb.add_argument("--notes", default="", dest="notes")
+    p_fb.set_defaults(func=cmd_feedback)
+
+    p_exp = sub.add_parser("export-report", help="Render a plaintext report under reports/.")
+    p_exp.add_argument("--out", type=str, default=None, help="Custom output filename.")
+    p_exp.set_defaults(func=cmd_export_report)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    handler = getattr(args, "func", None)
+    if handler is None:
+        parser.print_help()
+        return 1
+    return int(handler(args))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
