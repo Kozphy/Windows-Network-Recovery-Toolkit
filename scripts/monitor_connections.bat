@@ -3,6 +3,9 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 REM Windows Network Recovery Toolkit
 REM Read-only real-time TCP connection monitor.
+REM --
+REM Purpose: Looping netstat-derived view; optional args set interval/iteration caps.
+REM Side effects: Repeated read-only probes; Ctrl+C stops.
 
 title Windows Network Recovery Toolkit - Live Connection Monitor
 

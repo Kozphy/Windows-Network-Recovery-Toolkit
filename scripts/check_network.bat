@@ -3,6 +3,10 @@ setlocal
 
 REM Windows Network Recovery Toolkit
 REM Diagnostic script for common Windows network, DNS, curl, and proxy issues.
+REM --
+REM Purpose: Read-only checks (prints status only per echo labels below).
+REM Privileges: Standard user unless a probe requires elevation in your environment.
+REM Side effects: None beyond console output and transient outbound probes.
 
 title Windows Network Recovery Toolkit - Network Check
 

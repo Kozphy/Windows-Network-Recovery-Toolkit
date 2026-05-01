@@ -3,6 +3,11 @@ setlocal EnableExtensions
 
 REM Windows Network Recovery Toolkit
 REM Structured decision engine CLI (Python 3).
+REM --
+REM Purpose: Wrapper for `python -m src %*` from repo root (diagnose/explain/etc.).
+REM Privileges: User-grade unless subcommands elevate (e.g. repair-safe --apply).
+REM Outputs: reports\ and logs\ per Python CLI; see root README Decision Architecture section.
+REM Side effects: Driven entirely by forwarded subcommand arguments.
 
 title Windows Network Recovery Toolkit - Decision Architecture
 

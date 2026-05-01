@@ -3,6 +3,10 @@
  *
  * The module centralizes bearer-authenticated JSON requests to the backend API
  * so page-level components can remain focused on rendering and workflow state.
+ *
+ * Audit Notes:
+ * Failures strip response bodies into thrown Errors — log or surface `message`
+ * in UI when triaging quota (429) versus auth (401/403) issues.
  */
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 

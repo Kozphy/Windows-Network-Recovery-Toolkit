@@ -3,6 +3,12 @@ setlocal EnableExtensions
 
 REM Windows Network Recovery Toolkit
 REM Read-only automatic diagnosis script with beginner-friendly recommendations.
+REM --
+REM Safety reference: Purpose=collect connectivity/proxy/DNS evidence; no repair.
+REM Privileges: Administrator required (script self-check via net session).
+REM Outputs: Timestamped log under logs\ plus logs\last_diagnosis_result.txt usage by repair scripts.
+REM Side effects: Runs ping/nslookup/PowerShell/netsh/reg/curl probes; creates log files.
+REM Idempotency: Safe to re-run; each run adds a new timestamped log file.
 
 title Windows Network Recovery Toolkit - Automatic Diagnosis
 

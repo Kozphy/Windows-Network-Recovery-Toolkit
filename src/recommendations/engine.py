@@ -1,4 +1,10 @@
-"""Repair recommendations split by safety tier — advisory only (no auto destructive work)."""
+"""Map the primary scored root cause to tiered, script-backed recommendations.
+
+Tiers classify **risk and operator workflow** (`diagnose` read-only probes,
+`safe` low-impact scripts, `guided` batch confirmations, `advanced` destructive
+informational references). Nothing here executes subprocesses—callers enforce
+confirmation and eligibility.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +21,16 @@ RepairTier = Literal["diagnose", "safe", "guided", "advanced"]
 
 @dataclass(frozen=True)
 class Recommendation:
-    """A single human-actionable step referencing a repo-local script when applicable."""
+    """One human-readable step optionally pointing at ``scripts\\`` relative paths.
+
+    Attributes:
+        title: Short label for consoles and plaintext export.
+        detail: Longer operator guidance text.
+        script_relative: Repo-relative ``.bat/.ps1`` path or ``None`` for manuals.
+        tier: Lifecycle bucket controlling how callers should gate execution.
+        risk: Relative damage potential (LOW/MEDIUM/HIGH).
+        reversible_notes: How to unwind or reassess impact after the step.
+    """
 
     title: str
     detail: str
@@ -27,12 +42,15 @@ class Recommendation:
 
 @dataclass(frozen=True)
 class RecommendationBundle:
+    """Immutable quadrants surfaced by CLI ``recommend`` and JSON export."""
+
     diagnose: tuple[Recommendation, ...]
     safe: tuple[Recommendation, ...]
     guided: tuple[Recommendation, ...]
     advanced: tuple[Recommendation, ...]
 
     def flatten_for_audit(self) -> list[dict[str, str | None]]:
+        """Produce flat rows embedding tier label for JSONL summaries."""
         rows: list[dict[str, str | None]] = []
         for bucket, label in (
             (self.diagnose, "diagnose"),
@@ -76,14 +94,23 @@ def build_recommendations(
     features: FeatureVector,
     repo_root: Path,
 ) -> RecommendationBundle:
-    """
-    Map root-cause hypothesis to tiered actions.
+    """Map root-cause hypothesis to tiered actions.
 
-    Contract:
-    - diagnose: read-only collection
-    - safe: low risk, generally reversible via OS UI or small cache/proxy clears
-    - guided: user must confirm in batch wrapper; may reset stack components
-    - advanced: destructive or policy sensitive (firewall) — never chained automatically
+    Args:
+        primary_cause: Primary ``CauseScore`` from `score_root_causes` (used for
+            branch selection only; confidences are not re-ranked here).
+        features: Feature vector (used for exhaustion-driven guided items).
+        repo_root: Reserved for future path validation; currently unused.
+
+    Returns:
+        ``RecommendationBundle`` honoring the tier contract:
+        - diagnose: read-only collection
+        - safe: low risk, generally reversible via OS UI or small cache/proxy clears
+        - guided: user must confirm in batch wrapper; may reset stack components
+        - advanced: destructive or policy sensitive (firewall) — never chained automatically
+
+    Raises:
+        None.
     """
     _ = repo_root
     cause: RootCauseKey = primary_cause.cause

@@ -1,4 +1,7 @@
-"""Enable `python -m src`."""
+"""Entry point for ``python -m src`` (decision-architecture CLI).
+
+Delegates to `src.cli.main` without altering argument parsing behavior.
+"""
 
 from .cli import main
 

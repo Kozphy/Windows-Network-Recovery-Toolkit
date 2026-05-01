@@ -3,6 +3,11 @@ setlocal
 
 REM Windows Network Recovery Toolkit
 REM DNS repair script for stale DNS cache or name resolution problems.
+REM --
+REM Purpose: Flush resolver cache / show DNS-facing config per script commands.
+REM Privileges: Administrator required.
+REM Side effects: ipconfig and related read-only/display steps as implemented below.
+REM Idempotency: Safe to rerun; refreshes cache only.
 
 title Windows Network Recovery Toolkit - Reset DNS
 

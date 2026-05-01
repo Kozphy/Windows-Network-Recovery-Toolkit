@@ -3,6 +3,9 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 REM Windows Network Recovery Toolkit
 REM Read-only static scan for possible connection leak patterns in code.
+REM --
+REM Purpose: Heuristic grep-style scan of dev tree for risky connection patterns.
+REM Side effects: Temp match files under %TEMP%; no repo writes.
 
 title Windows Network Recovery Toolkit - Code Leak Pattern Detection
 

@@ -1,4 +1,31 @@
-"""Command-line interface for the decision architecture."""
+"""Command-line interface for the v1 decision architecture (`python -m src`).
+
+This module wires **feature collection** (live Windows probes or fixture JSON),
+**deterministic scoring** (`src.decision_engine`), **tiered recommendations**
+(`src.recommendations`), **append-only audit/feedback logs** (`src.logging`), and
+**artifact persistence** under `reports/` and `logs/` at the toolkit repo root.
+
+Pipeline position:
+    ``diagnostics`` → ``decision_engine.scoring`` → ``recommendations`` →
+    JSON snapshot + JSONL audit (+ optional repair-safe subprocess launch).
+
+Key invariants:
+    Machine identity in audit rows uses a **truncated SHA-256** of
+    hostname/release/arch (see `_fingerprint`), not raw hostnames.
+    ``repair-safe --apply`` only runs the first **LOW**-risk ``*.bat`` under
+    ``scripts/``, after the user types ``RUN``; destructive and firewall resets
+    stay out of this path per recommendation policy.
+
+Failure modes:
+    Missing ``reports/last_diagnosis.json`` causes ``explain``, ``recommend``,
+    ``repair-safe``, and ``export-report`` to raise ``FileNotFoundError`` until
+    ``diagnose`` runs successfully.
+
+Audit Notes:
+    Each ``diagnose`` appends one line to ``logs/decision_audit.jsonl`` and
+    overwrites ``reports/last_diagnosis.json``. Inspect those files to verify
+    scores, evidence, and which probe commands ran.
+"""
 
 from __future__ import annotations
 
@@ -23,12 +50,32 @@ from .version import SCRIPT_VERSION
 
 
 def _repo_root(explicit: Path | None) -> Path:
+    """Resolve toolkit repository root for report and log paths.
+
+    Args:
+        explicit: Optional path from ``--repo-root``; must point at the checkout.
+
+    Returns:
+        Absolute resolved ``Path`` to the repo root (parent of ``src/``).
+
+    Raises:
+        None.
+    """
     if explicit:
         return explicit.resolve()
     return Path(__file__).resolve().parent.parent
 
 
 def _fingerprint() -> dict[str, str]:
+    """Build a non-reversible machine key for audit correlation.
+
+    Returns:
+        Mapping with ``host_key_hash16``: first 16 hex chars of SHA-256 over
+        ``node|release|machine``. Not a stable hardware ID across reinstalls.
+
+    Raises:
+        None.
+    """
     raw = f"{platform.node()}|{platform.release()}|{platform.machine()}".encode()
     digest = hashlib.sha256(raw).hexdigest()[:16]
     return {"host_key_hash16": digest}
@@ -76,6 +123,21 @@ def _build_payload(
     bundle: RecommendationBundle,
     commands_executed: list[dict[str, str]],
 ) -> dict[str, Any]:
+    """Assemble the JSON-serializable snapshot written to reports and audit logs.
+
+    Args:
+        diagnosis_id: New UUID string for this run.
+        features: Normalized ``FeatureVector`` from probes or fixture.
+        decision: Full per-cause scoring outcome.
+        bundle: Tiered recommendations for this primary cause.
+        commands_executed: Probe command labels from live collection or fixture.
+
+    Returns:
+        Dict suitable for ``reports/last_diagnosis.json`` and audit subset.
+
+    Raises:
+        None.
+    """
     primary = decision.primary()
     return {
         "diagnosis_id": diagnosis_id,
@@ -95,6 +157,22 @@ def _build_payload(
 
 
 def _write_last_diagnosis(repo: Path, payload: dict[str, Any]) -> Path:
+    """Persist the latest diagnosis snapshot (overwrites prior file).
+
+    Side effects:
+        Creates ``reports/`` if missing; overwrites ``last_diagnosis.json``.
+
+    Args:
+        repo: Repository root containing ``reports/``.
+        payload: Full snapshot from `_build_payload`.
+
+    Returns:
+        Path to ``reports/last_diagnosis.json``.
+
+    Raises:
+        OSError: If the directory cannot be created or file cannot be written.
+        TypeError: If payload is not JSON-serializable.
+    """
     reports = repo / "reports"
     reports.mkdir(parents=True, exist_ok=True)
     path = reports / "last_diagnosis.json"
@@ -103,6 +181,18 @@ def _write_last_diagnosis(repo: Path, payload: dict[str, Any]) -> Path:
 
 
 def _read_last_diagnosis(repo: Path) -> dict[str, Any]:
+    """Load the persisted snapshot produced by the last ``diagnose`` command.
+
+    Args:
+        repo: Repository root containing ``reports/last_diagnosis.json``.
+
+    Returns:
+        Parsed diagnosis payload dictionary.
+
+    Raises:
+        FileNotFoundError: If no snapshot exists yet.
+        json.JSONDecodeError: If file content is invalid JSON.
+    """
     path = repo / "reports" / "last_diagnosis.json"
     if not path.is_file():
         raise FileNotFoundError("No last_diagnosis.json - run diagnose first.")
@@ -110,6 +200,19 @@ def _read_last_diagnosis(repo: Path) -> dict[str, Any]:
 
 
 def _audit(repo: Path, payload: dict[str, Any]) -> None:
+    """Append a single diagnosis audit record (append-only JSONL).
+
+    Side effects:
+        Creates ``logs/`` if needed; appends one line to
+        ``logs/decision_audit.jsonl``.
+
+    Args:
+        repo: Repository root.
+        payload: Same structure as `_write_last_diagnosis` payload.
+
+    Raises:
+        TypeError / OSError: Propagated from `append_jsonl`.
+    """
     audit_path = repo / "logs" / "decision_audit.jsonl"
     record = {
         "type": "diagnosis",
@@ -129,6 +232,23 @@ def _audit(repo: Path, payload: dict[str, Any]) -> None:
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
+    """Run scoring, persist ``last_diagnosis.json``, append audit JSONL, print summary.
+
+    Input assumptions:
+        ``--fixture`` points at JSON with ``FeatureVector`` fields (see
+        `load_features_json`); live mode assumes Windows tooling used by the
+        collector (``ping``, ``nslookup``, ``curl``, PowerShell).
+
+    Raises:
+        Propagates exceptions from collection, scoring, or I/O helpers.
+
+    Returns:
+        ``0`` on success.
+
+    Audit Notes:
+        Review ``logs/decision_audit.jsonl`` for the authoritative append-only
+        trail; ``reports/last_diagnosis.json`` is overwritten each run.
+    """
     repo = _repo_root(args.repo_root)
     if args.fixture:
         features = load_features_json(Path(args.fixture))
@@ -198,6 +318,7 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
 
 
 def cmd_explain(args: argparse.Namespace) -> int:
+    """Print human explanation and bullets for the stored primary hypothesis."""
     repo = _repo_root(args.repo_root)
     payload = _read_last_diagnosis(repo)
     sentence = payload.get("explain_sentence", "")
@@ -209,6 +330,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
 
 
 def cmd_recommend(args: argparse.Namespace) -> int:
+    """Print tiered recommendations from ``last_diagnosis.json``."""
     repo = _repo_root(args.repo_root)
     payload = _read_last_diagnosis(repo)
     blob = payload.get("recommendations") or {}
@@ -228,6 +350,20 @@ def cmd_recommend(args: argparse.Namespace) -> int:
 
 
 def cmd_repair_safe(args: argparse.Namespace) -> int:
+    """Preview safe-tier repairs; optionally launch first LOW-risk ``scripts/*.bat``.
+
+    Side effects (``--apply`` only):
+        Spawns PowerShell ``Start-Process -Verb RunAs`` for elevated batch,
+        interacts on stdin for ``RUN`` and feedback prompts.
+
+    Raises:
+        None directly; subprocess errors surface as failed elevation or denied
+        paths (exit codes ``1`` or ``2``).
+
+    Audit Notes:
+        Successful ``--apply`` appends interactive feedback via
+        `append_feedback`; verify ``logs/decision_feedback.jsonl``.
+    """
     repo = _repo_root(args.repo_root)
     payload = _read_last_diagnosis(repo)
     safe_items = payload.get("recommendations", {}).get("repair_safe") or []
@@ -319,6 +455,10 @@ def cmd_repair_safe(args: argparse.Namespace) -> int:
 
 
 def cmd_feedback(args: argparse.Namespace) -> int:
+    """Append a calibrated outcome row tied to ``diagnosis_id`` (JSONL).
+
+    Parses ``--user-feedback-fixed`` as true/false/unknown aliases.
+    """
     repo = _repo_root(args.repo_root)
     state_raw = args.user_feedback_fixed.lower()
     if state_raw in {"true", "t", "y", "yes"}:
@@ -340,6 +480,15 @@ def cmd_feedback(args: argparse.Namespace) -> int:
 
 
 def cmd_export_report(args: argparse.Namespace) -> int:
+    """Materialize human-readable plaintext from ``last_diagnosis.json``.
+
+    Side effects:
+        Writes ``reports/diagnosis_report_<utc_ts>.txt`` unless ``--out`` given.
+
+    Raises:
+        FileNotFoundError: If no snapshot exists.
+        OSError: If report path cannot be written.
+    """
     repo = _repo_root(args.repo_root)
     payload = _read_last_diagnosis(repo)
     ranked = payload.get("ranked_root_causes") or []
@@ -445,6 +594,7 @@ def cmd_export_report(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Define subcommands mirroring README: diagnose, explain, recommend, repair-safe, feedback, export-report."""
     parser = argparse.ArgumentParser(
         prog="python -m src",
         description="Decision architecture CLI for Windows network diagnostics.",
@@ -502,6 +652,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Dispatch CLI subcommand; returns shell exit code."""
     parser = build_parser()
     args = parser.parse_args(argv)
     handler = getattr(args, "func", None)

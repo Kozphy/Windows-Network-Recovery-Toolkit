@@ -3,6 +3,11 @@ setlocal EnableExtensions
 
 REM Windows Network Recovery Toolkit
 REM Guided repair script. It diagnoses first, then asks before changing anything.
+REM --
+REM Safety reference: Purpose=guided repair after fresh diagnosis; confirms before calling subordinate repair .bat.
+REM Privileges: Administrator required.
+REM Side effects: May launch targeted repair scripts (never auto reset_firewall.bat per script design).
+REM Recovery: Re-run auto_diagnose.bat if symptoms persist; inspect logs\.
 
 title Windows Network Recovery Toolkit - Automatic Guided Fix
 

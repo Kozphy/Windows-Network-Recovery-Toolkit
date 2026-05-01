@@ -3,6 +3,9 @@ setlocal EnableExtensions
 
 REM Windows Network Recovery Toolkit
 REM Read-only diagnostic script for possible TCP connection exhaustion.
+REM --
+REM Purpose: Summarize TIME_WAIT/ESTABLISHED signals and suggest next steps (no net changes).
+REM Privileges: Standard user unless netstat/tasklist require elevation in policy.
 
 title Windows Network Recovery Toolkit - Connection Exhaustion Diagnosis
 

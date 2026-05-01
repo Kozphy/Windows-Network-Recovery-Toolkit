@@ -3,6 +3,11 @@ setlocal
 
 REM Windows Network Recovery Toolkit
 REM Firewall reset script. This restores Windows Firewall rules to defaults.
+REM --
+REM Safety reference: HIGH impact — restores default firewall profiles; custom rules may be removed.
+REM Privileges: Administrator required; explicit typed YES confirmation.
+REM Side effects: netsh advfirewall reset (see script body); firewall policy change.
+REM Recovery: Recreate necessary allow rules; review Windows Defender Firewall UI after reset.
 
 title Windows Network Recovery Toolkit - Reset Firewall
 

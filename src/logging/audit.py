@@ -1,4 +1,8 @@
-"""Append-only JSONL audit sink (local only)."""
+"""Append-only JSONL audit sink (local disk only; no upload).
+
+Each line is one JSON object suitable for ``json.loads`` when read back.
+Timestamps and record schema are owned by callers (e.g. `src.cli._audit`).
+"""
 
 from __future__ import annotations
 
@@ -24,6 +28,10 @@ def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     Raises:
         TypeError: If payload contains non-serializable values.
         OSError: If file cannot be created or written.
+
+    Audit Notes:
+        Inspect line count growth and parse failures if disk fills or partial
+        writes occur; recovery is file-level backup/rotation outside this API.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(payload, ensure_ascii=False)

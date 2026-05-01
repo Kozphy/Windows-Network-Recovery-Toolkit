@@ -1,4 +1,8 @@
-"""Structured diagnostic features derived from Windows probes (no secrets)."""
+"""Immutable ``FeatureVector`` schema bridging collectors and deterministic scoring.
+
+All fields map to primitive JSON types via `FeatureVector.to_dict` / ``from_dict``
+for fixtures and audit snapshots (no secrets or payloads).
+"""
 
 from __future__ import annotations
 
@@ -72,8 +76,10 @@ class FeatureVector:
             FeatureVector: Normalized feature vector instance.
 
         Raises:
-            KeyError: If required core fields are missing.
-            ValueError: If numeric fields cannot be converted.
+            KeyError: If ``ping_ip_ok``, ``nslookup_ok``, or ``browser_http_ok``
+                are absent (these are required indexed keys).
+            ValueError: If ``dns_servers_detected``, ``time_wait_count``, or
+                ``established_count`` cannot be coerced with ``int()``.
         """
         gw = data.get("gateway_reachable")
         if gw is not None and not isinstance(gw, bool):

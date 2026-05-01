@@ -1,3 +1,20 @@
+<#
+.SYNOPSIS
+    Read-only loop: snapshot WinHTTP proxy, HKCU proxy keys, TCP 443, HTTPS curl, and recent processes.
+
+.DESCRIPTION
+    Appends timestamped blocks to logs\network_monitor.log. Does not change firewall, adapters, or proxies.
+    Interval is clamped between 5 and 10 seconds.
+
+.NOTES
+    Required privileges: Standard user is sufficient for HKCU and most probes; some environments may restrict curl or netsh.
+    Side effects: Writes/extends the log file; runs outbound connectivity checks each cycle.
+    Idempotency: Each run appends new snapshots; safe to stop with Ctrl+C.
+    Recovery: Inspect log for "CHANGE DETECTED" lines; correlate with Recent Processes block.
+
+    Related: root README "Root Cause Monitoring Mode"; docs\script_reference.md.
+#>
+
 param(
     [int]$IntervalSeconds = 5
 )

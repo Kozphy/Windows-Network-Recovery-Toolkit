@@ -1,4 +1,14 @@
-"""Evidence collection using local subprocess calls (Windows). No credential capture."""
+"""Evidence collection using local subprocess calls on Windows — no credential capture.
+
+Produces `DiagnosticEvidence` consumed by `agent.classifier` and `agent.planner`.
+Commands mirror the beginner batch toolkit semantics (ICMP, DNS, TCP 443, HTTPS curl,
+proxy registry/WinHTTP, netstat counters). Probe failures degrade to booleans/strings
+rather than terminating the collector where possible.
+
+Engineering Notes:
+    Duplication with `network_agent.collectors` / `src.diagnostics.collector` is
+    intentional: each stack targets different CLIs/report formats while sharing probe ideas.
+"""
 
 from __future__ import annotations
 

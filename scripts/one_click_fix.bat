@@ -3,6 +3,11 @@ setlocal
 
 REM Windows Network Recovery Toolkit
 REM Full repair script for common Windows network stack, DNS, and proxy issues.
+REM --
+REM Safety reference: Purpose=stack-level repair (Winsock/IP reset, DNS flush, proxy clears).
+REM Privileges: Administrator required.
+REM Side effects: Mutates network stack and proxy settings; may require reboot per on-screen guidance.
+REM Idempotency: Re-running repeats the same netsh/ipconfig operations; confirm before use on production hosts.
 
 title Windows Network Recovery Toolkit - One Click Fix
 

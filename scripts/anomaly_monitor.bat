@@ -3,6 +3,9 @@ setlocal EnableExtensions EnableDelayedExpansion
 
 REM Windows Network Recovery Toolkit
 REM Read-only anomaly monitor for TCP connection behavior.
+REM --
+REM Purpose: Detect growth/spike anomalies over recent samples (temp PowerShell helper file).
+REM Side effects: Writes ephemeral PS under %TEMP% per run; deletes when complete.
 
 title Windows Network Recovery Toolkit - Anomaly Detection Monitor
 

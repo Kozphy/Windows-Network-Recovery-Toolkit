@@ -183,14 +183,21 @@ def classify(evidence: DiagnosticEvidence) -> list[RankedCause]:
 
 
 def classify_with_primary(evidence: DiagnosticEvidence) -> tuple[RankedCause | None, list[RankedCause]]:
-    """Return top-ranked hypothesis alongside full ranked list.
+    """Return primary hypothesis and ranked list for planner/executor stages.
 
     Args:
         evidence: Normalized diagnostic evidence snapshot.
 
     Returns:
-        tuple[RankedCause | None, list[RankedCause]]: Primary cause (or None)
-        and full ranked hypotheses.
+        tuple[RankedCause | None, list[RankedCause]]: Primary cause (or ``None``
+        when classifier yields no candidates) and full ranked hypotheses.
+
+    Raises:
+        None.
+
+    Audit Notes:
+        When primary is unexpectedly ``None``, review `classify` output and raw
+        evidence JSON before executing repair steps downstream.
     """
     ranked = classify(evidence)
     primary = ranked[0] if ranked else None

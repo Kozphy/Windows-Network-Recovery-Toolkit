@@ -3,6 +3,9 @@ setlocal EnableExtensions
 
 REM Windows Network Recovery Toolkit
 REM Read-only recommendation engine for safest next fix action.
+REM --
+REM Purpose: Suggest next script/step from diagnostic inputs; does not execute repairs.
+REM Flags: Optional --no-pause to skip end pause (see script body).
 
 title Windows Network Recovery Toolkit - Fix Recommendation Engine
 

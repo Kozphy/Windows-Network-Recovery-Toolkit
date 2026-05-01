@@ -49,8 +49,14 @@ class FeedbackRecord:
 def append_feedback(path: Path, record: FeedbackRecord) -> None:
     """Append one feedback event to JSONL feedback log.
 
+    Side effects:
+        Same as `append_jsonl` (creates parents, appends one serialized line).
+
     Args:
-        path: Destination JSONL file path.
+        path: Destination JSONL file path (typically ``logs/decision_feedback.jsonl``).
         record: Feedback record to persist.
+
+    Raises:
+        TypeError / OSError: Propagated from `append_jsonl`.
     """
     append_jsonl(path, record.to_dict())

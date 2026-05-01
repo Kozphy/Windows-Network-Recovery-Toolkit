@@ -1,4 +1,18 @@
-"""Collect FeatureVector via built-in Windows commands only (stdlib)."""
+"""Live Windows probe ingestion for the v1 ``FeatureVector`` (stdlib-only).
+
+Runs read-only subprocess commands (``ping``, ``nslookup``, ``netsh``, ``reg``,
+``netstat``, PowerShell probes, ``curl``) and normalizes booleans/counts consumed
+by `src.decision_engine.scoring`. Malformed subprocess failures return soft
+signals (non-zero codes, empty parses) rather than crashing the collector.
+
+Timezone:
+    Probe timestamps are not embedded here; callers stamp artifacts at persist
+    time in UTC elsewhere.
+
+Stale / missing data:
+    Missing registry keys reduce proxy positives; unreachable gateways yield
+    ``gateway_reachable=None`` semantics consistent with scorer checks.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +25,18 @@ from .features import FeatureVector
 
 
 def run_command(command: list[str], timeout: float = 35.0) -> tuple[int, str]:
-    """Execute command and return status code with merged text output."""
+    """Run a subprocess and surface failures as `(1, str(exc))` without raising.
+
+    Args:
+        command: Argument list passed to ``subprocess.run`` (``shell=False``).
+        timeout: Seconds before the process is terminated.
+
+    Returns:
+        Exit code plus merged stdout/stderr text.
+
+    Raises:
+        None: exceptions convert to synthetic failure tuples for probe stability.
+    """
     try:
         proc = subprocess.run(
             command,

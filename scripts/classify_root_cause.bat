@@ -3,6 +3,9 @@ setlocal EnableExtensions
 
 REM Windows Network Recovery Toolkit
 REM Read-only root cause classifier based on network diagnostics.
+REM --
+REM Purpose: Infer likely issue category from prior diagnostic variables/logs (no mutation).
+REM Side effects: Console output only unless external callers chain this script.
 
 title Windows Network Recovery Toolkit - Root Cause Classification
 
