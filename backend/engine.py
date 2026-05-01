@@ -1,8 +1,31 @@
+"""Deterministic diagnosis and anomaly scoring for SaaS API requests.
+
+This module sits between request validation (`backend.main`) and persistence
+(`backend.db`). It converts lightweight telemetry signals into
+human-readable root-cause decisions with risk labels.
+
+Key invariants:
+    - Rule evaluation is deterministic for identical inputs.
+    - No file/database/network side effects occur in this module.
+    - Output shape is stable for API consumers and tests.
+"""
+
 from dataclasses import dataclass
 
 
 @dataclass
 class DiagnoseInput:
+    """Normalized request signals used by rule-based diagnosis.
+
+    Attributes:
+        ping: Whether ICMP reachability to known public host succeeded.
+        dns: Whether DNS resolution probe succeeded.
+        https: Whether HTTPS probe succeeded.
+        proxy: Whether proxy usage is detected/enabled.
+        time_wait: Current count of sockets in TIME_WAIT state.
+        established: Current count of sockets in ESTABLISHED state.
+    """
+
     ping: bool
     dns: bool
     https: bool
@@ -16,6 +39,45 @@ def detect_anomaly(
     current_established: int,
     recent_metrics: list[dict],
 ) -> dict:
+    """Detect short-term connection growth anomalies from recent metrics.
+
+    Decision intent:
+        Flag suspicious connection growth patterns that can indicate connection
+        leaks or exhaustion trends.
+
+    Input assumptions:
+        - `recent_metrics` is newest-first.
+        - Each metric row contains numeric `time_wait` and `established`.
+        - Current values are non-negative integers.
+
+    Output guarantees:
+        - Always returns keys: `anomaly`, `reason`, and `signals`.
+        - `signals` includes booleans for `rapid_growth`,
+          `continuous_growth`, and `sudden_spike`.
+
+    Side effects:
+        None.
+
+    Idempotency:
+        Fully idempotent for identical inputs.
+
+    Audit Notes:
+        - What can go wrong: stale or sparse history can under-detect trends.
+        - Detection: inspect `reason` and `signals` in diagnosis responses.
+        - Recovery: gather additional samples and rerun diagnosis.
+
+    Args:
+        current_time_wait: Latest observed TIME_WAIT count.
+        current_established: Latest observed ESTABLISHED count.
+        recent_metrics: Recent persisted metrics (newest first).
+
+    Returns:
+        dict: Anomaly summary with machine-readable signal flags.
+
+    Raises:
+        KeyError: If expected fields are missing in `recent_metrics`.
+        ValueError: If metric fields cannot be converted to integers.
+    """
     if not recent_metrics:
         return {
             "anomaly": False,
@@ -67,6 +129,37 @@ def detect_anomaly(
 
 
 def classify_root_cause(data: DiagnoseInput, anomaly: dict) -> dict:
+    """Classify likely root cause from probe outcomes and anomaly state.
+
+    Decision intent:
+        Provide an explainable next action for common Windows network failure
+        patterns while preserving conservative risk defaults.
+
+    Constraints and limitations:
+        - Uses coarse-grained signals and simple precedence ordering.
+        - Does not perform packet-level inspection or endpoint-specific tests.
+        - Recommendations are advisory and require user/operator judgment.
+
+    Known failure modes:
+        - Multiple simultaneous issues may be collapsed into one top category.
+        - Intermittent failures can produce unstable classifications across runs.
+
+    Audit Notes:
+        - What can go wrong: incorrect root-cause ordering under mixed signals.
+        - Detection: compare returned recommendation with raw probe outputs.
+        - Recovery: rerun probes, use monitor endpoint, and escalate to manual
+          script-by-script validation.
+
+    Args:
+        data: Normalized signal payload for current diagnosis request.
+        anomaly: Output from `detect_anomaly`.
+
+    Returns:
+        dict: Root-cause label, confidence band, recommendation, and risk.
+
+    Raises:
+        KeyError: If `anomaly["anomaly"]` is missing.
+    """
     if not data.ping:
         return {
             "root_cause": "Network unreachable",

@@ -11,6 +11,15 @@ from .schemas import DiagnosticEvidence
 
 
 def run_command(command: list[str], timeout: float = 25.0) -> tuple[int, str]:
+    """Execute a local command and capture merged output.
+
+    Args:
+        command: Command and arguments for subprocess execution.
+        timeout: Maximum execution time in seconds.
+
+    Returns:
+        tuple[int, str]: Process return code and combined stdout/stderr text.
+    """
     try:
         proc = subprocess.run(
             command,
@@ -26,6 +35,7 @@ def run_command(command: list[str], timeout: float = 25.0) -> tuple[int, str]:
 
 
 def count_in_netstat(keyword: str) -> int:
+    """Count netstat lines containing a keyword token."""
     code, out = run_command(["netstat", "-an"])
     if code != 0:
         return 0
@@ -33,11 +43,17 @@ def count_in_netstat(keyword: str) -> int:
 
 
 def _winhttp_summary() -> str:
+    """Read current WinHTTP proxy summary text."""
     _, winhttp = run_command(["netsh", "winhttp", "show", "proxy"])
     return winhttp.strip()
 
 
 def _user_proxy_enabled_and_server() -> tuple[bool, str | None]:
+    """Detect user-level proxy enablement and optional server string.
+
+    Returns:
+        tuple[bool, str | None]: Proxy enabled flag and proxy server value.
+    """
     _, winhttp = run_command(["netsh", "winhttp", "show", "proxy"])
     if "Direct access" not in winhttp:
         return True, None
@@ -87,6 +103,7 @@ def _user_proxy_enabled_and_server() -> tuple[bool, str | None]:
 
 
 def _test_tcp_443() -> bool:
+    """Probe TCP 443 connectivity through PowerShell Test-NetConnection."""
     ps = (
         "try { "
         "$t = Test-NetConnection -ComputerName 'www.google.com' -Port 443 "
@@ -134,7 +151,21 @@ def _firewall_suspicion_heuristic(proxy_summary: str, tcp_ok: bool, https_ok: bo
 
 
 def collect_evidence(repo_root: Path | None = None) -> DiagnosticEvidence:
-    """Run live checks on Windows. Safe read-only probes only."""
+    """Collect normalized diagnostic evidence from live Windows probes.
+
+    Side effects:
+        Executes network/system commands (`ping`, `nslookup`, `curl`, PowerShell).
+
+    Idempotency:
+        Operationally idempotent for unchanged environment; output varies with
+        real-time network state.
+
+    Args:
+        repo_root: Reserved for future path-sensitive probe behavior.
+
+    Returns:
+        DiagnosticEvidence: Structured evidence snapshot.
+    """
     _ = repo_root  # reserved for future script-relative resolution
     ping_ok = run_command(["ping", "-n", "1", "8.8.8.8"])[0] == 0
     dns_ok = run_command(["nslookup", "google.com"])[0] == 0
@@ -187,6 +218,7 @@ def collect_evidence(repo_root: Path | None = None) -> DiagnosticEvidence:
 
 
 def load_evidence_from_json(path: Path) -> DiagnosticEvidence:
+    """Load diagnostic evidence fixture from JSON file."""
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("Fixture root must be a JSON object.")
@@ -194,4 +226,5 @@ def load_evidence_from_json(path: Path) -> DiagnosticEvidence:
 
 
 def evidence_from_mapping(data: dict[str, Any]) -> DiagnosticEvidence:
+    """Build evidence object from in-memory mapping payload."""
     return DiagnosticEvidence.from_dict(data)

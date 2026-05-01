@@ -15,12 +15,26 @@ FeedbackState = Literal["true", "false", "unknown"]
 
 @dataclass(frozen=True)
 class FeedbackRecord:
+    """Structured user outcome feedback tied to one diagnosis action.
+
+    Attributes:
+        diagnosis_id: Diagnosis identifier the feedback references.
+        recommended_action: Action/script user attempted.
+        user_feedback_fixed: Outcome state (`true`/`false`/`unknown`).
+        notes: Optional free-text notes from user/operator.
+    """
+
     diagnosis_id: str
     recommended_action: str
     user_feedback_fixed: FeedbackState
     notes: str
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize feedback record into append-only event payload.
+
+        Timezone assumptions:
+            - `timestamp` is generated in UTC ISO-8601 format.
+        """
         return {
             "type": "feedback",
             "feedback_id": str(uuid.uuid4()),
@@ -33,4 +47,10 @@ class FeedbackRecord:
 
 
 def append_feedback(path: Path, record: FeedbackRecord) -> None:
+    """Append one feedback event to JSONL feedback log.
+
+    Args:
+        path: Destination JSONL file path.
+        record: Feedback record to persist.
+    """
     append_jsonl(path, record.to_dict())

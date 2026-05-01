@@ -1,3 +1,14 @@
+"""FastAPI application for toolkit telemetry, diagnosis, and billing flows.
+
+System placement:
+    frontend/agent clients -> this API -> decision engine + SQLite persistence.
+
+Key invariants:
+    - User-scoped access is enforced through `get_current_user`.
+    - Diagnosis requests are usage-metered by organization plan.
+    - Billing webhook updates subscription state idempotently by org metadata.
+"""
+
 from datetime import datetime
 from typing import Optional
 
@@ -25,6 +36,8 @@ from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 
 
 class DiagnoseRequest(BaseModel):
+    """Input payload for rule-based diagnosis endpoint."""
+
     ping: bool
     dns: bool
     https: bool
@@ -35,6 +48,8 @@ class DiagnoseRequest(BaseModel):
 
 
 class DiagnoseResponse(BaseModel):
+    """Output payload for diagnosis classification endpoint."""
+
     root_cause: str
     confidence: str
     recommendation: str
@@ -43,12 +58,16 @@ class DiagnoseResponse(BaseModel):
 
 
 class MonitorRequest(BaseModel):
+    """Input payload for connection trend monitoring endpoint."""
+
     time_wait: int = Field(ge=0)
     established: int = Field(ge=0)
     project_id: Optional[str] = None
 
 
 class CheckoutRequest(BaseModel):
+    """Input payload for creating Stripe checkout sessions."""
+
     org_id: str
     price_id: str
     success_url: str
@@ -68,6 +87,11 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup() -> None:
+    """Initialize backing database schema during app startup.
+
+    Side effects:
+        Executes schema DDL against local SQLite database.
+    """
     init_db()
 
 
@@ -79,6 +103,18 @@ PLAN_LIMITS = {
 
 
 def _resolve_project(user: AuthUser, requested_project_id: Optional[str]) -> dict:
+    """Resolve an accessible project for the authenticated user.
+
+    Args:
+        user: Current authenticated user context.
+        requested_project_id: Optional project override from request.
+
+    Returns:
+        dict: Project row containing `org_id` and `project_id`.
+
+    Raises:
+        HTTPException: 404 when project is not accessible by current user.
+    """
     ensure_user_org_project(user.user_id, user.email)
     project = get_project_for_user(user.user_id, requested_project_id)
     if not project:
@@ -87,6 +123,7 @@ def _resolve_project(user: AuthUser, requested_project_id: Optional[str]) -> dic
 
 
 def _get_plan_limit(org_id: str) -> dict:
+    """Resolve plan name and monthly diagnosis limit for an organization."""
     sub = get_subscription(org_id)
     plan = (sub.get("plan") or "free").lower()
     limit = PLAN_LIMITS.get(plan, 10)
@@ -95,6 +132,37 @@ def _get_plan_limit(org_id: str) -> dict:
 
 @app.post("/diagnose", response_model=DiagnoseResponse)
 def diagnose(req: DiagnoseRequest, user: AuthUser = Depends(get_current_user)) -> dict:
+    """Run diagnosis workflow and persist resulting telemetry.
+
+    Workflow:
+        1) Resolve project scope and enforce plan usage limit.
+        2) Detect anomaly from recent metric history.
+        3) Classify root cause using deterministic rules.
+        4) Persist diagnosis and metrics to SQLite.
+
+    Side effects:
+        - Increments usage counter for organization/month.
+        - Writes diagnosis and metric rows to database.
+
+    Idempotency:
+        Not idempotent; each call increments usage and stores new records.
+
+    Audit Notes:
+        - What can go wrong: false positives from sparse history; over-limit
+          rejection for heavy usage.
+        - Detection: API 429 responses and stored diagnosis history.
+        - Recovery: verify plan limits and rerun with updated telemetry.
+
+    Args:
+        req: Diagnosis signal payload.
+        user: Authenticated user context (dependency-injected).
+
+    Returns:
+        dict: Classification result plus anomaly and usage metadata.
+
+    Raises:
+        HTTPException: 404 for missing project, 429 for plan limit exceeded.
+    """
     project = _resolve_project(user, req.project_id)
     org_id = project["org_id"]
     project_id = project["project_id"]
@@ -137,6 +205,14 @@ def diagnose(req: DiagnoseRequest, user: AuthUser = Depends(get_current_user)) -
 
 @app.post("/monitor")
 def monitor(req: MonitorRequest, user: AuthUser = Depends(get_current_user)) -> dict:
+    """Persist connection counters and return anomaly assessment.
+
+    Side effects:
+        Writes one metric row to database.
+
+    Idempotency:
+        Not idempotent; repeated calls create additional metric rows.
+    """
     project = _resolve_project(user, req.project_id)
     project_id = project["project_id"]
     recent_metrics = get_recent_metrics(project_id=project_id, limit=10)
@@ -156,6 +232,7 @@ def history(
     project_id: Optional[str] = None,
     user: AuthUser = Depends(get_current_user),
 ) -> dict:
+    """Return bounded diagnosis/metrics history for current project scope."""
     project = _resolve_project(user, project_id)
     safe_limit = max(1, min(limit, 500))
     return get_history(org_id=project["org_id"], project_id=project_id, limit=safe_limit)
@@ -163,6 +240,7 @@ def history(
 
 @app.get("/usage")
 def usage(user: AuthUser = Depends(get_current_user), project_id: Optional[str] = None) -> dict:
+    """Return current month usage and remaining diagnosis quota."""
     project = _resolve_project(user, project_id)
     org_id = project["org_id"]
     sub = get_subscription(org_id)
@@ -186,6 +264,11 @@ def create_checkout(
     req: CheckoutRequest,
     user: AuthUser = Depends(get_current_user),
 ) -> dict:
+    """Create Stripe checkout session for current user's organization.
+
+    Side effects:
+        Outbound API call to Stripe checkout endpoint.
+    """
     project = _resolve_project(user, None)
     if project["org_id"] != req.org_id:
         raise HTTPException(status_code=403, detail="Cannot create checkout for another organization.")
@@ -202,6 +285,22 @@ def create_checkout(
 
 @app.post("/webhook")
 async def webhook(request: Request) -> dict:
+    """Validate Stripe webhook and synchronize subscription state.
+
+    Side effects:
+        - Verifies Stripe webhook signature.
+        - Updates local subscription row when recognized billing events arrive.
+
+    Idempotency:
+        Best-effort idempotent for repeated webhook deliveries because updates
+        overwrite current org subscription state.
+
+    Audit Notes:
+        - What can go wrong: invalid signature, missing org metadata, unknown
+          event shape.
+        - Detection: 400 invalid webhook responses and subscription mismatch.
+        - Recovery: replay webhook after correcting secret/config metadata.
+    """
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     try:

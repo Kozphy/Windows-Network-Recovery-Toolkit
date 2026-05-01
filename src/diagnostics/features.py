@@ -8,7 +8,24 @@ from typing import Any
 
 @dataclass(frozen=True)
 class FeatureVector:
-    """Boolean/numeric features used by the decision engine."""
+    """Normalized feature schema consumed by decision scoring.
+
+    Attributes:
+        ping_ip_ok: ICMP reachability to public numeric IP.
+        ping_domain_ok: ICMP reachability to public domain name.
+        nslookup_ok: DNS resolver success status.
+        tcp_443_ok: TCP 443 reachability status.
+        browser_http_ok: HTTPS probe success status.
+        proxy_enabled: Combined proxy-enabled indicator.
+        winhttp_proxy_enabled: WinHTTP proxy-enabled indicator.
+        dns_servers_detected: Count of DNS server entries observed.
+        adapter_connected: Physical adapter up/down signal.
+        gateway_reachable: Gateway ping status (`None` if unknown).
+        tls_cert_issue_detected: TLS/certificate issue heuristic signal.
+        firewall_path_suspected: Firewall/filtering suspicion heuristic signal.
+        time_wait_count: TIME_WAIT socket count.
+        established_count: ESTABLISHED socket count.
+    """
 
     ping_ip_ok: bool
     ping_domain_ok: bool
@@ -26,6 +43,7 @@ class FeatureVector:
     established_count: int
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize feature vector into JSON-friendly mapping."""
         return {
             "ping_ip_ok": self.ping_ip_ok,
             "ping_domain_ok": self.ping_domain_ok,
@@ -45,6 +63,18 @@ class FeatureVector:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FeatureVector:
+        """Create feature vector from mapping with conservative defaults.
+
+        Args:
+            data: Source mapping from collector payload or fixture.
+
+        Returns:
+            FeatureVector: Normalized feature vector instance.
+
+        Raises:
+            KeyError: If required core fields are missing.
+            ValueError: If numeric fields cannot be converted.
+        """
         gw = data.get("gateway_reachable")
         if gw is not None and not isinstance(gw, bool):
             gw = bool(gw)

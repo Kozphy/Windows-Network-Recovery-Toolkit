@@ -1,4 +1,13 @@
-"""HTTP SaaS sync agent — posts diagnostics to the toolkit backend (optional)."""
+"""Optional HTTP sync agent for posting local diagnostics to backend API.
+
+This module sits outside the local repair path and is intended for API-backed
+monitoring/demo workflows.
+
+Key invariants:
+    - Uses read-only local probes before sending payloads.
+    - Never executes repair scripts.
+    - Request authentication is caller-provided bearer token.
+"""
 
 import argparse
 import json
@@ -10,6 +19,7 @@ import requests
 
 
 def run_command(command: list[str]) -> tuple[int, str]:
+    """Execute local command and capture merged stdout/stderr text."""
     try:
         proc = subprocess.run(
             command,
@@ -25,6 +35,7 @@ def run_command(command: list[str]) -> tuple[int, str]:
 
 
 def count_in_netstat(keyword: str) -> int:
+    """Count matching netstat lines for a given connection state keyword."""
     code, out = run_command(["netstat", "-an"])
     if code != 0:
         return 0
@@ -32,6 +43,7 @@ def count_in_netstat(keyword: str) -> int:
 
 
 def collect_proxy_enabled() -> bool:
+    """Infer whether WinHTTP or user proxy settings are active."""
     _, winhttp = run_command(["netsh", "winhttp", "show", "proxy"])
     if "Direct access" not in winhttp:
         return True
@@ -65,6 +77,11 @@ def collect_proxy_enabled() -> bool:
 
 
 def collect_diagnostics() -> dict[str, Any]:
+    """Collect backend-compatible diagnostic payload from local machine.
+
+    Returns:
+        dict[str, Any]: Payload aligned with `/diagnose` request schema.
+    """
     ping_ok = run_command(["ping", "-n", "1", "8.8.8.8"])[0] == 0
     dns_ok = run_command(["nslookup", "google.com"])[0] == 0
     https_ok = run_command(["curl", "-I", "--max-time", "10", "https://www.google.com"])[0] == 0
@@ -82,6 +99,21 @@ def collect_diagnostics() -> dict[str, Any]:
 
 
 def run_once(base_url: str, token: str, project_id: str | None) -> None:
+    """Send one diagnose + monitor cycle to backend API.
+
+    Side effects:
+        - Outbound HTTP calls to `/diagnose` and `/monitor`.
+        - Console output for operator visibility.
+
+    Args:
+        base_url: Backend API base URL.
+        token: Bearer JWT token; may be empty for local bypass mode.
+        project_id: Optional project scope.
+
+    Raises:
+        requests.HTTPError: If API returns non-success status.
+        requests.RequestException: On transport/timeout errors.
+    """
     payload = collect_diagnostics()
     if project_id:
         payload["project_id"] = project_id
@@ -112,6 +144,7 @@ def run_once(base_url: str, token: str, project_id: str | None) -> None:
 
 
 def main() -> None:
+    """Parse CLI args and run single-cycle or looping upload mode."""
     parser = argparse.ArgumentParser(description="Windows Network Recovery Toolkit SaaS Agent")
     parser.add_argument("--api", default="http://localhost:8000", help="Base API URL")
     parser.add_argument("--token", default="", help="Supabase access token (JWT)")

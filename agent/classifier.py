@@ -9,14 +9,31 @@ _CONNECTION_SPIKE_EST = 8000
 
 
 def _clamp(score: float) -> float:
+    """Clamp confidence score to [0.0, 1.0]."""
     return max(0.0, min(1.0, score))
 
 
 def classify(evidence: DiagnosticEvidence) -> list[RankedCause]:
-    """
-    Produce ranked hypotheses with explanations.
+    """Rank root-cause hypotheses from collected evidence.
 
-    Multiple signals can coexist; output is sorted by confidence descending.
+    Decision intent:
+        Produce explainable confidence-ranked hypotheses that drive remediation
+        planning while preserving conservative safety defaults.
+
+    Constraints and limitations:
+        - Rule-based heuristics can underperform for uncommon edge conditions.
+        - Competing failures may produce close confidence scores.
+
+    Audit Notes:
+        - What can go wrong: misclassification under mixed or stale signals.
+        - Detection: inspect ranked explanations and raw evidence together.
+        - Recovery: rerun collector and compare with monitor trends.
+
+    Args:
+        evidence: Normalized diagnostic evidence snapshot.
+
+    Returns:
+        list[RankedCause]: Deduplicated hypotheses sorted by confidence.
     """
     candidates: list[RankedCause] = []
 
@@ -166,6 +183,15 @@ def classify(evidence: DiagnosticEvidence) -> list[RankedCause]:
 
 
 def classify_with_primary(evidence: DiagnosticEvidence) -> tuple[RankedCause | None, list[RankedCause]]:
+    """Return top-ranked hypothesis alongside full ranked list.
+
+    Args:
+        evidence: Normalized diagnostic evidence snapshot.
+
+    Returns:
+        tuple[RankedCause | None, list[RankedCause]]: Primary cause (or None)
+        and full ranked hypotheses.
+    """
     ranked = classify(evidence)
     primary = ranked[0] if ranked else None
     return primary, ranked

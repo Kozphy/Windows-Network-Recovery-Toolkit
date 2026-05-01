@@ -11,6 +11,7 @@ from .features import FeatureVector
 
 
 def run_command(command: list[str], timeout: float = 35.0) -> tuple[int, str]:
+    """Execute command and return status code with merged text output."""
     try:
         proc = subprocess.run(
             command,
@@ -174,10 +175,27 @@ def _firewall_path_suspected(proxy_summary: str, tcp_ok: bool, https_ok: bool) -
 def collect_features(
     repo_root: Path | None = None,
 ) -> tuple[FeatureVector, dict[str, Any]]:
-    """
-    Execute read-only probes. Returns features and collector metadata.
+    """Collect read-only Windows probe signals and build feature vector.
 
-    Metadata includes anonymized fingerprints and executed commands — safe for audit logs.
+    Input assumptions:
+        - Runs on Windows with required commands available in PATH.
+        - Probe failures are treated as signals, not fatal exceptions.
+
+    Output guarantees:
+        - Returns normalized `FeatureVector`.
+        - Returns metadata with executed command labels/strings.
+
+    Side effects:
+        Executes subprocess commands and outbound probe traffic.
+
+    Idempotency:
+        Operationally idempotent for stable host/network state.
+
+    Args:
+        repo_root: Reserved for future harness integration.
+
+    Returns:
+        tuple[FeatureVector, dict[str, Any]]: Feature vector plus metadata.
     """
     del repo_root  # Reserved for scripted offline harnesses.
 
@@ -249,6 +267,20 @@ def collect_features(
 
 
 def load_features_json(path: Path) -> FeatureVector:
+    """Load feature vector fixture from JSON file.
+
+    Args:
+        path: Path to fixture JSON containing either root object fields or a
+            nested `features` object.
+
+    Returns:
+        FeatureVector: Parsed feature vector.
+
+    Raises:
+        ValueError: If JSON root is not an object.
+        OSError: If file cannot be read.
+        json.JSONDecodeError: If file contents are invalid JSON.
+    """
     import json
 
     data = json.loads(path.read_text(encoding="utf-8"))

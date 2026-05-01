@@ -1,4 +1,14 @@
-"""Remediation planner: smallest safe repair first; firewall reset never automatic."""
+"""Rule-based remediation planner for local agent workflows.
+
+This module maps primary root-cause hypotheses into minimal repair plans.
+It sits between classification and execution layers, enforcing conservative
+defaults that avoid automatic high-risk actions.
+
+Key invariants:
+    - Planner returns deterministic plans for identical inputs.
+    - Firewall reset step can be suggested but requires explicit executor opt-in.
+    - Unknown diagnoses default to read-only evidence collection.
+"""
 
 from __future__ import annotations
 
@@ -13,6 +23,18 @@ def _step(
     requires_confirmation: bool,
     destructive: bool,
 ) -> RepairStep:
+    """Create a normalized repair step entry.
+
+    Args:
+        script: Repository-relative script path.
+        description: Human-readable action description.
+        risk: Risk classification label.
+        requires_confirmation: Whether caller must explicitly confirm execution.
+        destructive: Whether action can significantly mutate host state.
+
+    Returns:
+        RepairStep: Immutable step object for planning/execution.
+    """
     return RepairStep(
         script_relative_path=script,
         description=description,
@@ -23,10 +45,42 @@ def _step(
 
 
 def plan(primary: RankedCause | None, _evidence: DiagnosticEvidence) -> RepairPlan:
-    """
-    Choose minimal invasive scripts under scripts/. Destructive stack resets require confirmation.
+    """Build a repair plan from the selected root-cause hypothesis.
 
-    Policy: reset_firewall.bat is never included for automatic execution paths.
+    Decision intent:
+        Prefer the smallest safe corrective action first and escalate only when
+        evidence indicates broader stack issues.
+
+    Input assumptions:
+        - `primary` is the best-ranked cause from classifier output.
+        - `_evidence` is provided for future extensibility (currently not used
+          to branch within this planner).
+
+    Output guarantees:
+        - Always returns a `RepairPlan` with rationale and verification hint.
+        - Plan may contain zero executable steps for manual-only categories.
+
+    Side effects:
+        None.
+
+    Idempotency:
+        Fully idempotent for identical inputs.
+
+    Constraints and limitations:
+        - Planner does not dynamically inspect script presence at plan time.
+        - Confidence thresholds are handled upstream in classification.
+
+    Audit Notes:
+        - What can go wrong: wrong primary hypothesis produces suboptimal plan.
+        - Detection: compare plan rationale to collected evidence.
+        - Recovery: rerun diagnostics, inspect ranked causes, choose safer step.
+
+    Args:
+        primary: Primary ranked cause or `None` when classifier yielded no cause.
+        _evidence: Current diagnostic evidence snapshot.
+
+    Returns:
+        RepairPlan: Ordered candidate actions and verification guidance.
     """
     cat: RootCauseCategory = primary.category if primary else "unknown"
 

@@ -1,1 +1,1 @@
-# Backend package marker for FastAPI SaaS module.
+"""Backend package for FastAPI API, persistence, auth, and billing modules."""

@@ -1,3 +1,16 @@
+/**
+ * Hybrid Agent report viewer UI client.
+ *
+ * This browser module maps user actions to Phase-3 FastAPI routes:
+ * - POST /diagnose
+ * - GET /reports/{report_id}
+ * - POST /repair/preview
+ * - POST /repair/execute
+ *
+ * Safety boundary:
+ * - Never auto-executes repair.
+ * - Requires preview and explicit user confirmations before execution call.
+ */
 const apiBaseInput = document.getElementById("apiBase");
 const runDiagnosisBtn = document.getElementById("runDiagnosisBtn");
 const diagnoseStatus = document.getElementById("diagnoseStatus");
@@ -23,10 +36,19 @@ let latestDiagnosis = null;
 let latestPreview = null;
 
 function baseUrl() {
+  /** Returns normalized API base URL without trailing slash. */
   return apiBaseInput.value.trim().replace(/\/+$/, "");
 }
 
 async function callApi(path, options = {}) {
+  /**
+   * Invoke backend API and normalize error handling.
+   *
+   * @param {string} path Relative endpoint path.
+   * @param {RequestInit} [options={}] fetch options.
+   * @returns {Promise<any>} Parsed JSON payload.
+   * @throws {Error} If response status is non-2xx.
+   */
   const response = await fetch(`${baseUrl()}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...options,
@@ -39,6 +61,11 @@ async function callApi(path, options = {}) {
 }
 
 function renderDiagnosis(data) {
+  /**
+   * Render top diagnosis result and reset execution state.
+   *
+   * @param {any} data Diagnosis API payload.
+   */
   const top = (data.diagnosis || [])[0];
   if (!top) {
     diagnoseStatus.textContent = "No diagnosis returned.";

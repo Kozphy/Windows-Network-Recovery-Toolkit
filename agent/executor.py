@@ -1,4 +1,14 @@
-"""Execute approved repair scripts only; never auto-run destructive or firewall resets."""
+"""Guarded repair execution for script-based remediation steps.
+
+This module executes planner-produced script steps under strict safety gates.
+It is the only local-agent component that mutates host state by launching
+repair scripts.
+
+Key invariants:
+    - No step runs unless policy checks in `should_run` succeed.
+    - Firewall reset requires both step confirmation and firewall opt-in flag.
+    - Script paths are constrained to repository root boundary.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +22,14 @@ from .schemas import RepairPlan, RepairStep
 
 @dataclass(frozen=True)
 class ExecutionResult:
+    """Execution result for a single repair step.
+
+    Attributes:
+        script: Repository-relative script path.
+        returncode: Exit code (-1/-2 are policy/path guard outcomes).
+        stdout: Captured stdout/stderr tail or guard message.
+    """
+
     script: str
     returncode: int
     stdout: str
@@ -34,11 +52,29 @@ class RepairExecutor:
         confirm_firewall: bool = False,
         confirmed_scripts: frozenset[str] | None = None,
     ) -> None:
+        """Initialize executor with confirmation policy context.
+
+        Args:
+            repo_root: Repository root used for script path resolution.
+            confirm_firewall: Explicit opt-in for firewall reset script.
+            confirmed_scripts: Set of script paths approved by user/operator.
+        """
         self.repo_root = repo_root.resolve()
         self.confirm_firewall = confirm_firewall
         self.confirmed_scripts = confirmed_scripts or frozenset()
 
     def _resolve_script(self, rel: str) -> Path:
+        """Resolve and validate script path under repository root.
+
+        Args:
+            rel: Relative script path from repair plan.
+
+        Returns:
+            Path: Resolved absolute script path.
+
+        Raises:
+            ValueError: If resolved path escapes repository root.
+        """
         candidate = (self.repo_root / rel).resolve()
         try:
             candidate.relative_to(self.repo_root)
@@ -47,6 +83,14 @@ class RepairExecutor:
         return candidate
 
     def should_run(self, step: RepairStep) -> tuple[bool, str]:
+        """Evaluate whether a step is allowed to execute.
+
+        Args:
+            step: Candidate repair step.
+
+        Returns:
+            tuple[bool, str]: Allow/deny decision and reason message.
+        """
         name_lower = step.script_relative_path.replace("/", "\\").lower()
         if "reset_firewall" in name_lower:
             if not self.confirm_firewall:
@@ -57,6 +101,30 @@ class RepairExecutor:
         return True, "ok"
 
     def execute_plan(self, plan: RepairPlan) -> list[ExecutionResult]:
+        """Execute all allowed steps in a repair plan.
+
+        Side effects:
+            Launches Windows batch scripts via `cmd /c`.
+
+        Idempotency:
+            Not guaranteed. Re-running may apply the same repair repeatedly.
+
+        Audit Notes:
+            - What can go wrong: policy misconfiguration, missing scripts,
+              subprocess timeout, non-zero script exit.
+            - Detection: inspect per-step return code and output tail.
+            - Recovery: rerun diagnosis, confirm step list, retry targeted step.
+
+        Args:
+            plan: Repair plan from planner.
+
+        Returns:
+            list[ExecutionResult]: One result entry per plan step.
+
+        Raises:
+            subprocess.TimeoutExpired: If launched script exceeds timeout.
+            OSError: If subprocess cannot be started.
+        """
         results: list[ExecutionResult] = []
         for step in plan.steps:
             ok, reason = self.should_run(step)
@@ -99,6 +167,14 @@ class RepairExecutor:
 
 
 def results_to_payload(results: list[ExecutionResult]) -> list[dict[str, Any]]:
+    """Serialize execution results for API/CLI JSON output.
+
+    Args:
+        results: Execution result objects.
+
+    Returns:
+        list[dict[str, Any]]: JSON-safe result dictionaries.
+    """
     return [
         {"script": r.script, "returncode": r.returncode, "stdout_tail": r.stdout}
         for r in results

@@ -17,6 +17,7 @@ from .verifier import verification_to_dict, verify_after_repair
 
 
 def _repo_root(cli_value: Path | None) -> Path:
+    """Resolve repository root from CLI override or module location."""
     if cli_value:
         return cli_value.resolve()
     here = Path(__file__).resolve()
@@ -24,6 +25,7 @@ def _repo_root(cli_value: Path | None) -> Path:
 
 
 def _ranked_to_json(ranked: list[RankedCause]) -> list[dict[str, object]]:
+    """Serialize ranked causes for JSON output payload."""
     return [
         {"category": r.category, "confidence": r.confidence, "explanation": r.explanation}
         for r in ranked
@@ -31,6 +33,7 @@ def _ranked_to_json(ranked: list[RankedCause]) -> list[dict[str, object]]:
 
 
 def _plan_to_json(p: RepairPlan) -> dict[str, object]:
+    """Serialize repair plan dataclass into JSON-safe mapping."""
     return {
         "rationale": p.rationale,
         "verification_hint": p.verification_hint,
@@ -48,6 +51,26 @@ def _plan_to_json(p: RepairPlan) -> dict[str, object]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run local diagnostic workflow end-to-end.
+
+    Workflow:
+        collect -> classify -> plan -> optional execute -> optional verify.
+
+    Side effects:
+        - Command execution for live collection and optional repair.
+        - Append-only JSONL logging under `logs/`.
+        - Optional JSON output file write.
+
+    Idempotency:
+        Not strictly idempotent due to log append behavior and potential script
+        execution side effects when `--execute` is enabled.
+
+    Args:
+        argv: Optional CLI argument list override.
+
+    Returns:
+        int: Process exit code.
+    """
     parser = argparse.ArgumentParser(
         description="Windows Network Recovery Toolkit — local diagnostic platform",
     )

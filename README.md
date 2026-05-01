@@ -322,6 +322,38 @@ Windows-Network-Recovery-Toolkit/
 └── scripts/
 ```
 
+## Hybrid Agent Architecture (Current)
+
+The repository currently contains two related tracks:
+
+- Legacy beginner-first `.bat` workflows for direct Windows troubleshooting.
+- Python hybrid-agent workflows (`network_agent/`) with API and report-driven UI.
+
+Operational flow for the hybrid path:
+
+1. Collect signals from Windows commands (`network_agent/collectors/`).
+2. Rank likely issues with deterministic confidence rules (`network_agent/engine/`).
+3. Persist JSON reports (`network_agent/reports/`).
+4. Expose diagnosis/preview/execute/report routes (`network_agent/api.py`).
+5. Render operator workflow in browser (`hybrid_frontend/`).
+
+### Safety Boundaries (Hybrid Path)
+
+- Diagnose is read-only and runs before any repair guidance.
+- Repair preview is required by UI workflow and available via API.
+- Repair execute requires explicit `confirm: true` in backend request payload.
+- No automatic firewall reset path is exposed in hybrid policy.
+- Backend policy remains source of truth; frontend does not bypass it.
+
+### Audit Notes (Hybrid Path)
+
+- Decision evidence is returned with each diagnosis result and report.
+- Report files are timestamped and saved as JSON under `reports/`.
+- Failures in command execution are surfaced through API error payloads and
+  command-level return codes in repair execution responses.
+- Recovery path for incorrect diagnosis: rerun diagnose, inspect report evidence,
+  preview safer alternatives, then execute only after confirmation.
+
 ## Portfolio Value
 
 This project demonstrates practical engineering skills:

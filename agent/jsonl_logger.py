@@ -24,13 +24,27 @@ def _utc_iso() -> str:
 
 
 class JsonlEventLogger:
-    """Writes one JSON object per line with stable event types."""
+    """Append structured JSONL audit events for local agent runs.
+
+    Side effects:
+        Appends one line per event to log file on local filesystem.
+
+    Idempotency:
+        Not idempotent; repeated calls append additional immutable entries.
+    """
 
     def __init__(self, path: Path, run_id: str | None = None) -> None:
+        """Initialize logger with destination path and run identifier."""
         self.path = path
         self.run_id = run_id or str(uuid.uuid4())
 
     def _append(self, event_type: EventType, payload: dict[str, Any]) -> None:
+        """Append one event record with timestamp/run metadata.
+
+        Args:
+            event_type: Stable event name from `EventType`.
+            payload: Event-specific structured payload.
+        """
         self.path.parent.mkdir(parents=True, exist_ok=True)
         record = {
             "timestamp": _utc_iso(),
@@ -43,30 +57,37 @@ class JsonlEventLogger:
             f.write(line + "\n")
 
     def diagnosis_started(self, mode: str, **extra: Any) -> None:
+        """Record start of diagnosis workflow."""
         self._append("diagnosis_started", {"mode": mode, **extra})
 
     def diagnosis_completed(self, evidence_summary: dict[str, Any], **extra: Any) -> None:
+        """Record successful evidence collection summary."""
         self._append(
             "diagnosis_completed",
             {"evidence_summary": evidence_summary, **extra},
         )
 
     def root_cause_classified(self, ranked: list[dict[str, Any]], **extra: Any) -> None:
+        """Record ranked classification output."""
         self._append(
             "root_cause_classified",
             {"ranked_causes": ranked, **extra},
         )
 
     def repair_plan_created(self, plan: dict[str, Any], **extra: Any) -> None:
+        """Record generated remediation plan payload."""
         self._append("repair_plan_created", {"plan": plan, **extra})
 
     def repair_started(self, steps: list[str], **extra: Any) -> None:
+        """Record start of repair step execution."""
         self._append("repair_started", {"steps": steps, **extra})
 
     def repair_completed(self, results: list[dict[str, Any]], **extra: Any) -> None:
+        """Record completion status of repair execution."""
         self._append("repair_completed", {"results": results, **extra})
 
     def verification_completed(self, verification: dict[str, Any], **extra: Any) -> None:
+        """Record post-repair verification outcome."""
         self._append(
             "verification_completed",
             {"verification": verification, **extra},

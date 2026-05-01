@@ -1,4 +1,8 @@
-"""Post-repair verification by re-collecting evidence and comparing key signals."""
+"""Post-repair verification utilities for local repair workflows.
+
+This module compares baseline and post-repair evidence to quantify improvement
+without introducing additional remediation actions.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +18,30 @@ def verify_after_repair(
     evidence_before: DiagnosticEvidence,
     collector: Callable[[], DiagnosticEvidence],
 ) -> VerificationResult:
-    """Re-run collection and compare primary booleans."""
+    """Re-collect evidence and evaluate key connectivity signal deltas.
+
+    Input assumptions:
+        - `collector` returns a fresh `DiagnosticEvidence` snapshot.
+        - Baseline evidence reflects pre-repair state.
+
+    Output guarantees:
+        - `compared_fields` includes all names in `KeyFields`.
+        - `passed` is true when at least one improvement occurs with no
+          regression, or when all key fields are true post-repair.
+
+    Side effects:
+        Depends on collector implementation (typically command execution).
+
+    Idempotency:
+        Deterministic for identical baseline and collector output.
+
+    Args:
+        evidence_before: Baseline evidence captured before repair attempt.
+        collector: Callable that returns post-repair evidence.
+
+    Returns:
+        VerificationResult: Verification verdict with before/after details.
+    """
     evidence_after = collector()
     compared: dict[str, tuple[object, object]] = {}
     improvements = 0
@@ -50,6 +77,14 @@ def verify_after_repair(
 
 
 def verification_to_dict(result: VerificationResult) -> dict[str, object]:
+    """Serialize verification result into JSON-safe dictionary.
+
+    Args:
+        result: Verification result object.
+
+    Returns:
+        dict[str, object]: Dictionary representation for logging/reporting.
+    """
     return {
         "passed": result.passed,
         "summary": result.summary,

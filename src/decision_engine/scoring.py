@@ -37,6 +37,14 @@ def _clamp(x: float) -> float:
 
 @dataclass(frozen=True)
 class CauseScore:
+    """Per-cause confidence and evidence bundle.
+
+    Attributes:
+        cause: Canonical root-cause key.
+        confidence: Confidence score in [0.0, 1.0].
+        evidence: Evidence statements supporting score adjustments.
+    """
+
     cause: RootCauseKey
     confidence: float
     evidence: tuple[str, ...]
@@ -44,24 +52,51 @@ class CauseScore:
 
 @dataclass(frozen=True)
 class DecisionResult:
+    """Container for full decision-scoring outcome."""
+
     scores_by_cause: dict[RootCauseKey, CauseScore]
 
     def ranked(self) -> list[CauseScore]:
+        """Return cause scores sorted by descending confidence."""
         return sorted(
             self.scores_by_cause.values(),
             key=lambda s: (-s.confidence, s.cause),
         )
 
     def primary(self) -> CauseScore:
+        """Return highest-ranked cause with safe fallback when empty."""
         r = self.ranked()
         return r[0] if r else CauseScore("browser_only_issue", 0.05, ("No signals collected.",))
 
 
 def score_root_causes(features: FeatureVector) -> DecisionResult:
-    """
-    Probability-like scores in [0,1].
+    """Score all root-cause hypotheses from collected feature vector.
 
-    Multiple causes may score high simultaneously; callers present a ranked ladder.
+    Decision intent:
+        Provide an explainable confidence ladder instead of a single opaque
+        classification so operators can validate alternatives.
+
+    Constraints and limitations:
+        - Heuristic weighting is manually tuned and environment-sensitive.
+        - Multiple simultaneous failures can produce closely ranked outcomes.
+
+    Side effects:
+        None.
+
+    Idempotency:
+        Fully idempotent for identical feature input.
+
+    Audit Notes:
+        - What can go wrong: signal ambiguity causes lower-confidence ranking.
+        - Detection: review `evidence` per cause and compare with raw probes.
+        - Recovery: rerun diagnostics, use fixture replay, adjust weights via
+          code review if systematic misclassification is observed.
+
+    Args:
+        features: Normalized diagnostic feature vector.
+
+    Returns:
+        DecisionResult: Confidence-scored hypotheses for all known causes.
     """
     deltas: dict[RootCauseKey, float] = {c: 0.06 for c in ALL_CAUSES}  # small prior
     evidence: dict[RootCauseKey, list[str]] = {c: [] for c in ALL_CAUSES}
@@ -195,7 +230,15 @@ def score_root_causes(features: FeatureVector) -> DecisionResult:
 
 
 def explain_primary(primary: CauseScore, features: FeatureVector) -> str:
-    """Single human-readable rationale line for dashboards and reports."""
+    """Render concise explanation sentence for selected primary cause.
+
+    Args:
+        primary: Selected primary cause score.
+        features: Feature vector used to construct context markers.
+
+    Returns:
+        str: Human-readable summary sentence for reports/UI displays.
+    """
     feature_bits = (
         f"ping_ip={'ok' if features.ping_ip_ok else 'fail'}, "
         f"nslookup={'ok' if features.nslookup_ok else 'fail'}, "
