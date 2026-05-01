@@ -1,4 +1,13 @@
-"""Append-only structured JSONL logs for local observability (no secrets)."""
+"""Append-only structured JSONL logs for the standalone ``agent`` CLI workflow.
+
+Events land under operator-chosen paths (typically ``logs/`` relative to repo root) and include
+UTC ISO timestamps plus a per-run UUID for correlating diagnose → classify → execute sequences.
+
+Timezone assumptions:
+    All `_utc_iso()` stamps use aware UTC timestamps.
+
+Raises:
+    OSError when destination paths are not writable."""
 
 from __future__ import annotations
 
@@ -20,6 +29,7 @@ EventType = Literal[
 
 
 def _utc_iso() -> str:
+    """Return RFC3339/ISO8601 UTC timestamp for JSONL ordering."""
     return datetime.now(timezone.utc).isoformat()
 
 

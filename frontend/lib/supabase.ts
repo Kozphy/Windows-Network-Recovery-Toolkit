@@ -1,3 +1,6 @@
+/**
+ * @file Supabase browser singleton for the Next.js SaaS demo frontend.
+ */
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";

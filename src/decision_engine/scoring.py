@@ -1,4 +1,22 @@
-"""Rule-and-weight scoring with per-cause confidence and textual evidence."""
+"""Deterministic root-cause scoring over a normalized ``FeatureVector``.
+
+Maps Windows connectivity/proxy/socket signals onto fixed hypothesis keys via additive
+confidence bumps followed by `[0.0, 1.0]` clamping (`_clamp`). Outputs are intentionally
+readable for plaintext reports and audit JSONL—not trained models.
+
+Pipeline position:
+    ``src.diagnostics.collector`` / fixtures → ``score_root_causes`` →
+    ``src.recommendations.build_recommendations`` and CLI payloads.
+
+Inputs:
+    Immutable `FeatureVector` only; malformed inputs should be corrected at collection time.
+
+Outputs:
+    `DecisionResult` with per-cause `CauseScore` records including evidence bullets.
+
+Raises:
+    `score_root_causes` raises no exceptions; rule logic tolerates ambiguous signals by
+    producing lower confidences."""
 
 from __future__ import annotations
 
@@ -32,6 +50,14 @@ _CONNECTION_EST_SPIKE = 8000
 
 
 def _clamp(x: float) -> float:
+    """Clamp intermediate confidence sums to `[0.0, 1.0]`.
+
+    Args:
+        x: Unbounded additive score aggregate.
+
+    Returns:
+        Bounded float suitable for persisted confidence fields.
+    """
     return max(0.0, min(1.0, x))
 
 
@@ -64,7 +90,16 @@ class DecisionResult:
         )
 
     def primary(self) -> CauseScore:
-        """Return highest-ranked cause with safe fallback when empty."""
+        """Return highest-confidence cause score.
+
+        Returns:
+            Top ``CauseScore`` from `ranked()`, or a low-confidence ``browser_only_issue``
+            sentinel when the ranked list is empty.
+
+        Note:
+            ``score_root_causes`` always emits one entry per ``ALL_CAUSES`` key, so the empty
+            ranking path is defensive-only.
+        """
         r = self.ranked()
         return r[0] if r else CauseScore("browser_only_issue", 0.05, ("No signals collected.",))
 
@@ -102,6 +137,16 @@ def score_root_causes(features: FeatureVector) -> DecisionResult:
     evidence: dict[RootCauseKey, list[str]] = {c: [] for c in ALL_CAUSES}
 
     def bump(cause: RootCauseKey, amount: float, note: str) -> None:
+        """Add evidence-weighted increment to ``deltas[cause]`` and attach ``note``.
+
+        Args:
+            cause: Hypothesis bucket receiving the adjustment.
+            amount: Confidence increment before eventual clamp in the outer loop.
+            note: Evidence string surfaced in audits and plaintext exports.
+
+        Raises:
+            None.
+        """
         deltas[cause] += amount
         evidence[cause].append(note)
 

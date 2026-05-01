@@ -52,11 +52,13 @@ def run_command(command: list[str], timeout: float = 35.0) -> tuple[int, str]:
 
 
 def _winhttp_summary() -> str:
+    """Return raw WinHTTP proxy configuration text via ``netsh winhttp show proxy``."""
     _, winhttp = run_command(["netsh", "winhttp", "show", "proxy"])
     return winhttp.strip()
 
 
 def _winhttp_proxy_enabled(summary: str) -> bool:
+    """Infer whether WinHTTP is using a configured proxy versus direct access."""
     return "direct access" not in summary.lower()
 
 
@@ -104,6 +106,7 @@ def _user_proxy_enabled() -> tuple[bool, list[str]]:
 
 
 def _test_tcp_443() -> bool:
+    """Ping TCP 443 to ``www.google.com`` via ``Test-NetConnection`` and parse success."""
     ps = (
         "try { "
         "$t = Test-NetConnection -ComputerName 'www.google.com' -Port 443 "
@@ -118,6 +121,14 @@ def _test_tcp_443() -> bool:
 
 
 def _https_probe() -> tuple[bool, bool]:
+    """HEAD ``https://www.google.com`` with curl—return `(https_ok, tls_hint)`.
+
+    The TLS hint activates when stderr/stdout mentions certificate or handshake faults,
+    aiding firewall/TLS heuristic scoring without parsing full PEM chains.
+
+    Returns:
+        Tuple where the first element is curl success and the second flags TLS keywords.
+    """
     code, out = run_command(
         ["curl", "-I", "--max-time", "12", "https://www.google.com"],
         timeout=22.0,
@@ -138,6 +149,7 @@ def _https_probe() -> tuple[bool, bool]:
 
 
 def count_in_netstat(keyword: str) -> int:
+    """Count ``netstat -an`` lines containing ``keyword`` (case-sensitive substring)."""
     code, out = run_command(["netstat", "-an"])
     if code != 0:
         return 0
@@ -145,6 +157,7 @@ def count_in_netstat(keyword: str) -> int:
 
 
 def _default_gateway_ip() -> str | None:
+    """Resolve default IPv4 next hop for ``0.0.0.0/0`` using ``Get-NetRoute``."""
     ps = (
         "$r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue "
         "| Sort-Object RouteMetric "
@@ -162,6 +175,7 @@ def _default_gateway_ip() -> str | None:
 
 
 def _physical_adapter_connected() -> bool:
+    """Return True when at least one physical adapter reports ``Status=Up``."""
     ps = (
         "$up = @(Get-NetAdapter -Physical -ErrorAction SilentlyContinue "
         "| Where-Object { $_.Status -eq 'Up' }); "
@@ -172,6 +186,7 @@ def _physical_adapter_connected() -> bool:
 
 
 def _count_dns_servers_in_ipconfig() -> int:
+    """Best-effort count of IPv4 DNS server lines from ``ipconfig /all`` parsing."""
     _, out = run_command(["ipconfig", "/all"], timeout=25.0)
     # Count DNS server IPv4 addresses listed under adapter sections (heuristic).
     count = 0
@@ -190,6 +205,7 @@ def _count_dns_servers_in_ipconfig() -> int:
 
 
 def _firewall_path_suspected(proxy_summary: str, tcp_ok: bool, https_ok: bool) -> bool:
+    """Heuristic: TCP succeeds while HTTPS fails, or proxy text hints filtering."""
     if tcp_ok and not https_ok:
         return True
     if "blocked" in proxy_summary.lower():

@@ -1,5 +1,5 @@
-"""Deterministic diagnosis engine and confidence utilities.
+"""Deterministic diagnosis engine bridging collector snapshots → ranked hypotheses.
 
-This package represents the transformation/decision stage where collected
-signals are converted into ranked, explainable issue hypotheses.
+Consumers call `network_agent.engine.decision_engine.diagnose`; supporting modules provide
+confidence composition (`confidence.py`) and rule constants (`rules.py`).
 """

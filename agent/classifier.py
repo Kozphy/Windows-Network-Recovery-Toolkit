@@ -1,4 +1,12 @@
-"""Confidence-ranked root cause classification from structured evidence."""
+"""Rule-based classifier for the standalone ``agent`` CLI (collector → classify → plan).
+
+Produces confidence-ranked ``RankedCause`` rows from ``DiagnosticEvidence`` using the same
+spirit as ``src/decision_engine`` but keyed to agent-specific categories consumed by
+`agent.planner`. Pure Python: no persistence or outbound calls in this module.
+
+Audit Notes:
+    Compare ranked explanations against raw collector output whenever recommendations look
+    wrong; stale netstat spikes can falsely elevate exhaustion scores."""
 
 from __future__ import annotations
 

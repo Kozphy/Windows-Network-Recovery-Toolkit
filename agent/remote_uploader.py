@@ -19,7 +19,18 @@ import requests
 
 
 def run_command(command: list[str]) -> tuple[int, str]:
-    """Execute local command and capture merged stdout/stderr text."""
+    """Execute a subprocess with ``shell=False`` and coerce failures into return tuples.
+
+    Args:
+        command: Argument vector forwarded to ``subprocess.run``.
+
+    Returns:
+        ``(exit_code, merged_stdout_stderr)``. Exceptions become ``(1, str(exc))`` so callers
+        can keep polling loops alive.
+
+    Raises:
+        None.
+    """
     try:
         proc = subprocess.run(
             command,
@@ -77,10 +88,24 @@ def collect_proxy_enabled() -> bool:
 
 
 def collect_diagnostics() -> dict[str, Any]:
-    """Collect backend-compatible diagnostic payload from local machine.
+    """Run read-only Windows probes and shape a ``/diagnose`` JSON body.
+
+    Input assumptions:
+        Standard PATH entries for ``ping``, ``nslookup``, ``curl``, ``netstat``, ``reg``,
+        and ``netsh`` behave like typical Windows installs.
+
+    Output guarantees:
+        Keys ``ping``, ``dns``, ``https``, ``proxy``, ``time_wait``, ``established`` always
+        exist with bool/int types aligned to ``backend.main.DiagnoseRequest``.
+
+    Side effects:
+        Executes local subprocess probes and outbound HTTPS/TCP checks.
+
+    Raises:
+        None directly; malformed environments surface through boolean False / zero counters.
 
     Returns:
-        dict[str, Any]: Payload aligned with `/diagnose` request schema.
+        dict[str, Any]: Serializable payload consumed by SaaS diagnose endpoint.
     """
     ping_ok = run_command(["ping", "-n", "1", "8.8.8.8"])[0] == 0
     dns_ok = run_command(["nslookup", "google.com"])[0] == 0
@@ -144,7 +169,22 @@ def run_once(base_url: str, token: str, project_id: str | None) -> None:
 
 
 def main() -> None:
-    """Parse CLI args and run single-cycle or looping upload mode."""
+    """Entry point: parse CLI flags then POST payloads to backend ``/diagnose`` and ``/monitor``.
+
+    Side effects:
+        Outbound HTTPS to configured ``--api``; prints JSON previews to stdout. Loop mode
+        sleeps between cycles and catches exceptions locally (continues looping).
+
+    Idempotency:
+        Each invocation performs fresh probes; looping mode repeats periodically.
+
+    Audit Notes:
+        Empty ``--token`` logs a warning; secure deployments should fail closed when JWT
+        is missing unless ``AUTH_BYPASS_USER_ID`` is intentionally enabled server-side.
+
+    Raises:
+        None: errors in loop mode print and continue after sleep.
+    """
     parser = argparse.ArgumentParser(description="Windows Network Recovery Toolkit SaaS Agent")
     parser.add_argument("--api", default="http://localhost:8000", help="Base API URL")
     parser.add_argument("--token", default="", help="Supabase access token (JWT)")

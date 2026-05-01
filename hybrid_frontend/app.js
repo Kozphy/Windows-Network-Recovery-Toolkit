@@ -1,15 +1,20 @@
 /**
- * Hybrid Agent report viewer UI client.
+ * @file Hybrid agent operator UI for the local `network_agent` FastAPI service.
  *
- * This browser module maps user actions to Phase-3 FastAPI routes:
- * - POST /diagnose
- * - GET /reports/{report_id}
- * - POST /repair/preview
- * - POST /repair/execute
+ * @description
+ * Maps button flows to:
+ * - `POST /diagnose` — read-only probe pipeline + JSON report write on server host
+ * - `GET /reports/{report_id}` — load frozen report snapshot
+ * - `POST /repair/preview` — policy gate + command list display
+ * - `POST /repair/execute` — requires checked confirmation and `confirm: true` JSON field
  *
- * Safety boundary:
- * - Never auto-executes repair.
- * - Requires preview and explicit user confirmations before execution call.
+ * Safety boundaries:
+ * - No automatic repair; operator must preview then check the confirm box.
+ * - Errors from `callApi` surface as thrown `Error` with server `detail` text when present.
+ *
+ * Audit notes:
+ * - Compare UI JSON panes with filesystem `reports/*.json` after diagnosis.
+ * - Investigate non-zero `returncode` values in execute responses before rerunning.
  */
 const apiBaseInput = document.getElementById("apiBase");
 const runDiagnosisBtn = document.getElementById("runDiagnosisBtn");

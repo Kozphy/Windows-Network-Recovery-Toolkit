@@ -29,6 +29,16 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 - **`python -m src` path**: Inspect `reports/last_diagnosis.json` and `logs/decision_audit.jsonl` for deterministic evidence and command labels.
 - **Hybrid API path**: JSON reports under `reports/` and API payloads include diagnosis evidence; repair execution requires explicit JSON confirmation (see `network_agent/api.py` docstrings).
 
+## Critical paths (where state changes matter)
+
+| Path | Mutation / risk surface | Verification focus |
+| --- | --- | --- |
+| Guided `.bat` repairs | Executes elevated Windows commands after confirmation | Logs under `logs/`, script exit prompts, rerun `auto_diagnose.bat` |
+| `python -m src repair-safe --apply` | First LOW-risk `scripts/*.bat` via `RunAs`; appends feedback JSONL | `logs/decision_feedback.jsonl`, rerun `diagnose` |
+| Hybrid `POST /repair/execute` | Host shell commands with `confirm: true` | JSON `results` array (`returncode`, stdout/stderr) |
+| SaaS `/diagnose` (optional backend) | SQLite usage metering + persisted rows per call | `/usage`, `/history` responses |
+| Remote agent loop | Repeated HTTP posts with local probes | Backend logs/DB counters; bearer token posture |
+
 ## Start Here
 
 - `script_reference.md`: what each script does and when to use it.

@@ -82,10 +82,32 @@ def _fingerprint() -> dict[str, str]:
 
 
 def _scores_dict(result: DecisionResult) -> dict[str, float]:
+    """Project each cause to its scalar confidence for JSON snapshots.
+
+    Args:
+        result: Full scoring outcome from `score_root_causes`.
+
+    Returns:
+        Mapping of root-cause key to confidence in ``[0.0, 1.0]``.
+
+    Raises:
+        None.
+    """
     return {k: v.confidence for k, v in result.scores_by_cause.items()}
 
 
 def _serialize_cause(score: CauseScore) -> dict[str, Any]:
+    """Flatten a scored cause into an audit/export-friendly dictionary.
+
+    Args:
+        score: One ``CauseScore`` entry.
+
+    Returns:
+        Dict with ``cause``, ``confidence``, ``evidence`` list.
+
+    Raises:
+        None.
+    """
     return {
         "cause": score.cause,
         "confidence": score.confidence,
@@ -94,6 +116,18 @@ def _serialize_cause(score: CauseScore) -> dict[str, Any]:
 
 
 def _serialize_bundle(bundle: RecommendationBundle) -> dict[str, Any]:
+    """Normalize all recommendation tiers for JSON payloads.
+
+    Args:
+        bundle: Tiered suggestion groups from `build_recommendations`.
+
+    Returns:
+        Dict with diagnose/repair-safe/guided/advanced arrays matching README naming.
+
+    Raises:
+        None.
+    """
+
     def pack(items: tuple[Any, ...]) -> list[dict[str, Any]]:
         return [
             {
@@ -318,7 +352,15 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
 
 
 def cmd_explain(args: argparse.Namespace) -> int:
-    """Print human explanation and bullets for the stored primary hypothesis."""
+    """Print the rationale sentence plus primary evidence bullets from the last diagnose.
+
+    Raises:
+        FileNotFoundError: When ``reports/last_diagnosis.json`` is absent.
+        json.JSONDecodeError: When snapshot content is malformed.
+
+    Returns:
+        Shell exit ``0``.
+    """
     repo = _repo_root(args.repo_root)
     payload = _read_last_diagnosis(repo)
     sentence = payload.get("explain_sentence", "")
@@ -330,7 +372,15 @@ def cmd_explain(args: argparse.Namespace) -> int:
 
 
 def cmd_recommend(args: argparse.Namespace) -> int:
-    """Print tiered recommendations from ``last_diagnosis.json``."""
+    """Print persisted tier buckets (diagnose / repair-safe / guided / advanced) to stdout.
+
+    Raises:
+        FileNotFoundError: When no snapshot exists.
+        json.JSONDecodeError: When JSON cannot be decoded.
+
+    Returns:
+        Shell exit ``0``.
+    """
     repo = _repo_root(args.repo_root)
     payload = _read_last_diagnosis(repo)
     blob = payload.get("recommendations") or {}
@@ -455,9 +505,15 @@ def cmd_repair_safe(args: argparse.Namespace) -> int:
 
 
 def cmd_feedback(args: argparse.Namespace) -> int:
-    """Append a calibrated outcome row tied to ``diagnosis_id`` (JSONL).
+    """Normalize CLI flags and append one feedback row to ``decision_feedback.jsonl``.
 
-    Parses ``--user-feedback-fixed`` as true/false/unknown aliases.
+    Parses ``--user-feedback-fixed`` using true/false/unknown aliases documented in README.
+
+    Raises:
+        TypeError / OSError: From `append_feedback` if JSON serialization or disk write fails.
+
+    Returns:
+        Shell exit ``0``.
     """
     repo = _repo_root(args.repo_root)
     state_raw = args.user_feedback_fixed.lower()
@@ -594,7 +650,14 @@ def cmd_export_report(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Define subcommands mirroring README: diagnose, explain, recommend, repair-safe, feedback, export-report."""
+    """Configure argparse for ``python -m src`` dispatch.
+
+    Returns:
+        Root parser with mutually exclusive subcommands that map 1:1 to README workflows.
+
+    Raises:
+        None.
+    """
     parser = argparse.ArgumentParser(
         prog="python -m src",
         description="Decision architecture CLI for Windows network diagnostics.",
@@ -652,7 +715,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Dispatch CLI subcommand; returns shell exit code."""
+    """Parse argv and delegate to registered subcommand handler.
+
+    Raises:
+        SystemExit propagates indirectly through argparse misuse (handled externally).
+
+    Returns:
+        Integral POSIX-style exit status from the dispatched command handler.
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
     handler = getattr(args, "func", None)

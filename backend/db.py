@@ -1,13 +1,27 @@
-"""SQLite persistence layer for toolkit API telemetry and subscription state.
+"""SQLite helpers for embedded telemetry tables and connection handling.
 
-This module provides low-level database access helpers used by `backend.main`.
-It encapsulates schema initialization, inserts, reads, and simple usage/account
-queries without embedding API-layer authorization rules.
+This module supplies `get_connection`, `init_db` (DDL from ``schema.sql``), and
+focused read/write routines for the ``diagnosis_records`` shape used by some
+callers. It does not implement HTTP auth or Stripe logic; those live in
+``backend.main`` and sibling modules.
+
+System placement:
+    ``backend.main`` (when wired) → these helpers → ``backend/toolkit.db``.
 
 Key invariants:
-    - Uses local SQLite database at `backend/toolkit.db`.
-    - UTC timestamps are generated in ISO-8601 format.
-    - Connection row_factory is always `sqlite3.Row`.
+    - Database file path: ``backend/toolkit.db`` beside this module.
+    - ``_utc_now_iso`` stamps use UTC with explicit offset in ISO-8601 text.
+    - Connections set ``row_factory = sqlite3.Row`` for dict-like access.
+
+Engineering Notes:
+    ``init_db`` executes ``schema.sql``, which defines SaaS-oriented tables (for example
+    ``diagnosis_logs``) that differ from the legacy ``diagnosis_records`` table targeted
+    by `insert_diagnosis` in this file. Operators must provide DDL that matches whichever
+    insert helpers they call, or ``sqlite3.OperationalError`` will surface at runtime.
+
+Failure modes:
+    Corrupt JSON in ``recent_processes`` breaks `get_diagnosis_history`; missing table
+    mismatches break inserts during startup tests.
 """
 
 import json

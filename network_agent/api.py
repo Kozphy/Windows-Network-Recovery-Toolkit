@@ -1,5 +1,36 @@
 from __future__ import annotations
 
+"""FastAPI boundary for the hybrid agent (collect → score → JSON report → API).
+
+This layer exposes diagnostics and policy-gated repair to ``hybrid_frontend`` and HTTP
+clients. Read-only diagnosis runs `run_diagnosis` and writes under ``reports/``; repair
+paths call `get_preview` before any shell execution.
+
+System placement:
+    ``network_agent.cli`` / collectors / engine → report JSON on disk → this module.
+
+Key invariants:
+    - ``POST /repair/execute`` rejects requests unless ``confirm`` is exactly ``True``.
+    - Repair command lists come only from `get_preview`; unknown actions yield HTTP 400.
+    - ``GET /reports/{report_id}`` reads ``reports/<report_id>.json`` (UTF-8) only.
+
+Side effects:
+    - ``POST /diagnose`` runs subprocess probes and persists a report file.
+    - ``POST /repair/execute`` runs ``preview["commands"]`` with ``shell=True`` when allowed.
+
+Failure modes:
+    - Missing reports: HTTP 404. Policy denial / missing commands: HTTP 400.
+    - Subprocess failures appear as non-zero ``returncode`` in the response payload.
+
+Audit Notes:
+    Inspect ``results[*]`` from execute responses and correlate with freshly generated
+    reports; rerun diagnose before retrying a repair after unexpected exit codes.
+
+Engineering Notes:
+    Paths default to runtime working-directory-relative ``reports/``; operators should start
+    the API from repo root unless they symlink or align that directory externally.
+"""
+
 import json
 import subprocess
 from pathlib import Path
@@ -10,17 +41,6 @@ from pydantic import BaseModel, Field
 
 from .cli import run_diagnosis
 from .safety.repair_policy import get_preview
-
-"""FastAPI serving layer for the hybrid diagnostic agent.
-
-This module sits in the serving stage after decision/report generation and
-exposes REST endpoints used by the web UI and external clients.
-
-Key invariants:
-- `/repair/execute` requires explicit confirmation.
-- Safety policy is always enforced via `get_preview`.
-- Reports are loaded from local JSON files only.
-"""
 
 app = FastAPI(title="Hybrid AI Network Diagnostic Agent API", version="0.1.0")
 
