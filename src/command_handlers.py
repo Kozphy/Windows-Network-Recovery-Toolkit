@@ -1,0 +1,492 @@
+"""Argparse-backed handlers for live observability and Proxy Guard CLIs.
+
+This module sits beside ``src.cli`` (which imports these callables into subparsers).
+
+Responsibilities:
+    Normalize operator-facing flows for HKCU proxy inspection, attribution, monitoring,
+    safe registry mutation, correlated snapshots, v2 hypothesis exports, and repair previews.
+
+Key invariants:
+    Writes never occur during ``proxy-disable --dry-run`` or ``repair-apply --dry-run``.
+    ``emit_json`` branches emit **only** JSON to stdout where implemented (machine-readable).
+    Fingerprints reuse SHA-256 truncation like legacy diagnosis (no raw hostnames in payloads).
+
+Audit Notes:
+    Inspect ``logs/repair_audit.jsonl`` after ``proxy-disable``,
+    ``logs/decision_audit.jsonl`` ``type=diagnosis_live`` rows after ``diagnose-live``,
+    and ``reports/last_diagnosis_live.json`` for structured recommendations.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import platform
+import subprocess
+import uuid
+from pathlib import Path
+from typing import Any
+
+from .core.jsonl import append_jsonl as append_jsonl_core
+from .core.models import registry_with_parsed
+from .core.time_utils import utc_now_iso
+from .decision_engine.explanations import primary_explanation_paragraph
+from .decision_engine.live_scoring import ranked_dicts, score_live_snapshot
+from .decision_engine.recommendations import live_recommendation_bundle
+from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
+from .observability.snapshot import build_live_network_snapshot
+from .proxy_guard.owner import attribution_payload
+from .proxy_guard.parser import parse_proxy_server, summarize_proxy_risk
+from .proxy_guard.registry import read_proxy_registry
+from .proxy_guard.remediation import CONFIRMATION_PHRASE, build_user_proxy_disable_mutations
+from .proxy_guard.watcher import monitor_proxy_registry
+from .repair.executor import apply_mutations
+from .repair.policy import assert_no_firewall_reset_in_preview
+from .repair.preview import summarize_mutations_plaintext
+from .version import SCRIPT_VERSION
+
+
+def _repo_root(cli: Path | None) -> Path:
+    """Resolve checkout root (``--repo-root`` or implicit parent of ``src/``).
+
+    Args:
+        cli: Optional explicit repository root from argparse.
+
+    Returns:
+        Absolute ``Path`` to toolkit root.
+    """
+    if cli:
+        return cli.resolve()
+    return Path(__file__).resolve().parent.parent
+
+
+def _fingerprint() -> dict[str, str]:
+    """Return truncated hash map for JSONL/live payloads (matches ``src.cli`` policy).
+
+    Returns:
+        Dict with ``host_key_hash16`` hex prefix (not a hardware serial).
+    """
+    raw = f"{platform.node()}|{platform.release()}|{platform.machine()}".encode()
+    digest = hashlib.sha256(raw).hexdigest()[:16]
+    return {"host_key_hash16": digest}
+
+
+def _proxy_events_path(repo: Path) -> Path:
+    """Return canonical append-only path for proxy monitor JSONL (documentation helper)."""
+    return repo / "logs" / "proxy_guard_events.jsonl"
+
+
+def cmd_proxy_status(args: argparse.Namespace) -> int:
+    """Print HKCU WinINET proxy summary or JSON when ``--json`` (``emit_json``) is set.
+
+    Side effects:
+        Read-only ``reg query`` subprocesses via ``read_proxy_registry``.
+
+    Args:
+        args: Namespace with ``emit_json`` bool from ``--json`` flag.
+
+    Returns:
+        Process exit code ``0``.
+    """
+    reg = read_proxy_registry()
+    parsed = parse_proxy_server(reg.proxy_server)
+    merged = registry_with_parsed(reg, parsed)
+    risk = summarize_proxy_risk(parsed, bool(merged.get("is_enabled")))
+    if getattr(args, "emit_json", False):
+        merged_out = dict(merged)
+        merged_out["risk_diagnostic_sense"] = risk
+        print(json.dumps(merged_out, indent=2, ensure_ascii=False))
+        return 0
+    lines = [
+        f"Proxy Status: {'ON' if merged.get('is_enabled') else 'OFF'}",
+        f"Proxy Server: {merged.get('proxy_server') or '(empty)'}",
+        f"Mode: {merged.get('proxy_mode')}",
+        f"Localhost Port: {merged.get('localhost_port') or 'n/a'}",
+        f"Risk: {risk}",
+        "Why: Browser traffic may be routed through a local process when loopback proxy flags are set.",
+    ]
+    print("\n".join(lines))
+    return 0
+
+
+def cmd_proxy_owner(args: argparse.Namespace) -> int:
+    """Resolve TCP listener owners for a localhost proxy port via netstat/tasklist/CIM.
+
+    Args:
+        args: Includes optional ``port`` override and ``emit_json`` for JSON-only output.
+
+    Returns:
+        ``0`` on success (including empty owner lists).
+
+    Side effects:
+        Executes ``netstat``, ``tasklist``, and PowerShell CIM enrichment on Windows.
+    """
+    run = subprocess.run
+    port: int | None = args.port
+    if port is None:
+        reg = read_proxy_registry(run=run)
+        parsed = parse_proxy_server(reg.proxy_server)
+        port = parsed.localhost_port
+    block = attribution_payload(port, run=run)
+    owners = block.get("owners") or []
+    if getattr(args, "emit_json", False):
+        print(json.dumps(block, indent=2, ensure_ascii=False))
+        return 0
+    print(f"Local proxy port: {block.get('port')}")
+    if not owners:
+        print("No listener owner rows were resolved (see notes).")
+        for n in block.get("notes") or []:
+            print(f"Note: {n}")
+        return 0
+    o = owners[0]
+    print(f"Owner PID: {o.get('pid')}")
+    print(f"Process: {o.get('process_name')}")
+    print(f"Parent: {o.get('parent_name')}")
+    cl = o.get("command_line")
+    print(f"Command line: {cl if cl else 'unavailable'}")
+    if o.get("permission_limited"):
+        print("Note: command line may require administrator privileges or CIM access.")
+    return 0
+
+
+def cmd_proxy_monitor(args: argparse.Namespace) -> int:
+    """Poll HKCU proxy keys; optionally append JSONL events on change.
+
+    Idempotency:
+        Each distinct registry state emits at most one initial snapshot per run; changes append.
+
+    Args:
+        args: ``interval``, ``once``, optional ``jsonl`` path string.
+
+    Returns:
+        ``0`` after loop exit (``once``) or interrupt (operator Ctrl+C outside handler).
+
+    Audit Notes:
+        Review ``--jsonl`` target for append growth; correlates with ``proxy_guard`` events.
+    """
+    jsonl = Path(args.jsonl) if getattr(args, "jsonl", None) else None
+    interval = max(1.0, float(getattr(args, "interval", 5.0)))
+
+    def owner_fn(p: int | None) -> dict[str, Any]:
+        if p is None:
+            return {}
+        return attribution_payload(int(p), run=subprocess.run)
+
+    monitor_proxy_registry(
+        interval=interval,
+        once=bool(getattr(args, "once", False)),
+        jsonl_path=jsonl,
+        emit_json_stdout=False,
+        port_owner_fn=lambda prt: owner_fn(prt),
+        run=subprocess.run,
+    )
+    return 0
+
+
+def cmd_proxy_disable(args: argparse.Namespace) -> int:
+    """Preview or apply HKCU ``ProxyEnable=0`` (+ optional ``ProxyServer`` delete).
+
+    Side effects (non-dry-run):
+        Runs ``reg.exe`` argv lists; appends ``logs/repair_audit.jsonl``.
+
+    Raises:
+        None directly; policy violations print and return ``2``.
+
+    Returns:
+        ``0`` success, ``1`` cancelled confirmation, ``2`` policy guard failure.
+
+    Audit Notes:
+        Recovery: verify keys via ``proxy-status``; software may reapply proxy policy afterward.
+    """
+    repo = _repo_root(args.repo_root)
+    reg = read_proxy_registry()
+    parsed = parse_proxy_server(reg.proxy_server)
+    print("Current WinINET (HKCU) view:")
+    print(json.dumps(registry_with_parsed(reg, parsed), indent=2, ensure_ascii=False))
+    mutations, human_lines = build_user_proxy_disable_mutations(
+        clear_proxy_server_value=bool(getattr(args, "clear_server", False)),
+    )
+    text = "\n".join(human_lines)
+    print("\nPlanned actions:\n" + text)
+    try:
+        assert_no_firewall_reset_in_preview(text)
+    except ValueError as exc:
+        print(exc)
+        return 2
+    print("\nStructured reg argv preview:\n" + summarize_mutations_plaintext(mutations))
+    dry = bool(getattr(args, "dry_run", False))
+    if dry:
+        print("\n[dry-run] No registry writes performed.")
+        return 0
+    confirm = input(f"Type {CONFIRMATION_PHRASE} to continue: ")
+    if confirm.strip() != CONFIRMATION_PHRASE:
+        print("Cancelled.")
+        return 1
+    results = apply_mutations(mutations, dry_run=False)
+    audit = {
+        "type": "repair",
+        "subtype": "proxy_disable",
+        "timestamp": utc_now_iso(),
+        "clear_server": bool(getattr(args, "clear_server", False)),
+        "results": [
+            {"argv": list(r.argv), "code": r.returncode, "stderr": r.stderr, "stdout": r.stdout}
+            for r in results
+        ],
+        "confirmation_method": "typed_phrase",
+    }
+    append_jsonl_core(repo / "logs" / "repair_audit.jsonl", audit)
+    print("Applied mutations; see logs\\repair_audit.jsonl for details.")
+    return 0
+
+
+def cmd_snapshot(args: argparse.Namespace) -> int:
+    """Persist ``LiveNetworkSnapshot`` JSON and append ``network_snapshots.jsonl`` row.
+
+    Output guarantees:
+        Filename uses UTC timestamp slug with ``:`` stripped; snapshot body includes commands list.
+
+    Side effects:
+        Writes under ``reports/snapshots/`` and appends one JSONL line.
+    """
+    repo = _repo_root(args.repo_root)
+    snapshot, cmds = build_live_network_snapshot(run=subprocess.run)
+    snap_dir = repo / "reports" / "snapshots"
+    snap_dir.mkdir(parents=True, exist_ok=True)
+    ts = utc_now_iso().replace(":", "").replace("+00:00", "Z")
+    path = snap_dir / f"{ts}.json"
+    payload = snapshot.to_dict()
+    payload["commands_executed"] = list(cmds)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    append_jsonl_core(
+        repo / "logs" / "network_snapshots.jsonl",
+        {
+            "type": "network_snapshot",
+            "timestamp": utc_now_iso(),
+            "path": str(path),
+            "snapshot_id": str(uuid.uuid4()),
+        },
+    )
+    print(f"Wrote {path}")
+    return 0
+
+
+def cmd_diagnose_live(args: argparse.Namespace) -> int:
+    """Run live snapshot + v2 hypothesis scoring + recommendation bundle export.
+
+    Side effects:
+        Writes ``reports/snapshots/<uuid>.json``, ``reports/last_diagnosis_live.json``,
+        appends ``logs/network_snapshots.jsonl`` and ``logs/decision_audit.jsonl``.
+
+    Args:
+        args: ``emit_json`` prints JSON-only payload to stdout when true.
+
+    Returns:
+        ``0`` on success.
+
+    Audit Notes:
+        Compare ``hypotheses_ranked`` with ``live_snapshot_ref`` file for evidence drill-down.
+    """
+    repo = _repo_root(args.repo_root)
+    snapshot, cmds = build_live_network_snapshot(run=subprocess.run)
+    ranked = score_live_snapshot(snapshot)
+    top = ranked[0]
+    reco = live_recommendation_bundle(top, primary_hypothesis=top.hypothesis)
+    explain = primary_explanation_paragraph(snapshot, top)
+    diagnosis_id = str(uuid.uuid4())
+    snap_dir = repo / "reports" / "snapshots"
+    snap_dir.mkdir(parents=True, exist_ok=True)
+    ts_slug = utc_now_iso().replace(":", "-").replace("+00:00", "Z")
+    snap_path = snap_dir / f"{diagnosis_id}.json"
+    snap_path.write_text(
+        json.dumps(snapshot.to_dict(), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    append_jsonl_core(
+        repo / "logs" / "network_snapshots.jsonl",
+        {
+            "type": "network_snapshot",
+            "timestamp": utc_now_iso(),
+            "path": str(snap_path),
+            "diagnosis_id": diagnosis_id,
+        },
+    )
+    live_payload: dict[str, Any] = {
+        "diagnosis_id": diagnosis_id,
+        "generated_at_utc": utc_now_iso(),
+        "engine": "live_v2",
+        "script_version": SCRIPT_VERSION,
+        "machine": _fingerprint(),
+        "live_snapshot_ref": str(snap_path),
+        "hypotheses_ranked": ranked_dicts(ranked),
+        "primary_hypothesis": top.hypothesis,
+        "primary_confidence": top.confidence,
+        "primary_evidence": list(top.evidence),
+        "negative_evidence": list(top.negative_evidence),
+        "explain_paragraph": explain,
+        "recommendations": reco,
+        "commands_executed": list(cmds),
+    }
+    last_path = repo / "reports" / "last_diagnosis_live.json"
+    last_path.write_text(json.dumps(live_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    append_jsonl_core(
+        repo / "logs" / "decision_audit.jsonl",
+        {
+            "type": "diagnosis_live",
+            "timestamp": utc_now_iso(),
+            "diagnosis_id": diagnosis_id,
+            "script_version": SCRIPT_VERSION,
+            "machine": live_payload["machine"],
+            "hypotheses": live_payload["hypotheses_ranked"],
+            "primary": top.hypothesis,
+            "confidence": top.confidence,
+            "safety_tier": "diagnose",
+        },
+    )
+
+    if getattr(args, "emit_json", False):
+        print(json.dumps(live_payload, indent=2, ensure_ascii=False))
+        return 0
+    print("=== Live diagnosis (v2) ===")
+    print(f"Diagnosis ID: {diagnosis_id}")
+    print(explain)
+    print("\nRanked hypotheses:")
+    for row in live_payload["hypotheses_ranked"][:10]:
+        print(f"  {row['rank']}. {row['hypothesis']}: {float(row['confidence']):.2f}")
+        for ev in row.get("evidence") or []:
+            print(f"      - {ev}")
+    print(f"\nSnapshot: {snap_path}")
+    print(f"Last live payload: {last_path}")
+    return 0
+
+
+def _read_live_or_legacy(repo: Path) -> tuple[dict[str, Any], str]:
+    """Load newest diagnosis artifact preferring live v2 JSON when present.
+
+    Raises:
+        FileNotFoundError: When neither artefact exists.
+
+    Returns:
+        Tuple of payload dict and source label ``live`` or ``legacy``.
+    """
+    live = repo / "reports" / "last_diagnosis_live.json"
+    legacy = repo / "reports" / "last_diagnosis.json"
+    if live.is_file():
+        return json.loads(live.read_text(encoding="utf-8")), "live"
+    if legacy.is_file():
+        return json.loads(legacy.read_text(encoding="utf-8")), "legacy"
+    raise FileNotFoundError("No last_diagnosis_live.json or last_diagnosis.json — run diagnose-live or diagnose.")
+
+
+def _normalize_recommendations_blob(payload: dict[str, Any]) -> dict[str, Any]:
+    """Extract nested recommendations dict for both v1 and v2 payload shapes."""
+    if payload.get("engine") == "live_v2":
+        return payload.get("recommendations") or {}
+    return payload.get("recommendations") or {}
+
+
+def cmd_repair_preview(args: argparse.Namespace) -> int:
+    """Print tiered repair rows from latest live (preferred) or legacy diagnosis file.
+
+    Returns:
+        ``0`` after printing.
+
+    Raises:
+        FileNotFoundError propagates when no artefact exists.
+    """
+    repo = _repo_root(args.repo_root)
+    payload, source = _read_live_or_legacy(repo)
+    blob = _normalize_recommendations_blob(payload)
+    print(f"Repair preview source: {source}")
+    sections = ("diagnose", "repair_safe", "guided_repair", "advanced_repair")
+    for section in sections:
+        print(section.upper())
+        for item in blob.get(section, []):
+            print(f"  [{item.get('risk')}] {item.get('title')}")
+            detail = item.get("detail") or ""
+            if detail:
+                print(f"      {detail}")
+            script = item.get("script")
+            if script:
+                print(f"      script: {script}")
+            ak = item.get("action_key")
+            if ak:
+                print(f"      action_key: {ak}")
+        print()
+    return 0
+
+
+def cmd_repair_apply(args: argparse.Namespace) -> int:
+    """Optionally elevate first LOW-tier ``scripts/*.bat`` after ``RUN`` confirmation.
+
+    Side effects:
+        May launch elevated PowerShell; appends JSONL feedback identical to legacy repair-safe.
+
+    Returns:
+        ``0`` success path, ``1`` cancel/not applicable, ``2`` path guard violation.
+
+    Audit Notes:
+        Skips launching when ``action_key`` is ``proxy_disable``—operators must run ``proxy-disable``.
+    """
+    repo = _repo_root(args.repo_root)
+    payload, source = _read_live_or_legacy(repo)
+    blob = _normalize_recommendations_blob(payload)
+    safe_items = blob.get("repair_safe") or []
+    runnable = [i for i in safe_items if i.get("script") and i.get("risk") == "LOW"]
+
+    print("repair-preview source:", source)
+    print("Eligible LOW actions with scripts:")
+    for item in runnable:
+        print(f"- [{item.get('risk')}] {item.get('title')} -> {item.get('script')}")
+
+    if not runnable:
+        print("Nothing runnable (use proxy-disable CLI for HKCU disables).")
+        return 0
+
+    if getattr(args, "dry_run", False):
+        print("[dry-run] not executing.")
+        return 0
+
+    first = runnable[0]
+    if first.get("action_key") == "proxy_disable":
+        print("Use `python -m src proxy-disable` for typed confirmation on HKCU disables.")
+        return 1
+
+    script_rel = Path(str(first["script"]))
+    target = (repo / script_rel).resolve()
+    scripts_root = (repo / "scripts").resolve()
+    try:
+        target.relative_to(scripts_root)
+    except ValueError:
+        print("Refusing to execute script outside scripts/.")
+        return 2
+
+    answer = input('Type RUN to execute the first LOW-risk script listed above: ')
+    if answer.strip().upper() != "RUN":
+        print("Cancelled.")
+        return 1
+
+    ps = f"Start-Process -FilePath '{target}' -Verb RunAs -Wait"
+    subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=False)
+
+    diag_id = payload.get("diagnosis_id", "unknown")
+    fb = input("Did it help? [y/N/unknown]: ").strip().lower() or "unknown"
+    state: FeedbackState
+    if fb in {"y", "yes"}:
+        state = "true"
+    elif fb in {"n", "no"}:
+        state = "false"
+    else:
+        state = "unknown"
+    notes_in = input("Optional notes (blank skip): ").strip()
+    append_feedback(
+        repo / "logs" / "decision_feedback.jsonl",
+        FeedbackRecord(
+            diagnosis_id=str(diag_id),
+            recommended_action=str(script_rel.as_posix()),
+            user_feedback_fixed=state,
+            notes=notes_in or "repair-apply feedback",
+        ),
+    )
+    return 0

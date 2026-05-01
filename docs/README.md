@@ -7,7 +7,7 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 | Area | Role |
 | --- | --- |
 | `scripts/*.bat`, `scripts/monitor_network.ps1` | Operator-facing probes and repairs; primary beginner path. |
-| `src/` (`python -m src`) | Stdlib-only **feature → score → recommend → audit JSONL** CLI. |
+| `src/` (`python -m src`) | Stdlib **observe → Hypotheses(v2)** + **legacy v1** scoring + Proxy Guard CLI. |
 | `network_agent/` + `hybrid_frontend/` | Local FastAPI + collector/decision/report flow (see component docstrings). |
 | `backend/` + `frontend/` + `agent/` | Optional SaaS-style demo (FastAPI + Next.js + syncing agent), not required for batch repair. |
 
@@ -26,7 +26,7 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 ## Audit notes for reviewers
 
 - **Batch path**: Timestamped logs land under `logs/`; compare before/after artifacts when validating a repair.
-- **`python -m src` path**: Inspect `reports/last_diagnosis.json` and `logs/decision_audit.jsonl` for deterministic evidence and command labels.
+- **`python -m src` path**: Inspect `reports/last_diagnosis.json`, `reports/last_diagnosis_live.json`, `logs/decision_audit.jsonl`, `logs/network_snapshots.jsonl`, `logs/repair_audit.jsonl`, and `reports/snapshots/` for deterministic evidence, live hypothesis exports, snapshot history, and proxy-disable audits.
 - **Hybrid API path**: JSON reports under `reports/` and API payloads include diagnosis evidence; repair execution requires explicit JSON confirmation (see `network_agent/api.py` docstrings).
 
 ## Critical paths (where state changes matter)
@@ -35,6 +35,8 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 | --- | --- | --- |
 | Guided `.bat` repairs | Executes elevated Windows commands after confirmation | Logs under `logs/`, script exit prompts, rerun `auto_diagnose.bat` |
 | `python -m src repair-safe --apply` | First LOW-risk `scripts/*.bat` via `RunAs`; appends feedback JSONL | `logs/decision_feedback.jsonl`, rerun `diagnose` |
+| `python -m src proxy-disable` (confirmed apply) | Mutates HKCU WinINET proxy keys only | Compare `logs/repair_audit.jsonl`, rerun `proxy-status`, capture new `snapshot` |
+| `python -m src diagnose-live` | Writes live diagnosis JSON plus JSONL context | Verify `reports/last_diagnosis_live.json` timestamps vs `logs/decision_audit.jsonl` |
 | Hybrid `POST /repair/execute` | Host shell commands with `confirm: true` | JSON `results` array (`returncode`, stdout/stderr) |
 | SaaS `/diagnose` (optional backend) | SQLite usage metering + persisted rows per call | `/usage`, `/history` responses |
 | Remote agent loop | Repeated HTTP posts with local probes | Backend logs/DB counters; bearer token posture |

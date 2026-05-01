@@ -11,6 +11,23 @@ Beginner-friendly Windows 10/11 network diagnosis and repair scripts for common 
 - Default mode: diagnose first, repair only after confirmation
 - Safety boundary: does not disable adapter bindings and does not reset firewall automatically
 
+## Network Observability & Recovery Agent
+
+This toolkit now exposes a structured **observe → attribute → decide → preview → remediate** path on Windows for DNS, proxy, browser-path, TCP/TLS, Winsock-adjacent, and socket-churn clues. Signals stay local (`reports/`, `logs/`), use deterministic hypotheses (no ML), and reinforce the same conservative safety defaults as `.bat` flows (diagnose-first, typed confirmations for HKCU edits, never automatic firewall resets, never silent adapter disables).
+
+Representative workflows:
+
+```powershell
+python -m src snapshot
+python -m src diagnose-live
+python -m src proxy-status
+python -m src proxy-owner
+python -m src proxy-monitor --interval 5 --jsonl logs/proxy_guard_events.jsonl
+python -m src proxy-disable --dry-run
+```
+
+Companion docs live in `docs/proxy_guard.md`, `docs/localhost_proxy_timeout_case.md`, `docs/process_attribution.md`, and `docs/decision_engine_v2.md`.
+
 ## Decision Architecture v1 (auditable CLI)
 
 Structured decision layer adds **features → scores → explanations → tiered repairs → audit/feedback**.
@@ -38,9 +55,17 @@ Machine identity in audit logs is a **truncated SHA-256 fingerprint** derived fr
 | Command | Purpose |
 | --- | --- |
 | `diagnose` | Probe or load `--fixture`, score, persist `reports/last_diagnosis.json`, append audit JSONL |
-| `explain` | Print the rationale + evidence bullets for last snapshot |
-| `recommend` | Print tier buckets (diagnose / repair-safe / guided / advanced) |
+| `explain` | Print rationale for `last_diagnosis.json` (add `--live` for `last_diagnosis_live.json`) |
+| `recommend` | Print tier buckets (`--live` reads v2 artefact recommendations) |
 | `repair-safe` | Preview safe-tier items; `--apply` can launch the **first LOW-risk `.bat`** after typing `RUN` |
+| `repair-preview` | Preview tiers from **`last_diagnosis_live.json` first**, else fallback to v1 artefact |
+| `repair-apply` | Interactive `RUN` flow for first LOW-tier script (`--dry-run` lists candidates only) |
+| `snapshot` | Persist `reports/snapshots/<UTC>.json` + append `logs/network_snapshots.jsonl` |
+| `diagnose-live` | Build snapshot → v2 hypotheses → `reports/last_diagnosis_live.json` + richer JSONL |
+| `proxy-status` | HKCU WinINET proxy normalization (`--json` machine-readable for APIs) |
+| `proxy-owner` | Listener attribution for localhost proxy ports (`netstat`, `tasklist`, optional CIM) |
+| `proxy-monitor` | Poll registry deltas (optional `--jsonl` sink) |
+| `proxy-disable` | Typed `DISABLE_PROXY` confirmation; WinINET HKCU-only (`--clear-server` optional) |
 | `feedback` | Persist outcome rows for calibration (`diagnosis_id`, action, outcome) |
 | `export-report` | Human-readable plaintext under `reports/` |
 
@@ -254,6 +279,12 @@ Common examples:
 | `classify_root_cause.bat` | Decision | Automatically infers root cause from diagnostic data. |
 | `recommend_fix.bat` | Decision | Suggests safest fix based on diagnosis. |
 | `decision_engine.bat` | Decision | Python decision architecture (`diagnose`, `explain`, `recommend`, `repair-safe`, `feedback`, `export-report`). |
+| `snapshot_network.bat` | Observability | Writes `reports/snapshots/` JSON via Python `snapshot`. |
+| `diagnose_live.bat` | Observability | Runs `python -m src diagnose-live` (+ v2 artefacts). |
+| `proxy_status.bat` | Observability | Human-readable HKCU proxy status. |
+| `proxy_owner.bat` | Attribution | Listener owners for localhost proxy ports. |
+| `proxy_monitor.bat` | Observability | Wrapper for CLI `proxy-monitor` (supports interval + optional JSONL path). |
+| `proxy_disable.bat` | Guided repair | Launcher for typed-phrase HKCU proxy disable (passes `%*` to CLI). |
 | `check_network.bat` | Read-only | Run a simpler manual connectivity check. |
 | `monitor_connections.bat` | Observability | Real-time TCP connection monitoring. |
 | `anomaly_monitor.bat` | Observability | Detects abnormal connection behavior. |
@@ -299,6 +330,10 @@ For more detail, read `docs/safety_model.md`.
 - `docs/troubleshooting_flow.md`: manual troubleshooting flow.
 - `docs/proxy_error.md`: `ERR_PROXY_CONNECTION_FAILED` explanation and fixes.
 - `docs/ping_ok_but_browser_fails.md`: why ping can work while browsers fail.
+- `docs/proxy_guard.md`: Proxy Guard HKCU watcher + JSONL/events.
+- `docs/localhost_proxy_timeout_case.md`: Chromium timeout + localhost proxy walkthrough.
+- `docs/process_attribution.md`: netstat/tasklist/CIM attribution limits.
+- `docs/decision_engine_v2.md`: live hypothesis scoring contract.
 
 ## Repository Layout
 
@@ -311,11 +346,18 @@ Windows-Network-Recovery-Toolkit/
 ├── SECURITY.md
 ├── docs/
 ├── agent/                 # optional SaaS demo agent (unchanged)
-├── src/                   # decision architecture (Python stdlib)
+├── backend/               # optional SaaS/API demo (delegates toolkit routes to `python -m src`)
+├── src/                   # stdlib toolkit + observability (see below)
+│   ├── core/
 │   ├── diagnostics/
+│   ├── observability/
+│   ├── attribution/
+│   ├── proxy_guard/
+│   ├── repair/
 │   ├── decision_engine/
 │   ├── recommendations/
-│   └── logging/
+│   ├── logging/
+│   └── command_handlers.py  # wired from cli.py for v2 ergonomics
 ├── tests/                 # pytest + feature fixtures
 ├── reports/               # generated diagnosis snapshots (gitignored)
 ├── logs/

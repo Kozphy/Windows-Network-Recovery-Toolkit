@@ -25,6 +25,12 @@ Audit Notes:
     Each ``diagnose`` appends one line to ``logs/decision_audit.jsonl`` and
     overwrites ``reports/last_diagnosis.json``. Inspect those files to verify
     scores, evidence, and which probe commands ran.
+
+Live (v2) surfaces:
+    ``snapshot``, ``proxy-*``, ``diagnose-live``, and structured proxy disable previews append or
+    refresh artefacts under ``reports/snapshots/``, ``reports/last_diagnosis_live.json``,
+    ``logs/decision_audit.jsonl``, ``logs/network_snapshots.jsonl``, ``logs/repair_audit.jsonl``,
+    and optionally ``logs/proxy_guard_events.jsonl`` mirroring README paths.
 """
 
 from __future__ import annotations
@@ -43,6 +49,16 @@ from typing import Any
 from .diagnostics.collector import collect_features, load_features_json
 from .diagnostics.features import FeatureVector
 from .decision_engine.scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
+from .command_handlers import (
+    cmd_diagnose_live,
+    cmd_proxy_disable,
+    cmd_proxy_monitor,
+    cmd_proxy_owner,
+    cmd_proxy_status,
+    cmd_repair_apply,
+    cmd_repair_preview,
+    cmd_snapshot,
+)
 from .logging.audit import append_jsonl
 from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
 from .recommendations.engine import RecommendationBundle, build_recommendations
@@ -362,6 +378,23 @@ def cmd_explain(args: argparse.Namespace) -> int:
         Shell exit ``0``.
     """
     repo = _repo_root(args.repo_root)
+    if getattr(args, "live", False):
+        live_path = repo / "reports" / "last_diagnosis_live.json"
+        if not live_path.is_file():
+            print("No last_diagnosis_live.json — run diagnose-live first.")
+            return 1
+        payload = json.loads(live_path.read_text(encoding="utf-8"))
+        print(payload.get("explain_paragraph") or "No explanation available.")
+        print("\nEvidence:")
+        for line in payload.get("primary_evidence") or []:
+            print(f"- {line}")
+        neg = payload.get("negative_evidence") or []
+        if neg:
+            print("\nNegative evidence (less likely explanations):")
+            for line in neg:
+                print(f"- {line}")
+        return 0
+
     payload = _read_last_diagnosis(repo)
     sentence = payload.get("explain_sentence", "")
     print(sentence if sentence else "No explanation available.")
@@ -382,6 +415,27 @@ def cmd_recommend(args: argparse.Namespace) -> int:
         Shell exit ``0``.
     """
     repo = _repo_root(args.repo_root)
+    if getattr(args, "live", False):
+        live_path = repo / "reports" / "last_diagnosis_live.json"
+        if not live_path.is_file():
+            print("No last_diagnosis_live.json — run diagnose-live first.")
+            return 1
+        payload = json.loads(live_path.read_text(encoding="utf-8"))
+        blob = payload.get("recommendations") or {}
+        sections = ("diagnose", "repair_safe", "guided_repair", "advanced_repair")
+        for section in sections:
+            print(section.upper())
+            for item in blob.get(section, []):
+                print(f"  [{item.get('risk')}] {item.get('title')}")
+                detail = item.get("detail") or ""
+                if detail:
+                    print(f"      {detail}")
+                script = item.get("script")
+                if script:
+                    print(f"      script: {script}")
+            print()
+        return 0
+
     payload = _read_last_diagnosis(repo)
     blob = payload.get("recommendations") or {}
     sections = ("diagnose", "repair_safe", "guided_repair", "advanced_repair")
@@ -681,13 +735,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_diag.add_argument("--json", action="store_true", help="Print machine-readable payload after summary.")
     p_diag.set_defaults(func=cmd_diagnose)
 
-    sub.add_parser("explain", help="Print natural-language rationale for the last diagnose run.").set_defaults(
-        func=cmd_explain
+    p_exp_sub = sub.add_parser("explain", help="Print rationale for last diagnose or diagnose-live.")
+    p_exp_sub.add_argument(
+        "--live",
+        action="store_true",
+        help="Use reports/last_diagnosis_live.json (diagnose-live) instead of last_diagnosis.json.",
     )
+    p_exp_sub.set_defaults(func=cmd_explain)
 
-    sub.add_parser("recommend", help="Show tiered recommendations from last diagnose run.").set_defaults(
-        func=cmd_recommend
+    p_rec_sub = sub.add_parser("recommend", help="Show tiered recommendations from last diagnose run.")
+    p_rec_sub.add_argument(
+        "--live",
+        action="store_true",
+        help="Use live v2 recommendations from last_diagnosis_live.json.",
     )
+    p_rec_sub.set_defaults(func=cmd_recommend)
 
     p_safe = sub.add_parser(
         "repair-safe",
@@ -710,6 +772,58 @@ def build_parser() -> argparse.ArgumentParser:
     p_exp = sub.add_parser("export-report", help="Render a plaintext report under reports/.")
     p_exp.add_argument("--out", type=str, default=None, help="Custom output filename.")
     p_exp.set_defaults(func=cmd_export_report)
+
+    p_ps = sub.add_parser("proxy-status", help="Show HKCU WinINET proxy keys with parsed mode.")
+    p_ps.add_argument("--json", dest="emit_json", action="store_true", help="Print merged JSON mapping.")
+    p_ps.set_defaults(func=cmd_proxy_status)
+
+    p_po = sub.add_parser("proxy-owner", help="Resolve netstat listener owners for localhost proxy port.")
+    p_po.add_argument("--port", type=int, default=None, help="Override port (defaults to parsed ProxyServer).")
+    p_po.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON attribution block.")
+    p_po.set_defaults(func=cmd_proxy_owner)
+
+    p_pm = sub.add_parser("proxy-monitor", help="Poll HKCU proxy registry for changes (read-only).")
+    p_pm.add_argument("--interval", type=float, default=5.0, help="Seconds between polls (default 5).")
+    p_pm.add_argument("--once", action="store_true", help="Single poll then exit.")
+    p_pm.add_argument(
+        "--jsonl",
+        type=str,
+        default=None,
+        help="Append JSONL events to this path (e.g. logs/proxy_guard_events.jsonl).",
+    )
+    p_pm.set_defaults(func=cmd_proxy_monitor)
+
+    p_pd = sub.add_parser("proxy-disable", help="Preview/apply safe HKCU WinINET proxy disable (typed confirm).")
+    p_pd.add_argument("--dry-run", action="store_true", help="Show planned reg commands only.")
+    p_pd.add_argument(
+        "--clear-server",
+        action="store_true",
+        help='Also ``reg delete`` the ProxyServer value after ProxyEnable=0.',
+    )
+    p_pd.set_defaults(func=cmd_proxy_disable)
+
+    p_sn = sub.add_parser("snapshot", help="Persist full observability JSON under reports/snapshots/.")
+    p_sn.set_defaults(func=cmd_snapshot)
+
+    p_dl = sub.add_parser(
+        "diagnose-live",
+        help="Snapshot + deterministic v2 hypotheses + live recommendations artifact.",
+    )
+    p_dl.add_argument("--json", dest="emit_json", action="store_true", help="Print JSON payload.")
+    p_dl.set_defaults(func=cmd_diagnose_live)
+
+    p_rp = sub.add_parser(
+        "repair-preview",
+        help="Preview repair tiers from latest live or legacy diagnosis artifact.",
+    )
+    p_rp.set_defaults(func=cmd_repair_preview)
+
+    p_ra = sub.add_parser(
+        "repair-apply",
+        help="Interactively launch first LOW-tier script like repair-safe (live or legacy).",
+    )
+    p_ra.add_argument("--dry-run", action="store_true", help="List candidates without elevation.")
+    p_ra.set_defaults(func=cmd_repair_apply)
 
     return parser
 

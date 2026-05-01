@@ -148,6 +148,11 @@ def _https_probe() -> tuple[bool, bool]:
     return code == 0, tls_hint
 
 
+def probe_https_google() -> tuple[bool, bool]:
+    """Public HTTPS HEAD probe for observability modules (curl + TLS keyword hint)."""
+    return _https_probe()
+
+
 def count_in_netstat(keyword: str) -> int:
     """Count ``netstat -an`` lines containing ``keyword`` (case-sensitive substring)."""
     code, out = run_command(["netstat", "-an"])

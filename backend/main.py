@@ -33,6 +33,7 @@ from .db import (
     update_subscription,
 )
 from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
+from .live_observability import router as toolkit_obs_router
 
 
 class DiagnoseRequest(BaseModel):
@@ -75,6 +76,8 @@ class CheckoutRequest(BaseModel):
 
 
 app = FastAPI(title="Windows Network Recovery Toolkit SaaS API", version="0.1.0")
+
+app.include_router(toolkit_obs_router)
 
 app.add_middleware(
     CORSMiddleware,
