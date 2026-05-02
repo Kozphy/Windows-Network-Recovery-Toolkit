@@ -62,3 +62,19 @@ Documentation should be:
 - Consistent with script behavior
 
 When script behavior changes, update the README and related docs in the same change.
+
+## Repository documentation map
+
+High-signal Markdown references (paths relative to repository root):
+
+| Area | Doc |
+| --- | --- |
+| Beginner scripts + Python CLI overview | `README.md` |
+| Decision scoring contract (live/v2) | `docs/decision_engine_v2.md` |
+| Hybrid FastAPI agent + repair policy | `network_agent/api.py` module docstring + `docs/system_architecture.md` |
+| SaaS demo backend (SQLite + Stripe surfaces) | `backend/README.md`, `backend/main.py` module docstring |
+| Operational troubleshooting | `docs/operational_runbook.md`, `docs/troubleshooting_flow.md` |
+| Proxy-first failures | `docs/proxy_error.md`, `docs/ping_ok_but_browser_fails.md` |
+| Safety boundaries | `docs/safety_model.md`, `SECURITY.md` |
+
+Python modules added for structured FailureBlocks document responsibilities inline (`failure_system/` package).

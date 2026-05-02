@@ -6,10 +6,100 @@ Beginner-friendly Windows 10/11 network diagnosis and repair scripts for common 
 
 - Platform: Windows 10 and Windows 11
 - Dependencies (interactive toolkit): built-in Windows commands for `.bat` flows
-- Optional: Python **3.10+** standard library only for the `src/` decision engine (CLI)
+- Optional: Python **3.10+** — `src/` decision engine stays stdlib-only; **`failure_system`** adds Pydantic + FastAPI for FailureBlocks (see `failure_system/requirements.txt`)
 - Primary interface: `.bat` scripts plus `scripts\decision_engine.bat` wrappers
 - Default mode: diagnose first, repair only after confirmation
 - Safety boundary: does not disable adapter bindings and does not reset firewall automatically
+
+## Failure Knowledge System (`failure_system`)
+
+Structured **FailureBlocks** turn raw Windows diagnostics into searchable, ranked knowledge (similar in spirit to Blockify-style idea blocks): signals → causes → confidence → **recommended_fix** with explicit **risk_level**, **safety_boundary**, and **rollback_plan**. Repairs never run from this layer unless a human confirms separate toolkit actions.
+
+### Architecture (text diagram)
+
+```text
+┌─────────────────────┐     ┌──────────────────┐     ┌─────────────────────┐
+│ Diagnostic collector│ ──► │ RuleEngine       │ ──► │ FailureBlock gen    │
+│ (read-only probes)  │     │ (signals→causes) │     │ (typed artefact)    │
+└─────────┬───────────┘     └──────────────────┘     └──────────┬──────────┘
+          │                                                        │
+          │                                                        ▼
+          │                                             ┌─────────────────────┐
+          └────────────────────────────────────────────►│ JSONL shards        │
+                                                        │ data/failure_blocks │
+                                                        │ YYYY-MM-DD.jsonl    │
+                                                        └──────────┬──────────┘
+                                                                   │
+                          ┌────────────────────────────────────────┼────────────────────────┐
+                          ▼                    ▼                     ▼                        │
+                   Search index           FastAPI                    CLI                     │
+                   (token AND match)     `/diagnose` ...           `python -m failure_system`│
+```
+
+### Quick start
+
+```powershell
+cd C:\Users\Zixsa\Kozphy\Windows-Network-Recovery-Toolkit
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r failure_system\requirements.txt
+
+# Single-machine diagnostics + persist FailureBlock JSONL (no repairs)
+python -m failure_system diagnose
+python -m failure_system search "browser fails"
+python -m failure_system recommend --query "dns"
+
+# HTTP API (same safety: probes only; no repair execution)
+uvicorn failure_system.api:app --host 127.0.0.1 --port 8010
+```
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Liveness + package version |
+| `POST /diagnose` | Run safe probes; persist FailureBlock JSONL |
+| `GET /failure-blocks` | Recent block summaries (sorted newest first) |
+| `GET /failure-blocks/search?q=` | Full-text token search over stored blocks |
+| `POST /recommend-fix` | Body: `{ "failure_block_id": "<uuid>" }` or `{ "query": "..." }` — returns rationale + risk (no execution) |
+
+Optional: `set FAILURE_SYSTEM_DATA_DIR=C:\path\to\failure_blocks_root` to override the default `<repo>\data\failure_blocks`.
+
+### Example FailureBlock (trimmed)
+
+```json
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "name": "DNS resolution failure",
+  "symptom": "Ping OK but DNS lookup fails.",
+  "observed_signals": ["ping_ip=ok", "nslookup=fail", "curl_https=fail"],
+  "likely_causes": ["DNS resolution failure"],
+  "confidence_score": 0.88,
+  "recommended_fix": "Safe first step: run `scripts/reset_dns.bat` ... after reviewing context.",
+  "risk_level": "low",
+  "safety_boundary": "This Failure Knowledge System runs read-only diagnostics only...",
+  "rollback_plan": "Note prior DNS server list; restore static DNS if changed...",
+  "created_at": "2026-05-02T12:00:00+00:00",
+  "source_logs": ["rules:dns_failure_likely", "explain:..."]
+}
+```
+
+### Example diagnosis flow
+
+1. Operator runs `python -m failure_system diagnose` (or `POST /diagnose`).
+2. Collector runs **safe** commands only: `ping`, `nslookup`, `curl`, `ipconfig /all`, `netsh winhttp show proxy`, `route print`.
+3. **RuleEngine** maps booleans (ping/DNS/HTTPS/proxy) plus optional **intermittent** flag to ranked causes with confidence and narrative explanation.
+4. **FailureBlock** is generated, appended to `data/failure_blocks/<UTC-date>.jsonl`.
+5. Search (`GET /failure-blocks/search?q=` or CLI `search`) retrieves historical blocks; `recommend` surfaces textual fix guidance **without** invoking `.bat` repairs.
+
+### Safety boundary (Failure Knowledge System)
+
+- **No automatic repair**: scripts such as `reset_dns.bat`, `reset_proxy.bat`, Winsock/TCP/IP resets, or firewall changes are never executed by this package.
+- **Risk labels**: each block carries `risk_level` (`low` / `medium` / `high`) for the *recommended human action*, not network uptime.
+- **Rollback**: every block includes rollback notes where state-changing fixes would apply; diagnostics-only runs state that no mutation occurred.
+- **Data hygiene**: JSONL is gitignored; avoid pasting real corporate hostnames or secrets into shared logs.
+
+### Interview explanation (one paragraph)
+
+This adds a **knowledge plane** on top of imperative `.bat` tooling: diagnostics become normalized **FailureBlocks** with provenance-friendly fields (signals, confidence, fix text, risk, rollback). A deterministic **rule engine** replaces opaque scoring with explainable mappings—DNS vs HTTPS-path vs proxy symptoms—stored as append-only **JSONL** for local retrieval and ranking. A thin **FastAPI** and **CLI** expose the same contracts so ops can automate collection while keeping repairs behind explicit human confirmation, matching enterprise safety expectations for platform tooling.
 
 ## Network Observability & Recovery Agent
 
@@ -347,6 +437,8 @@ Windows-Network-Recovery-Toolkit/
 ├── docs/
 ├── agent/                 # optional SaaS demo agent (unchanged)
 ├── backend/               # optional SaaS/API demo (delegates toolkit routes to `python -m src`)
+├── failure_system/        # Failure Knowledge System (FailureBlocks, FastAPI, CLI)
+├── data/failure_blocks/   # local JSONL shards (gitignored `*.jsonl`)
 ├── src/                   # stdlib toolkit + observability (see below)
 │   ├── core/
 │   ├── diagnostics/

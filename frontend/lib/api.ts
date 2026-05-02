@@ -1,12 +1,13 @@
 /**
- * Shared API client helpers for the Next.js frontend.
+ * @file Shared API client helpers for the Next.js frontend (SaaS demo stack).
  *
- * The module centralizes bearer-authenticated JSON requests to the backend API
- * so page-level components can remain focused on rendering and workflow state.
+ * @remarks
+ * Centralizes bearer-authenticated JSON requests to the backend under {@link API_BASE} so route
+ * components focus on UI state rather than fetch boilerplate.
  *
- * Audit Notes:
- * Failures strip response bodies into thrown Errors — log or surface `message`
- * in UI when triaging quota (429) versus auth (401/403) issues.
+ * @auditNotes
+ * Non-OK responses throw `Error` strings containing HTTP status and body text—surface these in UI
+ * logs when distinguishing quota (`429`) from auth failures (`401`/`403`).
  */
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 

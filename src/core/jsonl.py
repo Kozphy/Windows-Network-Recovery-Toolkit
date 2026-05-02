@@ -1,5 +1,17 @@
 """Append-only newline-delimited JSON helpers (UTF-8, no pretty printing).
 
+System placement:
+    Consumed by ``src.logging`` audit/feedback paths and related CLI flows that persist one
+    JSON record per line under ``logs/``.
+
+Schema / validation:
+    Callers supply ``dict[str, Any]`` payloads; this module does not validate keys or strip
+    secrets before writing.
+
+Mutability / staleness:
+    Readers must tolerate partially written final lines after crashes and concurrent
+    appenders—skip malformed lines rather than assuming atomic file replacement.
+
 Each caller owns schema validation; this module only guarantees one JSON object per line.
 """
 

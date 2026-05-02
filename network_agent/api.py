@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """FastAPI boundary for the hybrid agent (collect → score → JSON report → API).
 
 This layer exposes diagnostics and policy-gated repair to ``hybrid_frontend`` and HTTP
@@ -30,6 +28,8 @@ Engineering Notes:
     Paths default to runtime working-directory-relative ``reports/``; operators should start
     the API from repo root unless they symlink or align that directory externally.
 """
+
+from __future__ import annotations
 
 import json
 import subprocess

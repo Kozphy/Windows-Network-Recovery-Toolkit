@@ -61,6 +61,9 @@ logs/*
 reports/*
 !reports/.gitignore
 
+# Failure Knowledge System shards (local knowledge base)
+data/failure_blocks/*.jsonl
+
 # -----------------------------
 # Temp files
 # -----------------------------

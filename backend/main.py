@@ -7,6 +7,17 @@ Key invariants:
     - User-scoped access is enforced through `get_current_user`.
     - Diagnosis requests are usage-metered by organization plan.
     - Billing webhook updates subscription state idempotently by org metadata.
+
+Failure modes:
+    - Misconfigured JWT secret or bypass env yields 401/500 from ``get_current_user``.
+    - ``init_db`` may raise ``sqlite3.Error`` when ``schema.sql`` cannot be executed (permissions,
+      malformed DDL).
+
+Audit Notes:
+    Persisted diagnosis rows and usage counters live in ``backend/toolkit.db`` by default—treat the
+    SQLite file as sensitive operational state for demos.
+    Webhook handling notes duplicate Stripe deliveries explicitly in the ``/webhook`` handler docstring;
+    subscription writes route through ``billing.verify_webhook`` plus DB helpers.
 """
 
 from datetime import datetime
