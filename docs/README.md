@@ -1,5 +1,17 @@
 # Documentation
 
+## Ten-minute orientation (new engineers)
+
+1. Root ``README.md`` — surfaces three tracks: beginner ``.bat`` toolkit, advanced ``python -m src`` CLI (Proxy Guard / network snapshots), optional **Endpoint Reliability Platform** (``platform_core/``, FastAPI ``/platform/*``, ``endpoint_agent``).
+2. ``docs/architecture.md`` + ``failure_block_contract.md`` — Failure Knowledge System signal → FailureBlock flow (read-only remediation from FKS APIs).
+3. ``docs/proxy_guard.md`` + ``docs/proxy_attribution.md`` — HKCU drift, honest attribution boundaries, tooling entry points.
+4. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, preview-first remediation rules, JSONL sinks under ``platform_data/`` (typically gitignored).
+5. Run ``pytest -q`` before changing critical paths — suites stay offline and avoid destructive Windows repair.
+
+Then dive into topical guides below as needed.
+
+---
+
 This folder contains the project guides, runbooks, and troubleshooting references for the **Windows Network Recovery Toolkit** and its **Failure Knowledge System**: guided Windows 10/11 network diagnosis and repair workflows (batch tooling, Python CLIs, structured FailureBlocks, optional demo backend/frontend).
 
 ## Source documentation (quick orientation)
@@ -65,8 +77,12 @@ Reading order (~10 minutes for new engineers): root `README.md` → [`architectu
 | Doc | Topic |
 | --- | --- |
 | [`endpoint_reliability_platform.md`](endpoint_reliability_platform.md) | Vision — toolkit vs platform |
+| [`evidence_pipeline.md`](evidence_pipeline.md) | `evidence/` — attribution inputs + honest telemetry boundary |
+| [`rbac_and_remediation.md`](rbac_and_remediation.md) | Roles vs preview / execute / ingest gates |
+| [`metrics.md`](metrics.md) | `platform_signals.jsonl` KPI names merged into `GET /platform/metrics` |
 | [`platform_architecture.md`](platform_architecture.md) | Diagrams (agent → JSONL → API) |
 | [`platform_api_contract.md`](platform_api_contract.md) | `/platform/*` payloads, RBAC headers |
+| [`demo_walkthrough.md`](demo_walkthrough.md) | Safe demo script incl. attribution fixture hooks |
 | [`safety_and_privacy.md`](safety_and_privacy.md) | Allowed / redacted fields |
 | [`test_strategy.md`](test_strategy.md) | pytest safety boundaries — offline regressions without repair scripts |
 

@@ -134,7 +134,23 @@ def write_default_config(repo_root: Path, record: dict[str, Any]) -> Path:
 
 
 def iter_named_records(repo_root: Path) -> Iterator[dict[str, Any]]:
-    """Yield dictionaries for every well-formed logical row in chronological order."""
+    """Yield sanitized snapshot rows preserving JSONL insertion order.
+
+    Args:
+        repo_root: Repository root locating ``logs/proxy_known_good_snapshots.jsonl``.
+
+    Yields:
+        Dict rows containing ``name`` plus nested ``snapshot`` mapping.
+
+    Raises:
+        None—IO errors propagate only from ``Path.open``.
+
+    Handling of malformed data:
+        Drops blank lines / JSON decode failures / dicts lacking required keys without raising.
+
+    Idempotency:
+        Iterator is repeatable but re-reads file each call—no caching layer.
+    """
     path = snapshots_jsonl_path(repo_root)
     if not path.is_file():
         return

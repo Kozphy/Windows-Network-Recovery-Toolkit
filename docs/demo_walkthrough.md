@@ -35,10 +35,21 @@ Invoke-WebRequest http://127.0.0.1:8000/platform/health -UseBasicParsing | Selec
 | Scenario | Headers |
 |---------|---------|
 | Admin (full remediation + audit) | `X-Operator-Role: admin` |
-| Viewer (reads only — no audit / no preview by default headers) | `X-Operator-Role: viewer` |
-| Auditor | `X-Operator-Role: security_auditor` |
+| Viewer (metrics/incidents/events only) | `X-Operator-Role: viewer` |
+| Operator | `X-Operator-Role: operator` (**preview + dry-run execute**) |
+| Security / audits | `X-Operator-Role: security` (**alias** of **`security_auditor`**) |
 
 `Invoke-WebRequest -Headers @{ "X-Operator-Role"="admin"; "X-Operator-Id"="walkthrough-demo" } http://127.0.0.1:8000/platform/audit`
+
+Augmented KPIs (**`GET /platform/metrics`**) expose portfolio counters (**`proxy_changes_total`**, **`endpoint_heartbeat_total`**, etc.) aggregated from **`platform_signals.jsonl`** — see **`docs/metrics.md`**.
+
+### Optional offline attribution staging
+
+Append JSONL bundles with **`platform_core.storage.append_attribution_context`** (or tests) keyed by **`event_id`**, then call:
+
+`Invoke-WebRequest -Headers @{...} http://127.0.0.1:8000/platform/attribution/<event-id>`
+
+This exercises **`evidence/attribution_engine.py`** boundaries without invoking live collectors.
 
 ---
 

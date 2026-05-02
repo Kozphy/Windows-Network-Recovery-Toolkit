@@ -156,11 +156,16 @@ Structured **privacy-aware** domain model (`platform_core/`), append-only **`pla
 
 Additive layers on top of the same **`platform_data/*.jsonl`** backbone — beginner **`.bat`** flows untouched:
 
-- **Incident clustering** (`platform_core/incidents.py`) feeds **`incident_cluster_count`** / **`affected_endpoint_count`** in **`GET /platform/metrics`** (deterministic grouping by category + signal fingerprint + time window).
-- **RBAC lite** (`platform_core/rbac.py`) gated **`POST /platform/remediation/preview|execute`** + **`GET /platform/audit`** via **`X-Operator-Role`** / **`X-Operator-Id`** (default missing header ⇒ **`operator`**, **`admin`** for live repair + audits in demos).
-- **Remediation registry** (`platform_core/remediation_registry.py`) is the authoritative allowlist (risk tier, **`api_execute_allowed`**, **`manual_only`**, confirmation phrases); legacy action aliases (`reset_firewall` → `firewall_reset_manual_only`) stay compatible with tests.
-- **Metrics plus** aggregates dry-run executions, blocked audit rows, success / false-positive rates when JSONL signals exist — still **purely local** reads.
-- **Dashboard polish** (`frontend/app/platform/page.tsx`) surfaces health, clustered KPI tiles, failure tables, optional preview sandbox, RBAC-role selector (browser `localStorage`), and an explicit safety banner (**no uploads / no silent destructive automation**).
+- **`evidence/`** package (**Sysmon / Procmon / ETW stub**) + **`build_attribution`** honest **`attribution_level`** ladder (`heuristic` → `confirmed_by_eventlog`) surfaced at **`GET /platform/attribution/{event_id}`** with optional **`attribution_context.jsonl`** staging for offline demos.
+- **Collector abstraction + service loop** (`endpoint_agent/collector_abstraction.py`, **`endpoint_agent/service_runner.py`**) → Ctrl+C-aware heartbeat, **`platform_signals.jsonl`** KPI writes, **`endpoint_agent_events.jsonl`**, **`--service`** CLI mode (collectors remain observe-only repair-wise).
+- **Incident clustering + metrics** (`platform_core/incidents.py`, **`platform_core/metrics.compute_platform_metrics`**) extend **`GET /platform/metrics`** with deterministic counters (**`proxy_changes_total`**, **`endpoint_heartbeat_total`**, **`rollback_*`**, attribution averages, **`incident_cluster_count`**, **`affected_endpoint_count`**).
+- **`GET /platform/incidents`** returns clustered failure summaries for dashboard readiness.
+- **RBAC lite** (`platform_core/rbac.py`) — **`viewer`** read-mostly, **`operator`** preview + **`dry_run` execute**, **`admin`** live low/medium allowlisted repair + audit reads, **`security`** header ⇒ auditor reads (**`/platform/audit`**, **`/platform/attribution/*`**) but **no ingestion** / **no remediation previews**.
+- **Ingestion headers** (**heartbeat**, **snapshots**, **failure-events**) require **`operator`** or **`admin`** (security cannot spoof agent writes accidentally in demos).
+- **Remediation registry** (`platform_core/remediation_registry.py`) stays the authoritative allowlist; **high/forbidden** actions remain preview/manual (**firewall**, **adapter disable**, arbitrary shell injection heuristics).
+- **Offline pytest** proves attribution scoring, parsers, RBAC, metrics rollup, remediation preview vs execute, and dry-run safety — **`pytest -q`** (see **`tests/test_evidence_pipeline.py`**, **`tests/test_platform_reliability_rbac_metrics.py`**).
+
+Docs hub: **`docs/evidence_pipeline.md`**, **`docs/rbac_and_remediation.md`**, **`docs/metrics.md`** (plus refreshed **`docs/endpoint_reliability_platform.md`**, **`docs/demo_walkthrough.md`**, **`docs/safety_model.md`**).
 
 ### Install (platform + backend tests)
 
@@ -191,6 +196,7 @@ python -m endpoint_agent --once
 python -m endpoint_agent.agent --once
 python -m endpoint_agent --once --api http://127.0.0.1:8000
 python -m endpoint_agent --loop --interval 30
+python -m endpoint_agent --service --interval 30 --dry-run
 ```
 
 - **`ENDPOINT_AGENT_API`** — default base URL if `--api` omitted.  

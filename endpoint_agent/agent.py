@@ -11,6 +11,7 @@ System placement:
 
 Key invariants:
     * Never launches repair subprocesses from this module—``automatic_repair`` stays ``False``.
+    * ``--service`` forwards to :mod:`endpoint_agent.service_runner` loops without altering remediation posture.
     * Dry-run via CLI or ``ENDPOINT_AGENT_DRY_RUN`` suppresses outbound HTTP only; local JSONL
       appends still occur unless refactored externally.
 
@@ -118,10 +119,21 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Endpoint reliability agent (no auto-repair).")
     p.add_argument("--once", action="store_true", help="Run single cycle (default if --loop omitted).")
     p.add_argument("--loop", action="store_true", help="Repeat cycles until Ctrl+C.")
+    p.add_argument(
+        "--service",
+        action="store_true",
+        help="Service-style heartbeat loop with safe shutdown (uses endpoint_agent/service_runner.py).",
+    )
     p.add_argument("--interval", type=float, default=30.0)
     p.add_argument("--api", default=None, help="Backend base URL, e.g. http://127.0.0.1:8000")
     p.add_argument("--dry-run", action="store_true", help="Do not POST to API.")
     ns = p.parse_args(argv)
+
+    if ns.service:
+        from endpoint_agent.service_runner import run_service
+
+        os.environ["ENDPOINT_AGENT_INTERVAL"] = str(max(5.0, ns.interval))
+        return run_service(cli_api=api_base(ns.api), dry_run_http=ns.dry_run)
 
     base = api_base(ns.api)
     skip = _skip_http_posts(ns.dry_run)

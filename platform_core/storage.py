@@ -173,6 +173,114 @@ def append_remediation_execution(record: dict[str, Any]) -> None:
     append_jsonl(_path("remediation_executions.jsonl"), record)
 
 
+def append_platform_signal(record: dict[str, Any]) -> None:
+    """Append a KPI / telemetry signal row for :mod:`platform_core.metrics` rollups.
+
+    Args:
+        record: Loose JSON mapping; tolerant ``kind``/``signal`` keys drive bucket increments.
+
+    Schema (illustrative, tolerant):
+        * ``kind`` — ``proxy_registry_change`` | ``proxy_enable_transition`` | ``heartbeat`` |
+          ``rollback_preview`` | ``rollback_execute`` | ``rollback_blocked`` |
+          ``attribution_sample`` | ``unknown_actor_marker``
+        * Optional numeric fields such as ``confidence`` for attribution averages.
+
+    Side effects:
+        Creates ``platform_signals.jsonl`` implicitly via append path helper.
+
+    Idempotency:
+        Every call emits a new physical line — dedupe absent by design.
+
+    Audit Notes:
+        Validate suspicious spikes by tailing JSONL—not metrics alone—in case rogue agents spam identical kinds.
+    """
+
+    append_jsonl(_path("platform_signals.jsonl"), record)
+
+
+def append_attribution_record(record: dict[str, Any]) -> None:
+    """Persist immutable attribution payloads emitted by backend GET flows.
+
+    Args:
+        record: Typically :meth:`evidence.models.AttributionResult.as_dict` output including ``event_id``.
+
+    Raises:
+        ``OSError`` from append helper when storage path not writable.
+
+    Audit Notes:
+        Historical rows coexist—readers scanning for latest match must mimic ``find_latest_attribution``.
+    """
+
+    append_jsonl(_path("attribution_records.jsonl"), record)
+
+
+def find_latest_attribution(event_id: str) -> dict[str, Any] | None:
+    """Return the newest attribution row for ``event_id`` if present.
+
+    Args:
+        event_id: Correlates with ``failure_events.jsonl``.
+
+    Returns:
+        Last chronological dict match or ``None`` when absent.
+
+    Complexity:
+        O(n) streaming read—portfolio acceptable; large files need indexing externally.
+
+    Stale handling:
+        Duplicate IDs append verbatim; last encountered row wins semantics.
+
+    Raises:
+        None—parse errors swallowed by :func:`iter_jsonl`.
+    """
+
+    last: dict[str, Any] | None = None
+    for obj in iter_jsonl(_path("attribution_records.jsonl")):
+        if obj.get("event_id") == event_id:
+            last = obj
+    return last
+
+
+def append_attribution_context(record: dict[str, Any]) -> None:
+    """Stage Sysmon/Procmon/registry hints keyed by ``event_id`` for ``GET /platform/attribution``.
+
+    Args:
+        record: Fixture dict minimally containing matching ``event_id`` plus telemetry arrays.
+
+    Side effects:
+        Always appends—even partial fixtures—to preserve audit trail ordering.
+
+    Engineering Notes:
+        Tests supply synthetic contexts; operators should treat file as confidential derived evidence comparable to Tier-2 logs.
+
+    Raises:
+        ``OSError`` if JSONL destination cannot append.
+    """
+
+    append_jsonl(_path("attribution_context.jsonl"), record)
+
+
+def find_attribution_context(event_id: str) -> dict[str, Any] | None:
+    """Return optional evidence bundle pre-staged for an event.
+
+    Duplicate ``event_id`` rows yield last-write chronology identical to attribution storage conventions.
+
+    Returns:
+        Dict context or ``None`` when unstaged—HTTP layer recomputes heuristics absent rows.
+
+    Failure modes:
+        Malformed trailing JSON lines silently dropped per iterator policy.
+
+    Raises:
+        None.
+    """
+
+    last: dict[str, Any] | None = None
+    for obj in iter_jsonl(_path("attribution_context.jsonl")):
+        if obj.get("event_id") == event_id:
+            last = obj
+    return last
+
+
 def list_metrics() -> dict[str, Any]:
     """Aggregate counters and rates from JSONL streams for ``GET /platform/metrics``.
 

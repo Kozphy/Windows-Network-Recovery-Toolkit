@@ -182,3 +182,13 @@ def cluster_failure_events(
 
     out.sort(key=lambda c: (c.last_seen_at, c.cluster_id))
     return out
+
+
+def incident_summaries(
+    events: list[dict[str, Any]],
+    *,
+    window_seconds: int = 7200,
+) -> list[dict[str, Any]]:
+    """Serialize :class:`IncidentCluster` rows to plain dicts for HTTP responses."""
+
+    return [c.model_dump() for c in cluster_failure_events(events, window_seconds=window_seconds)]

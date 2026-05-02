@@ -17,14 +17,14 @@
 | Header | Example | Notes |
 |--------|---------|-------|
 | `X-Operator-Id` | `local-dev-1` | Logged to audit rows as `actor`. |
-| `X-Operator-Role` | `viewer` / `operator` / `admin` / `security_auditor` | Default when omitted: **`operator`** (`PLATFORM_DEFAULT_ROLE`). |
+| `X-Operator-Role` | `viewer` / `operator` / `admin` / `security` / `security_auditor` | **`security` aliases** **`security_auditor`**. Default when omitted: **`operator`**. |
 
 | Role | Permissions |
 |------|-------------|
-| `viewer` | `GET` **health, endpoints, failure-events, metrics** |
-| `operator` | Viewer + `POST` **remediation/preview** + `POST` **execute** **`dry_run:true` only** |
-| `admin` | Operator privileges + **`POST` execute** **`dry_run:false`** (still policy-gated) + **`GET` audit** |
-| `security_auditor` | Viewer reads + **`GET` audit** (no previews / executes) |
+| `viewer` | `GET` **health, endpoints, failure-events, incidents, normalized events, metrics** |
+| `operator` | Viewer + agent **ingestion** (`heartbeat`, snapshots, failure-events) + **`POST remediation/preview`** + **`POST remediation/execute` with `dry_run:true`** + **`GET /platform/attribution/*`** |
+| `admin` | Operator + **`GET` audit** + live **`dry_run:false` execute** (policy + registry gated) |
+| `security_auditor` | Viewer metrics/incidents/events + **`GET` audit** + **`GET` attribution detail — no ingestion/preview** |
 
 ---
 
@@ -39,7 +39,7 @@
 ```json
 {
   "status": "ok",
-  "backend_version": "0.3.0-platform-enterprise-demo",
+  "backend_version": "0.4.0-platform-reliability-prototype",
   "platform_mode": "local_jsonl",
   "safe_mode": true,
   "data_dir": "C:\\...\\platform_data"
@@ -54,7 +54,7 @@
 
 **Purpose:** Register / refresh endpoint identity (**hashed IDs only**).
 
-**RBAC:** open (portfolio agent ingestion).
+**RBAC:** **`operator`** or **`admin`** (viewer/security blocked).
 
 **Request**
 
@@ -81,7 +81,7 @@
 
 **Purpose:** Persist sanitized **`EndpointSnapshot`**.
 
-**RBAC:** open.
+**RBAC:** **`operator`** or **`admin`**.
 
 **Schema:** Matches `platform_core.models.EndpointSnapshot` (**redacted payloads expected**).
 
@@ -146,7 +146,7 @@ When KB shards exist and UUID matches, `found:true` + `failure_block_summary`.
 
 **Purpose:** Append FailureEvent from trusted local agent.
 
-**RBAC:** open (bind localhost in production).
+**RBAC:** **`operator`** or **`admin`** (bind localhost in production).
 
 **Schema:** `platform_core.models.FailureEvent`
 
@@ -229,9 +229,9 @@ When KB shards exist and UUID matches, `found:true` + `failure_block_summary`.
 
 ## GET `/platform/metrics`
 
-**Purpose:** Aggregated counters for dashboard + **incident clustering** demo fields.
+**Purpose:** Aggregated counters for dashboards + KPI signals under **`platform_signals.jsonl`**.
 
-**RBAC:** open.
+**RBAC:** viewer or higher (**headers recommended** — default missing role resolves to **`operator`**, which is allowed).
 
 **Response fields (superset)**
 
@@ -248,8 +248,34 @@ When KB shards exist and UUID matches, `found:true` + `failure_block_summary`.
 | `dry_run_execution_count` | Executions `result==dry_run` |
 | `repair_success_rate` | `success / (success+failure)` executions (null when none) |
 | `false_positive_rate` | `false_positive_events / events` |
+| `proxy_changes_total` / `proxy_enable_transitions_total` | Derived from **`platform_signals.jsonl`** |
+| `unknown_actor_events_total` | Unknown actor markers + boolean flags on signal rows |
+| `attribution_confidence_avg` | Mean of `confidence` samples (signals + `attribution_records.jsonl`) |
+| `rollback_preview_total` / `rollback_execute_total` / `rollback_blocked_total` | Signal kinds for rollback storytelling |
+| `endpoint_heartbeat_total` | Counts `kind=heartbeat` rows (complements `endpoints.jsonl`) |
+| `signals_file` | Resolved path for transparency |
 
 **Failure modes:** empty files → zeros / null rates.
+
+---
+
+## GET `/platform/incidents?limit=N`
+
+**Purpose:** Deterministic incident clusters over current `failure_events.jsonl`.
+
+**RBAC:** viewer or higher.
+
+**Response:** `{ "items": [IncidentCluster…], "total_candidates": <int> }`
+
+---
+
+## GET `/platform/attribution/{event_id}`
+
+**Purpose:** Merge stored `FailureEvent` + optional `attribution_context.jsonl` bundle into an evidence list with `attribution_level` + `confidence`.
+
+**RBAC:** **`operator`**, **`admin`**, or **`security_auditor`**.
+
+**Side effects:** Appends **`attribution_records.jsonl`** (and audits `attribution_resolve`) when `persist` query param is true (**default**).
 
 ---
 

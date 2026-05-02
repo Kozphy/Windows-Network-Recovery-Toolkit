@@ -1,15 +1,18 @@
 "use client";
 
 /**
- * Operator dashboard slice for localhost FastAPI `/platform/*` endpoints (typically `NEXT_PUBLIC_PLATFORM_API`).
+ * Operator-facing Next.js dashboard for the optional Endpoint Reliability Platform prototype (`/platform/*`).
  *
- * @remarks Fetches metrics, remediation previews/replay stubs, RBAC-lite headers persisted in
- * `localStorage`, and surfaced JSON dumps for demos. Requires `NEXT_PUBLIC_PLATFORM_API`; does not
- * upload telemetry to third parties.
+ * Summarizes localhost FastAPI payloads (health, metrics, previews) so demos avoid manual `curl` flows.
  *
- * @remarks Safety boundaries: UI invokes preview/replay HTTPS routes only — never invokes Windows
- * repair scripts locally. Confirm destructive execution only exists server-side (`POST …/execute`)
- * with typed phrases and registry gatekeeping.
+ * @remarks Placement: `frontend/app/platform/page.tsx` route component.
+ * Hits `NEXT_PUBLIC_PLATFORM_API` over HTTP only (no SQLite or local batch execution).
+ *
+ * @remarks Requires `NEXT_PUBLIC_PLATFORM_API`; when unset, surfaces an explicit banner instead of empty fetches.
+ * RBAC-lite headers (`PLATFORM_DEMO_RBAC_ROLE` persisted in `localStorage`) mimic backend `X-Operator-Role`.
+ *
+ * @remarks Mutation paths call FastAPI remediation routes only; never shells to `scripts/*.bat`.
+ * Correlate KPI mismatches with backend `PLATFORM_DATA_DIR` drift or stale operator headers—not silent frontend failure by default.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";

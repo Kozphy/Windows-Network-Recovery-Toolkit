@@ -115,3 +115,8 @@ Real operational artifacts should remain untracked:
 | | Truncated audit fingerprints if policy-sensitive |
 
 When in doubt, **redact** before publishing.
+
+## Evidence-backed attribution boundary (platform)
+
+Structured **`/platform/attribution/*`** payloads explain *detect → correlate → classify evidence strength* but **never** elevate registry polling alone to forensic certainty. Offline demos preload **`platform_data/attribution_context.jsonl`** so Sysmon/Procmon extracts can be exercised without transmitting raw telemetry. High-risk remediation (firewall reset, opaque shell, arbitrary adapter disables) stays **blocked** from autonomous API paths—see **`docs/rbac_and_remediation.md`**.
+

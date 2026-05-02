@@ -23,6 +23,8 @@ RiskName = Literal["read_only", "low", "medium", "high", "forbidden"]
 
 OperatorRole = Literal["viewer", "operator", "admin", "security_auditor"]
 
+# Alias "security" headers normalize to security_auditor in :mod:`platform_core.rbac`.
+
 
 class SignalSnapshot(BaseModel):
     """Redacted telemetry slice — extra keys tolerated for deterministic fixtures/tests."""

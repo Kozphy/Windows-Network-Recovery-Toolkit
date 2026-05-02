@@ -84,3 +84,7 @@ python -m src proxy-rollback --from-snapshot .\config\last_known_good_proxy.json
 
 No adapter disable • no firewall resets • previews default until typed confirms • heuristic confidence never claims forensic certainty • supplemental evidence imports only uplift scores marginally.
 
+## Platform-aligned evidence package (`evidence/`)
+
+The separate **`evidence/`** Python package (used by **`GET /platform/attribution/{event_id}`**) re-states the same honest boundary for API consumers: **`heuristic`** unless Sysmon (**EID 13**) / Procmon / ETW-shaped rows are supplied. Details: **`docs/evidence_pipeline.md`**.
+

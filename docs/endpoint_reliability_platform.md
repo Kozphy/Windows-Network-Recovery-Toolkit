@@ -16,7 +16,16 @@
 
 ## Endpoint agent
 
-A thin Python module (`endpoint_agent/`) runs **read-only** collection (reusing `failure_system` collectors where possible), builds **sanitized** `EndpointSnapshot` rows, optional **heartbeat**, and optional **POST** to **localhost** FastAPI only.
+A thin Python module (`endpoint_agent/`) runs **observe-only** collection (reusing `failure_system` collectors where possible via **`FKSCycleCollector`**), emits **heartbeat** KPI signals, appends **`endpoint_agent_events.jsonl`**, and optionally **POST**s sanitized payloads to **localhost** FastAPI.
+
+**Windows service-shaped loop:**
+
+```powershell
+python -m endpoint_agent --service --interval 60 --dry-run           # HTTPS suppressed; still writes KPI JSONL locally
+python -m endpoint_agent --service --interval 60 --api http://127.0.0.1:8000
+```
+
+`endpoint_agent/service_runner.py` installs SIGINT-safe shutdown coordinators; **`ENDPOINT_AGENT_DRY_COLLECTORS=1`** short-circuits heavy collectors while emitting heartbeats (fixture / lab mode).
 
 ## Telemetry normalization
 
@@ -61,3 +70,6 @@ Incremental delivery aligns with staged platform design (this repo ships the com
 | 8 | **`frontend/app/platform/page.tsx`** |
 | 9 | **`tests/fixtures/platform/`**, **`python -m platform_core.demo`**, **`scripts/demo_platform_flow.bat`** |
 | 10–11 | **`tests/test_*`**, **`.github/workflows/ci.yml`**, **`docs/interview_case_study.md`** |
+| **12** | **`evidence/`** pipeline + **`GET /platform/attribution/{event_id}`** + **`compute_platform_metrics` KPI merge** (**`platform_signals.jsonl`**) |
+
+API surface additions (portfolio): **`GET /platform/incidents`**, **`GET /platform/metrics`** (extended counters), attribution route above — each documented in **`docs/rbac_and_remediation.md`** and **`docs/evidence_pipeline.md`**.

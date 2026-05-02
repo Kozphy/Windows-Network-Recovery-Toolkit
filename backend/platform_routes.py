@@ -38,14 +38,16 @@ Idempotency:
 
 Routes (summary):
     * ``GET /platform/health`` — build metadata + JSONL directory.
-    * ``POST /platform/agent/heartbeat`` — register endpoint identity.
+    * ``POST /platform/agent/heartbeat`` — register endpoint identity (**operator/admin** headers).
     * ``POST /platform/snapshots`` — ingest :class:`~platform_core.models.EndpointSnapshot`.
     * ``GET /platform/endpoints`` / ``GET /platform/endpoints/{id}`` — latest merged heartbeats.
-    * ``GET/POST .../failure-events`` — list/ingest :class:`~platform_core.models.FailureEvent`.
+    * ``GET/POST .../failure-events`` — list / ingest :class:`~platform_core.models.FailureEvent` (POST **operator/admin**).
     * ``POST /platform/remediation/preview|execute`` — policy-gated remediation pipeline.
-    * ``GET /platform/audit`` — recent audit rows (RBAC reader role).
-    * ``GET /platform/metrics`` — aggregate counters scanning JSONL (demo scale).
-    * ``GET /platform/events`` — normalized envelopes (requires operator+/RBAC simulation).
+    * ``GET /platform/audit`` — recent audit rows (**admin/security** readers).
+    * ``GET /platform/metrics`` — aggregate counters (:func:`~platform_core.metrics.compute_platform_metrics` merge).
+    * ``GET /platform/incidents`` — deterministic clustered failure timelines (viewer-capable RBAC tier).
+    * ``GET /platform/attribution/{event_id}`` — evidence fused ``AttributionResult`` payload + optional persistence.
+    * ``GET /platform/events`` — normalized envelopes (viewer+ headers).
     * ``GET /platform/policy/summary`` — registry roll-up for dashboards.
     * ``POST /platform/replay/preview`` — inline replay summaries (local-only-safe).
 
@@ -72,7 +74,12 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from evidence.attribution_engine import build_attribution, parse_sysmon_sequence
+from evidence.procmon_importer import ProcmonRegistryWrite, iter_procmon_registry_writes_from_csv
+
 from platform_core.audit import write_audit
+from platform_core.incidents import incident_summaries
+from platform_core.metrics import compute_platform_metrics
 from platform_core.models import (
     EndpointIdentity,
     EndpointSnapshot,
@@ -93,7 +100,12 @@ from platform_core.rbac import (
     DemoPrincipal,
     assert_can_execute,
     assert_can_preview,
+    assert_can_read_attribution,
     assert_can_read_audit,
+    assert_can_read_incidents,
+    assert_can_read_metrics,
+    assert_can_read_normalized_events,
+    assert_can_write_platform_payload,
     parse_demo_principal,
 )
 from platform_core.remediation_registry import get_remediation_action
@@ -103,12 +115,14 @@ from platform_core.remediation import allowlisted_script
 from platform_core.event_bus import default_normalized_events_path, read_events
 from platform_core.replay.runner import ReplaySummary, summarize_inline
 from platform_core.storage import (
+    append_attribution_record,
     append_failure_event,
     append_remediation_execution,
     append_remediation_preview,
     append_snapshot,
+    find_attribution_context,
     find_by_id,
-    list_metrics,
+    iter_jsonl,
     platform_data_dir,
     read_recent_jsonl,
     upsert_endpoint,
@@ -118,7 +132,7 @@ from platform_core.storage import (
 router = APIRouter(prefix="/platform", tags=["platform"])
 
 SAFE_MODE = os.environ.get("PLATFORM_SAFE_MODE", "1") != "0"
-BACKEND_VERSION = "0.3.0-platform-enterprise-demo"
+BACKEND_VERSION = "0.4.0-platform-reliability-prototype"
 
 
 def get_demo_principal(
@@ -129,8 +143,8 @@ def get_demo_principal(
 
     Args:
         x_operator_id: Optional ``X-Operator-Id`` header (portfolio demo identifier).
-        x_operator_role: Optional ``X-Operator-Role`` header controlling preview vs execute vs
-            audit readability.
+        x_operator_role: Optional ``X-Operator-Role`` header controlling preview vs execute vs ingestion.
+            Strings ``security`` and ``security_auditor`` converge inside :mod:`platform_core.rbac`.
 
     Returns:
         Parsed principal with deterministic defaults documented in :mod:`platform_core.rbac`.
@@ -171,9 +185,13 @@ class HeartbeatIn(BaseModel):
 
 
 @router.post("/agent/heartbeat")
-def agent_heartbeat(body: HeartbeatIn) -> dict[str, Any]:
+def agent_heartbeat(
+    body: HeartbeatIn,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
     """Append an :class:`~platform_core.models.EndpointIdentity` heartbeat plus matching audit row."""
 
+    assert_can_write_platform_payload(principal)
     ident = EndpointIdentity(
         endpoint_id=body.endpoint_id,
         os_family=body.os_family,
@@ -187,9 +205,13 @@ def agent_heartbeat(body: HeartbeatIn) -> dict[str, Any]:
 
 
 @router.post("/snapshots")
-def post_snapshot(snapshot: EndpointSnapshot) -> dict[str, Any]:
+def post_snapshot(
+    snapshot: EndpointSnapshot,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
     """Persist a privacy-scrubbed :class:`~platform_core.models.EndpointSnapshot` row."""
 
+    assert_can_write_platform_payload(principal)
     append_snapshot(snapshot.model_dump())
     write_audit(actor="agent", action="snapshot", target_type="endpoint", target_id=snapshot.endpoint_id)
     return {"stored": True}
@@ -226,7 +248,10 @@ def list_failure_events(limit: int = 100) -> dict[str, Any]:
 
 
 @router.post("/failure-events/ingest")
-def ingest_failure_event(body: FailureEvent) -> dict[str, Any]:
+def ingest_failure_event(
+    body: FailureEvent,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
     """Append one sanitized :class:`~platform_core.models.FailureEvent` originating from collectors.
 
     Side effects:
@@ -235,6 +260,7 @@ def ingest_failure_event(body: FailureEvent) -> dict[str, Any]:
     Note:
         Invalid payloads return FastAPI 422 responses rather than bespoke ``HTTPException`` rows.
     """
+    assert_can_write_platform_payload(principal)
     append_failure_event(body.model_dump())
     write_audit(actor="agent", action="failure_event_ingest", target_type="event", target_id=body.event_id)
     return {"stored": True, "event_id": body.event_id}
@@ -494,10 +520,13 @@ def platform_audit(
 
 
 @router.get("/metrics")
-def platform_metrics() -> dict[str, Any]:
-    """Expose aggregate counters recomputed via :func:`platform_core.storage.list_metrics`."""
+def platform_metrics(
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Expose aggregate counters from JSONL including extended portfolio KPI names."""
 
-    return list_metrics()
+    assert_can_read_metrics(principal)
+    return compute_platform_metrics()
 
 
 @router.get("/events")
@@ -507,10 +536,104 @@ def list_normalized_events(
 ) -> dict[str, Any]:
     """Read privacy-scrubbed normalized events emitted to ``normalized_events.jsonl``."""
 
-    assert_can_preview(principal)
+    assert_can_read_normalized_events(principal)
     path = default_normalized_events_path()
     items, errs = read_events(path, limit=max(1, min(limit, 200)))
     return {"items": items, "parse_errors": errs, "path": str(path)}
+
+
+@router.get("/incidents")
+def list_incidents(
+    limit: int = 50,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Clusters recent :class:`~platform_core.incidents.IncidentCluster` rows deterministically."""
+
+    assert_can_read_incidents(principal)
+    events_path = _path("failure_events.jsonl")
+    rows = list(iter_jsonl(events_path))
+    clusters = incident_summaries(rows)
+    capped = clusters[-max(1, min(limit, 100)) :] if clusters else []
+    return {"items": capped, "total_candidates": len(clusters)}
+
+
+@router.get("/attribution/{event_id}")
+def platform_attribution(
+    event_id: str,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+    persist: bool = True,
+) -> dict[str, Any]:
+    """Evidence-backed attribution for a stored failure-event *id* (+ optional attribution context).
+
+    Persisted bundles in ``platform_data/attribution_context.jsonl`` let offline demos/tests attach
+    Sysmon/Procmon fixtures without querying live ETW/EventLog.
+    """
+
+    assert_can_read_attribution(principal)
+    row = find_by_id(_path("failure_events.jsonl"), "event_id", event_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="failure event not found")
+    summary = str(row.get("summary") or "")
+    ctx = find_attribution_context(event_id) or {}
+    reg = ctx.get("registry_context") if isinstance(ctx.get("registry_context"), dict) else {}
+    listeners = ctx.get("listeners") if isinstance(ctx.get("listeners"), list) else []
+    inventory = ctx.get("process_inventory") if isinstance(ctx.get("process_inventory"), dict) else {}
+    parent = ctx.get("parent_process") if isinstance(ctx.get("parent_process"), dict) else {}
+    sysmon_dicts = ctx.get("sysmon") if isinstance(ctx.get("sysmon"), list) else []
+    etw_ev = ctx.get("etw_events") if isinstance(ctx.get("etw_events"), list) else []
+
+    proc_rows: list[Any] = []
+    csv_txt = ctx.get("procmon_csv")
+    if isinstance(csv_txt, str):
+        proc_rows.extend(list(iter_procmon_registry_writes_from_csv(csv_txt)))
+    embedded = ctx.get("procmon")
+    if isinstance(embedded, list):
+        for raw in embedded:
+            if isinstance(raw, dict):
+                proc_rows.append(
+                    ProcmonRegistryWrite(
+                        process_name=str(raw.get("Process Name") or raw.get("process_name") or ""),
+                        operation=str(raw.get("Operation") or "RegSetValue"),
+                        path=str(raw.get("Path") or ""),
+                        detail=str(raw.get("Detail") or ""),
+                    ),
+                )
+
+    reg_ctx: dict[str, Any] | None = None
+    if reg:
+        reg_ctx = dict(reg)
+    elif isinstance(ctx.get("registry"), dict):
+        reg_ctx = dict(ctx["registry"])  # type: ignore[arg-type]
+
+    sysmon_ev = (
+        parse_sysmon_sequence([dict(r) for r in sysmon_dicts if isinstance(r, dict)])
+        if sysmon_dicts
+        else []
+    )
+
+    res = build_attribution(
+        event_id=event_id,
+        failure_summary=summary,
+        registry_context=reg_ctx,
+        process_inventory=inventory if inventory else {},
+        parent_process=parent if parent else None,
+        listeners=listeners if listeners else [],
+        sysmon_events=sysmon_ev,
+        procmon_rows=proc_rows,
+        etw_events=[dict(e) for e in etw_ev if isinstance(e, dict)],
+    )
+    payload = res.as_dict()
+    if persist:
+        append_attribution_record(payload)
+        write_audit(
+            actor=principal.operator_id,
+            action="attribution_resolve",
+            target_type="failure_event",
+            target_id=event_id,
+            decision="",
+            rationale=res.attribution_level,
+        )
+    return payload
 
 
 @router.get("/policy/summary")
