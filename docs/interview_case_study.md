@@ -1,5 +1,12 @@
 # From Windows Repair Scripts to Endpoint Reliability Platform
 
+## STAR walkthrough (elevator + deep dive)
+
+- **Situation:** Windows users frequently hit “looks online, browser broken” failures caused by proxy/DNS/TLS layers, while imperative repair scripts risk silent, irreversible network mutations.
+- **Task:** Keep beginner `.bat` ergonomics, but add structured evidence, deterministic scoring, and explicit policy boundaries before any repair.
+- **Action:** Layer a Failure Knowledge System (`failure_system/`) and `python -m src` diagnostics, then prototype an **Endpoint Reliability Platform** (`platform_core/` + `backend` `/platform/*` + `endpoint_agent/`) with append-only JSONL, RBAC-lite, allowlist-only remediation, dry-run defaults, and honest attribution tiers in `evidence/`.
+- **Result:** Interview-ready story: **collect → snapshot → detect drift → attribute → policy → preview → audit → dashboard**, with regression tests proving firewall/adapter/arbitrary shell stays blocked from API execution unless policy explicitly allows preview-only paths.
+
 ## 1. Problem
 
 Windows often shows “connected” while **browser traffic fails** because of **DNS**, **WinINET/WinHTTP proxy**, **TCP/TLS path**, or **browser-only** issues. One-size-fits-all “repair” scripts can **mutate network state** without enough **evidence**, leading to **wrong fixes** and **hard-to-debug regressions**.
@@ -78,4 +85,4 @@ For scripted guard loops, **`python -m src proxy-guard`** now distinguishes **po
 - Remote **policy sync** (still **no arbitrary remote command** execution).
 - Incident **clustering** across endpoints and richer **dashboards**.
 
-See also: **`docs/fleet_architecture.md`**, **`docs/endpoint_reliability_platform.md`**, **`docs/platform_architecture.md`**.
+See also: **`docs/fleet_architecture.md`**, **`docs/endpoint_reliability_platform.md`**, **`docs/platform_architecture.md`**, **[`architecture_platform.md`](architecture_platform.md)**, **[`demo_script.md`](demo_script.md)**.

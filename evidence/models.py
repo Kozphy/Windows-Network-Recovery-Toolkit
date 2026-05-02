@@ -23,7 +23,39 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-AttributionLevel = Literal["unknown", "heuristic", "evidence_supported", "confirmed_by_eventlog"]
+AttributionLevel = Literal[
+    "unknown",
+    "heuristic",
+    "listener_match",
+    "procmon_confirmed",
+    "sysmon_confirmed",
+    "etw_confirmed",
+]
+
+
+def attribution_level_aliases() -> dict[str, AttributionLevel]:
+    """Map deprecated serialized labels onto canonical :data:`AttributionLevel` literals."""
+
+    return {
+        "evidence_supported": "procmon_confirmed",
+        "confirmed_by_eventlog": "sysmon_confirmed",
+    }
+
+
+def coerce_attribution_level(raw: str) -> AttributionLevel:
+    aliases = attribution_level_aliases()
+    if raw in aliases:
+        return aliases[raw]
+    if raw in (
+        "unknown",
+        "heuristic",
+        "listener_match",
+        "procmon_confirmed",
+        "sysmon_confirmed",
+        "etw_confirmed",
+    ):
+        return raw  # type: ignore[return-value]
+    return "unknown"
 
 
 @dataclass(frozen=True)
@@ -50,7 +82,7 @@ class AttributionResult:
         event_id: Mirrors platform failure ingestion identifier.
         candidate_actor: Executable name/path fragment—**hypothesis**, not adjudicated malware verdict.
         confidence: Float ``0…1`` clamped scorer output.
-        attribution_level: Discrete strength ladder (unknown/heuristic/evidence_supported/confirmed_by_eventlog).
+        attribution_level: Discrete ladder (unknown → heuristic → listener_match → procmon/sysmon/etw confirmed).
         evidence: Ordered items explaining score components.
         notes: Free-text caveats—including honest-boundary disclaimers—safe for auditors.
     """

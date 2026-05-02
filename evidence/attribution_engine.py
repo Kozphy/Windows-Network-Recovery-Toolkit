@@ -116,8 +116,8 @@ def build_attribution(
 ) -> AttributionResult:
     """Compute structured attribution respecting telemetry strength boundaries.
 
-    Lacking Sysmon/Procmon rows, expect ``heuristic`` outputs with ``Honest_boundary`` explanatory text;
-    optional ETW dictionaries may still elevate to ``evidence_supported`` when keywords align (see body).
+    Lacking Sysmon/Procmon rows, expect ``heuristic`` or ``listener_match`` tiers with explanatory text;
+    optional ETW dictionaries may elevate to ``etw_confirmed`` when keyword heuristics align (see body).
 
     Args:
         event_id: Correlates to platform :class:`~platform_core.models.FailureEvent`.
@@ -233,22 +233,31 @@ def build_attribution(
         candidate = confirmed_image.split("\\")[-1] if "\\" in confirmed_image else confirmed_image
         score += 0.28
         if sysmon_events and any(registry_event_concerns_internet_settings(s) for s in sysmon_events):
-            level = "confirmed_by_eventlog"
+            level = "sysmon_confirmed"
             score += 0.12
-            notes.append("Structured telemetry (Sysmon registry) corroborates a writer image path.")
+            notes.append(
+                "Structured telemetry (Sysmon registry) corroborates a writer image path — not a malware verdict.",
+            )
         elif procmon_rows:
-            level = "evidence_supported"
+            level = "procmon_confirmed"
             score += 0.05
             notes.append("Procmon registry write rows corroborate a writing process name.")
         else:
-            level = "evidence_supported"
-            notes.append("ETW-shaped evidence corroborates activity; treat as weaker than Sysmon.")
+            level = "etw_confirmed"
+            notes.append(
+                "ETW-shaped evidence corroborates registry/proxy-adjacent activity; weaker than Sysmon EID13.",
+            )
 
     elif has_structured_telemetry:
-        level = "evidence_supported"
+        level = "heuristic"
         score += 0.05
         notes.append(
             "Telemetry rows present but did not correlate to proxy registry targets; score capped.",
+        )
+    elif _listener_match(listeners, proxy_server):
+        level = "listener_match"
+        notes.append(
+            "Listener port aligns with ProxyServer tokens — correlation only; does not identify the registry writer.",
         )
     else:
         level = "heuristic"

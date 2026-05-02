@@ -2,11 +2,13 @@
 
 ## Ten-minute orientation (new engineers)
 
-1. Root ``README.md`` — surfaces three tracks: beginner ``.bat`` toolkit, advanced ``python -m src`` CLI (Proxy Guard / network snapshots), optional **Endpoint Reliability Platform** (``platform_core/``, FastAPI ``/platform/*``, ``endpoint_agent``).
-2. ``docs/architecture.md`` + ``failure_block_contract.md`` — Failure Knowledge System signal → FailureBlock flow (read-only remediation from FKS APIs).
-3. ``docs/proxy_guard.md`` + ``docs/proxy_attribution.md`` — HKCU drift, honest attribution boundaries, tooling entry points.
-4. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, preview-first remediation rules, JSONL sinks under ``platform_data/`` (typically gitignored).
-5. Run ``pytest -q`` before changing critical paths — suites stay offline and avoid destructive Windows repair.
+1. Root ``README.md`` — Interview-oriented landing (problem → demo → architecture → safety) + pointers to **[`cli_reference.md`](cli_reference.md)** for long command lists.
+2. **[`architecture_platform.md`](architecture_platform.md)** + [`platform_architecture.md`](platform_architecture.md) — platform Mermaid + agent → JSONL → API diagrams.
+3. **[`demo_script.md`](demo_script.md)** — safe 5–8 minute live demo with **fleet** + dashboard.
+4. ``docs/architecture.md`` + ``failure_block_contract.md`` — Failure Knowledge System signal → FailureBlock flow (read-only remediation from FKS APIs).
+5. ``docs/proxy_guard.md`` + ``docs/proxy_attribution.md`` — HKCU drift, honest attribution boundaries, tooling entry points.
+6. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, ingest aliases, remediation rules.
+7. Run ``pytest -q`` before changing critical paths — suites stay offline and avoid destructive Windows repair.
 
 Then dive into topical guides below as needed.
 
@@ -76,6 +78,9 @@ Reading order (~10 minutes for new engineers): root `README.md` → [`architectu
 
 | Doc | Topic |
 | --- | --- |
+| [`architecture_platform.md`](architecture_platform.md) | Platform diagrams + pipeline vocabulary |
+| [`cli_reference.md`](cli_reference.md) | Long CLI / agent / uvicorn inventories |
+| [`demo_script.md`](demo_script.md) | Safe local demo including `demo_fleet` |
 | [`endpoint_reliability_platform.md`](endpoint_reliability_platform.md) | Vision — toolkit vs platform |
 | [`evidence_pipeline.md`](evidence_pipeline.md) | `evidence/` — attribution inputs + honest telemetry boundary |
 | [`rbac_and_remediation.md`](rbac_and_remediation.md) | Roles vs preview / execute / ingest gates |

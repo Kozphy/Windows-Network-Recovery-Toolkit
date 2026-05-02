@@ -34,7 +34,7 @@ import time
 from platform_core.policy import build_preview
 from platform_core.storage import append_failure_event, append_snapshot, platform_data_dir
 
-from .client import post_json
+from .client import post_json_with_retry
 from .collect import collect_endpoint_cycle
 from .heartbeat import build_identity
 
@@ -70,7 +70,7 @@ def run_cycle(*, base_api: str | None, skip_http: bool) -> dict[str, object]:
         Appends snapshot + failure-event JSONL rows, prints JSON summary, may issue three POSTs.
 
     Failure modes:
-        HTTP failures return error-shaped dict leaves from :func:`~endpoint_agent.client.post_json`;
+        HTTP failures return error-shaped dict leaves from :func:`~endpoint_agent.client.post_json_with_retry`;
         collectors may emit placeholder failure events when imports/platforms error (handled inside
         :func:`~endpoint_agent.collect.collect_endpoint_cycle`).
     """
@@ -100,9 +100,9 @@ def run_cycle(*, base_api: str | None, skip_http: bool) -> dict[str, object]:
     sync: dict[str, object] | None = None
     if base_api and not skip_http:
         sync = {
-            "heartbeat": post_json(base_api, "/platform/agent/heartbeat", ident.model_dump()),
-            "snapshot": post_json(base_api, "/platform/snapshots", cycle["endpoint_snapshot"]),
-            "failure_event": post_json(base_api, "/platform/failure-events/ingest", cycle["failure_event"]),
+            "heartbeat": post_json_with_retry(base_api, "/platform/ingest/heartbeat", ident.model_dump()),
+            "snapshot": post_json_with_retry(base_api, "/platform/ingest/snapshot", cycle["endpoint_snapshot"]),
+            "failure_event": post_json_with_retry(base_api, "/platform/ingest/failure-event", cycle["failure_event"]),
         }
         out["api_sync"] = sync
 

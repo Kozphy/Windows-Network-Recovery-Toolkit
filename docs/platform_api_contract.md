@@ -152,6 +152,16 @@ When KB shards exist and UUID matches, `found:true` + `failure_block_summary`.
 
 **Response:** `{ "stored": true, "event_id": "..." }`
 
+### Canonical **`/platform/ingest/*`** aliases
+
+| Canonical path | Legacy equivalent |
+| --- | --- |
+| `POST /platform/ingest/heartbeat` | `POST /platform/agent/heartbeat` |
+| `POST /platform/ingest/snapshot` | `POST /platform/snapshots` |
+| `POST /platform/ingest/failure-event` | `POST /platform/failure-events/ingest` |
+
+Request bodies are identical — prefer **`/ingest/*`** naming in new agents/portfolio narration.
+
 ---
 
 ## POST `/platform/remediation/preview`

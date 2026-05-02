@@ -98,7 +98,19 @@ def test_attribution_confirmed_by_sysmon_path() -> None:
         registry_context={"after": {"ProxyEnable": "1"}},
         listeners=[{"address": "", "port": "8899"}],
     )
-    assert res.attribution_level == "confirmed_by_eventlog"
+    assert res.attribution_level == "sysmon_confirmed"
+
+
+def test_attribution_listener_match_without_structured_telemetry() -> None:
+    res = build_attribution(
+        event_id="e-listener",
+        registry_context={
+            "before": {"ProxyEnable": "0"},
+            "after": {"ProxyEnable": "1", "ProxyServer": "127.0.0.1:7788"},
+        },
+        listeners=[{"address": "127.0.0.1", "port": "7788"}],
+    )
+    assert res.attribution_level == "listener_match"
 
 
 def test_stub_etw_reader_drain_batches() -> None:

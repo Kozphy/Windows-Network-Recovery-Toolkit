@@ -157,7 +157,13 @@ def test_attribution_route_with_fixture_context(admin_client: TestClient) -> Non
     assert r.status_code == 200
     body = r.json()
     assert body["event_id"] == "attrib-evt-1"
-    assert body["attribution_level"] in ("confirmed_by_eventlog", "evidence_supported", "heuristic")
+    assert body["attribution_level"] in (
+        "sysmon_confirmed",
+        "procmon_confirmed",
+        "etw_confirmed",
+        "heuristic",
+        "listener_match",
+    )
     assert isinstance(body["confidence"], (int, float))
 
 

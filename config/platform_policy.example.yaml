@@ -1,0 +1,8 @@
+# Optional portfolio hints mirrored by platform_policy.example.json
+# Parsed when you extend load_policy_hints(); default install uses JSON + stdlib only.
+developer_proxy_allowlist_ports:
+  - 7890
+  - 8888
+localhost_proxy_requires_alert: true
+unsigned_path_alert_only: true
+rollback_requires_confirmation: true

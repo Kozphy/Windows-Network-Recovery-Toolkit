@@ -86,6 +86,8 @@ reports/*
 platform_data/*
 !platform_data/.gitignore
 
+platform_data_fleet_demo/
+
 data/failure_blocks/*.jsonl
 
 # -----------------------------

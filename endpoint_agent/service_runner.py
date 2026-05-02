@@ -235,15 +235,15 @@ def run_service_loop(
                 and isinstance(cycle, dict)
             ):
                 try:
-                    from endpoint_agent.client import post_json
+                    from endpoint_agent.client import post_json_with_retry
 
-                    post_json(cfg.api_base, "/platform/agent/heartbeat", heartbeat_payload)
+                    post_json_with_retry(cfg.api_base, "/platform/ingest/heartbeat", heartbeat_payload)
                     es = cycle.get("endpoint_snapshot")
                     if isinstance(es, dict) and es:
-                        post_json(cfg.api_base, "/platform/snapshots", es)
+                        post_json_with_retry(cfg.api_base, "/platform/ingest/snapshot", es)
                     fe = cycle.get("failure_event")
                     if isinstance(fe, dict) and fe:
-                        post_json(cfg.api_base, "/platform/failure-events/ingest", fe)
+                        post_json_with_retry(cfg.api_base, "/platform/ingest/failure-event", fe)
                 except Exception as exc:  # noqa: BLE001 — service loop survives transport errors
                     append_agent_event(
                         {

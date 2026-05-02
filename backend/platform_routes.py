@@ -38,10 +38,10 @@ Idempotency:
 
 Routes (summary):
     * ``GET /platform/health`` — build metadata + JSONL directory.
-    * ``POST /platform/agent/heartbeat`` — register endpoint identity (**operator/admin** headers).
-    * ``POST /platform/snapshots`` — ingest :class:`~platform_core.models.EndpointSnapshot`.
+    * ``POST /platform/agent/heartbeat`` (alias ``POST /platform/ingest/heartbeat``) — register endpoint identity (**operator/admin** headers).
+    * ``POST /platform/snapshots`` (alias ``POST /platform/ingest/snapshot``) — ingest :class:`~platform_core.models.EndpointSnapshot`.
     * ``GET /platform/endpoints`` / ``GET /platform/endpoints/{id}`` — latest merged heartbeats.
-    * ``GET/POST .../failure-events`` — list / ingest :class:`~platform_core.models.FailureEvent` (POST **operator/admin**).
+    * ``GET/POST .../failure-events`` — list / ingest (POST alias ``POST /platform/ingest/failure-event``) — **operator/admin**.
     * ``POST /platform/remediation/preview|execute`` — policy-gated remediation pipeline.
     * ``GET /platform/audit`` — recent audit rows (**admin/security** readers).
     * ``GET /platform/metrics`` — aggregate counters (:func:`~platform_core.metrics.compute_platform_metrics` merge).
@@ -132,7 +132,7 @@ from platform_core.storage import (
 router = APIRouter(prefix="/platform", tags=["platform"])
 
 SAFE_MODE = os.environ.get("PLATFORM_SAFE_MODE", "1") != "0"
-BACKEND_VERSION = "0.4.0-platform-reliability-prototype"
+BACKEND_VERSION = "0.5.0-endpoint-reliability-prototype"
 
 
 def get_demo_principal(
@@ -204,6 +204,16 @@ def agent_heartbeat(
     return {"stored": True, "endpoint_id": body.endpoint_id}
 
 
+@router.post("/ingest/heartbeat")
+def ingest_heartbeat(
+    body: HeartbeatIn,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Canonical portfolio path — identical semantics to ``/platform/agent/heartbeat``."""
+
+    return agent_heartbeat(body, principal)
+
+
 @router.post("/snapshots")
 def post_snapshot(
     snapshot: EndpointSnapshot,
@@ -215,6 +225,16 @@ def post_snapshot(
     append_snapshot(snapshot.model_dump())
     write_audit(actor="agent", action="snapshot", target_type="endpoint", target_id=snapshot.endpoint_id)
     return {"stored": True}
+
+
+@router.post("/ingest/snapshot")
+def ingest_snapshot(
+    snapshot: EndpointSnapshot,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Alias for ``POST /platform/snapshots`` — ingestion-only naming."""
+
+    return post_snapshot(snapshot, principal)
 
 
 @router.get("/endpoints")
@@ -264,6 +284,16 @@ def ingest_failure_event(
     append_failure_event(body.model_dump())
     write_audit(actor="agent", action="failure_event_ingest", target_type="event", target_id=body.event_id)
     return {"stored": True, "event_id": body.event_id}
+
+
+@router.post("/ingest/failure-event")
+def ingest_failure_event_alias(
+    body: FailureEvent,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Alias for ``POST /platform/failure-events/ingest``."""
+
+    return ingest_failure_event(body, principal)
 
 
 @router.get("/failure-events/{event_id}")
@@ -462,6 +492,15 @@ def remediation_execute(
     path = allowlisted_script(str(script), _REPO_ROOT)
     if path is None:
         raise HTTPException(status_code=400, detail="script not allowlisted")
+
+    write_audit(
+        actor=principal.operator_id,
+        action="execute_live_pending",
+        target_type="preview",
+        target_id=body.preview_id,
+        decision="pending",
+        rationale=f"spawn_allowlisted:{path.name}",
+    )
 
     try:
         proc = subprocess.run(

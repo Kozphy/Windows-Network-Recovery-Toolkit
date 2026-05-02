@@ -56,6 +56,11 @@ export default function PlatformPage() {
   const [policySummary, setPolicySummary] = useState<object | null>(null);
   const [replayOutput, setReplayOutput] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [incidentsPayload, setIncidentsPayload] = useState<object | null>(null);
+  const [timelineNote, setTimelineNote] = useState<string>("");
+  const [attribEventId, setAttribEventId] = useState<string>("");
+  const [attribBody, setAttribBody] = useState<string>("");
+  const [attribLoading, setAttribLoading] = useState<boolean>(false);
 
   const [previewBody, setPreviewBody] = useState({
     endpoint_id: "",
@@ -97,8 +102,9 @@ export default function PlatformPage() {
       role === "viewer" || role === "operator"
         ? Promise.resolve({ items: [] })
         : fetchJson("/platform/audit?limit=40"),
+      fetchJson("/platform/incidents?limit=25"),
     ])
-      .then(([h, m, ep, ev, pol, nev, au]) => {
+      .then(([h, m, ep, ev, pol, nev, au, inc]) => {
         setHealth(h);
         setMetrics(m);
         setEndpoints(ep);
@@ -106,6 +112,18 @@ export default function PlatformPage() {
         setPolicySummary(pol);
         setNormEventsPayload(nev);
         setAudit(au);
+        setIncidentsPayload(inc);
+        try {
+          const items = (((ev as { items?: unknown[] }).items || []) as Record<string, unknown>[]).slice(0);
+          items.sort((a, b) => String(b.last_seen_at || "").localeCompare(String(a.last_seen_at || "")));
+          setTimelineNote(
+            items.length === 0
+              ? "(no failure events yet — ingest via agent / demo_fleet)"
+              : `Showing newest ${Math.min(items.length, 15)} incident candidates by last_seen_at`,
+          );
+        } catch {
+          setTimelineNote("(timeline derive error)");
+        }
       })
       .catch((e: unknown) => setError(String(e)));
   }, [base, fetchJson, role]);
@@ -137,6 +155,29 @@ export default function PlatformPage() {
       setReplayOutput(JSON.stringify(body, null, 2));
     } catch (e: unknown) {
       setReplayOutput(String(e));
+    }
+  }
+
+  async function fetchAttributionSample() {
+    setAttribLoading(true);
+    setAttribBody("");
+    if (role === "viewer") {
+      setAttribLoading(false);
+      setAttribBody(JSON.stringify({ error: "viewer cannot call /platform/attribution (switch role)" }));
+      return;
+    }
+    if (!attribEventId.trim()) {
+      setAttribLoading(false);
+      setAttribBody(JSON.stringify({ error: "enter failure_event event_id first" }));
+      return;
+    }
+    try {
+      const body = await fetchJson(`/platform/attribution/${encodeURIComponent(attribEventId.trim())}?persist=false`);
+      setAttribBody(JSON.stringify(body, null, 2));
+    } catch (e: unknown) {
+      setAttribBody(JSON.stringify({ error: String(e) }));
+    } finally {
+      setAttribLoading(false);
     }
   }
 
@@ -212,6 +253,48 @@ export default function PlatformPage() {
         <pre style={{ overflow: "auto", maxHeight: 220 }}>
           {policySummary ? JSON.stringify(policySummary, null, 2) : "…loading"}
         </pre>
+      </section>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2>Incidents (clustered)</h2>
+        <p style={{ fontSize: "0.85rem", opacity: 0.85 }}>
+          Data from <code>/platform/incidents</code> — deterministic windows over failure-event JSONL.
+        </p>
+        {(() => {
+          const incItems = (((incidentsPayload as { items?: unknown[] }) || {}).items || []) as Record<string, unknown>[];
+          if (!incItems.length) {
+            return <p>No incident clusters computed yet.</p>;
+          }
+          return (
+            <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "0.82rem" }}>
+              <thead>
+                <tr style={{ textAlign: "left" }}>
+                  <th style={th}>cluster_id</th>
+                  <th style={th}>category</th>
+                  <th style={th}>severity</th>
+                  <th style={th}>events</th>
+                  <th style={th}>endpoints</th>
+                </tr>
+              </thead>
+              <tbody>
+                {incItems.slice(0, 15).map((row) => (
+                  <tr key={String(row.cluster_id)}>
+                    <td style={td}>{String(row.cluster_id ?? "").slice(0, 10)}…</td>
+                    <td style={td}>{String(row.category ?? "")}</td>
+                    <td style={td}>{String(row.cluster_severity ?? "")}</td>
+                    <td style={td}>{String(row.event_count ?? "")}</td>
+                    <td style={td}>{String(row.affected_endpoint_count ?? "")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
+      </section>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2>Failure-event timeline note</h2>
+        <p style={{ fontSize: "0.85rem", opacity: 0.82 }}>{timelineNote}</p>
       </section>
 
       <section style={{ marginTop: "1.5rem" }}>
@@ -350,6 +433,22 @@ export default function PlatformPage() {
         Run replay preview sample
       </button>
       {replayOutput ? <pre style={{ overflow: "auto", maxHeight: 220 }}>{replayOutput}</pre> : null}
+
+      <h2 style={{ marginTop: "1.75rem" }}>Attribution drill-down</h2>
+      <p style={{ fontSize: "0.9rem", opacity: 0.86 }}>
+        Operator / admin / security roles only — calls <code>GET /platform/attribution/&lt;event_id&gt;?persist=false</code>.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 520 }}>
+        <input
+          placeholder="failure event_id"
+          value={attribEventId}
+          onChange={(e) => setAttribEventId(e.target.value)}
+        />
+        <button type="button" disabled={attribLoading} onClick={() => fetchAttributionSample()}>
+          {attribLoading ? "Loading…" : "Fetch attribution JSON"}
+        </button>
+      </div>
+      {attribBody ? <pre style={{ overflow: "auto", maxHeight: 280, marginTop: 10 }}>{attribBody}</pre> : null}
 
       <h2 style={{ marginTop: "1.75rem" }}>Remediation preview (demo)</h2>
       <p style={{ fontSize: "0.9rem" }}>

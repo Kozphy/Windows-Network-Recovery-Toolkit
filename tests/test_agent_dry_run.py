@@ -33,7 +33,7 @@ def test_run_cycle_skips_http_when_skip_http(monkeypatch, tmp_path):
             "top_hypothesis": "mock",
             "confidence": 0.25,
         }
-        with patch("endpoint_agent.agent.post_json") as post:
+        with patch("endpoint_agent.agent.post_json_with_retry") as post:
             out = run_cycle(base_api="http://127.0.0.1:8000", skip_http=True)
             assert post.call_count == 0
             assert out["automatic_repair"] is False
