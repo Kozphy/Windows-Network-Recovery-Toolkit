@@ -3,16 +3,18 @@
 # -----------------------------
 .DS_Store
 Thumbs.db
+Desktop.ini
 .vscode/
 .idea/
 
 # -----------------------------
-# Python (backend + agent)
+# Python
 # -----------------------------
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.pyc
 .python-version
 .venv/
 venv/
@@ -27,53 +29,73 @@ dist/
 *.egg-info/
 
 # -----------------------------
-# Root environment files
+# Node / Next.js
+# -----------------------------
+node_modules/
+.next/
+out/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# -----------------------------
+# Environment files / secrets
 # -----------------------------
 .env
 .env.*
 !.env.example
 
-# -----------------------------
-# Backend local data / secrets
-# -----------------------------
-backend/toolkit.db
-backend/*.db
 backend/.env
 backend/.env.*
 !backend/.env.example
+
+frontend/.env.local
+frontend/.env.*.local
+!frontend/.env.local.example
+
+*.local
+config/*.local.json
+config/last_known_good_proxy.json
+config/network_state_default.json
+config/proxy_guard_policy.json
+
+# -----------------------------
+# Backend local data
+# -----------------------------
+backend/toolkit.db
+backend/*.db
 backend/.pytest_cache/
 
 # -----------------------------
-# Node / Next.js (frontend)
-# -----------------------------
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/.turbo/
-frontend/.env.local
-frontend/.env.*.local
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/pnpm-debug.log*
-!frontend/.env.local.example
-
-# -----------------------------
 # Logs / runtime outputs
+# Keep folder placeholders, ignore generated files
 # -----------------------------
 *.log
+
 logs/*
 !logs/.gitignore
 
-# Generated diagnosis reports stay local unless explicitly tracked
 reports/*
 !reports/.gitignore
 
-# Failure Knowledge System shards (local knowledge base)
+platform_data/*
+!platform_data/.gitignore
+
 data/failure_blocks/*.jsonl
 
-# Endpoint Reliability Platform local JSONL
-platform_data/*.jsonl
+# -----------------------------
+# Snapshots / evidence
+# -----------------------------
+*_snapshot*.json
+*_snapshots*.jsonl
+evidence/*.csv
+evidence/*.jsonl
+attribution_context.jsonl
 
 # -----------------------------
 # Temp files
@@ -81,8 +103,7 @@ platform_data/*.jsonl
 *.tmp
 *.temp
 
-
 # -----------------------------
-# Repo
+# Repo generated files
 # -----------------------------
 structure.txt
