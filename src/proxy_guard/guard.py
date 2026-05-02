@@ -39,7 +39,7 @@ from .pipeline import policy_payload_for_audit, rollback_payload_for_audit, summ
 from .process_attribution import resolve_attribution
 from .probes import read_proxy_registry_with_retries
 from .port_listen_probe import localhost_port_listen_state
-from .rollback import execute_lkg_snapshot_rollback
+from .rollback import execute_known_good_proxy_restore, execute_lkg_snapshot_rollback
 from .rollback_limits import RollbackLimiter
 from .snapshot_capture import capture_proxy_snapshot, load_lkg_snapshot, save_lkg_snapshot
 from .structured_log import emit_structured_log
@@ -256,7 +256,10 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
             port_listen=port_listen,
         )
 
-        explicit_wh = winhttp_explicit(lkg if lkg is not None else prev_snap_guard)
+        restore_basis = cfg.known_good_snapshot
+        if restore_basis is None:
+            restore_basis = lkg if lkg is not None else prev_snap_guard
+        explicit_wh = winhttp_explicit(restore_basis)
         snapshot_restorable = prev_snap_guard is not None
         rb_plan_obj: RollbackPlan = build_rollback_plan(
             decision=gd.decision,
@@ -297,13 +300,24 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
                 prior_full_snap = curr_snap_guard
             else:
                 action = "rollback"
-                rb_exec = execute_lkg_snapshot_rollback(
-                    prev_snap_guard,
-                    dry_run=not live_rollback_gate,
-                    restore_winhttp=rb_plan_obj.restore_winhttp,
-                    run=cfg.run,
-                    restore_git_npm_env=cfg.restore_git_npm_env,
-                )
+                restore_target = cfg.known_good_snapshot
+                if restore_target is None:
+                    restore_target = prev_snap_guard
+                if cfg.known_good_snapshot is not None:
+                    rb_exec = execute_known_good_proxy_restore(
+                        restore_target,
+                        dry_run=not live_rollback_gate,
+                        restore_winhttp=rb_plan_obj.restore_winhttp,
+                        run=cfg.run,
+                    )
+                else:
+                    rb_exec = execute_lkg_snapshot_rollback(
+                        restore_target,
+                        dry_run=not live_rollback_gate,
+                        restore_winhttp=rb_plan_obj.restore_winhttp,
+                        run=cfg.run,
+                        restore_git_npm_env=cfg.restore_git_npm_env,
+                    )
                 rollback_detail = rb_exec
                 wininet_rows = rb_exec.get("wininet_reg") or []
                 if isinstance(wininet_rows, list):
@@ -334,7 +348,7 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
                     pipeline_rb_action = "rollback_failed"
                     rb_error = "registry_or_netsh_nonzero"
                     rollback_verification = "failed"
-                elif verify_hkcu_core_matches_prior(snap_after, prior_target=prev_snap_guard):
+                elif verify_hkcu_core_matches_prior(snap_after, prior_target=restore_target):
                     pipeline_rb_action = "rollback_applied"
                     rollback_verification = "passed"
                 else:

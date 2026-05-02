@@ -90,6 +90,7 @@ class ProxyGuardServiceConfig:
     restore_git_npm_env: bool = False
     cli_rollback: bool = False
     rollback_confirm_phrase: str = ""
+    known_good_snapshot: Any | None = None
 
 
 def build_service_config(
@@ -110,6 +111,7 @@ def build_service_config(
     restore_git_npm_env: bool = False,
     cli_rollback: bool = False,
     rollback_confirm_phrase: str = "",
+    known_good_snapshot: Any | None = None,
 ) -> ProxyGuardServiceConfig:
     """Merge CLI args with optional JSON file and environment variables.
 
@@ -167,6 +169,7 @@ def build_service_config(
         restore_git_npm_env=restore_git_npm_env,
         cli_rollback=cli_rollback,
         rollback_confirm_phrase=rollback_confirm_phrase,
+        known_good_snapshot=known_good_snapshot,
     )
 
 
@@ -186,6 +189,7 @@ def legacy_control_kwargs_to_config(
     restore_git_npm_env: bool = False,
     cli_rollback: bool = False,
     rollback_confirm_phrase: str = "",
+    known_good_snapshot: Any | None = None,
 ) -> ProxyGuardServiceConfig:
     """Map legacy :func:`run_proxy_guard_control` kwargs to :class:`ProxyGuardServiceConfig`."""
     return build_service_config(
@@ -205,6 +209,7 @@ def legacy_control_kwargs_to_config(
         restore_git_npm_env=restore_git_npm_env,
         cli_rollback=cli_rollback,
         rollback_confirm_phrase=rollback_confirm_phrase,
+        known_good_snapshot=known_good_snapshot,
     )
 
 

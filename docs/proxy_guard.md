@@ -66,7 +66,17 @@ Operational flags:
 - `--auto-rollback` — rollback on **blocked** (legacy; phraseless live restore remains available when not dry-running).
 - `--rollback` — opt into rollback tooling; combine with **`--rollback-confirm RESTORE_PROXY`** for live `reg` restores unless **`--auto-rollback`** already enables the legacy phraseless path.
 - `--dry-run` / `--dry-run-rollback` — emit **`rollback_preview`** with no live restores.
+- `--known-good <name>` — on blocked rollback, restore the **named** snapshot from **`logs/network_state_snapshots.jsonl`** (Network State Manager) when present; otherwise from **`logs/proxy_known_good_snapshots.jsonl`** (**proxy-snapshot**). Same HKCU WinINET + WinHTTP + Git + npm + user proxy env allowlist as **`network-state restore`**. See **`docs/network_state_manager.md`**.
 - `--trust-current`, `--show-lkg`, `--clear-lkg`, `--restore-git-npm-env` (still blocked awaiting confirmation UX), `--attribution-mode {auto,best-effort,eventlog}`.
+
+See **`docs/proxy_known_good_snapshot.md`** for **`python -m src proxy-snapshot`** (save/list/show/diff/restore).
+
+### Named last-known-good snapshots (Python CLI)
+
+Use **`proxy-snapshot save --name …`** while the endpoint is healthy to populate **`logs/proxy_known_good_snapshots.jsonl`**; optional **`config/last_known_good_proxy.json`** via **`--as-default`**.
+
+- **`proxy-snapshot diff`** prints **changed fields only**, with hints when **`127.0.0.1` / localhost** appears in deltas.
+- **`proxy-snapshot restore`** defaults to **dry-run** preview; **`--confirm RESTORE_KNOWN_GOOD_PROXY`** performs live **`reg` / `netsh` / `git` / `npm`** argv restores (no `shell=True`). **`--dry-run`** keeps preview even when the phrase is set. Each attempt appends **`logs/proxy_guard_actions.jsonl`** (`action=proxy_known_good_restore`).
 
 Canonical policy precedence is **`config/proxy_guard_policy.json`** (fallback: `shared/proxy_guard_policy.example.json`). Optional **`observe_only_when_unknown_attribution`** downgrades unresolved attribution flows to **`observe_only`** instead of **`blocked`** (defaults off for strict posture).
 

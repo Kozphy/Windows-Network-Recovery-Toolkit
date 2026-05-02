@@ -202,6 +202,8 @@ def test_attribute_failure_does_not_crash_proxy_guard(
             npm_https_proxy=None,
             user_http_proxy=None,
             user_https_proxy=None,
+            user_all_proxy=None,
+            user_no_proxy=None,
             captured_at="t",
         )
 
@@ -303,6 +305,8 @@ def test_proxy_change_audit_event_includes_attribute_object(
             npm_https_proxy=None,
             user_http_proxy=None,
             user_https_proxy=None,
+            user_all_proxy=None,
+            user_no_proxy=None,
             captured_at="ts",
         )
 

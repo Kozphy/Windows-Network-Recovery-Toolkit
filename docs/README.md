@@ -91,6 +91,7 @@ Automated suites live under **`tests/`** (see **`docs/test_strategy.md`** for de
 
 - `proxy_error.md`: explains `ERR_PROXY_CONNECTION_FAILED`.
 - `ping_ok_but_browser_fails.md`: explains why ping can work while browser traffic fails.
+- `proxy_known_good_snapshot.md`: named baseline capture / diff / restore for Windows proxy stacks (`python -m src proxy-snapshot`).
 
 ## Project Design
 

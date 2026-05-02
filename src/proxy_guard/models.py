@@ -143,6 +143,8 @@ class ProxySnapshot:
     npm_https_proxy: str | None
     user_http_proxy: str | None
     user_https_proxy: str | None
+    user_all_proxy: str | None
+    user_no_proxy: str | None
     captured_at: str
 
     def to_jsonable(self) -> dict[str, Any]:
@@ -166,6 +168,8 @@ class ProxySnapshot:
             npm_https_proxy=blob.get("npm_https_proxy"),
             user_http_proxy=blob.get("user_http_proxy"),
             user_https_proxy=blob.get("user_https_proxy"),
+            user_all_proxy=blob.get("user_all_proxy"),
+            user_no_proxy=blob.get("user_no_proxy"),
             captured_at=str(blob.get("captured_at") or ""),
         )
 

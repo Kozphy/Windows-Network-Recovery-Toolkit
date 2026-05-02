@@ -58,6 +58,15 @@ from .proxy_guard.snapshot_capture import load_lkg_snapshot
 from .proxy_guard.service import run_proxy_guard_service
 from .proxy_guard.remediation import CONFIRMATION_PHRASE, build_user_proxy_disable_mutations
 from .proxy_guard.watcher import monitor_proxy_registry
+from .network_state.snapshot_store import resolve_named_snapshot
+from .proxy_guard.known_good_store import get_latest_named_record, snapshot_from_record
+from .proxy_guard.proxy_snapshot_commands import (
+    cmd_proxy_snapshot_diff,
+    cmd_proxy_snapshot_list,
+    cmd_proxy_snapshot_restore,
+    cmd_proxy_snapshot_save,
+    cmd_proxy_snapshot_show,
+)
 from .repair.executor import apply_mutations, apply_reg_argv_sequences
 from .repair.policy import assert_no_firewall_reset_in_preview
 from .repair.preview import summarize_mutations_plaintext
@@ -402,6 +411,16 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
     slog = getattr(args, "structured_log", None)
     structured_log_path = Path(slog) if slog else None
     dry_combo = bool(getattr(args, "dry_run_rollback", False) or getattr(args, "proxy_guard_dry_run", False))
+    kg_raw = getattr(args, "known_good", None)
+    known_snap = None
+    if kg_raw:
+        name = str(kg_raw).strip()
+        known_snap = resolve_named_snapshot(repo, name)
+        if known_snap is None:
+            known_snap = snapshot_from_record(get_latest_named_record(repo, name))
+        if known_snap is None:
+            print(f"Named proxy snapshot not found: {kg_raw!r}", file=sys.stderr)
+            return 2
     cfg = build_service_config(
         policy=policy,
         jsonl_path=jsonl,
@@ -419,6 +438,7 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
         restore_git_npm_env=bool(getattr(args, "restore_git_npm_env", False)),
         cli_rollback=bool(getattr(args, "cli_rollback", False)),
         rollback_confirm_phrase=str(getattr(args, "rollback_confirm_phrase", "") or ""),
+        known_good_snapshot=known_snap,
     )
     run_proxy_guard_service(cfg)
     return 0

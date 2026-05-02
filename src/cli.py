@@ -58,10 +58,25 @@ from .command_handlers import (
     cmd_proxy_monitor,
     cmd_proxy_owner,
     cmd_proxy_rollback,
+    cmd_proxy_snapshot_diff,
+    cmd_proxy_snapshot_list,
+    cmd_proxy_snapshot_restore,
+    cmd_proxy_snapshot_save,
+    cmd_proxy_snapshot_show,
     cmd_proxy_status,
     cmd_repair_apply,
     cmd_repair_preview,
     cmd_snapshot,
+)
+from .network_state.cli_handlers import (
+    cmd_network_state_diff,
+    cmd_network_state_evidence_import,
+    cmd_network_state_report,
+    cmd_network_state_restore,
+    cmd_network_state_snapshot_list,
+    cmd_network_state_snapshot_save,
+    cmd_network_state_snapshot_set_default,
+    cmd_network_state_snapshot_show,
 )
 from .logging.audit import append_jsonl
 from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
@@ -889,7 +904,62 @@ def build_parser() -> argparse.ArgumentParser:
         dest="restore_git_npm_env",
         help="Reserved — currently guarded off inside rollback until an explicit confirmation story exists.",
     )
+    p_pg.add_argument(
+        "--known-good",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help=(
+            "On rollback, restore this named snapshot: prefer logs/network_state_snapshots.jsonl "
+            "(Network State Manager), else logs/proxy_known_good_snapshots.jsonl (HKCU/Git/npm/env/WinHTTP)."
+        ),
+    )
     p_pg.set_defaults(func=cmd_proxy_guard)
+
+    p_pss = sub.add_parser(
+        "proxy-snapshot",
+        help="Named last-known-good proxy snapshots (capture, compare, restore allowlisted surfaces).",
+    )
+    p_pss_sub = p_pss.add_subparsers(dest="proxy_snapshot_cmd", required=True)
+
+    p_pss_sv = p_pss_sub.add_parser(
+        "save",
+        help="Capture HKCU WinINET, WinHTTP, Git, npm, and user proxy env into logs/proxy_known_good_snapshots.jsonl.",
+    )
+    p_pss_sv.add_argument("--name", required=True, dest="snapshot_name", metavar="NAME", help="Snapshot label.")
+    p_pss_sv.add_argument(
+        "--as-default",
+        action="store_true",
+        help="Also write config/last_known_good_proxy.json pointing at this snapshot.",
+    )
+    p_pss_sv.set_defaults(func=cmd_proxy_snapshot_save)
+
+    p_pss_ls = p_pss_sub.add_parser("list", help="List snapshot names from JSONL plus default-config flag.")
+    p_pss_ls.set_defaults(func=cmd_proxy_snapshot_list)
+
+    p_pss_sh = p_pss_sub.add_parser("show", help="Print the latest JSONL record for --name.")
+    p_pss_sh.add_argument("--name", required=True, dest="snapshot_name", metavar="NAME")
+    p_pss_sh.set_defaults(func=cmd_proxy_snapshot_show)
+
+    p_pss_df = p_pss_sub.add_parser("diff", help="Compare current machine state vs saved snapshot (changed fields only).")
+    p_pss_df.add_argument("--name", required=True, dest="snapshot_name", metavar="NAME")
+    p_pss_df.set_defaults(func=cmd_proxy_snapshot_diff)
+
+    p_pss_rs = p_pss_sub.add_parser(
+        "restore",
+        help="Restore allowlisted proxy settings from snapshot (dry-run unless --confirm RESTORE_KNOWN_GOOD_PROXY).",
+    )
+    p_pss_rs.add_argument("--name", required=True, dest="snapshot_name", metavar="NAME")
+    p_pss_rs.add_argument("--dry-run", action="store_true", help="Force preview only even if confirm phrase is set.")
+    p_pss_rs.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help='Live restore requires exact phrase RESTORE_KNOWN_GOOD_PROXY; omit for dry-run preview only.',
+    )
+    p_pss_rs.set_defaults(func=cmd_proxy_snapshot_restore)
 
     p_pxdiag = sub.add_parser(
         "proxy-diagnose",
@@ -950,6 +1020,67 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_ra.add_argument("--dry-run", action="store_true", help="List candidates without elevation.")
     p_ra.set_defaults(func=cmd_repair_apply)
+
+    p_ns = sub.add_parser(
+        "network-state",
+        help="Network State Manager: named snapshots, drift diff, policy, reports, preview/restore.",
+    )
+    ns_sub = p_ns.add_subparsers(dest="network_state_cmd", required=True)
+
+    p_nss = ns_sub.add_parser("snapshot", help="Save or manage known-good snapshots.")
+    nss_sub = p_nss.add_subparsers(dest="network_state_snapshot_cmd", required=True)
+
+    p_nss_sv = nss_sub.add_parser(
+        "save",
+        help="Capture WinINET, WinHTTP, Git, npm, user proxy env → logs/network_state_snapshots.jsonl.",
+    )
+    p_nss_sv.add_argument("--name", required=True, dest="snapshot_name", metavar="NAME", help="Profile label.")
+    p_nss_sv.set_defaults(func=cmd_network_state_snapshot_save)
+
+    p_nss_ls = nss_sub.add_parser("list", help="List profile names + default flag.")
+    p_nss_ls.set_defaults(func=cmd_network_state_snapshot_list)
+
+    p_nss_sh = nss_sub.add_parser("show", help="Print latest JSONL record for --name.")
+    p_nss_sh.add_argument("--name", required=True, dest="snapshot_name", metavar="NAME")
+    p_nss_sh.set_defaults(func=cmd_network_state_snapshot_show)
+
+    p_nss_sd = nss_sub.add_parser("set-default", help="Write config/network_state_default.json from latest --name.")
+    p_nss_sd.add_argument("--name", required=True, dest="snapshot_name", metavar="NAME")
+    p_nss_sd.set_defaults(func=cmd_network_state_snapshot_set_default)
+
+    p_nsdiff = ns_sub.add_parser("diff", help="Compare current machine vs saved snapshot or default profile.")
+    g_ns = p_nsdiff.add_mutually_exclusive_group(required=True)
+    g_ns.add_argument("--name", dest="snapshot_name", metavar="NAME")
+    g_ns.add_argument("--default", dest="use_default", action="store_true", help="Use config/network_state_default.json.")
+    p_nsdiff.add_argument("--json", dest="json_out", action="store_true")
+    p_nsdiff.set_defaults(snapshot_name=None, use_default=False, func=cmd_network_state_diff)
+
+    p_ns_rep = ns_sub.add_parser("report", help="Summarize recent events + drift vs default.")
+    p_ns_rep.add_argument("--since", default="24h", help="Window like 24h, 7d, 30m.")
+    p_ns_rep.add_argument("--json", dest="json_out", action="store_true")
+    p_ns_rep.set_defaults(func=cmd_network_state_report)
+
+    p_ns_rs = ns_sub.add_parser(
+        "restore",
+        help='Preview or restore named snapshot (live requires --confirm RESTORE_NETWORK_STATE; default is dry-run preview).',
+    )
+    p_ns_rs.add_argument("--name", required=True, dest="snapshot_name", metavar="NAME")
+    p_ns_rs.add_argument("--dry-run", action="store_true", help="Force preview only.")
+    p_ns_rs.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help='Typed phrase RESTORE_NETWORK_STATE enables live argv-only restores.',
+    )
+    p_ns_rs.set_defaults(func=cmd_network_state_restore)
+
+    p_ns_ev = ns_sub.add_parser("evidence", help="Import optional Procmon-style CSV (no tracers installed).")
+    ev_sub = p_ns_ev.add_subparsers(dest="network_state_evidence_cmd", required=True)
+    p_ns_ev_imp = ev_sub.add_parser("import", help="Append normalized rows to logs/network_state_evidence.jsonl.")
+    p_ns_ev_imp.add_argument("--file", required=True, dest="evidence_file", metavar="PATH")
+    p_ns_ev_imp.set_defaults(func=cmd_network_state_evidence_import)
 
     return parser
 

@@ -29,6 +29,7 @@ Normalized platform fixtures live under `tests/fixtures/platform/`. Feature vect
 | Registry backward compatibility | Aliases flatten to identical legacy meta (`reset_firewall`, `arbitrary_command`) | `test_remediation_aliases_share_*` |
 | Attribution modesty | Heuristic providers never emit `confidence=proof` | `test_attribution_process_heuristic_never_claims_proof` |
 | Classic CLI continuity | Fixture `diagnose` run with isolated `--repo-root` exits 0 | `test_smoke_python_m_src_fixture_diagnose_isolated_repo` |
+| Network State Manager | Snapshot/diff/policy/report/audit/evidence parsing with fakes only; CLI list smoke uses `--repo-root` temp | `tests/test_network_state_manager.py` |
 | Failure system entry | `-m failure_system --help` exits 0 | `test_smoke_failure_system_help_exits_clean` |
 
 Run the focused suite:

@@ -1,0 +1,8 @@
+{
+  "allowed_process_names": ["charles.exe", "fiddler.exe"],
+  "blocked_process_names": [],
+  "allowed_proxy_hosts": ["127.0.0.1", "corp-proxy.example.invalid"],
+  "blocked_proxy_hosts": [],
+  "rollback_on_unknown_loopback": false,
+  "alert_on_unknown_loopback": true
+}

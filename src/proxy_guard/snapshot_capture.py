@@ -86,6 +86,8 @@ def capture_proxy_snapshot(
 
     user_http = _user_env_optional("HTTP_PROXY") or _user_env_optional("http_proxy")
     user_https = _user_env_optional("HTTPS_PROXY") or _user_env_optional("https_proxy")
+    user_all = _user_env_optional("ALL_PROXY") or _user_env_optional("all_proxy")
+    user_no = _user_env_optional("NO_PROXY") or _user_env_optional("no_proxy")
 
     return ProxySnapshot(
         proxy_enable=reg.proxy_enable,
@@ -102,6 +104,8 @@ def capture_proxy_snapshot(
         npm_https_proxy=npm_h,
         user_http_proxy=user_http,
         user_https_proxy=user_https,
+        user_all_proxy=user_all,
+        user_no_proxy=user_no,
         captured_at=utc_now_iso(),
     )
 

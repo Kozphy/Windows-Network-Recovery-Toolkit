@@ -31,7 +31,12 @@ See **`docs/script_reference.md`** for script purposes and risk notes.
 
 Stops **stale or malicious proxy settings** from breaking **Cursor, Git, npm, pip, browsers, and AI tooling** (especially when `ProxyServer` still points at **127.0.0.1:port** with nothing listening).
 
-**Recommended workflow:** **Diagnose → Monitor (optional) → Reset (if needed) → Safe Cursor launcher.**
+**Recommended workflow:** **Diagnose → Save Known Good → Monitor → Diff → Restore** (batch scripts and/or Python CLI below). Optionally **Safe Cursor launcher** after you trust the posture.
+
+Persist a baseline with the Python CLI (Windows):
+
+- **`python -m src network-state snapshot save --name <label>`** → `logs/network_state_snapshots.jsonl`; **`network-state snapshot set-default --name …`** writes **`config/network_state_default.json`**. Drift/report/restore previews: **`docs/network_state_manager.md`** (`diff`, `report`, **`restore --confirm RESTORE_NETWORK_STATE`**).
+- Legacy path: **`python -m src proxy-snapshot save --name <label> [--as-default]`** → `logs/proxy_known_good_snapshots.jsonl` (+ optional `config/last_known_good_proxy.json`). **`docs/proxy_known_good_snapshot.md`**.
 
 | Step | Script | Purpose |
 | --- | --- | --- |
@@ -75,12 +80,22 @@ python -m src proxy-disable                     # Typed DISABLE_PROXY → snapsh
 python -m src proxy-rollback --snapshot-id ...  # Restore prior capture (typed RESTORE_WININET)
 python -m src proxy-monitor
 python -m src proxy-guard --interval 5
-python -m src proxy-guard --interval 5 --auto-rollback --trust-current # optional LKG + live restore
+python -m src proxy-guard --interval 5 --auto-rollback --trust-current # optional LKG + live restore (prior-poll rollback)
+python -m src proxy-snapshot save --name my-baseline --as-default        # HKCU/Git/npm/env + WinHTTP baseline
+python -m src proxy-snapshot list / show / diff / restore               # restore: dry-run by default; live needs --confirm RESTORE_KNOWN_GOOD_PROXY (--dry-run forces preview)
+python -m src proxy-guard --interval 5 --known-good my-baseline --dry-run-rollback
+python -m src proxy-guard --interval 5 --known-good my-baseline --auto-rollback   # rollback to named snapshot instead of prior poll only
+python -m src network-state snapshot save --name home-clean
+python -m src network-state snapshot set-default --name home-clean
+python -m src network-state diff --default --json
+python -m src network-state report --since 24h
+python -m src network-state restore --name home-clean --dry-run
+python -m src network-state evidence import --file evidence.csv   # optional Procmon-style CSV
 ```
 
 **Safety notes:** Listener attribution uses **Windows-native netstat/tasklist/PowerShell CIM** — not proof who wrote registry values. **`proxy-disable`** persists **`logs/proxy_snapshots.jsonl`** immediately before **`reg`** writes; rollback restores captured values/absences via argv-only **`reg`** (no firewall/adapter resets). Structured **`ProxyFailureBlock`** rows describe proxy risk (distinct from **`failure_system/`** FailureBlocks). See **`docs/proxy_guard.md`**.
 
-`proxy-guard` follows **detect → best-effort attribute → decide (default deny) → optional rollback preview/apply → audit** (`logs/proxy_guard_pipeline_audit.jsonl` schema_version `1` plus legacy v2 sinks). On each registry change it attaches a **heuristic** `candidate_actor` (when optional **`pip install psutil`** is available)—**not proof** of the writer process; see **`docs/proxy_guard.md` § Process attribution**. Rollback restores the **prior poll’s** HKCU WinINET snapshot (never arbitrary shell commands). Typical flags:
+`proxy-guard` follows **detect → best-effort attribute → decide (default deny) → optional rollback preview/apply → audit** (`logs/proxy_guard_pipeline_audit.jsonl` schema_version `1` plus legacy v2 sinks). On each registry change it attaches a **heuristic** `candidate_actor` (when optional **`pip install psutil`** is available)—**not proof** of the writer process; see **`docs/proxy_guard.md` § Process attribution**. Rollback restores the **prior poll** snapshot by default, or a **named `proxy-snapshot`** baseline when **`--known-good`** is set (never arbitrary shell commands). Typical flags:
 
 - `python -m src proxy-guard --interval 5` — detect + stdout / control JSONL  
 - `--dry-run` / `--dry-run-rollback` — no live `reg` / `netsh` restores  
@@ -90,7 +105,7 @@ python -m src proxy-guard --interval 5 --auto-rollback --trust-current # optiona
 Consolidated rows also mirror to `reports/proxy_guard_watch.jsonl`, `reports/proxy_guard_actions.jsonl`,
 and `logs/proxy_guard_audit.jsonl`; policy defaults prefer **`config/proxy_guard_policy.json`**. See **`docs/proxy_guard.md`**, **`docs/proxy_guard_attribution.md`** / **`docs/proxy_guard_rollback.md`**.
 
-Docs: **`docs/architecture.md`**, **`docs/proxy_guard.md`**, **`docs/decision_engine_v2.md`**.
+Docs: **`docs/architecture.md`**, **`docs/proxy_guard.md`**, **`docs/network_state_manager.md`**, **`docs/decision_engine_v2.md`**.
 
 ---
 

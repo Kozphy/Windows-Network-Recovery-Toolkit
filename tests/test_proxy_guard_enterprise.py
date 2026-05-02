@@ -58,6 +58,8 @@ def _snap(en: int, srv: str | None) -> ProxySnapshot:
         npm_https_proxy=None,
         user_http_proxy=None,
         user_https_proxy=None,
+        user_all_proxy=None,
+        user_no_proxy=None,
         captured_at="t",
     )
 

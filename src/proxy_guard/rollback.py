@@ -327,3 +327,145 @@ def execute_low_risk_proxy_rollback(
         "wininet_skipped_already_cleared": skipped,
     }
     return out
+
+
+_HKCU_ENVIRONMENT_KEY = r"HKCU\Environment"
+
+
+def _run_external_argv_audit(
+    argv: list[str],
+    *,
+    dry_run: bool,
+    run: Callable[..., Any],
+    timeout: float,
+) -> dict[str, Any]:
+    if dry_run:
+        return {"argv": argv, "returncode": 0, "stdout": "[dry-run] not executed", "stderr": ""}
+    try:
+        proc = run(argv, capture_output=True, text=True, shell=False, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"argv": argv, "returncode": -1, "stdout": "", "stderr": str(exc)}
+    return {
+        "argv": argv,
+        "returncode": int(proc.returncode),
+        "stdout": proc.stdout or "",
+        "stderr": proc.stderr or "",
+    }
+
+
+def _git_restore_row(full_key: str, value: str | None, *, dry_run: bool, run: Callable[..., Any]) -> dict[str, Any]:
+    if value is None or str(value).strip() == "":
+        argv = ["git", "config", "--global", "--unset-all", full_key]
+    else:
+        argv = ["git", "config", "--global", full_key, str(value).strip()]
+    return _run_external_argv_audit(argv, dry_run=dry_run, run=run, timeout=45.0)
+
+
+def _git_row_ok(row: dict[str, Any]) -> bool:
+    c = int(row.get("returncode", -1))
+    argv_l = [str(x).lower() for x in (row.get("argv") or [])]
+    if "unset-all" in argv_l and c in (0, 5):
+        return True
+    return c == 0
+
+
+def _npm_restore_row(key: str, value: str | None, *, dry_run: bool, run: Callable[..., Any]) -> dict[str, Any]:
+    stripped = "" if value is None else str(value).strip()
+    if stripped == "" or stripped.lower() in ("null", "undefined"):
+        argv = ["npm", "config", "delete", key, "--global"]
+    else:
+        argv = ["npm", "config", "set", key, stripped, "--global"]
+    return _run_external_argv_audit(argv, dry_run=dry_run, run=run, timeout=120.0)
+
+
+def _hkcu_env_restore_row(name: str, value: str | None, *, dry_run: bool, run: Callable[..., Any]) -> dict[str, Any]:
+    if value is None or str(value).strip() == "":
+        argv = ["reg", "delete", _HKCU_ENVIRONMENT_KEY, "/v", name, "/f"]
+    else:
+        argv = ["reg", "add", _HKCU_ENVIRONMENT_KEY, "/v", name, "/t", "REG_SZ", "/d", str(value).strip(), "/f"]
+    return _run_external_argv_audit(argv, dry_run=dry_run, run=run, timeout=30.0)
+
+
+def _env_reg_row_ok(row: dict[str, Any]) -> bool:
+    c = int(row.get("returncode", -1))
+    argv = row.get("argv") or []
+    if "delete" in argv:
+        return c in (0, 1)
+    return c == 0
+
+
+def execute_known_good_proxy_restore(
+    target: ProxySnapshot | None,
+    *,
+    dry_run: bool,
+    restore_winhttp: bool,
+    run: Callable[..., Any] = subprocess.run,
+) -> dict[str, Any]:
+    """Restore WinINET, WinHTTP, Git global npm, and HKCU user env proxy vars from ``target``.
+
+    Uses argv-only subprocesses (no ``shell=True``). Does not alter firewall rules or adapters.
+    """
+
+    if target is None:
+        return {
+            "rollback_kind": "known_good_restore",
+            "skipped": True,
+            "reason": "skipped_no_target_snapshot",
+            "wininet_reg": [],
+            "winhttp_restore": None,
+            "git_audits": [],
+            "npm_audits": [],
+            "user_env_audits": [],
+            "success": False,
+        }
+
+    argv_list = build_wininet_restore_argv_list(target)
+    reg_rows = apply_reg_argv_sequences(argv_list, dry_run=dry_run)
+    wininet_audit = reg_results_to_audit(reg_rows)
+    winhttp_row: dict[str, Any] | None = None
+    if restore_winhttp:
+        if target.winhttp_direct_access:
+            winhttp_row = run_netsh_winhttp_reset_proxy(dry_run=dry_run, run=run)
+        elif target.winhttp_proxy_server_literal:
+            winhttp_row = run_netsh_winhttp_set_proxy(
+                proxy_server_literal=target.winhttp_proxy_server_literal,
+                dry_run=dry_run,
+                run=run,
+            )
+
+    git_audits = [
+        _git_restore_row("http.proxy", target.git_http_proxy, dry_run=dry_run, run=run),
+        _git_restore_row("https.proxy", target.git_https_proxy, dry_run=dry_run, run=run),
+    ]
+    npm_audits = [
+        _npm_restore_row("proxy", target.npm_proxy, dry_run=dry_run, run=run),
+        _npm_restore_row("https-proxy", target.npm_https_proxy, dry_run=dry_run, run=run),
+    ]
+    user_env_audits = [
+        _hkcu_env_restore_row("HTTP_PROXY", target.user_http_proxy, dry_run=dry_run, run=run),
+        _hkcu_env_restore_row("HTTPS_PROXY", target.user_https_proxy, dry_run=dry_run, run=run),
+        _hkcu_env_restore_row("ALL_PROXY", target.user_all_proxy, dry_run=dry_run, run=run),
+        _hkcu_env_restore_row("NO_PROXY", target.user_no_proxy, dry_run=dry_run, run=run),
+    ]
+
+    inet_ok = all(r.returncode == 0 for r in reg_rows)
+    wh_ok = True
+    if winhttp_row is not None and int(winhttp_row.get("returncode", -1)) != 0:
+        wh_ok = False
+
+    git_ok = all(_git_row_ok(row) for row in git_audits)
+    npm_ok = all(int(row.get("returncode", -1)) == 0 for row in npm_audits)
+    env_ok = all(_env_reg_row_ok(row) for row in user_env_audits)
+
+    overall = inet_ok and wh_ok and git_ok and npm_ok and env_ok
+
+    return {
+        "rollback_kind": "known_good_restore",
+        "skipped": False,
+        "success": overall,
+        "wininet_reg": wininet_audit,
+        "winhttp_restore": winhttp_row,
+        "git_audits": git_audits,
+        "npm_audits": npm_audits,
+        "user_env_audits": user_env_audits,
+    }
