@@ -63,6 +63,22 @@ Documentation should be:
 
 When script behavior changes, update the README and related docs in the same change.
 
+Language-specific conventions observed in-repo (do not retrofit unrelated style churn):
+
+| Language | Standard | Applies to |
+| --- | --- | --- |
+| Python | Google-style module + public API docstrings; explicit **Raises**, **Returns**, side effects, Audit Notes only on mutation / SOC paths | `src/`, `failure_system/`, `platform_core/`, `evidence/`, `endpoint_agent/`, … |
+| TypeScript / React | File-level **`@file` / `@remarks`** where routes or UX imply safety/posture boundaries; summarize components that ship to users | `frontend/` Next.js surfaces |
+| PowerShell | Comment-based help (`.SYNOPSIS`, `.DESCRIPTION`, `.NOTES` with privileges, side effects, recovery) plus inline purpose comments | `scripts/*.ps1` |
+| Batch / CMD | Leading `REM` blocks: purpose, privileges, mutations, artifact paths (`reports/`, `logs/`) | `scripts/*.bat` |
+| Markdown | Architecture, sequencing, troubleshooting, reviewer audit maps | `docs/`, root `README.md`, `SECURITY.md` |
+
+**Engineering Notes** paragraphs appear only where trade-offs materially affect maintainability (portfolio scope vs scalable designs).
+
+**Audit Notes** appear on append-only logs, remediation execution, subprocess/system mutation, RBAC gates, or headers that spoof identity in demos—not on pure helpers.
+
+No Go/Rust crates ship in-tree; adopt idiomatic Rustdoc/`///` and Go package comments **if** such code is introduced later without relaxing “document what exists only” discipline.
+
 ## Repository documentation map
 
 High-signal Markdown references (paths relative to repository root):

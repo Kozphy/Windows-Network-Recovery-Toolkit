@@ -3,6 +3,8 @@ setlocal EnableExtensions
 
 REM Windows Network Recovery Toolkit
 REM Read-only recommendation engine for safest next fix action.
+REM SAFETY/PRIVILEGES: Standard user; does not launch repair scripts or mutate network settings.
+REM AUDIT: Console output only unless operators redirect; no default log file append from this entry point.
 REM --
 REM Purpose: Suggest next script/step from diagnostic inputs; does not execute repairs.
 REM Flags: Optional --no-pause to skip end pause (see script body).

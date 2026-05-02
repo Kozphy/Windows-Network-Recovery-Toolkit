@@ -1,6 +1,19 @@
 /**
- * Portfolio hero for Windows Network Recovery Toolkit — Blockify-inspired enterprise layout.
- * Uses only React, TypeScript, and Tailwind utilities (no raster assets).
+ * @file Single-file hero presentation for the optional Next.js marketing surface.
+ *
+ * Responsibility: Visual summary of **local-first** Windows network diagnostics vocabulary (detect → attribute →
+ * decide → rollback → audit). Communicates tooling categories (``.bat``, JSONL, `python -m src`) without
+ * executing probes or issuing HTTP requests itself.
+ *
+ * System placement: Consumed only from `frontend/app/page.tsx` in the demo bundle; orthogonal to batch scripts
+ * under `scripts/`.
+ *
+ * @remarks Rendering uses Tailwind utilities and inline SVG gradients only—no raster images, no analytics hooks.
+ *
+ * Accessibility: Outer section exposes `aria-label`; decorative SVG/graphic nodes set `aria-hidden` where duplicated
+ * cues exist in headings.
+ *
+ * @see root `README.md` for authoritative CLI and safety boundaries mirrored in marketing copy tone.
  */
 import type { ReactNode } from "react";
 
@@ -147,9 +160,13 @@ function CodeGlyph({ symbol }: { symbol: string }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Main hero                                                                   */
-/* -------------------------------------------------------------------------- */
+/**
+ * Portfolio hero banner: brand cube, headline, pipeline strip, illustrative endpoint/tiles.
+ *
+ * Pure function component — no hooks, props, network, or persistence.
+ *
+ * @returns JSX section sized for responsive `lg` breakpoints.
+ */
 export default function NetworkToolkitHero() {
   return (
     <section
