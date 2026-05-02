@@ -43,3 +43,4 @@ Machine learning is **not** claimed for core diagnosis paths in this repository;
 - [`safety_model.md`](safety_model.md) — Diagnose-first / repair-after-confirmation rules.
 - [`system_architecture.md`](system_architecture.md) — Script-centric layered network model.
 - [`decision_engine_v2.md`](decision_engine_v2.md) — Live hypothesis scoring contract.
+- [`proxy_attribution.md`](proxy_attribution.md) — HKCU drift polling (`proxy-watch`), risk diff, probabilistic attribution, and ``logs/proxy_guard.jsonl`` audit schema (orthogonal to FailureBlock JSONL stores).

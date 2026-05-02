@@ -6,7 +6,7 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 
 Primary Python surfaces document themselves with **Google-style docstrings** (module summaries, Args/Returns, explicit side-effect callouts). Critical persistence or remediation paths additionally tag **Audit Notes** where forensic follow-up matters. Operational batch/PowerShell entry points under `scripts/` use `REM`/comment headers for privileges and safety envelopes. Frontend TypeScript (Next.js) uses file-level summaries where components export routes — refer to adjacent `backend/` README for API layering.
 
-Reading order (~10 minutes for new engineers): root `README.md` → [`architecture.md`](architecture.md) (if using FKS) → [`proxy_guard.md`](proxy_guard.md) → [`network_state_manager.md`](network_state_manager.md) when using `python -m src network-state`.
+Reading order (~10 minutes for new engineers): root `README.md` → [`architecture.md`](architecture.md) (if using FKS) → [`proxy_guard.md`](proxy_guard.md) → [`proxy_attribution.md`](proxy_attribution.md) for `proxy-watch` / `proxy-report` → [`network_state_manager.md`](network_state_manager.md) when using `python -m src network-state`.
 
 ## Failure Knowledge System (start here)
 
@@ -42,7 +42,7 @@ Reading order (~10 minutes for new engineers): root `README.md` → [`architectu
 ## Audit notes for reviewers
 
 - **Batch path**: Timestamped logs land under `logs/`; compare before/after artifacts when validating a repair.
-- **`python -m src` path**: Inspect `reports/last_diagnosis.json`, `reports/last_diagnosis_live.json`, `logs/decision_audit.jsonl`, `logs/network_snapshots.jsonl`, `logs/repair_audit.jsonl`, and `reports/snapshots/` for deterministic evidence, live hypothesis exports, snapshot history, and proxy-disable audits.
+- **`python -m src` path**: Inspect `reports/last_diagnosis.json`, `reports/last_diagnosis_live.json`, `logs/decision_audit.jsonl`, `logs/network_snapshots.jsonl`, `logs/repair_audit.jsonl`, `logs/proxy_guard.jsonl` (``proxy-watch`` drift + attribution), and `reports/snapshots/` for deterministic evidence, live hypothesis exports, snapshot history, and proxy-disable audits.
 - **Hybrid API path**: JSON reports under `reports/` and API payloads include diagnosis evidence; repair execution requires explicit JSON confirmation (see `network_agent/api.py` docstrings).
 - **Endpoint Reliability Platform path**: Correlate `platform_data/audit.jsonl` with `platform_data/remediation_executions.jsonl` and previews; blocked rows (`result=blocked`, policy rationales) should still append even when HTTP 200 responds. Metrics (`GET /platform/metrics`) recompute from JSONL scans—skew indicates corrupt tails or malformed lines skipped by readers.
 
@@ -54,6 +54,7 @@ Reading order (~10 minutes for new engineers): root `README.md` → [`architectu
 | `python -m src repair-safe --apply` | First LOW-risk `scripts/*.bat` via `RunAs`; appends feedback JSONL | `logs/decision_feedback.jsonl`, rerun `diagnose` |
 | `python -m src proxy-disable` (confirmed apply) | Mutates HKCU WinINET proxy keys only | Compare `logs/repair_audit.jsonl`, rerun `proxy-status`, capture new `snapshot` |
 | `python -m src diagnose-live` | Writes live diagnosis JSON plus JSONL context | Verify `reports/last_diagnosis_live.json` timestamps vs `logs/decision_audit.jsonl` |
+| `python -m src proxy-watch` | Appends drift/attribution NDJSON rows (no live rollback) | Correlate `logs/proxy_guard.jsonl` with stderr banners; optional `--evidence-csv` |
 | Hybrid `POST /repair/execute` | Host shell commands with `confirm: true` | JSON `results` array (`returncode`, stdout/stderr) |
 | SaaS `/diagnose` (optional backend) | SQLite usage metering + persisted rows per call | `/usage`, `/history` responses |
 | Remote agent loop | Repeated HTTP posts with local probes | Backend logs/DB counters; bearer token posture |

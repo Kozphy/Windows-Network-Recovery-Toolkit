@@ -76,8 +76,11 @@ python -m src proxy-status                      # HKCU snapshot + parsed modes
 python -m src proxy-diagnose                    # FailureBlocks + optional listener probe
 python -m src proxy-diagnose --json             # Machine payload (risk + attribution + blocks)
 python -m src proxy-attribution                 # localhost proxy port → PID/name/path/cmdline (best-effort)
+python -m src proxy-watch --interval 5        # HKCU snapshot → drift + process inventory → attribution → logs/proxy_guard.jsonl
+python -m src proxy-report                      # Tail/summarize recent proxy-watch audits (--tail N, --json)
 python -m src proxy-disable                     # Typed DISABLE_PROXY → snapshot + mutate + verification
-python -m src proxy-rollback --snapshot-id ...  # Restore prior capture (typed RESTORE_WININET)
+python -m src proxy-rollback --snapshot-id ...  # Restore prior capture from logs/proxy_snapshots.jsonl (typed RESTORE_WININET)
+python -m src proxy-rollback --from-snapshot path\to\known_good.json --confirm RESTORE_PROXY_SNAPSHOT_FILE  # Known-good JSON file restore
 python -m src proxy-monitor
 python -m src proxy-guard --interval 5
 python -m src proxy-guard --interval 5 --auto-rollback --trust-current # optional LKG + live restore (prior-poll rollback)
@@ -95,6 +98,8 @@ python -m src network-state evidence import --file evidence.csv   # optional Pro
 
 **Safety notes:** Listener attribution uses **Windows-native netstat/tasklist/PowerShell CIM** — not proof who wrote registry values. **`proxy-disable`** persists **`logs/proxy_snapshots.jsonl`** immediately before **`reg`** writes; rollback restores captured values/absences via argv-only **`reg`** (no firewall/adapter resets). Structured **`ProxyFailureBlock`** rows describe proxy risk (distinct from **`failure_system/`** FailureBlocks). See **`docs/proxy_guard.md`**.
 
+**Proxy Change Attribution (`proxy-watch`)** follows the same honest boundary: **`logs/proxy_guard.jsonl`** records **detect → inventory → probabilistic attribution → decision** (`schema_version` `1`). Optional **`--evidence-csv`** ingests Procmon CSV rows for Internet Settings writes. Policy knobs (allowlists, `deny_unknown_localhost_proxy`, no default auto-rollback) live in **`config/proxy_policy.example.json`** — copy beside your **`config/`** usage as needed. Deep dive: **`docs/proxy_attribution.md`**.
+
 `proxy-guard` follows **detect → best-effort attribute → decide (default deny) → optional rollback preview/apply → audit** (`logs/proxy_guard_pipeline_audit.jsonl` schema_version `1` plus legacy v2 sinks). On each registry change it attaches a **heuristic** `candidate_actor` (when optional **`pip install psutil`** is available)—**not proof** of the writer process; see **`docs/proxy_guard.md` § Process attribution**. Rollback restores the **prior poll** snapshot by default, or a **named `proxy-snapshot`** baseline when **`--known-good`** is set (never arbitrary shell commands). Typical flags:
 
 - `python -m src proxy-guard --interval 5` — detect + stdout / control JSONL  
@@ -105,7 +110,7 @@ python -m src network-state evidence import --file evidence.csv   # optional Pro
 Consolidated rows also mirror to `reports/proxy_guard_watch.jsonl`, `reports/proxy_guard_actions.jsonl`,
 and `logs/proxy_guard_audit.jsonl`; policy defaults prefer **`config/proxy_guard_policy.json`**. See **`docs/proxy_guard.md`**, **`docs/proxy_guard_attribution.md`** / **`docs/proxy_guard_rollback.md`**.
 
-Docs: **`docs/architecture.md`**, **`docs/proxy_guard.md`**, **`docs/network_state_manager.md`**, **`docs/decision_engine_v2.md`**.
+Docs: **`docs/architecture.md`**, **`docs/proxy_guard.md`**, **`docs/proxy_attribution.md`**, **`docs/network_state_manager.md`**, **`docs/decision_engine_v2.md`**.
 
 ---
 

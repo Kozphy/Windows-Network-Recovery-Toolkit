@@ -2,6 +2,10 @@
 
 Contrast :class:`~src.proxy_guard.models.ProxySnapshot` probes with lightweight registry views
 without mutating runtime configuration.
+
+See Also:
+    :mod:`~src.proxy_guard.wininet_change_diff` for operator-facing ``proxy-watch`` snapshot diffs keyed by
+    canonical WinINET registry field labels.
 """
 
 from __future__ import annotations

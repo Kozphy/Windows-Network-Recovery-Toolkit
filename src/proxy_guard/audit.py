@@ -1,4 +1,23 @@
-"""Append structured :class:`~src.proxy_guard.models.ProxyGuardAuditRecord` JSONL rows."""
+"""Append-only audit sinks for Proxy Guard and unified ``proxy-watch`` change detection.
+
+Module responsibility:
+    Centralizes JSONL append paths for legacy multi-sink records
+    (:class:`~src.proxy_guard.models.ProxyGuardAuditRecord`) and the newer
+    ``proxy_change_detected`` schema consumed by ``proxy-watch`` / ``proxy-report``.
+
+System placement:
+    Imported by :mod:`~src.proxy_guard.guard`, pipeline helpers, and ``emit_proxy_change_detected_audit``
+    writers. Uses :func:`~src.core.jsonl.append_jsonl` for deterministic line appends.
+
+Key invariants:
+    * All writers create parent directories before appending; callers must not rotate files from
+      underneath active processes without external coordination.
+
+Audit Notes:
+    * ``logs/proxy_guard.jsonl`` rows use string ``schema_version`` ``"1"`` and must be parsed as
+      newline-delimited JSON (one object per line). Malformed historical lines are skipped by
+      ``proxy-report``, not repaired in place.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from ..core.jsonl import append_jsonl
+from ..core.time_utils import utc_now_iso
 from .models import ProxyGuardAuditRecord, RollbackPlan
 
 
@@ -64,3 +84,61 @@ def build_rollback_plan(
             "git_npm_env_requires_explicit_operator_flag",
         ),
     )
+
+
+def proxy_change_audit_jsonl_path(repo_root: Path) -> Path:
+    """Unified sink consumed by ``proxy-watch`` / ``proxy-report`` change attribution tooling."""
+
+    return repo_root / "logs" / "proxy_guard.jsonl"
+
+
+def emit_proxy_change_detected_audit(
+    repo_root: Path,
+    *,
+    diff: dict[str, Any],
+    attribution: dict[str, Any],
+    decision: dict[str, Any],
+) -> None:
+    """Append one ``proxy_change_detected`` record for an observed HKCU proxy transition.
+
+    Args:
+        repo_root: Toolkit root determining ``logs/proxy_guard.jsonl`` location.
+        diff: Output of :func:`~src.proxy_guard.wininet_change_diff.diff_wininet_states` (serialized
+            as JSON object).
+        attribution: Output of :func:`~src.proxy_guard.change_attribution.attribute_proxy_change`.
+        decision: Dict shaped like ``{"action": str, "reason": str}`` from watch policy mapping.
+
+    Returns:
+        None.
+
+    Side effects:
+        Creates ``logs/`` if missing; appends exactly one JSON object as a single line (NDJSON).
+
+    Raises:
+        Propagates filesystem errors from ``append_jsonl`` if the volume is not writable.
+
+    Data shape:
+        ``timestamp`` uses :func:`~src.core.time_utils.utc_now_iso` (ISO-8601 UTC with ``Z`` /
+        offset as implemented there). ``safety_boundary`` literals document non-negotiable operator
+        confirmations for rollback outside this call.
+
+    Audit Notes:
+        Treat rows as **correlation evidence**—pair with optional Sysmon / Procmon exports when you
+        must prove which PID issued the registry write; this line alone does not establish write proof.
+    """
+
+    path = proxy_change_audit_jsonl_path(repo_root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, Any] = {
+        "schema_version": "1",
+        "timestamp": utc_now_iso(),
+        "event": "proxy_change_detected",
+        "diff": diff,
+        "attribution": attribution,
+        "decision": decision,
+        "safety_boundary": {
+            "no_silent_destructive_repair": True,
+            "requires_confirmation_for_rollback": True,
+        },
+    }
+    append_jsonl(path, payload)

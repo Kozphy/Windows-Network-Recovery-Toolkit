@@ -25,6 +25,8 @@ Audit Notes:
     Each ``diagnose`` appends one line to ``logs/decision_audit.jsonl`` and
     overwrites ``reports/last_diagnosis.json``. Inspect those files to verify
     scores, evidence, and which probe commands ran.
+    ``proxy-watch`` additionally appends ``schema_version`` ``1`` rows to ``logs/proxy_guard.jsonl`` for HKCU
+    drift + attribution replays (see :mod:`src.proxy_guard.audit`).
 
 Live (v2) surfaces:
     ``snapshot``, ``proxy-*``, ``diagnose-live``, and structured proxy disable previews append or
@@ -57,7 +59,9 @@ from .command_handlers import (
     cmd_proxy_guard,
     cmd_proxy_monitor,
     cmd_proxy_owner,
+    cmd_proxy_report,
     cmd_proxy_rollback,
+    cmd_proxy_watch,
     cmd_proxy_snapshot_diff,
     cmd_proxy_snapshot_list,
     cmd_proxy_snapshot_restore,
@@ -812,6 +816,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_pm.set_defaults(func=cmd_proxy_monitor)
 
+    p_pxw = sub.add_parser(
+        "proxy-watch",
+        help="Poll WinINET HKCU state, diff, attribute processes, append logs/proxy_guard.jsonl (no silent rollback).",
+    )
+    p_pxw.add_argument("--interval", type=float, default=5.0, help="Seconds between polls (default 5).")
+    p_pxw.add_argument("--once", action="store_true", help="Poll twice (detect first change if any) then exit.")
+    p_pxw.add_argument(
+        "--evidence-csv",
+        type=str,
+        default=None,
+        dest="proxy_watch_evidence_csv",
+        metavar="PATH",
+        help="Optional Procmon CSV export (Internet Settings path rows) to modestly boost attribution confidence.",
+    )
+    p_pxw.set_defaults(func=cmd_proxy_watch)
+
+    p_pxrep = sub.add_parser(
+        "proxy-report",
+        help="Summarize recent proxy-watch rows from logs/proxy_guard.jsonl.",
+    )
+    p_pxrep.add_argument("--tail", type=int, default=50, dest="proxy_report_tail", help="Inspect last N rows.")
+    p_pxrep.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON summary + rows.")
+    p_pxrep.set_defaults(func=cmd_proxy_report)
+
     p_pg = sub.add_parser(
         "proxy-guard",
         help="Policy-aware proxy monitor with optional WinINET/WinHTTP rollback (Windows).",
@@ -983,11 +1011,27 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_pxrb = sub.add_parser(
         "proxy-rollback",
-        help='Restore HKCU WinINET captured in logs/proxy_snapshots.jsonl (requires RESTORE_WININET).',
+        help="Restore HKCU WinINET from snapshots JSONL (--snapshot-id) or a known-good JSON file (--from-snapshot).",
     )
-    p_pxrb.add_argument("--snapshot-id", required=True, dest="snapshot_id", metavar="ID", help="UUID from snapshots JSONL.")
+    g_rb = p_pxrb.add_mutually_exclusive_group(required=True)
+    g_rb.add_argument("--snapshot-id", dest="snapshot_id", metavar="ID", help="UUID from logs/proxy_snapshots.jsonl.")
+    g_rb.add_argument(
+        "--from-snapshot",
+        type=str,
+        dest="rollback_from_snapshot",
+        metavar="PATH",
+        help="Path to known-good JSON ({\"snapshot\":{...}} or flat ProxySnapshot dict). Live apply needs --confirm RESTORE_PROXY_SNAPSHOT_FILE.",
+    )
+    p_pxrb.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="rollback_file_confirm_phrase",
+        metavar="PHRASE",
+        help="With --from-snapshot: typed phrase RESTORE_PROXY_SNAPSHOT_FILE enables live restore (omit for preview).",
+    )
     p_pxrb.add_argument("--dry-run", action="store_true", help="Show argv preview only.")
-    p_pxrb.set_defaults(func=cmd_proxy_rollback)
+    p_pxrb.set_defaults(snapshot_id=None, func=cmd_proxy_rollback)
 
     p_pd = sub.add_parser("proxy-disable", help="Preview/apply safe HKCU WinINET proxy disable (typed confirm).")
     p_pd.add_argument("--dry-run", action="store_true", help="Show planned reg commands only.")

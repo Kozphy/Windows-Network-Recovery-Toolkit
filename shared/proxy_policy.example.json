@@ -1,0 +1,11 @@
+{
+  "allowed_process_names": [
+    "clash.exe",
+    "mihomo.exe"
+  ],
+  "allowed_exe_paths": [],
+  "blocked_process_names": [],
+  "allowed_proxy_ports": [7890, 7897],
+  "deny_unknown_localhost_proxy": true,
+  "auto_rollback": false
+}

@@ -60,6 +60,9 @@ from .proxy_guard.remediation import CONFIRMATION_PHRASE, build_user_proxy_disab
 from .proxy_guard.watcher import monitor_proxy_registry
 from .network_state.snapshot_store import resolve_named_snapshot
 from .proxy_guard.known_good_store import get_latest_named_record, snapshot_from_record
+from .proxy_guard.models import ProxySnapshot
+from .proxy_guard.proxy_watch import run_proxy_watch_loop
+from .proxy_guard.rollback import execute_known_good_proxy_restore
 from .proxy_guard.proxy_snapshot_commands import (
     cmd_proxy_snapshot_diff,
     cmd_proxy_snapshot_list,
@@ -193,13 +196,59 @@ def cmd_proxy_attribution(args: argparse.Namespace) -> int:
     return 0
 
 
+ROLLBACK_PROXY_SNAPSHOT_FILE_PHRASE = "RESTORE_PROXY_SNAPSHOT_FILE"
+
+
 def cmd_proxy_rollback(args: argparse.Namespace) -> int:
-    """Restore HKCU WinINET captured in ``logs/proxy_snapshots.jsonl`` by ``snapshot_id``."""
+    """Restore HKCU WinINET from ``logs/proxy_snapshots.jsonl`` UUID row or typed ``--from-snapshot`` JSON file."""
     repo = _repo_root(getattr(args, "repo_root", None))
+    from_snapshot = getattr(args, "rollback_from_snapshot", None)
+
+    if from_snapshot:
+        if platform.system() != "Windows":
+            print("proxy-rollback (--from-snapshot) requires Windows.", file=sys.stderr)
+            return 2
+        snap_path_fs = Path(str(from_snapshot)).expanduser().resolve()
+        if not snap_path_fs.is_file():
+            print(f"Snapshot file not found: {snap_path_fs}", file=sys.stderr)
+            return 2
+        try:
+            blob = json.loads(snap_path_fs.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"Unable to read JSON snapshot file: {exc}", file=sys.stderr)
+            return 2
+        inner = blob.get("snapshot") if isinstance(blob.get("snapshot"), dict) else blob
+        if not isinstance(inner, dict):
+            print("Snapshot JSON must contain a ProxySnapshot-compatible object or {\"snapshot\": {...}}.", file=sys.stderr)
+            return 2
+        target = ProxySnapshot.from_json_dict(inner)
+        phrase = str(getattr(args, "rollback_file_confirm_phrase", "") or "").strip()
+        dry = bool(getattr(args, "dry_run", False))
+        live = phrase == ROLLBACK_PROXY_SNAPSHOT_FILE_PHRASE and not dry
+
+        preview = execute_known_good_proxy_restore(target, dry_run=True, restore_winhttp=True, run=subprocess.run)
+        print(json.dumps(preview, indent=2, ensure_ascii=False, default=str))
+        if dry or not live:
+            print("\nDry-run only. Pass exact --confirm RESTORE_PROXY_SNAPSHOT_FILE (omit --dry-run) to execute.", file=sys.stderr)
+            return 0
+        result = execute_known_good_proxy_restore(target, dry_run=False, restore_winhttp=True, run=subprocess.run)
+        append_jsonl_core(
+            repo / "logs" / "proxy_guard_actions.jsonl",
+            {
+                "schema_version": 1,
+                "timestamp_utc": utc_now_iso(),
+                "action": "proxy_rollback_known_good_file",
+                "result": "ok" if result.get("success") else "error",
+                "note": json.dumps({"path": str(snap_path_fs)})[:2000],
+            },
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
+        return 0 if result.get("success") else 1
+
     snap_path = repo / "logs" / "proxy_snapshots.jsonl"
     snapshot_id = str(getattr(args, "snapshot_id", "") or "").strip()
     if not snapshot_id:
-        print("snapshot_id is required.", file=sys.stderr)
+        print("snapshot_id or --from-snapshot is required.", file=sys.stderr)
         return 2
     record = load_snapshot_record_by_id(snap_path, snapshot_id)
     if not record:
@@ -319,6 +368,117 @@ def cmd_proxy_owner(args: argparse.Namespace) -> int:
     print(f"Command line: {cl if cl else 'unavailable'}")
     if o.get("permission_limited"):
         print("Note: command line may require administrator privileges or CIM access.")
+    return 0
+
+
+def cmd_proxy_watch(args: argparse.Namespace) -> int:
+    """Run the ``proxy-watch`` loop: HKCU snapshots, drift diff, attribution, JSONL auditing.
+
+    Args:
+        args: Namespace carrying ``interval``, ``once``, ``repo_root``, optional ``proxy_watch_evidence_csv``.
+
+    Returns:
+        ``0`` on normal completion (including ``--once`` short runs), ``2`` when the host OS is non-Windows.
+
+    Side effects:
+        Calls :func:`~src.proxy_guard.proxy_watch.run_proxy_watch_loop`, which reads policy files, invokes
+        subprocess probes, appends NDJSON audits, prints ``initial_poll`` JSON to stdout, and prints alerts to stderr.
+
+    Privileges:
+        Follows downstream probe requirements—typically interactive user token without mandatory elevation.
+
+    Audit Notes:
+        Persisted artifacts live under :func:`~src.proxy_guard.audit.proxy_change_audit_jsonl_path`; optional CSV
+        boosts only adjust scoring mass, not row schema.
+
+    Failure modes:
+        Missing evidence CSV paths log to stderr and continue with zero boost.
+    """
+
+    if platform.system() != "Windows":
+        print("proxy-watch requires Windows.", file=sys.stderr)
+        return 2
+    repo = _repo_root(getattr(args, "repo_root", None))
+    eb = 0.0
+    csv_arg = getattr(args, "proxy_watch_evidence_csv", None)
+    if csv_arg:
+        csv_path = Path(str(csv_arg))
+        if csv_path.is_file():
+            from .proxy_guard.evidence_import import confidence_boost_from_csv
+
+            boost, _ = confidence_boost_from_csv(csv_path.resolve())
+            eb += float(boost)
+        else:
+            print(f"Evidence CSV not found: {csv_path}", file=sys.stderr)
+    run_proxy_watch_loop(
+        repo_root=repo,
+        interval_seconds=max(1.0, float(getattr(args, "interval", 5.0))),
+        once=bool(getattr(args, "once", False)),
+        evidence_boost=eb,
+    )
+    return 0
+
+
+def cmd_proxy_report(args: argparse.Namespace) -> int:
+    """Print a human-readable tail summary or JSON bundle for ``logs/proxy_guard.jsonl``.
+
+    Args:
+        args: Namespace with ``proxy_report_tail`` (int, default 50), ``emit_json`` flag, ``repo_root``.
+
+    Returns:
+        ``0`` after printing.
+
+    Side effects:
+        Reads the entire JSONL file into memory to count rows—avoid on multi-gigabyte files.
+
+    Data handling:
+        Skips blank lines and invalid JSON quietly; summary counts apply only to successfully parsed dict rows in
+        the trailing window.
+
+    Audit Notes:
+        Use ``--json`` for machine replay; plaintext mode surfaces aggregate high/medium risk counts only.
+    """
+
+    from .proxy_guard.audit import proxy_change_audit_jsonl_path
+
+    repo = _repo_root(getattr(args, "repo_root", None))
+    path = proxy_change_audit_jsonl_path(repo)
+    rows: list[dict[str, Any]] = []
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(obj, dict):
+                rows.append(obj)
+    tail_n = max(1, int(getattr(args, "proxy_report_tail", 50)))
+    tail = rows[-tail_n:]
+
+    summary = {
+        "path": str(path),
+        "rows_total": len(rows),
+        "rows_shown": len(tail),
+        "risk_high": sum(1 for r in tail if isinstance(r.get("diff"), dict) and str(r["diff"].get("risk_level")) == "high"),
+        "risk_medium": sum(1 for r in tail if isinstance(r.get("diff"), dict) and str(r["diff"].get("risk_level")) == "medium"),
+    }
+
+    if getattr(args, "emit_json", False):
+        print(json.dumps({"summary": summary, "recent": tail}, indent=2, ensure_ascii=False, default=str))
+        return 0
+
+    lines = [
+        "=== Proxy change report (logs/proxy_guard.jsonl) ===",
+        f"Total rows scanned (tail subset): showing {len(tail)} newest",
+        f"High-risk events (tail): {summary['risk_high']}",
+        f"Medium-risk events (tail): {summary['risk_medium']}",
+        "",
+        "Replay with: python -m src proxy-watch --interval 5",
+    ]
+    print("\n".join(lines))
     return 0
 
 

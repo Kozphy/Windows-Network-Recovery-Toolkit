@@ -30,6 +30,7 @@ Normalized platform fixtures live under `tests/fixtures/platform/`. Feature vect
 | Attribution modesty | Heuristic providers never emit `confidence=proof` | `test_attribution_process_heuristic_never_claims_proof` |
 | Classic CLI continuity | Fixture `diagnose` run with isolated `--repo-root` exits 0 | `test_smoke_python_m_src_fixture_diagnose_isolated_repo` |
 | Network State Manager | Snapshot/diff/policy/report/audit/evidence parsing with fakes only; CLI list smoke uses `--repo-root` temp | `tests/test_network_state_manager.py` |
+| Proxy change attribution | Pure parse/diff/score/audit/CSV import + inventory graceful failure; no live PowerShell registry | `tests/test_proxy_change_attribution.py` |
 | Failure system entry | `-m failure_system --help` exits 0 | `test_smoke_failure_system_help_exits_clean` |
 
 Run the focused suite:
