@@ -1,5 +1,7 @@
 # System Architecture
 
+For the **Failure Knowledge System** pipeline (signals → FailureBlock → JSONL → CLI/API → human repair), see **[`architecture.md`](architecture.md)**.
+
 This document describes how the toolkit is structured as a layered troubleshooting system, not just a collection of scripts.
 
 ## 1) High-Level Architecture

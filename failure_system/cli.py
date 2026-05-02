@@ -23,6 +23,12 @@ from pathlib import Path
 from uuid import UUID
 
 from failure_system.collector import collect_diagnostics
+from failure_system.diagram_generator import (
+    diagnosis_from_failure_run,
+    generate_mermaid,
+    snapshot_to_signal_dict,
+)
+from failure_system.explanation_text import generate_explanation_text
 from failure_system.generator import build_failure_block
 from failure_system.recommend import recommend_by_id, recommend_by_query
 from failure_system.rules import RuleEngine
@@ -46,11 +52,42 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     block = build_failure_block(snapshot, outcomes)
     data_dir = _data_dir_from_env()
     path = append_failure_block(block, data_dir=data_dir)
+
+    top = outcomes[0] if outcomes else None
+    cause_str = top.cause if top else block.name
+    risk = getattr(block.risk_level, "value", str(block.risk_level))
+    diag_input = diagnosis_from_failure_run(
+        snapshot_signals=snapshot_to_signal_dict(snapshot),
+        owner_process=None,
+        classification=None,
+        cause=cause_str,
+        confidence=float(block.confidence_score),
+        risk_level=str(risk),
+        recommended_fix=block.recommended_fix,
+    )
+    explanation_text = generate_explanation_text(diag_input)
+
     payload = {
         "failure_block": block.model_dump(mode="json"),
         "rule_outcomes": [o.model_dump(mode="json") for o in outcomes],
         "stored_path": str(path),
+        "explanation_text": explanation_text,
     }
+
+    diagram_flag = getattr(args, "diagram", False)
+    diagram_path = getattr(args, "diagram_file", None)
+    want_diagram = bool(diagram_flag) or bool(diagram_path)
+    mermaid: str | None = None
+    if want_diagram:
+        mermaid = generate_mermaid(diag_input)
+
+    if diagram_path and mermaid is not None:
+        Path(diagram_path).write_text(mermaid, encoding="utf-8", newline="\n")
+
+    if diagram_flag:
+        print(mermaid or "")
+        return 0
+
     print(json.dumps(payload, indent=2))
     return 0
 
@@ -103,6 +140,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--intermittent",
         action="store_true",
         help="Flag intermittent symptoms for rule engine weighting.",
+    )
+    d.add_argument(
+        "--diagram",
+        action="store_true",
+        help="Print an explainable Mermaid flowchart (flowchart TD) instead of JSON.",
+    )
+    d.add_argument(
+        "--diagram-file",
+        type=Path,
+        metavar="PATH",
+        default=None,
+        help="Write the same Mermaid diagram to PATH (.mmd). Implies diagram generation; stdout remains JSON unless --diagram is set.",
     )
     d.set_defaults(func=cmd_diagnose)
 

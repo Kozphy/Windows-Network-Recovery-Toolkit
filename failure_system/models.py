@@ -171,6 +171,10 @@ class DiagnoseResponse(BaseModel):
     failure_block: FailureBlock
     rule_outcomes: list[RuleOutcome]
     stored_path: str | None = None
+    explanation_text: str = Field(
+        default="",
+        description="Plain-English 2–3 sentence summary for UI or reports (no repairs executed).",
+    )
 
 
 class HealthResponse(BaseModel):

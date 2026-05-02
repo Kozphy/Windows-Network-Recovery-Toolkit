@@ -30,7 +30,7 @@ Live (v2) surfaces:
     ``snapshot``, ``proxy-*``, ``diagnose-live``, and structured proxy disable previews append or
     refresh artefacts under ``reports/snapshots/``, ``reports/last_diagnosis_live.json``,
     ``logs/decision_audit.jsonl``, ``logs/network_snapshots.jsonl``, ``logs/repair_audit.jsonl``,
-    and optionally ``logs/proxy_guard_events.jsonl`` mirroring README paths.
+    and optionally ``logs/proxy_guard_events.jsonl`` / ``logs/proxy_guard_control.jsonl`` mirroring README paths.
 """
 
 from __future__ import annotations
@@ -52,6 +52,7 @@ from .decision_engine.scoring import CauseScore, DecisionResult, explain_primary
 from .command_handlers import (
     cmd_diagnose_live,
     cmd_proxy_disable,
+    cmd_proxy_guard,
     cmd_proxy_monitor,
     cmd_proxy_owner,
     cmd_proxy_status,
@@ -792,6 +793,50 @@ def build_parser() -> argparse.ArgumentParser:
         help="Append JSONL events to this path (e.g. logs/proxy_guard_events.jsonl).",
     )
     p_pm.set_defaults(func=cmd_proxy_monitor)
+
+    p_pg = sub.add_parser(
+        "proxy-guard",
+        help="Policy-aware proxy monitor with optional WinINET/WinHTTP rollback (Windows).",
+    )
+    p_pg.add_argument("--interval", type=float, default=5.0, help="Seconds between polls (default 5).")
+    p_pg.add_argument("--once", action="store_true", help="Single poll then exit (initial baseline snapshot).")
+    p_pg.add_argument(
+        "--auto-rollback",
+        action="store_true",
+        help="On blocked changes, run HKCU WinINET disable + netsh winhttp reset proxy.",
+    )
+    p_pg.add_argument(
+        "--policy",
+        type=str,
+        default=None,
+        help="JSON policy file (defaults to shared/proxy_guard_policy.example.json under repo root).",
+    )
+    p_pg.add_argument(
+        "--jsonl",
+        type=str,
+        default=None,
+        help="Append control-plane JSONL (default logs/proxy_guard_control.jsonl).",
+    )
+    p_pg.add_argument(
+        "--dry-run-rollback",
+        action="store_true",
+        help="Log rollback commands without executing reg/netsh (testing).",
+    )
+    p_pg.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        dest="service_config",
+        help="Optional JSON service config (probe retries, rollback cooldown — see docs/proxy_guard.md).",
+    )
+    p_pg.add_argument(
+        "--structured-log",
+        type=str,
+        default=None,
+        dest="structured_log",
+        help="Append JSON-lines operational log (same schema as stderr; optional file sink).",
+    )
+    p_pg.set_defaults(func=cmd_proxy_guard)
 
     p_pd = sub.add_parser("proxy-disable", help="Preview/apply safe HKCU WinINET proxy disable (typed confirm).")
     p_pd.add_argument("--dry-run", action="store_true", help="Show planned reg commands only.")

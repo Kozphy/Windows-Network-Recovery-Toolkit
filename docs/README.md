@@ -1,6 +1,15 @@
 # Documentation
 
-This folder contains the project guides, runbooks, and troubleshooting references for the **Windows Network Recovery Toolkit**: guided Windows 10/11 network diagnosis and repair workflows (batch tooling, optional Python CLIs, optional demo backend/frontend).
+This folder contains the project guides, runbooks, and troubleshooting references for the **Windows Network Recovery Toolkit** and its **Failure Knowledge System**: guided Windows 10/11 network diagnosis and repair workflows (batch tooling, Python CLIs, structured FailureBlocks, optional demo backend/frontend).
+
+## Failure Knowledge System (start here)
+
+| Doc | Purpose |
+| --- | --- |
+| [`architecture.md`](architecture.md) | End-to-end layers: signals → features → rules → FailureBlocks → JSONL → interfaces → human repair. |
+| [`failure_block_contract.md`](failure_block_contract.md) | FailureBlock field contract and safe example. |
+| [`interview_pitch.md`](interview_pitch.md) | Concise portfolio / interview framing. |
+| [`safety_model.md`](safety_model.md) | Diagnose-first rules; FKS never auto-repairs; local-only logs. |
 
 ## Architecture (where these docs fit)
 
@@ -9,6 +18,7 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 | `scripts/*.bat`, `scripts/monitor_network.ps1` | Operator-facing probes and repairs; primary beginner path. |
 | `src/` (`python -m src`) | Stdlib **observe → Hypotheses(v2)** + **legacy v1** scoring + Proxy Guard CLI. |
 | `network_agent/` + `hybrid_frontend/` | Local FastAPI + collector/decision/report flow (see component docstrings). |
+| `failure_system/` | Failure Knowledge System — read-only probes, FailureBlocks, JSONL, FastAPI + CLI (**no repair execution**). |
 | `backend/` + `frontend/` + `agent/` | Optional SaaS-style demo (FastAPI + Next.js + syncing agent), not required for batch repair. |
 
 ## Safety boundaries (summary)

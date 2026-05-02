@@ -25,6 +25,8 @@ from uuid import UUID
 from fastapi import Body, FastAPI, HTTPException, Query
 from failure_system import __version__
 from failure_system.collector import collect_diagnostics
+from failure_system.diagram_generator import diagnosis_from_failure_run, snapshot_to_signal_dict
+from failure_system.explanation_text import generate_explanation_text
 from failure_system.generator import build_failure_block
 from failure_system.models import (
     DiagnoseRequest,
@@ -71,10 +73,24 @@ def create_app() -> FastAPI:
         block = build_failure_block(snapshot, outcomes)
         data_dir = resolve_data_dir()
         written = append_failure_block(block, data_dir=data_dir)
+        top = outcomes[0] if outcomes else None
+        cause_str = top.cause if top else block.name
+        risk = getattr(block.risk_level, "value", str(block.risk_level))
+        diag_input = diagnosis_from_failure_run(
+            snapshot_signals=snapshot_to_signal_dict(snapshot),
+            owner_process=None,
+            classification=None,
+            cause=cause_str,
+            confidence=float(block.confidence_score),
+            risk_level=str(risk),
+            recommended_fix=block.recommended_fix,
+        )
+        explanation_text = generate_explanation_text(diag_input)
         return DiagnoseResponse(
             failure_block=block,
             rule_outcomes=outcomes,
             stored_path=str(written),
+            explanation_text=explanation_text,
         )
 
     @app.get("/failure-blocks", response_model=list[FailureBlockSummary])

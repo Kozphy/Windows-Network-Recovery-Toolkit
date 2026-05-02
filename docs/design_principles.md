@@ -70,6 +70,7 @@ High-signal Markdown references (paths relative to repository root):
 | Area | Doc |
 | --- | --- |
 | Beginner scripts + Python CLI overview | `README.md` |
+| Failure Knowledge System layers + contract | `docs/architecture.md`, `docs/failure_block_contract.md`, `docs/interview_pitch.md` |
 | Decision scoring contract (live/v2) | `docs/decision_engine_v2.md` |
 | Hybrid FastAPI agent + repair policy | `network_agent/api.py` module docstring + `docs/system_architecture.md` |
 | SaaS demo backend (SQLite + Stripe surfaces) | `backend/README.md`, `backend/main.py` module docstring |

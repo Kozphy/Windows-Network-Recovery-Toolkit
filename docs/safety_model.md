@@ -69,3 +69,43 @@ On managed devices:
 - Ask IT before resetting proxy settings.
 - Ask IT before resetting firewall settings.
 - Expect some settings to return automatically after reboot or sign-in.
+
+## Failure Knowledge System (`failure_system`)
+
+The Failure Knowledge System adds structured **FailureBlocks** and **JSONL** storage. It **never**:
+
+- Runs `.bat` repair scripts or elevated resets automatically.
+- Invokes `netsh` repair verbs, Winsock resets, firewall resets, or adapter toggles from its Python API or CLI.
+
+It **does**:
+
+- Execute **read-only** probes (for example `ping`, `nslookup`, `curl`, `ipconfig`, `netsh winhttp show proxy`, `route print`).
+- Emit **text** recommendations and persist records for **local** search.
+
+Risk labels (`low` / `medium` / `high`) describe the **severity of the suggested manual action** if an operator chooses to follow guidance—not an automated enforcement level.
+
+## Logs stay local
+
+Unless **you** copy files or configure optional demo components yourself:
+
+- Default posture is **no upload** of `logs/`, `reports/`, or `data/failure_blocks/*.jsonl` to external telemetry sinks.
+- Treat JSONL and logs as **operator-private**; redact before sharing in public issues.
+
+## Gitignore expectations
+
+Real operational artifacts should remain untracked:
+
+- `logs/`, `reports/`, `data/failure_blocks/*.jsonl`, `*.log`, local `.env` files — see root `.gitignore`.
+- **Do commit** `tests/fixtures/` and `examples/` fiction — **do not** paste production dumps there.
+
+## Public-safe vs private data
+
+| Public-safe (typical) | Keep private |
+| --- | --- |
+| Source code, tests, docs | Real `logs/` and `reports/` |
+| `tests/fixtures/`, `examples/` samples | Live FailureBlock JSONL from your LAN |
+| Synthetic FailureBlocks in docs | Hostnames, SSIDs, corporate domains |
+| Architecture diagrams | Proxy endpoints, internal IPs, full `ipconfig` |
+| | Truncated audit fingerprints if policy-sensitive |
+
+When in doubt, **redact** before publishing.

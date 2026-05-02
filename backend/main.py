@@ -20,7 +20,9 @@ Audit Notes:
     subscription writes route through ``billing.verify_webhook`` plus DB helpers.
 """
 
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -45,6 +47,12 @@ from .db import (
 )
 from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 from .live_observability import router as toolkit_obs_router
+from .platform_routes import router as platform_router
+
+
+_REPO_ROOT_MAIN = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT_MAIN) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT_MAIN))
 
 
 class DiagnoseRequest(BaseModel):
@@ -89,6 +97,7 @@ class CheckoutRequest(BaseModel):
 app = FastAPI(title="Windows Network Recovery Toolkit SaaS API", version="0.1.0")
 
 app.include_router(toolkit_obs_router)
+app.include_router(platform_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,0 +1,11 @@
+{
+  "comment": "Edit allowed lists for your environment. Default deny: only matching process names are allowed to change WinINET proxy without control action.",
+  "allowed_process_name_substrings": [
+    "chrome",
+    "msedge",
+    "Code",
+    "devenv"
+  ],
+  "allowed_process_names_exact": [],
+  "allow_when_attribution_empty": false
+}

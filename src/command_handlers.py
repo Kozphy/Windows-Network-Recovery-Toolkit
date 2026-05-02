@@ -24,6 +24,7 @@ import hashlib
 import json
 import platform
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 from typing import Any
@@ -39,6 +40,9 @@ from .observability.snapshot import build_live_network_snapshot
 from .proxy_guard.owner import attribution_payload
 from .proxy_guard.parser import parse_proxy_server, summarize_proxy_risk
 from .proxy_guard.registry import read_proxy_registry
+from .proxy_guard.config import build_service_config
+from .proxy_guard.policy import load_proxy_guard_policy
+from .proxy_guard.service import run_proxy_guard_service
 from .proxy_guard.remediation import CONFIRMATION_PHRASE, build_user_proxy_disable_mutations
 from .proxy_guard.watcher import monitor_proxy_registry
 from .repair.executor import apply_mutations
@@ -181,6 +185,52 @@ def cmd_proxy_monitor(args: argparse.Namespace) -> int:
         port_owner_fn=lambda prt: owner_fn(prt),
         run=subprocess.run,
     )
+    return 0
+
+
+def cmd_proxy_guard(args: argparse.Namespace) -> int:
+    """Run policy-aware proxy monitoring with optional low-risk automatic rollback.
+
+    On non-Windows hosts the command exits with a clear error (no partial execution).
+
+    Args:
+        args: ``interval``, ``once``, ``auto_rollback``, optional ``policy`` and ``jsonl`` paths,
+            ``repo_root``, and ``dry_run_rollback`` for tests.
+
+    Returns:
+        ``0`` on normal loop exit, ``2`` when the platform or policy file is unusable.
+    """
+    if platform.system() != "Windows":
+        print("proxy-guard is supported on Windows only.", file=sys.stderr)
+        return 2
+    repo = _repo_root(getattr(args, "repo_root", None))
+    policy_arg = getattr(args, "policy", None)
+    policy_path = Path(policy_arg) if policy_arg else repo / "shared" / "proxy_guard_policy.example.json"
+    if not policy_path.is_file():
+        print(f"Policy file not found: {policy_path}", file=sys.stderr)
+        return 2
+    policy = load_proxy_guard_policy(policy_path)
+    jsonl_arg = getattr(args, "jsonl", None)
+    jsonl = Path(jsonl_arg) if jsonl_arg else repo / "logs" / "proxy_guard_control.jsonl"
+    jsonl.parent.mkdir(parents=True, exist_ok=True)
+    interval = max(1.0, float(getattr(args, "interval", 5.0)))
+    cfg_arg = getattr(args, "service_config", None)
+    cfg_path = Path(cfg_arg) if cfg_arg else None
+    slog = getattr(args, "structured_log", None)
+    structured_log_path = Path(slog) if slog else None
+    cfg = build_service_config(
+        policy=policy,
+        jsonl_path=jsonl,
+        interval=interval,
+        once=bool(getattr(args, "once", False)),
+        auto_rollback=bool(getattr(args, "auto_rollback", False)),
+        dry_run_rollback=bool(getattr(args, "dry_run_rollback", False)),
+        run=subprocess.run,
+        config_file=cfg_path,
+        structured_log_path=structured_log_path,
+        exit_after_registry_change_events=None,
+    )
+    run_proxy_guard_service(cfg)
     return 0
 
 

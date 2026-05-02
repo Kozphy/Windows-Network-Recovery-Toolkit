@@ -28,7 +28,12 @@ from ..core.models import ProxyRegistrySnapshot
 _INTERNET_SETTINGS = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 
 
-def _run_reg_query(value_name: str, run: Callable[..., Any] = subprocess.run) -> tuple[int, str]:
+def _run_reg_query(
+    value_name: str,
+    run: Callable[..., Any] = subprocess.run,
+    *,
+    timeout: float = 15.0,
+) -> tuple[int, str]:
     cmd = ["reg", "query", _INTERNET_SETTINGS, "/v", value_name]
     try:
         proc = run(
@@ -36,7 +41,7 @@ def _run_reg_query(value_name: str, run: Callable[..., Any] = subprocess.run) ->
             capture_output=True,
             text=True,
             shell=False,
-            timeout=15,
+            timeout=timeout,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 1, str(exc)
@@ -76,16 +81,22 @@ def _parse_reg_sz(text: str) -> str | None:
 def read_proxy_registry(
     *,
     run: Callable[..., Any] = subprocess.run,
+    query_timeout: float = 15.0,
 ) -> ProxyRegistrySnapshot:
     """Read HKCU WinINET proxy keys via ``reg query`` (Windows).
+
+    Args:
+        run: ``subprocess.run`` injector for tests.
+        query_timeout: Per-value subprocess timeout (seconds).
 
     Returns:
         Normalized snapshot; failed queries yield ``None`` fields without raising.
     """
-    pe_code, pe_out = _run_reg_query("ProxyEnable", run=run)
-    ps_code, ps_out = _run_reg_query("ProxyServer", run=run)
-    pac_code, pac_out = _run_reg_query("AutoConfigURL", run=run)
-    ad_code, ad_out = _run_reg_query("AutoDetect", run=run)
+    tkw = {"timeout": query_timeout}
+    pe_code, pe_out = _run_reg_query("ProxyEnable", run=run, **tkw)
+    ps_code, ps_out = _run_reg_query("ProxyServer", run=run, **tkw)
+    pac_code, pac_out = _run_reg_query("AutoConfigURL", run=run, **tkw)
+    ad_code, ad_out = _run_reg_query("AutoDetect", run=run, **tkw)
 
     proxy_enable = _parse_reg_dword(pe_out) if pe_code == 0 else None
     proxy_server = _parse_reg_sz(ps_out) if ps_code == 0 else None

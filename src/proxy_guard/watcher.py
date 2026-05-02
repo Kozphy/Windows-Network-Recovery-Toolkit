@@ -13,16 +13,7 @@ from ..core.jsonl import append_jsonl
 from ..proxy_guard.parser import parse_proxy_server
 from ..proxy_guard.registry import read_proxy_registry
 from .events import proxy_guard_event
-
-
-def _normalize_view(reg_dict: dict[str, Any], parsed_dict: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "proxy_enable": reg_dict.get("proxy_enable"),
-        "proxy_server": reg_dict.get("proxy_server"),
-        "auto_config_url": reg_dict.get("auto_config_url"),
-        "auto_detect": reg_dict.get("auto_detect"),
-        "parsed": parsed_dict,
-    }
+from .planning import normalize_registry_view
 
 
 def monitor_proxy_registry(
@@ -46,7 +37,7 @@ def monitor_proxy_registry(
         snap = read_proxy_registry(run=run_fn)
         reg_d = snap.to_dict()
         parsed = parse_proxy_server(snap.proxy_server)
-        view = _normalize_view(reg_d, parsed.to_dict())
+        view = normalize_registry_view(reg_d, parsed.to_dict())
         if prior is not None and json.dumps(prior, sort_keys=True) != json.dumps(view, sort_keys=True):
             msg = "[proxy-monitor] registry change detected"
             print(msg, file=sys.stderr)

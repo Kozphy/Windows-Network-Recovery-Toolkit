@@ -17,6 +17,10 @@ export default function HomePage() {
           <li>
             <Link href="/billing">/billing</Link>
           </li>
+          <li>
+            <Link href="/platform">/platform</Link>{" "}
+            <small>(metrics — set NEXT_PUBLIC_PLATFORM_API)</small>
+          </li>
         </ul>
       </div>
     </main>

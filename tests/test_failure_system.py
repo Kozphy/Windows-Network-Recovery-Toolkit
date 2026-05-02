@@ -138,6 +138,9 @@ def test_api_health_and_diagnose(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     assert r2.status_code == 200
     body = r2.json()
     assert "failure_block" in body
+    assert "explanation_text" in body
+    assert isinstance(body["explanation_text"], str)
+    assert len(body["explanation_text"]) > 20
     assert body["stored_path"]
 
     shard = Path(body["stored_path"])

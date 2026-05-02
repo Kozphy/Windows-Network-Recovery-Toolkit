@@ -27,6 +27,13 @@ dist/
 *.egg-info/
 
 # -----------------------------
+# Root environment files
+# -----------------------------
+.env
+.env.*
+!.env.example
+
+# -----------------------------
 # Backend local data / secrets
 # -----------------------------
 backend/toolkit.db
@@ -34,6 +41,7 @@ backend/*.db
 backend/.env
 backend/.env.*
 !backend/.env.example
+backend/.pytest_cache/
 
 # -----------------------------
 # Node / Next.js (frontend)
@@ -63,6 +71,9 @@ reports/*
 
 # Failure Knowledge System shards (local knowledge base)
 data/failure_blocks/*.jsonl
+
+# Endpoint Reliability Platform local JSONL
+platform_data/*.jsonl
 
 # -----------------------------
 # Temp files
