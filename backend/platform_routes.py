@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -26,14 +26,21 @@ from platform_core.models import (
     utc_now_iso,
 )
 from platform_core.policy import (
-    ACTION_REGISTRY,
-    DEFAULT_POLICY,
     PolicyDecision,
     build_preview,
     evaluate_action,
     is_shell_injection,
     validate_confirmation_phrase,
 )
+from platform_core.rbac import (
+    DemoPrincipal,
+    assert_can_execute,
+    assert_can_preview,
+    assert_can_read_audit,
+    parse_demo_principal,
+)
+from platform_core.remediation_registry import get_remediation_action
+from platform_core.fleet import linked_failure_block_payload
 from platform_core.privacy import redact_text, stable_endpoint_hash
 from platform_core.remediation import allowlisted_script
 from platform_core.storage import (
@@ -52,7 +59,16 @@ from platform_core.storage import (
 router = APIRouter(prefix="/platform", tags=["platform"])
 
 SAFE_MODE = os.environ.get("PLATFORM_SAFE_MODE", "1") != "0"
-BACKEND_VERSION = "0.2.0-platform"
+BACKEND_VERSION = "0.3.0-platform-enterprise-demo"
+
+
+def get_demo_principal(
+    x_operator_id: str | None = Header(default=None),
+    x_operator_role: str | None = Header(default=None),
+) -> DemoPrincipal:
+    """Resolve demo RBAC principal from optional headers (localhost portfolio pattern)."""
+
+    return parse_demo_principal(x_operator_id, x_operator_role)
 
 
 class HealthResponse(BaseModel):
@@ -139,7 +155,11 @@ def get_failure_event(event_id: str) -> dict[str, Any]:
     row = find_by_id(_path("failure_events.jsonl"), "event_id", event_id)
     if not row:
         raise HTTPException(status_code=404, detail="event not found")
-    return row
+    fb_raw = row.get("failure_block_id") if isinstance(row.get("failure_block_id"), str) else ""
+    return {
+        "failure_event": row,
+        "failure_block_linked": linked_failure_block_payload(fb_raw),
+    }
 
 
 class PreviewIn(BaseModel):
@@ -150,7 +170,11 @@ class PreviewIn(BaseModel):
 
 
 @router.post("/remediation/preview")
-def remediation_preview(body: PreviewIn) -> dict[str, Any]:
+def remediation_preview(
+    body: PreviewIn,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    assert_can_preview(principal)
     if is_shell_injection(body.requested_action):
         raise HTTPException(status_code=400, detail="invalid action")
     ev_row = find_by_id(_path("failure_events.jsonl"), "event_id", body.failure_event_id)
@@ -160,7 +184,7 @@ def remediation_preview(body: PreviewIn) -> dict[str, Any]:
     preview = build_preview(fe, body.requested_action, requested_surface=body.surface)
     append_remediation_preview(preview.model_dump())
     write_audit(
-        actor="operator",
+        actor=principal.operator_id,
         action="remediation_preview",
         target_type="failure_event",
         target_id=body.failure_event_id,
@@ -178,7 +202,11 @@ class ExecuteIn(BaseModel):
 
 
 @router.post("/remediation/execute")
-def remediation_execute(body: ExecuteIn) -> dict[str, Any]:
+def remediation_execute(
+    body: ExecuteIn,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    assert_can_execute(principal, dry_run=body.dry_run)
     if not SAFE_MODE and os.environ.get("ALLOW_PLATFORM_EXECUTE") != "1":
         pass  # still enforce policy
     prev_row = find_by_id(_path("remediation_previews.jsonl"), "preview_id", body.preview_id)
@@ -186,35 +214,61 @@ def remediation_execute(body: ExecuteIn) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="preview not found")
     preview = RemediationPreview.model_validate(prev_row)
     action_name = preview.proposed_action
-    meta = ACTION_REGISTRY.get(action_name, {})
-    risk = meta.get("risk", "medium")
-    pd: PolicyDecision = evaluate_action(action_name, risk, "api")
+    defn = get_remediation_action(action_name)
+    if defn is None:
+        raise HTTPException(status_code=400, detail="unknown action")
+
+    pd: PolicyDecision = evaluate_action(action_name, "api")
     if not pd.allowed:
         ex = RemediationExecution(
             execution_id=str(uuid.uuid4()),
             preview_id=body.preview_id,
             endpoint_id=preview.endpoint_id,
             action=action_name,
-            confirmed_by=body.actor,
+            confirmed_by=principal.operator_id,
             result="blocked",
             stderr_redacted=pd.reason,
         )
         append_remediation_execution(ex.model_dump())
-        write_audit(actor=body.actor, action="execute", decision="blocked", rationale=pd.reason)
+        write_audit(
+            actor=principal.operator_id,
+            action="execute",
+            decision="blocked",
+            rationale=pd.reason,
+        )
         return ex.model_dump()
 
     if preview.requires_typed_confirmation:
         if not validate_confirmation_phrase(action_name, body.confirmation_phrase):
             raise HTTPException(status_code=400, detail="confirmation_phrase mismatch")
 
-    script = meta.get("script")
+    if not body.dry_run and (defn.manual_only or not defn.api_execute_allowed):
+        ex = RemediationExecution(
+            execution_id=str(uuid.uuid4()),
+            preview_id=body.preview_id,
+            endpoint_id=preview.endpoint_id,
+            action=action_name,
+            confirmed_by=principal.operator_id,
+            result="blocked",
+            stderr_redacted="manual_only_or_api_execute_disabled",
+        )
+        append_remediation_execution(ex.model_dump())
+        write_audit(
+            actor=principal.operator_id,
+            action="execute",
+            decision="blocked",
+            rationale="manual_only_or_api_execute_disabled",
+        )
+        return ex.model_dump()
+
+    script = defn.script_path
     if body.dry_run or script is None:
         ex = RemediationExecution(
             execution_id=str(uuid.uuid4()),
             preview_id=body.preview_id,
             endpoint_id=preview.endpoint_id,
             action=action_name,
-            confirmed_by=body.actor,
+            confirmed_by=principal.operator_id,
             result="dry_run",
             stdout_redacted="[dry-run] no subprocess",
         )
@@ -227,7 +281,7 @@ def remediation_execute(body: ExecuteIn) -> dict[str, Any]:
             preview_id=body.preview_id,
             endpoint_id=preview.endpoint_id,
             action=action_name,
-            confirmed_by=body.actor,
+            confirmed_by=principal.operator_id,
             result="failure",
             stderr_redacted="execution_only_supported_on_windows",
         )
@@ -255,13 +309,19 @@ def remediation_execute(body: ExecuteIn) -> dict[str, Any]:
             preview_id=body.preview_id,
             endpoint_id=preview.endpoint_id,
             action=action_name,
-            confirmed_by=body.actor,
+            confirmed_by=principal.operator_id,
             result="success" if ok else "failure",
             stdout_redacted=out,
             stderr_redacted=err,
         )
         append_remediation_execution(ex.model_dump())
-        write_audit(actor=body.actor, action="execute", target_type="preview", target_id=body.preview_id, decision="success" if ok else "failure")
+        write_audit(
+            actor=principal.operator_id,
+            action="execute",
+            target_type="preview",
+            target_id=body.preview_id,
+            decision="success" if ok else "failure",
+        )
         return ex.model_dump()
     except subprocess.TimeoutExpired:
         ex = RemediationExecution(
@@ -269,7 +329,7 @@ def remediation_execute(body: ExecuteIn) -> dict[str, Any]:
             preview_id=body.preview_id,
             endpoint_id=preview.endpoint_id,
             action=action_name,
-            confirmed_by=body.actor,
+            confirmed_by=principal.operator_id,
             result="failure",
             stderr_redacted="timeout",
         )
@@ -278,7 +338,11 @@ def remediation_execute(body: ExecuteIn) -> dict[str, Any]:
 
 
 @router.get("/audit")
-def platform_audit(limit: int = 50) -> dict[str, Any]:
+def platform_audit(
+    limit: int = 50,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    assert_can_read_audit(principal)
     return {"items": read_recent_jsonl(_path("audit.jsonl"), limit=max(1, min(limit, 200)))}
 
 

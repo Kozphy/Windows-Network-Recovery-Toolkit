@@ -99,6 +99,9 @@ def append_remediation_execution(record: dict[str, Any]) -> None:
 
 def list_metrics() -> dict[str, Any]:
     """Cheap counters for dashboard / GET /platform/metrics."""
+
+    from .incidents import cluster_failure_events
+
     fe_path = _path("failure_events.jsonl")
     endpoints_path = _path("endpoints.jsonl")
     prev_path = _path("remediation_previews.jsonl")
@@ -119,12 +122,36 @@ def list_metrics() -> dict[str, Any]:
 
     blocked = sum(1 for a in iter_jsonl(audit_path) if a.get("decision") == "blocked")
 
+    clusters = cluster_failure_events(events, window_seconds=7200)
+    affected_eps: set[str] = set()
+    for cl in clusters:
+        affected_eps.update(cl.endpoint_ids)
+
+    exec_rows = list(iter_jsonl(exec_path))
+    dry_run_count = sum(1 for x in exec_rows if x.get("result") == "dry_run")
+    success_count = sum(1 for x in exec_rows if x.get("result") == "success")
+    failure_count = sum(1 for x in exec_rows if x.get("result") == "failure")
+    outcome_denom = success_count + failure_count
+    repair_success_rate: float | None = (
+        round(success_count / outcome_denom, 4) if outcome_denom else None
+    )
+
+    fp_count = sum(1 for e in events if e.get("status") == "false_positive")
+    false_positive_rate: float | None = (
+        round(fp_count / len(events), 4) if events else None
+    )
+
     return {
         "endpoint_count": len(endpoint_ids),
         "open_failure_events": open_events,
         "events_by_category": by_cat,
         "events_by_severity": by_sev,
+        "incident_cluster_count": len(clusters),
+        "affected_endpoint_count": len(affected_eps),
         "remediation_preview_count": sum(1 for _ in iter_jsonl(prev_path)),
-        "remediation_execution_count": sum(1 for _ in iter_jsonl(exec_path)),
+        "remediation_execution_count": len(exec_rows),
         "blocked_action_count": blocked,
+        "dry_run_execution_count": dry_run_count,
+        "repair_success_rate": repair_success_rate,
+        "false_positive_rate": false_positive_rate,
     }

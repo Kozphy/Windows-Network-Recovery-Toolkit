@@ -10,7 +10,13 @@ def plat_client(monkeypatch, tmp_path):
 
     from backend.main import app
 
-    return TestClient(app)
+    return TestClient(
+        app,
+        headers={
+            "X-Operator-Role": "admin",
+            "X-Operator-Id": "pytest-platform",
+        },
+    )
 
 
 def test_platform_health(plat_client: TestClient) -> None:
@@ -52,6 +58,27 @@ def test_failure_event_ingest_and_preview_execute_dry_run(plat_client: TestClien
     )
     assert ex.status_code == 200
     assert ex.json().get("result") == "dry_run"
+
+
+def test_get_failure_event_includes_linked_block_payload(plat_client: TestClient) -> None:
+    evt = {
+        "event_id": "api-linked-1",
+        "endpoint_id": "api-test-ep",
+        "failure_block_id": "00000000-0000-0000-0000-000000000099",
+        "severity": "low",
+        "category": "dns",
+        "confidence": 0.5,
+        "summary": "fixture linkage",
+        "recommended_action_key": "inspect_proxy",
+    }
+    plat_client.post("/platform/failure-events/ingest", json=evt)
+    r = plat_client.get("/platform/failure-events/api-linked-1")
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("failure_event", {}).get("event_id") == "api-linked-1"
+    linked = body.get("failure_block_linked") or {}
+    assert linked.get("found") is False
+    assert linked.get("failure_block_id") == "00000000-0000-0000-0000-000000000099"
 
 
 def test_high_risk_execute_blocked_via_policy_layers(plat_client: TestClient) -> None:

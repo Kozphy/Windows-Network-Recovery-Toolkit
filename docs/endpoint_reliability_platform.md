@@ -44,3 +44,20 @@ Append-only **JSONL** under `platform_data/` plus **PlatformAuditRecord** rows f
 ## Future fleet-level extension
 
 See **`docs/fleet_architecture.md`**: optional central ingestion—**out of scope** for default prototype; agent remains authoritative for enforcement.
+
+---
+
+## Repository phase map (portfolio prototype)
+
+Incremental delivery aligns with staged platform design (this repo ships the combined prototype):
+
+| Phase | Artefact |
+| --- | --- |
+| 1 | Platform vision + **`docs/platform_architecture.md`** (Mermaid) + **`docs/safety_and_privacy.md`** |
+| 2–3 | **`platform_core/models.py`** + **`privacy.py`** |
+| 4 | **`platform_core/policy.py`** (+ pytest) |
+| 5–6 | **`endpoint_agent/`** + **`backend/platform_routes.py`** |
+| 7 | **`platform_core/storage.py`** → **`platform_data/*.jsonl`** |
+| 8 | **`frontend/app/platform/page.tsx`** |
+| 9 | **`tests/fixtures/platform/`**, **`python -m platform_core.demo`**, **`scripts/demo_platform_flow.bat`** |
+| 10–11 | **`tests/test_*`**, **`.github/workflows/ci.yml`**, **`docs/interview_case_study.md`** |

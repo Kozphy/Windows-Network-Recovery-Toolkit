@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .remediation_registry import list_script_basenames
+
 
 def repo_scripts_dir(base: Path | None = None) -> Path:
     """Return absolute ``scripts/`` directory (repository root)."""
@@ -22,11 +24,10 @@ def allowlisted_script(script_basename: str, repo_root: Path | None = None) -> P
     return None
 
 
-_ALLOWLIST: frozenset[str] = frozenset(
+_EXTRA_DIAGNOSTIC_SCRIPTS: frozenset[str] = frozenset(
     {
-        "reset_dns.bat",
-        "reset_proxy.bat",
         "auto_diagnose.bat",
         "proxy_status.bat",
     },
 )
+_ALLOWLIST: frozenset[str] = frozenset(list_script_basenames()) | _EXTRA_DIAGNOSTIC_SCRIPTS

@@ -76,6 +76,18 @@ Structured **privacy-aware** domain model (`platform_core/`), append-only **`pla
 | **`docs/platform_architecture.md`** | Mermaid diagram (agent → audit) |
 | **`docs/safety_and_privacy.md`** | Allowed / forbidden fields |
 | **`docs/fleet_architecture.md`** | Optional future fleet pattern |
+| **`docs/demo_walkthrough.md`** | Full safe demo — PowerShell runbook (`ping OK / browser fails` scenario) |
+| **`docs/platform_api_contract.md`** | `/platform/*` schemas, RBAC headers, safety rules |
+
+### Enterprise platform demo upgrade (portfolio interview story)
+
+Additive layers on top of the same **`platform_data/*.jsonl`** backbone — beginner **`.bat`** flows untouched:
+
+- **Incident clustering** (`platform_core/incidents.py`) feeds **`incident_cluster_count`** / **`affected_endpoint_count`** in **`GET /platform/metrics`** (deterministic grouping by category + signal fingerprint + time window).
+- **RBAC lite** (`platform_core/rbac.py`) gated **`POST /platform/remediation/preview|execute`** + **`GET /platform/audit`** via **`X-Operator-Role`** / **`X-Operator-Id`** (default missing header ⇒ **`operator`**, **`admin`** for live repair + audits in demos).
+- **Remediation registry** (`platform_core/remediation_registry.py`) is the authoritative allowlist (risk tier, **`api_execute_allowed`**, **`manual_only`**, confirmation phrases); legacy action aliases (`reset_firewall` → `firewall_reset_manual_only`) stay compatible with tests.
+- **Metrics plus** aggregates dry-run executions, blocked audit rows, success / false-positive rates when JSONL signals exist — still **purely local** reads.
+- **Dashboard polish** (`frontend/app/platform/page.tsx`) surfaces health, clustered KPI tiles, failure tables, optional preview sandbox, RBAC-role selector (browser `localStorage`), and an explicit safety banner (**no uploads / no silent destructive automation**).
 
 ### Install (platform + backend tests)
 
@@ -103,6 +115,7 @@ Writes local JSONL and optionally POSTs **sanitized** payloads to **`127.0.0.1` 
 
 ```powershell
 python -m endpoint_agent --once
+python -m endpoint_agent.agent --once
 python -m endpoint_agent --once --api http://127.0.0.1:8000
 python -m endpoint_agent --loop --interval 30
 ```
@@ -117,6 +130,7 @@ Uses fixtures only — **does not mutate network**:
 
 ```powershell
 python -m platform_core.demo
+scripts\demo_platform_flow.bat
 ```
 
 ### Operator dashboard (Next.js)
@@ -183,6 +197,8 @@ platform_data/              # Local JSONL for platform prototype (mostly gitigno
 | FailureBlock contract | [`docs/failure_block_contract.md`](docs/failure_block_contract.md) |
 | Safety | [`docs/safety_model.md`](docs/safety_model.md) |
 | Interview pitch | [`docs/interview_pitch.md`](docs/interview_pitch.md) |
+| Platform API contract | [`docs/platform_api_contract.md`](docs/platform_api_contract.md) |
+| Safe demo walkthrough | [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) |
 | Docs hub | [`docs/README.md`](docs/README.md) |
 
 ---
