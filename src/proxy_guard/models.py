@@ -13,8 +13,18 @@ ConfidenceLevel = str  # values: verified | high | medium | low | unknown
 AttributionMode = Literal["verified_eventlog", "best_effort_process_snapshot", "unknown"]
 GuardDecisionKind = Literal["allowed", "blocked", "observe"]
 
-HeuristicAttributionConfidence = Literal["medium", "low", "unknown"]
-HeuristicAttributionMethod = Literal["psutil_snapshot_heuristic", "wmi_snapshot_heuristic", "unavailable"]
+HeuristicAttributionConfidence = Literal["high", "medium", "low", "unknown"]
+HeuristicAttributionMethod = Literal[
+    "psutil_snapshot_heuristic",
+    "wmi_snapshot_heuristic",
+    "unavailable",
+    "sysmon_event_13",
+    "procmon_csv",
+    "localhost_listener",
+    "process_inventory_heuristic",
+    "registry_polling",
+    "unknown",
+]
 
 
 def _json_leaf(v: Any) -> Any:
@@ -44,7 +54,7 @@ class ActorCandidate:
     reasons: tuple[str, ...]
 
     def to_jsonable(self) -> dict[str, Any]:
-        return {
+        row = {
             "pid": self.pid,
             "process_name": self.process_name,
             "process_path": self.process_path,
@@ -53,28 +63,35 @@ class ActorCandidate:
             "score": self.score,
             "reasons": list(self.reasons),
         }
+        if self.process_path:
+            row["image_path"] = self.process_path
+        return row
 
 
 @dataclass(frozen=True)
 class HeuristicPipelineAttribution:
-    """Best-effort process snapshot attribution for unified pipeline audits only.
+    """Best-effort / layered attribution export for unified ``schema_version`` 1 pipeline rows.
 
-    This is intentionally **not** the policy-layer :class:`AttributionResult` (listen owner /
-    Sysmon). No ``high`` confidence: only direct event sources could justify that in future work.
+    ``high`` confidence is reserved for correlated Sysmon/Procmon registry SetValue tiers produced by
+    :mod:`~src.proxy_guard.attribution_engine`. Listener and psutil-derived rows remain capped per caller.
     """
 
     candidate_actor: ActorCandidate | None
     attribution_confidence: HeuristicAttributionConfidence
-    attribution_method: HeuristicAttributionMethod
+    attribution_method: HeuristicAttributionMethod | str
     attribution_notes: tuple[str, ...]
+    evidence: tuple[dict[str, Any], ...] = ()
 
     def to_jsonable(self) -> dict[str, Any]:
-        return {
+        row: dict[str, Any] = {
             "candidate_actor": None if self.candidate_actor is None else self.candidate_actor.to_jsonable(),
             "attribution_confidence": self.attribution_confidence,
             "attribution_method": self.attribution_method,
             "attribution_notes": list(self.attribution_notes),
         }
+        if self.evidence:
+            row["evidence"] = list(self.evidence)
+        return row
 
 
 @dataclass(frozen=True)

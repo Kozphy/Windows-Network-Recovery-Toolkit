@@ -32,6 +32,8 @@ def run_proxy_guard_from_legacy(
     restore_git_npm_env: bool = False,
     cli_rollback: bool = False,
     rollback_confirm_phrase: str = "",
+    evidence_csv: str | None = None,
+    attribution_since_seconds: int = 90,
 ) -> None:
     """Adapter preserving historical keyword parameters for pytest + shim callers."""
 
@@ -50,5 +52,7 @@ def run_proxy_guard_from_legacy(
         restore_git_npm_env=restore_git_npm_env,
         cli_rollback=cli_rollback,
         rollback_confirm_phrase=rollback_confirm_phrase,
+        evidence_csv=evidence_csv,
+        attribution_since_seconds=attribution_since_seconds,
     )
     run_proxy_guard_service(cfg)

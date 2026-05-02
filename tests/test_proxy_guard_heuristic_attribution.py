@@ -168,7 +168,7 @@ def test_attribute_failure_does_not_crash_proxy_guard(
     def boom(*_a: object, **_k: object) -> None:
         raise RuntimeError("simulated")
 
-    monkeypatch.setattr("src.proxy_guard.guard.attribute_proxy_change", boom)
+    monkeypatch.setattr("src.proxy_guard.guard.registry_layer_attribute_proxy_change", boom)
 
     off = ProxyRegistrySnapshot(
         proxy_enable=0,
@@ -254,20 +254,26 @@ def test_proxy_change_audit_event_includes_attribute_object(
 ) -> None:
     captured: list[dict] = []
 
+    fixed_pipeline = attribute_proxy_change(
+        process_snapshot=[
+            {
+                "pid": 1,
+                "name": "vpnagent.exe",
+                "exe": "C:\\corp\\vpnagent.exe",
+                "cmdline": "vpnagent",
+                "ppid": 0,
+            },
+        ],
+        now=1_710_090_000.0,
+    )
+
     monkeypatch.setattr(
-        "src.proxy_guard.guard.attribute_proxy_change",
-        lambda **_k: attribute_proxy_change(
-            process_snapshot=[
-                {
-                    "pid": 1,
-                    "name": "vpnagent.exe",
-                    "exe": "C:\\corp\\vpnagent.exe",
-                    "cmdline": "vpnagent",
-                    "ppid": 0,
-                },
-            ],
-            now=1_710_090_000.0,
-        ),
+        "src.proxy_guard.guard.registry_layer_attribute_proxy_change",
+        lambda *a, **k: None,
+    )
+    monkeypatch.setattr(
+        "src.proxy_guard.guard.layered_to_heuristic_pipeline",
+        lambda _layered: fixed_pipeline,
     )
     monkeypatch.setattr(
         "src.proxy_guard.guard.emit_pipeline_audit_v1",

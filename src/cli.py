@@ -942,6 +942,22 @@ def build_parser() -> argparse.ArgumentParser:
             "(Network State Manager), else logs/proxy_known_good_snapshots.jsonl (HKCU/Git/npm/env/WinHTTP)."
         ),
     )
+    p_pg.add_argument(
+        "--evidence-csv",
+        type=str,
+        default=None,
+        dest="proxy_guard_evidence_csv",
+        metavar="PATH",
+        help="Optional Procmon CSV export (RegSetValue on Internet Settings proxy keys) for layered attribution.",
+    )
+    p_pg.add_argument(
+        "--attribution-window",
+        type=int,
+        default=90,
+        dest="proxy_guard_attribution_seconds",
+        metavar="SECONDS",
+        help="Sysmon Event 13 / rough Procmon time gate in seconds (default 90; minimum 60 in config clamp).",
+    )
     p_pg.set_defaults(func=cmd_proxy_guard)
 
     p_pss = sub.add_parser(

@@ -31,7 +31,33 @@ import subprocess
 from collections.abc import Callable
 from typing import Any
 
+from .attribution_model import ProxyActor
 from .owner import attribution_payload
+
+
+_HEURISTIC_LEXICON = frozenset(
+    {
+        "cursor",
+        "code",
+        "claude",
+        "node",
+        "npm",
+        "pnpm",
+        "yarn",
+        "python",
+        "pip",
+        "git",
+        "clash",
+        "v2ray",
+        "sing-box",
+        "singbox",
+        "shadowsocks",
+        "vpn",
+        "proxy",
+        "updater",
+        "electron",
+    },
+)
 
 
 def _run_powershell_json(expression: str, *, run: Callable[..., Any], timeout: float = 45.0) -> Any:
@@ -199,3 +225,97 @@ def capture_process_inventory(
         "collection_warnings": warnings + list(listen_block.get("notes") or []),
         "listening_pids": sorted(list(listen_pids)),
     }
+
+
+def collect_recent_process_inventory(*, limit: int = 30, run: Callable[..., Any] = subprocess.run) -> list[ProxyActor]:
+    """Return newest ``Win32_Process`` rows mapped to :class:`~src.proxy_guard.attribution_model.ProxyActor`.
+
+    Rows sort by WMI ``CreationDate`` descending server-side via PowerShell ``Sort-Object`` (best-effort).
+
+    Raises:
+        None — returns an empty list on probe failure.
+    """
+    cap = max(1, min(int(limit), 520))
+    ps_expr = (
+        '& { $ErrorActionPreference="SilentlyContinue"; '
+        "Get-CimInstance Win32_Process | Sort-Object {[datetime]$_.CreationDate} -Descending "
+        f"| Select-Object -First {cap} "
+        'ProcessId,ParentProcessId,Name,ExecutablePath,CommandLine,CreationDate '
+        "| ConvertTo-Json -Depth 8 -Compress }"
+    )
+
+    raw_rows = _run_powershell_json(ps_expr, run=run)
+    iterable: list[Any]
+    if isinstance(raw_rows, list):
+        iterable = list(raw_rows)
+    elif isinstance(raw_rows, dict):
+        iterable = [raw_rows]
+    else:
+        return []
+
+    out: list[ProxyActor] = []
+    for row in iterable:
+        if not isinstance(row, dict):
+            continue
+        try:
+            pid_raw = row.get("ProcessId") if "ProcessId" in row else row.get("pid")
+            pp_raw = row.get("ParentProcessId") if "ParentProcessId" in row else row.get("parent_pid")
+            pid: int | None = None
+            if isinstance(pid_raw, int):
+                pid = pid_raw
+            elif isinstance(pid_raw, str) and pid_raw.strip().isdigit():
+                pid = int(pid_raw.strip())
+            if pid is None:
+                continue
+            ppid: int | None = None
+            if isinstance(pp_raw, int):
+                ppid = pp_raw
+            elif isinstance(pp_raw, str) and pp_raw.strip().isdigit():
+                ppid = int(pp_raw.strip())
+            name = row.get("Name") or row.get("process_name")
+            exe = row.get("ExecutablePath") or row.get("executable_path")
+            cmd = row.get("CommandLine") or row.get("command_line")
+            ctime_raw = row.get("CreationDate")
+            ct_s: str | None = None
+            if isinstance(ctime_raw, str):
+                ct_s = ctime_raw
+            elif hasattr(ctime_raw, "isoformat"):
+                try:
+                    ct_s = ctime_raw.isoformat()
+                except (OSError, ValueError):
+                    ct_s = str(ctime_raw)
+            elif ctime_raw is not None:
+                ct_s = str(ctime_raw)
+            out.append(
+                ProxyActor(
+                    pid=pid,
+                    parent_pid=ppid,
+                    process_name=str(name).strip() if isinstance(name, str) else None,
+                    image_path=str(exe).strip() if isinstance(exe, str) and exe.strip() else None,
+                    command_line=str(cmd).strip() if isinstance(cmd, str) and cmd.strip() else None,
+                    started_at=ct_s,
+                ),
+            )
+        except (TypeError, ValueError):
+            continue
+
+    return out
+
+
+def heuristic_proxy_actor_candidates(inventory: list[ProxyActor]) -> list[ProxyActor]:
+    """Prefer processes whose textual metadata matches developer/proxy tool substrings."""
+
+    matched: list[ProxyActor] = []
+    for a in inventory:
+        hay = " ".join(
+            x
+            for x in (
+                a.process_name or "",
+                (a.image_path or ""),
+                (a.command_line or ""),
+            )
+            if x
+        ).lower()
+        if any(tok in hay for tok in _HEURISTIC_LEXICON):
+            matched.append(a)
+    return matched

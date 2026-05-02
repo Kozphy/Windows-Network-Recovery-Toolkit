@@ -11,9 +11,12 @@ from typing import Any, Literal, cast
 
 from ..core.jsonl import append_jsonl
 from .attribution import (
-    attribute_proxy_change,
     enhance_attribution_for_pipeline,
     heuristic_attribution_to_audit_dict,
+)
+from .attribution_engine import (
+    attribute_proxy_change as registry_layer_attribute_proxy_change,
+    layered_to_heuristic_pipeline,
 )
 from .audit import build_rollback_plan, emit_pipeline_audit_v1, emit_proxy_guard_audit
 from .config import ProxyGuardServiceConfig
@@ -188,7 +191,15 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
 
         print("[proxy-guard] registry change detected", file=sys.stderr)
         try:
-            heuristic_pipeline = attribute_proxy_change(now=time.time())
+            win = int(max(60, min(600, getattr(cfg, "attribution_since_seconds", 90))))
+            layered = registry_layer_attribute_proxy_change(
+                prev_view,
+                curr_view,
+                since_seconds=win,
+                evidence_csv=getattr(cfg, "evidence_csv", None),
+                run=cfg.run,
+            )
+            heuristic_pipeline = layered_to_heuristic_pipeline(layered)
         except Exception as exc:
             heuristic_pipeline = HeuristicPipelineAttribution(
                 candidate_actor=None,
@@ -197,7 +208,7 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
                 attribution_notes=(
                     "best-effort attribution only",
                     "registry polling cannot prove exact writer process",
-                    f"heuristic_attribution_failed:{type(exc).__name__}",
+                    f"layered_attribution_failed:{type(exc).__name__}",
                 ),
             )
 

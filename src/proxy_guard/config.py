@@ -91,6 +91,8 @@ class ProxyGuardServiceConfig:
     cli_rollback: bool = False
     rollback_confirm_phrase: str = ""
     known_good_snapshot: Any | None = None
+    evidence_csv: str | None = None
+    attribution_since_seconds: int = 90
 
 
 def build_service_config(
@@ -112,6 +114,8 @@ def build_service_config(
     cli_rollback: bool = False,
     rollback_confirm_phrase: str = "",
     known_good_snapshot: Any | None = None,
+    evidence_csv: str | None = None,
+    attribution_since_seconds: int = 90,
 ) -> ProxyGuardServiceConfig:
     """Merge CLI args with optional JSON file and environment variables.
 
@@ -170,6 +174,8 @@ def build_service_config(
         cli_rollback=cli_rollback,
         rollback_confirm_phrase=rollback_confirm_phrase,
         known_good_snapshot=known_good_snapshot,
+        evidence_csv=evidence_csv,
+        attribution_since_seconds=max(60, int(attribution_since_seconds)),
     )
 
 
@@ -190,6 +196,8 @@ def legacy_control_kwargs_to_config(
     cli_rollback: bool = False,
     rollback_confirm_phrase: str = "",
     known_good_snapshot: Any | None = None,
+    evidence_csv: str | None = None,
+    attribution_since_seconds: int = 90,
 ) -> ProxyGuardServiceConfig:
     """Map legacy :func:`run_proxy_guard_control` kwargs to :class:`ProxyGuardServiceConfig`."""
     return build_service_config(
@@ -210,6 +218,8 @@ def legacy_control_kwargs_to_config(
         cli_rollback=cli_rollback,
         rollback_confirm_phrase=rollback_confirm_phrase,
         known_good_snapshot=known_good_snapshot,
+        evidence_csv=evidence_csv,
+        attribution_since_seconds=attribution_since_seconds,
     )
 
 

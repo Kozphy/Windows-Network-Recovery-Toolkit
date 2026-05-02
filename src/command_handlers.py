@@ -581,6 +581,9 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
         if known_snap is None:
             print(f"Named proxy snapshot not found: {kg_raw!r}", file=sys.stderr)
             return 2
+    csv_raw = getattr(args, "proxy_guard_evidence_csv", None)
+    csv_trim = str(csv_raw).strip() if csv_raw else None
+    win_sec = int(getattr(args, "proxy_guard_attribution_seconds", 90))
     cfg = build_service_config(
         policy=policy,
         jsonl_path=jsonl,
@@ -599,6 +602,8 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
         cli_rollback=bool(getattr(args, "cli_rollback", False)),
         rollback_confirm_phrase=str(getattr(args, "rollback_confirm_phrase", "") or ""),
         known_good_snapshot=known_snap,
+        evidence_csv=csv_trim,
+        attribution_since_seconds=win_sec,
     )
     run_proxy_guard_service(cfg)
     return 0
