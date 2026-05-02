@@ -61,6 +61,19 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 | [`platform_architecture.md`](platform_architecture.md) | Diagrams (agent → JSONL → API) |
 | [`platform_api_contract.md`](platform_api_contract.md) | `/platform/*` payloads, RBAC headers |
 | [`safety_and_privacy.md`](safety_and_privacy.md) | Allowed / redacted fields |
+| [`test_strategy.md`](test_strategy.md) | pytest safety boundaries — offline regressions without repair scripts |
+
+## Tests and CI posture
+
+Automated suites live under **`tests/`** (see **`docs/test_strategy.md`** for deliberate offline constraints).
+
+## Supplementary tooling paths
+
+| Path | Purpose |
+| --- | --- |
+| `proxy_attribution/` | Read-only classifier/diagnostic CLI layering on Windows proxy artefacts. |
+| `network_agent/` + `hybrid_frontend/` | Alternate demo stacks documented in-repo; not required for `python -m src` flows. |
+
 
 ## Start Here
 

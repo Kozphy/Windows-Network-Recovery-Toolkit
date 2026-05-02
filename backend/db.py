@@ -1,12 +1,31 @@
-"""SQLite persistence for SaaS diagnosis, metering, subscriptions, and projects.
+"""SQLite persistence shared by ``backend.main`` demos (diagnosis, metering, billing metadata).
 
-Defines `get_connection`, `init_db` (DDL from ``schema.sql``), and helpers consumed
-by ``backend.main``: multi-tenant users/orgs/projects, ``diagnosis_logs``,
-``connection_metrics``, subscriptions, and usage counters.
+Module responsibility:
+    Provides ``get_connection``, ``init_db`` (DDL sourced from adjacent ``schema.sql``), and
+    CRUD helpers for users/orgs/projects, diagnosis history rows, coarse connection metrics,
+    subscription placeholders, Stripe webhook mirrors, and month-scoped usage counters.
+
+System placement:
+    Sibling to ``backend.auth`` / ``backend.billing``; unrelated to append-only JSONL flows in
+    ``platform_core.storage`` aside from coexistence inside the FastAPI host process.
+
+Timezone assumptions:
+    Timestamps originate from naive/aware datetime helpers annotated per function — prefer
+    :func:`month_key` for UTC-aligned billing buckets when extending SQL.
+
+Malformed data handling:
+    Callers coerce JSON payloads before inserting; malformed rows surface as SQLite constraint
+    errors bubbling to routers unless guarded.
 
 Failure modes:
-    ``init_db`` may raise ``sqlite3.Error`` when schema SQL cannot execute.
+    ``init_db`` may raise ``sqlite3.Error`` when ``schema.sql`` cannot execute.
+
+Audit Notes:
+    Default DB path resolves to ``backend/toolkit.db`` — copy or embargo this file alongside JSONL
+    exports when archiving demos; Stripe webhook duplication logic lives in routing code, but this
+    module stores the transactional outcome rows.
 """
+
 
 from __future__ import annotations
 

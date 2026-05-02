@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * Operator dashboard slice for localhost FastAPI `/platform/*` endpoints (typically `NEXT_PUBLIC_PLATFORM_API`).
+ *
+ * @remarks Fetches metrics, remediation previews/replay stubs, RBAC-lite headers persisted in
+ * `localStorage`, and surfaced JSON dumps for demos. Requires `NEXT_PUBLIC_PLATFORM_API`; does not
+ * upload telemetry to third parties.
+ *
+ * @remarks Safety boundaries: UI invokes preview/replay HTTPS routes only — never invokes Windows
+ * repair scripts locally. Confirm destructive execution only exists server-side (`POST …/execute`)
+ * with typed phrases and registry gatekeeping.
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -37,6 +49,9 @@ export default function PlatformPage() {
   const [failureEvents, setFailureEvents] = useState<object | null>(null);
   const [audit, setAudit] = useState<object | null>(null);
   const [previewResult, setPreviewResult] = useState<string>("");
+  const [normEventsPayload, setNormEventsPayload] = useState<object | null>(null);
+  const [policySummary, setPolicySummary] = useState<object | null>(null);
+  const [replayOutput, setReplayOutput] = useState<string>("");
   const [error, setError] = useState<string>("");
 
   const [previewBody, setPreviewBody] = useState({
@@ -70,15 +85,23 @@ export default function PlatformPage() {
       fetch(`${base}/platform/metrics`).then((r) => r.json()),
       fetch(`${base}/platform/endpoints`, pub).then((r) => r.json()),
       fetch(`${base}/platform/failure-events?limit=80`, pub).then((r) => r.json()),
+      fetch(`${base}/platform/policy/summary`)
+        .then((r) => (r.ok ? r.json() : {}))
+        .catch(() => ({})),
+      role === "viewer"
+        ? Promise.resolve({ items: [], parse_errors: [] })
+        : fetchJson("/platform/events?limit=40").catch(() => ({ items: [], parse_errors: [] })),
       role === "viewer" || role === "operator"
         ? Promise.resolve({ items: [] })
         : fetchJson("/platform/audit?limit=40"),
     ])
-      .then(([h, m, ep, ev, au]) => {
+      .then(([h, m, ep, ev, pol, nev, au]) => {
         setHealth(h);
         setMetrics(m);
         setEndpoints(ep);
         setFailureEvents(ev);
+        setPolicySummary(pol);
+        setNormEventsPayload(nev);
         setAudit(au);
       })
       .catch((e: unknown) => setError(String(e)));
@@ -87,6 +110,32 @@ export default function PlatformPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function postReplayPreview() {
+    setReplayOutput("");
+    const demo = {
+      events: [
+        {
+          schema_version: "1",
+          event_id: "ui-replay-sample",
+          event_type: "normalized.remediation_candidate",
+          severity: "low",
+          endpoint_id_hash: "0".repeat(32),
+          signals: { remediation_action: "reset_dns", simulated_operator_role: role },
+        },
+      ],
+    };
+    try {
+      const body = await fetchJson("/platform/replay/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(demo),
+      });
+      setReplayOutput(JSON.stringify(body, null, 2));
+    } catch (e: unknown) {
+      setReplayOutput(String(e));
+    }
+  }
 
   async function postPreview() {
     setPreviewResult("");
@@ -121,8 +170,8 @@ export default function PlatformPage() {
           marginBottom: "1.25rem",
         }}
       >
-        <strong>Local-first demo.</strong> No external upload by default. No automatic destructive repair. High-tier
-        actions stay blocked — use API <code>dry_run</code> and operator playbook for real machines.
+        <strong>Privacy / safety banner.</strong> Events use hashed endpoints only (<code>endpoint_id_hash</code>).
+        Attribution confidence is heuristic unless proof-tier providers are wired. No external upload by default — no automatic destructive repair — high-risk actions manual/blocked via policy registry + gate.
       </div>
 
       <p>
@@ -153,6 +202,75 @@ export default function PlatformPage() {
       <section style={{ marginTop: "1.5rem" }}>
         <h2>Platform health</h2>
         <pre style={{ overflow: "auto", maxHeight: 200 }}>{health ? JSON.stringify(health, null, 2) : "…loading"}</pre>
+      </section>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2>Policy catalog summary</h2>
+        <pre style={{ overflow: "auto", maxHeight: 220 }}>
+          {policySummary ? JSON.stringify(policySummary, null, 2) : "…loading"}
+        </pre>
+      </section>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2>Unified normalized events</h2>
+        <p style={{ fontSize: "0.9rem", opacity: 0.85 }}>
+          Requires <strong>operator</strong> / <strong>admin</strong> (blocked for viewer). Rows come from{" "}
+          <code>normalized_events.jsonl</code>.
+        </p>
+        {(() => {
+          const neItems = (((normEventsPayload as { items?: unknown[] }) || {}).items || []) as Record<string, unknown>[];
+          const parseErrs =
+            (((normEventsPayload as { parse_errors?: unknown[] }) || {}).parse_errors || []) as Record<string, unknown>[];
+          if (!neItems.length) {
+            return <p>{role === "viewer" ? "(viewer scope — skipping fetch)" : "No normalized rows yet"}</p>;
+          }
+          return (
+            <>
+              {parseErrs.length ? (
+                <p style={{ color: "#b45309" }}>Parse issues (tail rows): {parseErrs.length}</p>
+              ) : null}
+              <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ textAlign: "left" }}>
+                    <th style={th}>event_id</th>
+                    <th style={th}>type</th>
+                    <th style={th}>severity</th>
+                    <th style={th}>endpoint hash</th>
+                    <th style={th}>policy • preview/exec</th>
+                    <th style={th}>attribution</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {neItems.map((ev) => {
+                    const pd = ev.policy_decision as Record<string, unknown> | undefined | null;
+                    const aa = ev.actor_attribution as Record<string, unknown> | undefined | null;
+                    const rc = pd && Array.isArray(pd.reason_codes) ? (pd.reason_codes as unknown[]).join(", ") : "—";
+                    const pe =
+                      pd !== undefined && pd !== null
+                        ? `prev=${pd.preview_allowed ? "Y" : "N"}exec=${pd.execute_allowed ? "Y" : "N"} • ${rc}`
+                        : "(no embedded policy)";
+                    const att =
+                      aa && aa.confidence
+                        ? `${String(aa.confidence)} / ${String(aa.method ?? "n/a")}`
+                        : "none";
+                    return (
+                      <tr key={String(ev.event_id)}>
+                        <td style={td}>{String(ev.event_id ?? "")}</td>
+                        <td style={td}>{String(ev.event_type ?? "")}</td>
+                        <td style={td}>{String(ev.severity ?? "")}</td>
+                        <td style={{ ...td, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {String(ev.endpoint_id_hash ?? "").slice(0, 22)}…
+                        </td>
+                        <td style={td}>{pe}</td>
+                        <td style={td}>{att}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          );
+        })()}
       </section>
 
       <h2 style={{ marginTop: "1.75rem" }}>Key counters</h2>
@@ -220,6 +338,15 @@ export default function PlatformPage() {
           ))}
         </tbody>
       </table>
+
+      <h2 style={{ marginTop: "1.75rem" }}>Replay preview (dry, local)</h2>
+      <p style={{ fontSize: "0.9rem", opacity: 0.85 }}>
+        Posts a deterministic inline event bundle to <code>/platform/replay/preview</code> — recomputes policy gates only.
+      </p>
+      <button type="button" onClick={() => postReplayPreview()}>
+        Run replay preview sample
+      </button>
+      {replayOutput ? <pre style={{ overflow: "auto", maxHeight: 220 }}>{replayOutput}</pre> : null}
 
       <h2 style={{ marginTop: "1.75rem" }}>Remediation preview (demo)</h2>
       <p style={{ fontSize: "0.9rem" }}>

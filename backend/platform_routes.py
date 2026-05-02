@@ -45,6 +45,9 @@ Routes (summary):
     * ``POST /platform/remediation/preview|execute`` — policy-gated remediation pipeline.
     * ``GET /platform/audit`` — recent audit rows (RBAC reader role).
     * ``GET /platform/metrics`` — aggregate counters scanning JSONL (demo scale).
+    * ``GET /platform/events`` — normalized envelopes (requires operator+/RBAC simulation).
+    * ``GET /platform/policy/summary`` — registry roll-up for dashboards.
+    * ``POST /platform/replay/preview`` — inline replay summaries (local-only-safe).
 
 Audit Notes:
     Correlate ``audit.jsonl`` with ``remediation_executions.jsonl`` after contested runs. Treat
@@ -58,6 +61,7 @@ import os
 import subprocess
 import sys
 import uuid
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Literal
 
@@ -78,6 +82,7 @@ from platform_core.models import (
     utc_now_iso,
 )
 from platform_core.policy import (
+    ACTION_REGISTRY,
     PolicyDecision,
     build_preview,
     evaluate_action,
@@ -95,6 +100,8 @@ from platform_core.remediation_registry import get_remediation_action
 from platform_core.fleet import linked_failure_block_payload
 from platform_core.privacy import redact_text, stable_endpoint_hash
 from platform_core.remediation import allowlisted_script
+from platform_core.event_bus import default_normalized_events_path, read_events
+from platform_core.replay.runner import ReplaySummary, summarize_inline
 from platform_core.storage import (
     append_failure_event,
     append_remediation_execution,
@@ -491,6 +498,62 @@ def platform_metrics() -> dict[str, Any]:
     """Expose aggregate counters recomputed via :func:`platform_core.storage.list_metrics`."""
 
     return list_metrics()
+
+
+@router.get("/events")
+def list_normalized_events(
+    limit: int = 50,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Read privacy-scrubbed normalized events emitted to ``normalized_events.jsonl``."""
+
+    assert_can_preview(principal)
+    path = default_normalized_events_path()
+    items, errs = read_events(path, limit=max(1, min(limit, 200)))
+    return {"items": items, "parse_errors": errs, "path": str(path)}
+
+
+@router.get("/policy/summary")
+def policy_catalog_summary() -> dict[str, Any]:
+    """Static view of allowlisted remediation metadata (counts by risk tier)."""
+
+    by_risk: dict[str, int] = defaultdict(int)
+    manual_only = 0
+    api_exec = 0
+    for _name, meta in ACTION_REGISTRY.items():
+        if not isinstance(meta, dict):
+            continue
+        rk = str(meta.get("risk") or "unknown")
+        by_risk[rk] += 1
+        if meta.get("manual_only"):
+            manual_only += 1
+        if meta.get("api_execute_allowed"):
+            api_exec += 1
+    return {
+        "action_rows": len(ACTION_REGISTRY),
+        "by_risk": dict(by_risk),
+        "manual_only_rows": manual_only,
+        "api_execute_allowed_rows": api_exec,
+        "default_policy_requires_confirmation": True,
+    }
+
+
+class ReplayPreviewIn(BaseModel):
+    """Inline JSON array for deterministic replay — **no filesystem path escalation**."""
+
+    events: list[dict[str, Any]]
+
+
+@router.post("/replay/preview")
+def replay_preview(
+    body: ReplayPreviewIn,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Recompute remediation gates server-side without mutating host state."""
+
+    assert_can_preview(principal)
+    summary: ReplaySummary = summarize_inline(body.events)
+    return {"summary": summary.__dict__, "replay_mode": "read_only"}
 
 
 def stable_id_from_host(os_version: str = "") -> str:

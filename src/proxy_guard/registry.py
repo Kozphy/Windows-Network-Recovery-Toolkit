@@ -112,3 +112,44 @@ def read_proxy_registry(
         auto_detect=auto_detect,
         proxy_override=proxy_override,
     )
+
+
+def read_proxy_registry_with_presence(
+    *,
+    run: Callable[..., Any] = subprocess.run,
+    query_timeout: float = 15.0,
+) -> tuple[ProxyRegistrySnapshot, dict[str, bool]]:
+    """Read HKCU WinINET proxy values and record whether each value name exists.
+
+    ``presence[name]`` is ``True`` when ``reg query`` exited zero (value exists in the hive).
+    This enables rollback that restores deliberate absences via ``reg delete``.
+
+    Args:
+        run: Subprocess injector (tests supply stubs).
+        query_timeout: Per-query timeout seconds.
+
+    Returns:
+        Tuple of normalized snapshot plus presence map keyed by Win32 value names.
+    """
+    tkw = {"timeout": query_timeout}
+    names_order = ("ProxyEnable", "ProxyServer", "AutoConfigURL", "AutoDetect", "ProxyOverride")
+    texts: dict[str, tuple[int, str]] = {}
+    for nm in names_order:
+        code, out = _run_reg_query(nm, run=run, **tkw)
+        texts[nm] = (code, out)
+
+    pe_code, pe_out = texts["ProxyEnable"]
+    ps_code, ps_out = texts["ProxyServer"]
+    pac_code, pac_out = texts["AutoConfigURL"]
+    ad_code, ad_out = texts["AutoDetect"]
+    po_code, po_out = texts["ProxyOverride"]
+
+    snapshot = ProxyRegistrySnapshot(
+        proxy_enable=_parse_reg_dword(pe_out) if pe_code == 0 else None,
+        proxy_server=_parse_reg_sz(ps_out) if ps_code == 0 else None,
+        auto_config_url=_parse_reg_sz(pac_out) if pac_code == 0 else None,
+        auto_detect=_parse_reg_dword(ad_out) if ad_code == 0 else None,
+        proxy_override=_parse_reg_sz(po_out) if po_code == 0 else None,
+    )
+    presence: dict[str, bool] = {nm: (texts[nm][0] == 0) for nm in names_order}
+    return snapshot, presence

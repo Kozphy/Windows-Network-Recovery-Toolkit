@@ -2,6 +2,17 @@
 
 **Local-first Windows network diagnostics** with a beginner **`.bat` toolkit**, an advanced **`python -m src` decision CLI**, the **Failure Knowledge System** (**FailureBlocks** + JSONL), and an optional **Endpoint Reliability Platform** layer (`platform_core/`, **`python -m endpoint_agent`**, **`/platform/*` API**) for portfolio-style observability—**still no silent destructive repair** and **no default log uploads**.
 
+### Orienting in ~10 minutes (read-only)
+
+1. Skim **`docs/README.md`** for the docs map (architecture, FailureBlock contract, proxy guard, platform API).
+2. Pick your surface:
+   - **Beginner tooling:** `scripts/*.bat`, especially `scripts/proxy_guard/*`.
+   - **Explainable diagnostics:** **`python -m src`** paths and **`failure_system`** (`docs/architecture.md`, `docs/safety_model.md`).
+   - **Optional platform prototype:** `platform_core/`, **`backend`** + **`frontend`**, **`docs/endpoint_reliability_platform.md`**.
+3. For **deterministic regression & safety assertions** exercised in CI, see **`docs/test_strategy.md`** (no destructive scripts, no privileged operations in those flows).
+
+Then continue with Quick start below for the path that matches your role.
+
 ---
 
 ## Quick start — beginner (.bat toolkit)
@@ -53,14 +64,21 @@ python -m src explain
 python -m src recommend
 ```
 
-Proxy observability:
+Proxy observability (`proxy-status`, `proxy-owner`, `proxy-guard`) and **HKCU WinINET Endpoint Reliability**:
 
 ```powershell
-python -m src proxy-status
+python -m src proxy-status                      # HKCU snapshot + parsed modes
+python -m src proxy-diagnose                    # FailureBlocks + optional listener probe
+python -m src proxy-diagnose --json             # Machine payload (risk + attribution + blocks)
+python -m src proxy-attribution                 # localhost proxy port → PID/name/path/cmdline (best-effort)
+python -m src proxy-disable                     # Typed DISABLE_PROXY → snapshot + mutate + verification
+python -m src proxy-rollback --snapshot-id ...  # Restore prior capture (typed RESTORE_WININET)
 python -m src proxy-monitor
 python -m src proxy-guard --interval 5
 python -m src proxy-guard --interval 5 --auto-rollback --trust-current # optional LKG + live restore
 ```
+
+**Safety notes:** Listener attribution uses **Windows-native netstat/tasklist/PowerShell CIM** — not proof who wrote registry values. **`proxy-disable`** persists **`logs/proxy_snapshots.jsonl`** immediately before **`reg`** writes; rollback restores captured values/absences via argv-only **`reg`** (no firewall/adapter resets). Structured **`ProxyFailureBlock`** rows describe proxy risk (distinct from **`failure_system/`** FailureBlocks). See **`docs/proxy_guard.md`**.
 
 `proxy-guard` follows **detect → best-effort attribute → decide (default deny) → optional rollback preview/apply → audit** (`logs/proxy_guard_pipeline_audit.jsonl` schema_version `1` plus legacy v2 sinks). On each registry change it attaches a **heuristic** `candidate_actor` (when optional **`pip install psutil`** is available)—**not proof** of the writer process; see **`docs/proxy_guard.md` § Process attribution**. Rollback restores the **prior poll’s** HKCU WinINET snapshot (never arbitrary shell commands). Typical flags:
 
@@ -211,16 +229,19 @@ CI: **`.github/workflows/ci.yml`** (pytest only; **no** Windows repair scripts).
 ### Repository layout (high level)
 
 ```text
-docs/                       # Architecture, safety, platforms
-scripts/proxy_guard/        # Diagnose / reset / monitor / safe Cursor launcher (no Python)
-failure_system/             # FailureBlock JSONL knowledge product
-platform_core/              # Platform domain models, policy, privacy, JSONL storage
+docs/                       # Architecture, safety, platforms, test strategy
+scripts/proxy_guard/        # Diagnose / reset / monitor / safe Cursor launcher (no Python deps)
+failure_system/             # Failure Knowledge System — FailureBlocks + JSONL + CLI/API
+proxy_attribution/          # Standalone read-only proxy classifier CLI (portfolio helper)
+network_agent/              # Optional hybrid collectors + repair policy scaffolding
+hybrid_frontend/            # Lightweight static companion for hybrid demos (see hybrid_frontend/README.md)
+platform_core/              # Endpoint Reliability prototype — models, policy, privacy, JSONL storage
 endpoint_agent/             # Local collector; optional localhost API POST
-backend/                    # FastAPI SaaS demo + /platform router
-frontend/                   # Next.js demo + app/platform dashboard
-scripts/                    # Windows .bat (beginner toolkit)
-src/                        # python -m src CLI
-tests/                      # pytest
+backend/                    # FastAPI host — SaaS demo surfaces + SQLite + /platform router
+frontend/                   # Next.js demo dashboard (platform page + shared API helpers)
+scripts/                    # Windows .bat (beginner toolkit) outside proxy_guard/
+src/                        # python -m src decision + Proxy Guard CLI
+tests/                      # pytest (offline-safe; see docs/test_strategy.md)
 platform_data/              # Local JSONL for platform prototype (mostly gitignored)
 ```
 
@@ -236,6 +257,7 @@ platform_data/              # Local JSONL for platform prototype (mostly gitigno
 | Platform API contract | [`docs/platform_api_contract.md`](docs/platform_api_contract.md) |
 | Safe demo walkthrough | [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) |
 | Proxy Guard (Windows scripts + Python CLI) | [`docs/proxy_guard.md`](docs/proxy_guard.md) |
+| Test strategy & safety regression matrix | [`docs/test_strategy.md`](docs/test_strategy.md) |
 | Docs hub | [`docs/README.md`](docs/README.md) |
 
 ---

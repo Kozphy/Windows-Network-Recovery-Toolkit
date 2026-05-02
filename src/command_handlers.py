@@ -37,16 +37,28 @@ from .decision_engine.live_scoring import ranked_dicts, score_live_snapshot
 from .decision_engine.recommendations import live_recommendation_bundle
 from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
 from .observability.snapshot import build_live_network_snapshot
+from .proxy_guard.failure_block import build_proxy_failure_blocks
+from .proxy_guard.localhost_attribution import build_localhost_proxy_attribution
 from .proxy_guard.owner import attribution_payload
 from .proxy_guard.parser import parse_proxy_server, summarize_proxy_risk
 from .proxy_guard.registry import read_proxy_registry
+from .proxy_guard.repair_snapshots import (
+    append_proxy_snapshots_jsonl,
+    build_restore_reg_argv,
+    build_rollback_plan,
+    capture_wininet_snapshot,
+    load_snapshot_record_by_id,
+    merge_snapshot_payload,
+    snapshot_confirmation_phrase,
+)
+from .proxy_guard.verification import verify_proxy_disabled
 from .proxy_guard.config import build_service_config
 from .proxy_guard.policy import load_proxy_guard_policy
 from .proxy_guard.snapshot_capture import load_lkg_snapshot
 from .proxy_guard.service import run_proxy_guard_service
 from .proxy_guard.remediation import CONFIRMATION_PHRASE, build_user_proxy_disable_mutations
 from .proxy_guard.watcher import monitor_proxy_registry
-from .repair.executor import apply_mutations
+from .repair.executor import apply_mutations, apply_reg_argv_sequences
 from .repair.policy import assert_no_firewall_reset_in_preview
 from .repair.preview import summarize_mutations_plaintext
 from .version import SCRIPT_VERSION
@@ -75,6 +87,152 @@ def _fingerprint() -> dict[str, str]:
     raw = f"{platform.node()}|{platform.release()}|{platform.machine()}".encode()
     digest = hashlib.sha256(raw).hexdigest()[:16]
     return {"host_key_hash16": digest}
+
+
+def cmd_proxy_diagnose(args: argparse.Namespace) -> int:
+    """WinINET-centric diagnose with FailureBlocks plus optional localhost listener attribution.
+
+    Args:
+        args: Supports ``emit_json``, ``repo_root``, ``skip_listener_probe``.
+
+    Returns:
+        Shell exit ``0``.
+    """
+    run = subprocess.run
+    repo = _repo_root(getattr(args, "repo_root", None))
+    reg = read_proxy_registry(run=run)
+    parsed = parse_proxy_server(reg.proxy_server)
+    merged = registry_with_parsed(reg, parsed)
+    risk = summarize_proxy_risk(parsed, bool(merged.get("is_enabled")))
+    attrib: dict[str, Any] | None = None
+    if not bool(getattr(args, "skip_listener_probe", False)):
+        attrib = build_localhost_proxy_attribution(reg, parsed, run=run)
+    failures = build_proxy_failure_blocks(
+        proxy_enable=reg.proxy_enable,
+        parsed_proxy_dict=parsed.to_dict(),
+        localhost_attribution=attrib,
+    )
+    payload: dict[str, Any] = {
+        "schema_version": "1",
+        "artifact": "proxy_diagnose",
+        "script_version": SCRIPT_VERSION,
+        "machine": _fingerprint(),
+        "registry_merge": merged,
+        "risk_diagnostic_sense": risk,
+        "localhost_attribution": attrib,
+        "failure_blocks": [b.to_dict() for b in failures],
+    }
+
+    if getattr(args, "emit_json", False):
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+
+    lines = [
+        "=== Proxy diagnose (HKCU WinINET) ===",
+        f"Proxy: {'ON' if merged.get('is_enabled') else 'OFF'}   Mode: {merged.get('proxy_mode')}",
+        f"ProxyServer: {merged.get('proxy_server') or '(empty)'}",
+        f"Risk (diagnostic): {risk}",
+        "",
+        "Failure blocks:",
+    ]
+    if not failures:
+        lines.append("  (none)")
+    for fb in failures:
+        lines.append(f"  - [{fb.severity}] {fb.failure_id}")
+        for lc in fb.likely_causes[:2]:
+            lines.append(f"      • {lc}")
+    if attrib:
+        lines.extend(
+            [
+                "",
+                f"Localhost listener probe: listeners={'yes' if attrib.get('listener_found') else 'no'} "
+                f"port={attrib.get('localhost_port') or 'n/a'}",
+            ]
+        )
+    lines.extend(["", "Use --json for machine-readable output."])
+    print("\n".join(lines))
+    return 0
+
+
+def cmd_proxy_attribution(args: argparse.Namespace) -> int:
+    """Print structured localhost proxy listener attribution JSON or human-readable rows."""
+    run = subprocess.run
+    reg = read_proxy_registry(run=run)
+    parsed = parse_proxy_server(reg.proxy_server)
+    port = getattr(args, "port", None)
+    attrib = build_localhost_proxy_attribution(
+        reg,
+        parsed,
+        run=run,
+        override_port=int(port) if port is not None else None,
+    )
+    if getattr(args, "emit_json", False):
+        print(json.dumps(attrib, indent=2, ensure_ascii=False))
+        return 0
+    print(f"localhost_proxy_detected={attrib.get('localhost_proxy_detected')} port={attrib.get('localhost_port')}")
+    if not attrib.get("localhost_proxy_detected"):
+        print("No loopback proxy port to attribute.")
+        for n in attrib.get("notes") or []:
+            print(f"Note: {n}")
+        return 0
+    print(f"listener_found={attrib.get('listener_found')}")
+    for o in attrib.get("owners") or []:
+        print(f"- pid={o.get('pid')} name={o.get('process_name')} path={o.get('executable_path')}")
+        print(f"  cmdline={(o.get('command_line') or 'unavailable')[:200]}")
+    for n in attrib.get("notes") or []:
+        print(f"Note: {n}")
+    return 0
+
+
+def cmd_proxy_rollback(args: argparse.Namespace) -> int:
+    """Restore HKCU WinINET captured in ``logs/proxy_snapshots.jsonl`` by ``snapshot_id``."""
+    repo = _repo_root(getattr(args, "repo_root", None))
+    snap_path = repo / "logs" / "proxy_snapshots.jsonl"
+    snapshot_id = str(getattr(args, "snapshot_id", "") or "").strip()
+    if not snapshot_id:
+        print("snapshot_id is required.", file=sys.stderr)
+        return 2
+    record = load_snapshot_record_by_id(snap_path, snapshot_id)
+    if not record:
+        print(f"No snapshot matched id={snapshot_id!r} in {snap_path}", file=sys.stderr)
+        return 2
+
+    phrase = snapshot_confirmation_phrase()
+    plan = record.get("rollback_plan") or build_rollback_plan(record)
+    print("Rollback preview (HKCU WinINET)")
+    print(json.dumps(plan, indent=2, ensure_ascii=False))
+    print("\nStructured argv preview:")
+    for argv in build_restore_reg_argv(record):
+        print(" ", " ".join(argv))
+
+    if bool(getattr(args, "dry_run", False)):
+        print("\n[dry-run] No registry restores performed.")
+        return 0
+
+    confirm = input(f"Type {phrase} to restore captured values: ")
+    if confirm.strip() != phrase:
+        print("Cancelled.")
+        return 1
+
+    argv_t = build_restore_reg_argv(record)
+    results = apply_reg_argv_sequences(argv_t, dry_run=False)
+    codes = [r.returncode for r in results]
+    audit = {
+        "type": "repair",
+        "subtype": "proxy_rollback",
+        "timestamp": utc_now_iso(),
+        "snapshot_id": snapshot_id,
+        "results": [
+            {"argv": list(r.argv), "code": r.returncode, "stderr": r.stderr, "stdout": r.stdout} for r in results
+        ],
+        "confirmation_method": "typed_phrase",
+    }
+    append_jsonl_core(repo / "logs" / "repair_audit.jsonl", audit)
+    if any(c != 0 for c in codes):
+        print("Warning: some reg restores returned non-zero; see logs\\repair_audit.jsonl.", file=sys.stderr)
+        return 1
+    print("Rollback complete; appended repair_audit.jsonl row.")
+    return 0
 
 
 def _proxy_events_path(repo: Path) -> Path:
@@ -271,6 +429,7 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
 
     Side effects (non-dry-run):
         Runs ``reg.exe`` argv lists; appends ``logs/repair_audit.jsonl``.
+        Immediately before mutations, persists ``logs/proxy_snapshots.jsonl`` for rollback.
 
     Raises:
         None directly; policy violations print and return ``2``.
@@ -279,13 +438,18 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         ``0`` success, ``1`` cancelled confirmation, ``2`` policy guard failure.
 
     Audit Notes:
-        Recovery: verify keys via ``proxy-status``; software may reapply proxy policy afterward.
+        Recovery: verify keys via ``proxy-status``; rollback via ``proxy-rollback``; software may
+        reapply proxy policy afterward.
     """
     repo = _repo_root(args.repo_root)
-    reg = read_proxy_registry()
-    parsed = parse_proxy_server(reg.proxy_server)
+    run = subprocess.run
+    logs_dir = repo / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    reg_before_preview = read_proxy_registry(run=run)
+    parsed = parse_proxy_server(reg_before_preview.proxy_server)
+    merged_before_preview = registry_with_parsed(reg_before_preview, parsed)
     print("Current WinINET (HKCU) view:")
-    print(json.dumps(registry_with_parsed(reg, parsed), indent=2, ensure_ascii=False))
+    print(json.dumps(merged_before_preview, indent=2, ensure_ascii=False))
     mutations, human_lines = build_user_proxy_disable_mutations(
         clear_proxy_server_value=bool(getattr(args, "clear_server", False)),
     )
@@ -299,18 +463,39 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
     print("\nStructured reg argv preview:\n" + summarize_mutations_plaintext(mutations))
     dry = bool(getattr(args, "dry_run", False))
     if dry:
-        print("\n[dry-run] No registry writes performed.")
+        print("\n[dry-run] No registry writes or snapshot persisted.")
         return 0
+
     confirm = input(f"Type {CONFIRMATION_PHRASE} to continue: ")
     if confirm.strip() != CONFIRMATION_PHRASE:
         print("Cancelled.")
         return 1
+
+    capture_pre = capture_wininet_snapshot(run=run)
+    rollback_plan = build_rollback_plan(capture_pre)
+    append_proxy_snapshots_jsonl(repo, merge_snapshot_payload(capture_pre, rollback_plan))
+
+    planned_action = {
+        "human": list(human_lines),
+        "mutation_argv": [list(m.argv) for m in mutations],
+        "clear_server": bool(getattr(args, "clear_server", False)),
+    }
+
     results = apply_mutations(mutations, dry_run=False)
+    reg_after = read_proxy_registry(run=run)
+    verification = verify_proxy_disabled(reg_after)
+    merged_after = registry_with_parsed(reg_after, parse_proxy_server(reg_after.proxy_server))
+
     audit = {
         "type": "repair",
         "subtype": "proxy_disable",
         "timestamp": utc_now_iso(),
-        "clear_server": bool(getattr(args, "clear_server", False)),
+        "snapshot_id": capture_pre.snapshot_id,
+        "before": capture_pre.to_jsonable(),
+        "planned_action": planned_action,
+        "after": merged_after,
+        "verification_result": verification.to_dict(),
+        "rollback_plan": rollback_plan,
         "results": [
             {"argv": list(r.argv), "code": r.returncode, "stderr": r.stderr, "stdout": r.stdout}
             for r in results
@@ -318,7 +503,16 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         "confirmation_method": "typed_phrase",
     }
     append_jsonl_core(repo / "logs" / "repair_audit.jsonl", audit)
-    print("Applied mutations; see logs\\repair_audit.jsonl for details.")
+
+    print("Applied mutations; see logs\\repair_audit.jsonl for snapshot + verification.")
+
+    if not verification.ok:
+        print(
+            f"WARNING: verification failed ({verification.detail}); re-check proxy-status.",
+            file=sys.stderr,
+        )
+        return 1
+    print("Verification: ProxyEnable reported disabled.")
     return 0
 
 

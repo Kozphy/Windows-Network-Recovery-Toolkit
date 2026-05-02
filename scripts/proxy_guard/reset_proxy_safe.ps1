@@ -1,4 +1,7 @@
 #Requires -Version 5.1
+# SAFETY — Mutates HKCU WinINET proxy keys only after typed YES; optional env clears gated by CLEAR / ADVANCED.
+# PRIVILEGES — Typical user token; elevated token only if invoking shell is admin (ADVANCED/machine env path).
+# OUTPUT — Structured JSON actions appended to reports/proxy_guard_actions.jsonl.
 <#
 .SYNOPSIS
   User-confirmed rollback of common user-scope proxy settings (WinINET, WinHTTP, Git, npm, optional user env).

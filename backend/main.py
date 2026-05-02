@@ -1,24 +1,33 @@
-"""FastAPI application for toolkit telemetry, diagnosis, and billing flows.
+"""FastAPI host bundling SaaS-demo routes, toolkit observability routers, and ``/platform/*``.
+
+Module responsibility:
+    Wires JWT-aware diagnosis/monitor/billing surfaces with optional SQLite persistence alongside
+    ``live_observability`` helpers and ``platform_routes.router`` (`/platform/...`). Not required to
+    run ``python -m src`` or ``failure_system`` CLIs standalone.
 
 System placement:
-    frontend/agent clients -> this API -> decision engine + SQLite persistence.
+    Next.js dashboards and scripted clients call localhost instances started via ``uvicorn
+    backend.main:app``. ``endpoint_agent`` POSTs sanitized payloads here when operators opt in.
 
 Key invariants:
-    - User-scoped access is enforced through `get_current_user`.
-    - Diagnosis requests are usage-metered by organization plan.
-    - Billing webhook updates subscription state idempotently by org metadata.
+    * User-scoped access flows through ``get_current_user`` for SaaS-ish endpoints.
+    * Diagnosis ingestion paths honor plan quotas via ``backend.db.try_increment_usage_with_limit``.
+    * Billing webhook duplication is tolerated idempotently (see `/webhook` handler docstrings).
+    * Platform JSONL ingestion remains orthogonal to SQLite — mixed deployments still separate state.
 
 Failure modes:
-    - Misconfigured JWT secret or bypass env yields 401/500 from ``get_current_user``.
-    - ``init_db`` may raise ``sqlite3.Error`` when ``schema.sql`` cannot be executed (permissions,
-      malformed DDL).
+    Misconfigured JWT secrets emit 401/500 from dependency injection; ``init_db`` propagates SQLite
+    errors at startup helpers; platform routes may return HTTP 403 when RBAC denies previews.
 
 Audit Notes:
-    Persisted diagnosis rows and usage counters live in ``backend/toolkit.db`` by default—treat the
-    SQLite file as sensitive operational state for demos.
-    Webhook handling notes duplicate Stripe deliveries explicitly in the ``/webhook`` handler docstring;
-    subscription writes route through ``billing.verify_webhook`` plus DB helpers.
+    Correlate SQLite rows (`backend/toolkit.db`) with ``platform_data/*.jsonl`` only when reviewers
+    explicitly enable both stacks—each store represents a different persistence contract.
+
+Engineering Notes:
+    ``CORSMiddleware`` permissive defaults target local demos; tighten origins before exposing beyond
+    loopback interfaces.
 """
+
 
 import sys
 from datetime import datetime

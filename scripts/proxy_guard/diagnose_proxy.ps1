@@ -1,4 +1,7 @@
 #Requires -Version 5.1
+# SAFETY — Read-only probes of HKCU, WinHTTP, Git/npm configs, env; no destructive reg writes.
+# PRIVILEGES — Executes as invoking user token.
+# OUTPUT — reports/proxy_guard_report.txt under detected repo root resolved from script path.
 <#
 .SYNOPSIS
   Read-only snapshot of WinINET (HKCU), WinHTTP, Git, npm, and user proxy environment.

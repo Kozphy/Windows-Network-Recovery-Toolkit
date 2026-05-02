@@ -51,10 +51,13 @@ from .diagnostics.features import FeatureVector
 from .decision_engine.scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
 from .command_handlers import (
     cmd_diagnose_live,
+    cmd_proxy_attribution,
+    cmd_proxy_diagnose,
     cmd_proxy_disable,
     cmd_proxy_guard,
     cmd_proxy_monitor,
     cmd_proxy_owner,
+    cmd_proxy_rollback,
     cmd_proxy_status,
     cmd_repair_apply,
     cmd_repair_preview,
@@ -887,6 +890,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="Reserved — currently guarded off inside rollback until an explicit confirmation story exists.",
     )
     p_pg.set_defaults(func=cmd_proxy_guard)
+
+    p_pxdiag = sub.add_parser(
+        "proxy-diagnose",
+        help="WinINET-focused diagnose with FailureBlocks and optional localhost listener attribution.",
+    )
+    p_pxdiag.add_argument("--json", dest="emit_json", action="store_true", help="Emit machine-readable JSON.")
+    p_pxdiag.add_argument(
+        "--skip-listener-probe",
+        action="store_true",
+        help="Skip netstat/tasklist attribution (offline / faster CI).",
+    )
+    p_pxdiag.set_defaults(func=cmd_proxy_diagnose)
+
+    p_pxattr = sub.add_parser(
+        "proxy-attribution",
+        help="Structured localhost proxy listener attribution (netstat + tasklist + CIM).",
+    )
+    p_pxattr.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON only.")
+    p_pxattr.add_argument("--port", type=int, default=None, help="Override proxy port parsing.")
+    p_pxattr.set_defaults(func=cmd_proxy_attribution)
+
+    p_pxrb = sub.add_parser(
+        "proxy-rollback",
+        help='Restore HKCU WinINET captured in logs/proxy_snapshots.jsonl (requires RESTORE_WININET).',
+    )
+    p_pxrb.add_argument("--snapshot-id", required=True, dest="snapshot_id", metavar="ID", help="UUID from snapshots JSONL.")
+    p_pxrb.add_argument("--dry-run", action="store_true", help="Show argv preview only.")
+    p_pxrb.set_defaults(func=cmd_proxy_rollback)
 
     p_pd = sub.add_parser("proxy-disable", help="Preview/apply safe HKCU WinINET proxy disable (typed confirm).")
     p_pd.add_argument("--dry-run", action="store_true", help="Show planned reg commands only.")

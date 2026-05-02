@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-_INTERNET_SETTINGS_KEY = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+INTERNET_SETTINGS_KEY = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+_INTERNET_SETTINGS_KEY = INTERNET_SETTINGS_KEY
 
 
 CONFIRMATION_PHRASE = "DISABLE_PROXY"

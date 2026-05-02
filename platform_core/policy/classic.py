@@ -1,4 +1,4 @@
-"""Policy engine — remediation allowed surfaces and risk tiers (registry-backed)."""
+"""Classic policy predicates (risk tiers, remediation previews) — unchanged public surface."""
 
 from __future__ import annotations
 
@@ -8,25 +8,24 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from .models import (
+from platform_core.models import (
     FailureEvent,
     RemediationPolicy,
     RemediationPreview,
     RequestSurface,
     utc_now_iso,
 )
-from .remediation_registry import build_action_registry_legacy_dict, get_remediation_action
+from platform_core.remediation_registry import build_action_registry_legacy_dict, get_remediation_action
 
 RiskName = Literal["read_only", "low", "medium", "high", "forbidden"]
 
 DEFAULT_POLICY = RemediationPolicy()
 
-# Back-compat for routes/tests expecting dict meta shape.
 ACTION_REGISTRY: dict[str, dict[str, Any]] = build_action_registry_legacy_dict()
 
 
 class PolicyDecision(BaseModel):
-    """Serializable policy outcome."""
+    """Serializable policy outcome (historic shape used by routers)."""
 
     allowed: bool
     reason: str
@@ -45,7 +44,7 @@ def evaluate_action(
     requested_surface: RequestSurface,
     policy: RemediationPolicy | None = None,
 ) -> PolicyDecision:
-    """Decide whether an action may proceed (registry is authoritative for risk + surfaces)."""
+    """Registry-first allow/deny (does not inspect operator RBAC roles)."""
 
     pol = policy or DEFAULT_POLICY
     defn = get_remediation_action(action_name)
@@ -78,7 +77,7 @@ def build_preview(
     requested_surface: RequestSurface = "api",
     policy: RemediationPolicy | None = None,
 ) -> RemediationPreview:
-    """Build a RemediationPreview from a failure event and recommended action key."""
+    """Build a preview row layered on classic :func:`evaluate_action`."""
 
     pol = policy or DEFAULT_POLICY
     defn = get_remediation_action(recommended_action)

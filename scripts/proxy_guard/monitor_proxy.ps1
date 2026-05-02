@@ -1,4 +1,7 @@
 #Requires -Version 5.1
+# SAFETY — Default path appends telemetry only; `-AutoReset` enables destructive resets (explicitly labeled DANGEROUS in synopsis).
+# PRIVILEGES — Executes as invoking user token; resets affect user-scope proxy keys only unless policies extend beyond script.
+# OUTPUT — reports/proxy_guard_watch.jsonl under repo-relative reports directory.
 <#
 .SYNOPSIS
   Poll HKCU WinINET proxy keys every 5 seconds; log changes to reports/proxy_guard_watch.jsonl

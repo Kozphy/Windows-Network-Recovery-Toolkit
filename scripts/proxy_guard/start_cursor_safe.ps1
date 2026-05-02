@@ -1,7 +1,16 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Run diagnose, optionally guide reset, then launch Cursor.exe from common install paths.
+  Runs diagnose_proxy.bat, optionally invokes reset_proxy_safe.ps1 interactively, then launches Cursor.exe.
+.DESCRIPTION
+  Diagnose emits reports\proxy_guard_report.txt (read-only). Optional reset modifies HKCU / WinHTTP / Git /
+  npm proxies only inside reset_proxy_safe.ps1 after typed YES—not firewall adapters.
+.NOTES
+  SAFETY — Diagnose-only path has no HKCU mutations. Guided reset inherits reset_proxy_safe.ps1 risks.
+  PRIVILEGES — Executes as invoking user standard token.
+  SIDE EFFECTS — May launch Cursor.exe with user approval; inherits reset logging to reports/proxy_guard_actions.jsonl when reset runs.
+.AUDIT
+  Correlate reports\proxy_guard_report.txt timestamps with Cursor launch troubleshooting steps.
 #>
 $ErrorActionPreference = 'SilentlyContinue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

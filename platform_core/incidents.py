@@ -1,4 +1,32 @@
-"""Deterministic incident clustering over local FailureEvent rows (fleet-style demo)."""
+"""Deterministic incident clustering for portfolio-style KPIs derived from FailureEvent rows.
+
+Module responsibility:
+    Groups JSON-shaped failure events sharing category + heuristic signal fingerprints whenever
+    their timestamps fall inside a configurable sliding window, emitting :class:`IncidentCluster`
+    models consumed by ``platform_core.storage.list_metrics``.
+
+System placement:
+    Pure Python helper — invoked from storage aggregation and optional demos, not routers directly.
+
+Input assumptions:
+    Rows resemble ``FailureEvent.model_dump()`` output with scalar ``category`` /
+    ``recommended_action_key`` fragments and RFC3339-ish ``*_seen_at`` fields (``Z`` suffix allowed).
+
+Output guarantees:
+    Deterministic ordering for fixed inputs; no filesystem or network touches.
+
+Handling of malformed data:
+    Events missing ``event_id`` skip clustering; timestamps that fail parsing default to ``now()``
+    UTC for both endpoints—document this when interpreting synthetic fixtures.
+
+Audit Notes:
+    Cluster counts derive entirely from offline JSONL—if ingestion duplicates events, KPIs inflate
+    symmetrically unless upstream deduplicates ``event_id`` values.
+
+Engineering Notes:
+    ``window_seconds`` defaults differ between call sites (`list_metrics` uses 7200s here)—keep those
+    call sites documented when extending fleet semantics.
+"""
 
 from __future__ import annotations
 
@@ -99,14 +127,24 @@ def cluster_failure_events(
     *,
     window_seconds: int = 3600,
 ) -> list[IncidentCluster]:
-    """Group events by category + signal fingerprint; split when inter-arrival gap exceeds window.
+    """Slice failure timelines into deterministic incident clusters without mutating inputs.
 
-    **Input assumptions:** dicts shaped like ``FailureEvent.model_dump()`` with ``event_id``,
-    ``endpoint_id``, optional ISO ``first_seen_at`` / ``last_seen_at``.
+    Args:
+        events: Failure event dicts sourced from append-only JSONL reads.
+        window_seconds: Maximum gap between consecutive timestamps inside a fingerprint bucket
+            before spawning a fresh cluster row.
 
-    **Output guarantees:** deterministic given sorted inputs; pure (no I/O).
+    Returns:
+        Sorted :class:`IncidentCluster` summaries ready for KPI serialization.
 
-    **Idempotency:** Running twice on the same list returns identical clusters.
+    Raises:
+        ValueError is not emitted; malformed timestamps degrade to clustered ``utcnow()`` pairs.
+
+    Side effects:
+        None.
+
+    Idempotency:
+        Re-running with the same ordered ``events`` yields bit-identical output.
     """
     groups: dict[str, list[tuple[dict[str, Any], datetime, datetime]]] = defaultdict(list)
 
