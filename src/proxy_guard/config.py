@@ -84,6 +84,12 @@ class ProxyGuardServiceConfig:
     rollback_limits: RollbackLimitSettings
     structured_log_path: Path | None
     exit_after_registry_change_events: int | None = None
+    repo_root: Path | None = None
+    attribution_mode: str = "auto"
+    trust_current_lkg: bool = False
+    restore_git_npm_env: bool = False
+    cli_rollback: bool = False
+    rollback_confirm_phrase: str = ""
 
 
 def build_service_config(
@@ -98,6 +104,12 @@ def build_service_config(
     config_file: Path | None = None,
     structured_log_path: Path | None = None,
     exit_after_registry_change_events: int | None = None,
+    repo_root: Path | None = None,
+    attribution_mode: str = "auto",
+    trust_current_lkg: bool = False,
+    restore_git_npm_env: bool = False,
+    cli_rollback: bool = False,
+    rollback_confirm_phrase: str = "",
 ) -> ProxyGuardServiceConfig:
     """Merge CLI args with optional JSON file and environment variables.
 
@@ -149,6 +161,12 @@ def build_service_config(
         rollback_limits=rollback_limits,
         structured_log_path=structured_log_path,
         exit_after_registry_change_events=exit_after_registry_change_events,
+        repo_root=repo_root,
+        attribution_mode=attribution_mode,
+        trust_current_lkg=trust_current_lkg,
+        restore_git_npm_env=restore_git_npm_env,
+        cli_rollback=cli_rollback,
+        rollback_confirm_phrase=rollback_confirm_phrase,
     )
 
 
@@ -162,6 +180,12 @@ def legacy_control_kwargs_to_config(
     dry_run_rollback: bool,
     run: Callable[..., Any],
     exit_after_registry_change_events: int | None = None,
+    repo_root: Path | None = None,
+    attribution_mode: str = "auto",
+    trust_current_lkg: bool = False,
+    restore_git_npm_env: bool = False,
+    cli_rollback: bool = False,
+    rollback_confirm_phrase: str = "",
 ) -> ProxyGuardServiceConfig:
     """Map legacy :func:`run_proxy_guard_control` kwargs to :class:`ProxyGuardServiceConfig`."""
     return build_service_config(
@@ -175,6 +199,12 @@ def legacy_control_kwargs_to_config(
         config_file=None,
         structured_log_path=None,
         exit_after_registry_change_events=exit_after_registry_change_events,
+        repo_root=repo_root,
+        attribution_mode=attribution_mode,
+        trust_current_lkg=trust_current_lkg,
+        restore_git_npm_env=restore_git_npm_env,
+        cli_rollback=cli_rollback,
+        rollback_confirm_phrase=rollback_confirm_phrase,
     )
 
 

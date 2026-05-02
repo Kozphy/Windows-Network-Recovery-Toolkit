@@ -16,6 +16,30 @@ cd <repo-root>\scripts
 
 See **`docs/script_reference.md`** for script purposes and risk notes.
 
+### Proxy Guard Module (batch + PowerShell, no extra deps)
+
+Stops **stale or malicious proxy settings** from breaking **Cursor, Git, npm, pip, browsers, and AI tooling** (especially when `ProxyServer` still points at **127.0.0.1:port** with nothing listening).
+
+**Recommended workflow:** **Diagnose → Monitor (optional) → Reset (if needed) → Safe Cursor launcher.**
+
+| Step | Script | Purpose |
+| --- | --- | --- |
+| 1 | `scripts\proxy_guard\diagnose_proxy.bat` | Read-only: HKCU WinINET, `netsh winhttp`, Git/npm, user `HTTP(S)_PROXY` → `reports\proxy_guard_report.txt` |
+| 2 | `scripts\proxy_guard\monitor_proxy.ps1` | Poll every 5s; log proxy key changes + recent process **names** to `reports\proxy_guard_watch.jsonl` (optional `-AutoReset` — see script warning) |
+| 3 | `scripts\proxy_guard\reset_proxy_safe.bat` | After you type **`YES`**: clear HKCU proxy, reset WinHTTP, unset Git/npm; optional **`CLEAR`** for user env; optional **`ADVANCED`** for machine env (rare) → `reports\proxy_guard_actions.jsonl` |
+| 4 | `scripts\proxy_guard\start_cursor_safe.bat` | Runs diagnose; warns on suspicious loopback proxy; optional guided reset; launches **Cursor.exe** from common paths |
+
+Full concepts (layers, risks, rollback): **`docs/proxy_guard.md`**.
+
+**Troubleshooting quick hits**
+
+| Symptom | Check |
+| --- | --- |
+| Cursor AI / extensions flaky while browser OK | Run **`diagnose_proxy.bat`** — HKCU `ProxyEnable` + loopback `ProxyServer`; then **`reset_proxy_safe.bat`** if appropriate |
+| `git fetch` / GitHub HTTPS failures | Git global `http.proxy` / `https.proxy`; user **`HTTPS_PROXY`** env |
+| `npm ERR` network / registry timeouts | `npm config get proxy`; **`HTTP_PROXY`** / **`HTTPS_PROXY`** |
+| pip install failures behind corp | Same env vars + WinINET; verify **`NO_PROXY`** for internal indexes if documented |
+
 ---
 
 ## Advanced CLI — decision engine (`python -m src`)
@@ -35,7 +59,18 @@ Proxy observability:
 python -m src proxy-status
 python -m src proxy-monitor
 python -m src proxy-guard --interval 5
+python -m src proxy-guard --interval 5 --auto-rollback --trust-current # optional LKG + live restore
 ```
+
+`proxy-guard` follows **detect → best-effort attribute → decide (default deny) → optional rollback preview/apply → audit** (`logs/proxy_guard_pipeline_audit.jsonl` schema_version `1` plus legacy v2 sinks). On each registry change it attaches a **heuristic** `candidate_actor` (when optional **`pip install psutil`** is available)—**not proof** of the writer process; see **`docs/proxy_guard.md` § Process attribution**. Rollback restores the **prior poll’s** HKCU WinINET snapshot (never arbitrary shell commands). Typical flags:
+
+- `python -m src proxy-guard --interval 5` — detect + stdout / control JSONL  
+- `--dry-run` / `--dry-run-rollback` — no live `reg` / `netsh` restores  
+- `--auto-rollback` — legacy toggle; live restore without extra phrase  
+- `--rollback` — rollback path (`--rollback-confirm RESTORE_PROXY` needed for live `reg` restores unless `--auto-rollback` is also set)  
+
+Consolidated rows also mirror to `reports/proxy_guard_watch.jsonl`, `reports/proxy_guard_actions.jsonl`,
+and `logs/proxy_guard_audit.jsonl`; policy defaults prefer **`config/proxy_guard_policy.json`**. See **`docs/proxy_guard.md`**, **`docs/proxy_guard_attribution.md`** / **`docs/proxy_guard_rollback.md`**.
 
 Docs: **`docs/architecture.md`**, **`docs/proxy_guard.md`**, **`docs/decision_engine_v2.md`**.
 
@@ -177,6 +212,7 @@ CI: **`.github/workflows/ci.yml`** (pytest only; **no** Windows repair scripts).
 
 ```text
 docs/                       # Architecture, safety, platforms
+scripts/proxy_guard/        # Diagnose / reset / monitor / safe Cursor launcher (no Python)
 failure_system/             # FailureBlock JSONL knowledge product
 platform_core/              # Platform domain models, policy, privacy, JSONL storage
 endpoint_agent/             # Local collector; optional localhost API POST
@@ -199,6 +235,7 @@ platform_data/              # Local JSONL for platform prototype (mostly gitigno
 | Interview pitch | [`docs/interview_pitch.md`](docs/interview_pitch.md) |
 | Platform API contract | [`docs/platform_api_contract.md`](docs/platform_api_contract.md) |
 | Safe demo walkthrough | [`docs/demo_walkthrough.md`](docs/demo_walkthrough.md) |
+| Proxy Guard (Windows scripts + Python CLI) | [`docs/proxy_guard.md`](docs/proxy_guard.md) |
 | Docs hub | [`docs/README.md`](docs/README.md) |
 
 ---

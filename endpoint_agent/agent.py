@@ -1,4 +1,27 @@
-"""CLI: one collection cycle or loop; optional POST to localhost; never executes repairs."""
+"""Endpoint agent CLI — local diagnostic cycle with optional sync to ``/platform`` HTTP API.
+
+Module responsibility:
+    Orchestrates :mod:`endpoint_agent.collect` probes, persists JSONL snapshots/failure events via
+    ``platform_core.storage`` (local-first), builds policy previews, and optionally POSTs payloads
+    through :mod:`endpoint_agent.client`.
+
+System placement:
+    Invoked as ``python -m endpoint_agent``. Complements ``backend/platform_routes.py`` but runs
+    standalone without the FastAPI service.
+
+Key invariants:
+    * Never launches repair subprocesses from this module—``automatic_repair`` stays ``False``.
+    * Dry-run via CLI or ``ENDPOINT_AGENT_DRY_RUN`` suppresses outbound HTTP only; local JSONL
+      appends still occur unless refactored externally.
+
+Side effects:
+    Appends to ``platform_data/{snapshots,failure_events}.jsonl`` each cycle; HTTP posts when
+    ``--api`` / ``ENDPOINT_AGENT_API`` resolves and dry-run is false.
+
+Audit Notes:
+    Local JSONL precedes remote ingestion—if API sync fails, operator evidence still exists under
+    ``PLATFORM_DATA_DIR``.
+"""
 
 from __future__ import annotations
 
@@ -16,12 +39,15 @@ from .heartbeat import build_identity
 
 
 def _skip_http_posts(cli_dry_run: bool) -> bool:
+    """Return True when CLI or env flags request no outbound HTTP (local JSONL still written)."""
     if cli_dry_run:
         return True
     return os.environ.get("ENDPOINT_AGENT_DRY_RUN", "").lower() in ("1", "true", "yes")
 
 
 def api_base(cli_api: str | None) -> str | None:
+    """Resolve backend base URL precedence: explicit CLI ``--api`` over ``ENDPOINT_AGENT_API``."""
+
     if cli_api:
         return cli_api.rstrip("/")
     env = os.environ.get("ENDPOINT_AGENT_API")
@@ -29,6 +55,24 @@ def api_base(cli_api: str | None) -> str | None:
 
 
 def run_cycle(*, base_api: str | None, skip_http: bool) -> dict[str, object]:
+    """Execute one ``collect → JSONL append → policy preview → optional HTTP sync → stdout`` pass.
+
+    Args:
+        base_api: Optional ``http://127.0.0.1:8000`` style root; when ``None``, HTTP sync is skipped.
+        skip_http: Force-disable POSTs even when ``base_api`` is set (dry-run family).
+
+    Returns:
+        Structured status dict including hypotheses, policy preview allowance, and nested ``api_sync``
+        responses when HTTP ran.
+
+    Side effects:
+        Appends snapshot + failure-event JSONL rows, prints JSON summary, may issue three POSTs.
+
+    Failure modes:
+        HTTP failures return error-shaped dict leaves from :func:`~endpoint_agent.client.post_json`;
+        collectors may emit placeholder failure events when imports/platforms error (handled inside
+        :func:`~endpoint_agent.collect.collect_endpoint_cycle`).
+    """
     ident = build_identity()
     cycle = collect_endpoint_cycle(ident.endpoint_id)
     append_snapshot(cycle["endpoint_snapshot"])
@@ -66,6 +110,11 @@ def run_cycle(*, base_api: str | None, skip_http: bool) -> dict[str, object]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Parse CLI flags then run once or loop with ``--interval`` until interrupted.
+
+    Returns:
+        Process exit code ``0`` — errors surface inside printed JSON payloads, not nonzero codes.
+    """
     p = argparse.ArgumentParser(description="Endpoint reliability agent (no auto-repair).")
     p.add_argument("--once", action="store_true", help="Run single cycle (default if --loop omitted).")
     p.add_argument("--loop", action="store_true", help="Repeat cycles until Ctrl+C.")

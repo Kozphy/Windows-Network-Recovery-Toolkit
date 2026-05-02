@@ -19,7 +19,7 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 | `src/` (`python -m src`) | Stdlib **observe → Hypotheses(v2)** + **legacy v1** scoring + Proxy Guard CLI. |
 | `network_agent/` + `hybrid_frontend/` | Local FastAPI + collector/decision/report flow (see component docstrings). |
 | `failure_system/` | Failure Knowledge System — read-only probes, FailureBlocks, JSONL, FastAPI + CLI (**no repair execution**). |
-| `backend/` + `frontend/` + `agent/` | Optional SaaS-style demo (FastAPI + Next.js + syncing agent), not required for batch repair. |
+| `backend/` + `frontend/` + `endpoint_agent/` + `platform_core/` | Optional **Endpoint Reliability Platform** prototype: FastAPI `/platform/*`, Next.js dashboard, append-only `platform_data/*.jsonl`, local collector (**no silent auto-repair**). Same paths may also host other demo APIs—see component docstrings. |
 
 ## Safety boundaries (summary)
 
@@ -38,6 +38,7 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 - **Batch path**: Timestamped logs land under `logs/`; compare before/after artifacts when validating a repair.
 - **`python -m src` path**: Inspect `reports/last_diagnosis.json`, `reports/last_diagnosis_live.json`, `logs/decision_audit.jsonl`, `logs/network_snapshots.jsonl`, `logs/repair_audit.jsonl`, and `reports/snapshots/` for deterministic evidence, live hypothesis exports, snapshot history, and proxy-disable audits.
 - **Hybrid API path**: JSON reports under `reports/` and API payloads include diagnosis evidence; repair execution requires explicit JSON confirmation (see `network_agent/api.py` docstrings).
+- **Endpoint Reliability Platform path**: Correlate `platform_data/audit.jsonl` with `platform_data/remediation_executions.jsonl` and previews; blocked rows (`result=blocked`, policy rationales) should still append even when HTTP 200 responds. Metrics (`GET /platform/metrics`) recompute from JSONL scans—skew indicates corrupt tails or malformed lines skipped by readers.
 
 ## Critical paths (where state changes matter)
 
@@ -50,6 +51,16 @@ This folder contains the project guides, runbooks, and troubleshooting reference
 | Hybrid `POST /repair/execute` | Host shell commands with `confirm: true` | JSON `results` array (`returncode`, stdout/stderr) |
 | SaaS `/diagnose` (optional backend) | SQLite usage metering + persisted rows per call | `/usage`, `/history` responses |
 | Remote agent loop | Repeated HTTP posts with local probes | Backend logs/DB counters; bearer token posture |
+| `POST /platform/remediation/execute` (prototype) | May spawn allowlisted `.bat` subprocess on Windows when policy + confirmations pass | Rows in `platform_data/remediation_executions.jsonl`, matching `audit.jsonl`, compare `SAFE_MODE` / RBAC headers |
+
+### Endpoint Reliability Platform docs
+
+| Doc | Topic |
+| --- | --- |
+| [`endpoint_reliability_platform.md`](endpoint_reliability_platform.md) | Vision — toolkit vs platform |
+| [`platform_architecture.md`](platform_architecture.md) | Diagrams (agent → JSONL → API) |
+| [`platform_api_contract.md`](platform_api_contract.md) | `/platform/*` payloads, RBAC headers |
+| [`safety_and_privacy.md`](safety_and_privacy.md) | Allowed / redacted fields |
 
 ## Start Here
 

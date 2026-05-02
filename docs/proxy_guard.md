@@ -1,5 +1,98 @@
 # Proxy Guard
 
+This document covers two complementary surfaces:
+
+1. **Native Windows scripts (no Python)** — `scripts/proxy_guard/*.bat` and `*.ps1` for quick, air-gapped diagnosis and user-confirmed reset. **Diagnose first; repair only after you type the confirmation phrases.**
+2. **Python CLI** — `python -m src proxy-*` for deeper polling, policy, and JSONL audit (see [Python CLI — advanced Proxy Guard](#python-cli--advanced-proxy-guard) below).
+
+---
+
+## What is a proxy?
+
+A **proxy** is an intermediary between your apps and the internet. Browsers and many developer tools can be told to send traffic through a specific host and port. On Windows, that instruction can exist in **several independent places**; if one layer still points at a **local or dead** endpoint, you get confusing failures (HTTPS timeouts, `ECONNREFUSED`, Git “Failed to connect”, npm `ENOTFOUND` masked as proxy errors, AI extension auth failures).
+
+### Why `127.0.0.1:random_port` breaks Cursor, Git, npm, pip, browsers
+
+VPNs, interceptors, old dev tools, or malware may set a proxy to **loopback** on a port that **nothing is listening on anymore**. Symptom patterns:
+
+- **Cursor / VS Code–style tools**: extensions and AI features use the same HTTP stacks as the OS or embedded runtimes; broken system proxy → TLS or API calls fail intermittently.
+- **Git / npm / pip**: each can follow **Git config**, **npm config**, or **environment variables** (`HTTP_PROXY`, etc.) in addition to WinINET/WinHTTP—so clearing only one layer may not fix the issue.
+
+### Layers you should know
+
+| Layer | What it affects | Typical tooling |
+|--------|-----------------|-----------------|
+| **HKCU WinINET** (`ProxyEnable`, `ProxyServer`) | “Internet Options” user profile; many GUI apps and some WinHTTP callers indirectly | Settings app, Edge (some paths), legacy stacks |
+| **WinHTTP** (`netsh winhttp show proxy`) | Services and APIs using WinHTTP explicitly | Some Windows components, certain CLIs |
+| **Git global** (`http.proxy`, `https.proxy`) | `git clone`, `git fetch`, GitHub | `git config --global` |
+| **npm** (`proxy`, `https-proxy`) | `npm install`, registry access | `npm config` |
+| **User environment** (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`) | Child processes that honor env (pip, many CLIs, some IDEs) | System Properties → User variables |
+
+**`NO_PROXY`** is diagnosed by the toolkit but **not** cleared by the safe reset (breaking excludes lists can have surprising side effects). Clear it manually if your org documents a safe value.
+
+### Recommended workflow (native scripts)
+
+1. **`scripts/proxy_guard/diagnose_proxy.bat`** — Read-only report → `reports/proxy_guard_report.txt`.
+2. **`scripts/proxy_guard/monitor_proxy.ps1`** — Optional: detect **who** is flipping keys while you work (masked server strings; recent process **names** only in `reports/proxy_guard_watch.jsonl`).
+3. **`scripts/proxy_guard/reset_proxy_safe.bat`** — Only if needed; type **`YES`**, then optionally **`CLEAR`** for user env vars, or **`ADVANCED`** for rare machine-scope env clears (may require elevation).
+4. **`scripts/proxy_guard/start_cursor_safe.bat`** — Diagnose → prompt if loopback-style proxy → optional reset → start **Cursor.exe** from common install paths.
+
+### Python `proxy-guard` (policy pipeline, attribution, rollback)
+
+`python -m src proxy-guard` runs a **deterministic detection pipeline** against HKCU WinINET keys:
+
+```mermaid
+flowchart LR
+    A[Registry Probe] --> B[State Diff]
+    B --> C[Change Detected]
+    C --> D[Best-Effort Process Attribution]
+    D --> E[Policy Engine]
+    E --> F{Allowed?}
+    F -- Yes --> G[Audit Allowed Event]
+    F -- No --> H[Rollback Preview]
+    H --> I{Rollback Confirmed?}
+    I -- No --> J[Audit Blocked Preview]
+    I -- Yes --> K[Restore Previous Proxy State]
+    K --> L[Verify Registry State]
+    L --> M[Audit Rollback Result]
+```
+
+- **Rollback source of truth**: the HKCU probe snapshot captured **before** the change (`ProxyEnable`, `ProxyServer`, `AutoConfigURL`, `AutoDetect`; `ProxyOverride` when present)—**not** a blind disable.
+- **`reports/proxy_guard_lkg.json`**: optional last-known-good file for onboarding (`--trust-current`) and auxiliary WinHTTP heuristics—not a prerequisite for rollback when a prior probe exists.
+- **Unified audit**: `logs/proxy_guard_pipeline_audit.jsonl` (schema_version `1`, nested `policy`/`rollback` payloads). Legacy SOC rows still populate `reports/proxy_guard_watch.jsonl`, `reports/proxy_guard_actions.jsonl`, and `logs/proxy_guard_audit.jsonl`.
+
+Operational flags:
+
+- `--auto-rollback` — rollback on **blocked** (legacy; phraseless live restore remains available when not dry-running).
+- `--rollback` — opt into rollback tooling; combine with **`--rollback-confirm RESTORE_PROXY`** for live `reg` restores unless **`--auto-rollback`** already enables the legacy phraseless path.
+- `--dry-run` / `--dry-run-rollback` — emit **`rollback_preview`** with no live restores.
+- `--trust-current`, `--show-lkg`, `--clear-lkg`, `--restore-git-npm-env` (still blocked awaiting confirmation UX), `--attribution-mode {auto,best-effort,eventlog}`.
+
+Canonical policy precedence is **`config/proxy_guard_policy.json`** (fallback: `shared/proxy_guard_policy.example.json`). Optional **`observe_only_when_unknown_attribution`** downgrades unresolved attribution flows to **`observe_only`** instead of **`blocked`** (defaults off for strict posture).
+
+See also **`docs/proxy_guard_attribution.md`** and **`docs/proxy_guard_rollback.md`**.
+
+### Risks and registry notes
+
+- **HKCU edits** apply to your user only and are **reversible** (re-enable proxy in Settings or restore values from your report). Some **MDM or security products** may reapply proxy policy at logon—coordinate with IT if settings “come back.”
+- **Locking or corrupt registry hives** is a general Windows concern; this toolkit uses `reg.exe` for small, targeted writes—avoid manual concurrent edits to the same keys while scripts run.
+- **`netsh winhttp reset proxy`** resets the **WinHTTP** proxy store (not the same as HKCU WinINET). Some enterprise apps depend on it; that is why reset is **confirmation-gated** and logged.
+
+### Rollback ideas
+
+- Re-enter corporate proxy **PAC URL** or server string from IT documentation.
+- Restore **Git**: `git config --global http.proxy <url>` (if required).
+- Restore **npm**: `npm config set proxy` / `https-proxy` as documented by your registry mirror.
+- Restore **user env vars** via **Settings → System → About → Advanced system settings → Environment Variables** (or IT script).
+
+### Privacy in logs
+
+Reports and JSONL files **mask IPv4-like sequences** in narrative fields and avoid writing secrets. **Process lists** in the monitor are **names only** (no full paths, to reduce username leakage). Do not commit real `reports/*.txt` or `*.jsonl` from production machines.
+
+---
+
+## Python CLI — advanced Proxy Guard
+
 Proxy Guard reads **HKCU** `Internet Settings` (`ProxyEnable`, `ProxyServer`, `AutoConfigURL`, `AutoDetect`), normalizes `ProxyServer` strings, correlates LISTENING `netstat` rows, optionally enriches via `Win32_Process` (through PowerShell/`Get-CimInstance`), emits JSONL audits, and offers a typed-phrase-guarded disable path (`DISABLE_PROXY`) that edits only WinINET user keys.
 
 ## Commands
@@ -9,7 +102,9 @@ python -m src proxy-status
 python -m src proxy-status --json
 python -m src proxy-owner [--port N] [--json]
 python -m src proxy-monitor [--interval 5] [--once] [--jsonl logs/proxy_guard_events.jsonl]
-python -m src proxy-guard [--interval 5] [--once] [--auto-rollback] [--policy PATH] [--jsonl PATH] [--config shared/proxy_guard_service.config.example.json] [--structured-log logs/proxy_guard_service.jsonl]
+python -m src proxy-guard [--interval 5] [--once] [--auto-rollback] [--rollback] [--rollback-confirm RESTORE_PROXY]
+python -m src proxy-guard [--interval 5] [--dry-run] [--dry-run-rollback]
+python -m src proxy-guard [--policy PATH] [--jsonl PATH] [--config shared/proxy_guard_service.config.example.json] [--structured-log logs/proxy_guard_service.jsonl]
 python -m src proxy-disable [--dry-run] [--clear-server]
 ```
 
@@ -18,10 +113,8 @@ python -m src proxy-disable [--dry-run] [--clear-server]
 **Purpose:** Near–real-time polling of the same HKCU keys as `proxy-monitor`, plus:
 
 - **Attribution:** For localhost proxy ports, resolve **port → netstat → PID → process name** (same stack as `proxy-owner`).
-- **Policy:** JSON whitelist (`allowed_process_name_substrings`, `allowed_process_names_exact`); **default deny** for unknown processes.
-- **Automatic rollback (opt-in):** Only when `--auto-rollback` is set and the decision is **blocked**, the toolkit runs the **low-risk** bundle:
-  - HKCU WinINET disable (`ProxyEnable=0`, optional `ProxyServer` delete) via `reg.exe`
-  - `netsh winhttp reset proxy` for WinHTTP
+- **Policy:** JSON whitelist (`allowed_process_name_substrings`, `allowed_process_names_exact`); **default deny** for unknown processes; optional `observe_only_when_unknown_attribution`.
+- **Rollback (opt-in):** On **blocked**, the loop can **re-apply the HKCU snapshot from the prior polling cycle** via `reg.exe` (and optional WinHTTP `netsh`, still gated by probe data). This is **not** a generic firewall/adapter reset—only the exact prior values are replayed when known.
 
 No firewall, routing, adapter, or certificate mutations are performed automatically.
 
@@ -33,6 +126,9 @@ No firewall, routing, adapter, or certificate mutations are performed automatica
 | `src/proxy_guard/probes.py` | Retry/backoff wrapper for full snapshot reads |
 | `src/proxy_guard/parser.py` | Deterministic `ProxyServer` parse |
 | `src/proxy_guard/planning.py` | Pure registry view helpers (no I/O) |
+| `src/proxy_guard/diff.py` | HKCU diff + rollback verification tuples |
+| `src/proxy_guard/pipeline.py` | Stdout/policy/rollback payloads for audits |
+| `src/proxy_guard/attribution.py` | WMI / heuristic supplementation + unified audit envelopes |
 | `src/proxy_guard/owner.py` | Localhost port attribution |
 | `src/proxy_guard/watcher.py` | Read-only polling + legacy JSONL |
 | `src/proxy_guard/policy.py` | Whitelist load + `PolicyDecision` |
@@ -72,10 +168,52 @@ This is separate from **audit** JSONL (`--jsonl`): operational logs are for SRE 
 
 | Risk | Mitigation |
 |------|------------|
-| `--auto-rollback` + `netsh winhttp reset proxy` | Resets **WinHTTP** system proxy; can disrupt apps using WinHTTP until reconfigured. Opt-in; logged in JSONL. |
-| HKCU `reg` mutations | Affects **current user** WinINET only; reversible via UI or `proxy-disable`-style commands; may race with policy-enforcing software. |
-| Default deny + wrong whitelist | Legitimate tools may be blocked; tune policy and use `allow_when_attribution_empty` only with care. |
-| Attribution gaps | `netstat`/CIM can miss or mis-label owners; decisions may be conservative (blocked). |
+| `--auto-rollback` / `--rollback` + `netsh winhttp` | Restores **prior** WinINET/WinHTTP literals; can disrupt apps relying on the *new* proxy until reconfigured. Opt-in; mirrored in JSONL. |
+| HKCU `reg` mutations | Affects **current user** WinINET only; replayed values come from the captured prior snapshot—may still race with MDM or security products. |
+| Default deny + wrong whitelist | Legitimate tools may be blocked; tune policy and use `allow_when_attribution_empty` / `observe_only_when_unknown_attribution` only with ops review. |
+| Attribution gaps | Heuristic `candidate_actor` rows are **not** proof; policy may still use listener owners + optional WMI for allowlists. |
+
+## Process attribution
+
+Proxy Guard **detects** HKCU WinINET changes on a poll interval. Polling alone **cannot prove** which user-mode process last wrote `ProxyEnable` / `ProxyServer`.
+
+This repository adds a **best-effort attribute** layer for pipeline audits:
+
+- After `registry_change_detected`, the service runs :func:`src.proxy_guard.attribution.attribute_proxy_change`, which scores **optional** `psutil` process metadata (PID, name, exe path, command line, parent PID, create time). If `psutil` is not installed, `attribution_method` is `unavailable` and `candidate_actor` is null.
+- The JSON uses neutral terms: **`candidate_actor`**, **`attribution_confidence`**, **`attribution_method`**, **`attribution_notes`**. This is **heuristic only**; do not treat output as a forensic accusation.
+- **Confidence (heuristic-only, no `high`):**
+  - **`medium`** — score ≥ 80 (strong keyword / tooling match, capped at 100).
+  - **`low`** — score 40–79.
+  - **`unknown`** — score < 40 or no candidate.
+- **`attribution_method`:** `psutil_snapshot_heuristic` when a snapshot was scored; `unavailable` when `psutil` is missing or the snapshot is empty; `wmi_snapshot_heuristic` is reserved for future use (policy-side WMI fallback remains separate).
+
+Example `attribute` block (abbreviated):
+
+```json
+{
+  "candidate_actor": {
+    "pid": 8420,
+    "process_name": "clash.exe",
+    "process_path": "C:\\\\Program Files\\\\Clash\\\\clash.exe",
+    "parent_pid": 3000,
+    "command_line": "clash.exe --proxy 127.0.0.1:7890",
+    "score": 100,
+    "reasons": ["matched_keyword:clash", "matched_keyword:proxy", "network_proxy_tool:clash"]
+  },
+  "attribution_confidence": "medium",
+  "attribution_method": "psutil_snapshot_heuristic",
+  "attribution_notes": [
+    "best-effort attribution only",
+    "registry polling cannot prove exact writer process"
+  ]
+}
+```
+
+**Future hardening:** direct writers can sometimes be reconstructed with Windows Event Log auditing, Sysmon registry events, or ETW—those paths may justify higher confidence separately; they are **not** part of this heuristic scorer.
+
+### Attribution limitations (security & privacy)
+
+The scorer collects **only** process metadata enumerated above—**not** environment variables, file contents, browser history, private IPs, machine IDs, or secrets. **Vendor / Authenticode pinning** in policy JSON remains TODO for OSS (see `trusted_exe_paths` prefix matching when Sysmon supplies paths). Policy evaluation may still use listener owners and optional PowerShell `Get-CimInstance` **without** changing the heuristic `attribute` block’s honest limits. Redact `logs/proxy_guard_pipeline_audit.jsonl` before sharing outside the machine.
 
 ### Rollback idempotency and loop prevention
 
@@ -88,10 +226,14 @@ This is separate from **audit** JSONL (`--jsonl`): operational logs are for SRE 
 proxy_guard/
   __init__.py
   service.py      # Main control loop
+  guard.py        # Poll → diff → attribute → policy → rollback → audit orchestration
   control.py      # Legacy shim -> service
   config.py       # Service config (probe + rollback limits)
   probes.py       # Registry read retries
   planning.py     # Pure view helpers
+  diff.py         # Verification helpers
+  pipeline.py     # Audit/stdout payload shapes
+  attribution.py  # Enrichment + heuristic candidates
   rollback_limits.py
   structured_log.py
   events.py       # JSONL factories (monitor + control-plane)

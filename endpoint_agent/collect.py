@@ -1,4 +1,24 @@
-"""Diagnostic cycle: Failure Blocks + sanitized EndpointSnapshot (no repairs)."""
+"""One-shot diagnostic ingestion bridging Failure Knowledge System signals into platform models.
+
+Module responsibility:
+    Runs read-only probes through ``failure_system`` (when available), evaluates rules, synthesizes a
+    :class:`~platform_core.models.FailureEvent`, and emits a sanitized
+    :class:`~platform_core.models.EndpointSnapshot`.
+
+System placement:
+    Consumed exclusively by ``endpoint_agent.agent``. Does not invoke ``backend`` HTTP directly.
+
+Side effects:
+    None on disk inside this module—callers persist returned dict payloads.
+
+Failure modes:
+    Missing ``failure_system`` dependencies or unsupported platforms raise internally; callers catch
+    and synthesize degraded ``FailureEvent`` rows with ``summary=collector_unavailable:*``.
+
+Data shape:
+    Returned dict exposes ``endpoint_snapshot``, ``failure_event``, optional ``failure_block`` dump,
+    hypotheses, numeric confidence, and ``error`` string when degraded.
+"""
 
 from __future__ import annotations
 
@@ -20,7 +40,27 @@ def _category_from_rule(rule_id: str) -> str:
 
 
 def collect_endpoint_cycle(endpoint_id: str) -> dict[str, Any]:
-    """Run one Failure Knowledge System diagnostic pass; never mutates stack for repair."""
+    """Run one Failure Knowledge System diagnostic pass; never executes repair tooling.
+
+    Args:
+        endpoint_id: Stable caller-provided endpoint identifier echoed into models.
+
+    Returns:
+        Dict with ``endpoint_snapshot`` / ``failure_event`` dumps plus diagnostic metadata described
+        in the module docstring.
+
+    Note:
+        Exceptions do not propagate—``except Exception`` synthesizes degraded failure events with
+        ``summary=collector_unavailable:*``.
+
+    Side effects:
+        Invokes Failure System collectors/rules on supported hosts (potential subprocess/network
+        reads per those modules).
+
+    Engineering Notes:
+        Recommended action preference is heuristic (``dns`` vs default ``inspect_proxy``); aligns with
+        portfolio demos rather than exhaustive policy coverage.
+    """
     try:
         from failure_system.collector import collect_diagnostics
         from failure_system.generator import build_failure_block

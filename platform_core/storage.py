@@ -1,4 +1,44 @@
-"""Append-only JSONL storage under platform_data/ (local-first, no external DB)."""
+"""Append-only JSONL persistence for the Endpoint Reliability Platform prototype.
+
+Module responsibility:
+    Owns file layout under ``platform_data/`` (or ``PLATFORM_DATA_DIR``): endpoints, snapshots,
+    failure events, remediation previews/executions, and audit rows—each as a dedicated ``*.jsonl``
+    stream consumed by ``backend/platform_routes.py`` and emitted by ``endpoint_agent``.
+
+System placement:
+    Sits **below** Pydantic models and **above** the filesystem; ``platform_core.policy`` never
+    writes here directly—routers and the agent call these helpers.
+
+Key invariants:
+    * Records are newline-delimited UTF-8 JSON; no transactions—readers use
+      :func:`iter_jsonl` which **skips** corrupt lines.
+    * ``find_by_id`` returns the **latest** match scanning from oldest to newest (portfolio
+      scale assumption).
+
+Input assumptions:
+    Callers pass ``dict[str, Any]`` payloads already validated or produced from
+    ``model_dump(mode="json")``; this module does not strip secrets.
+
+Output guarantees:
+    Iterators yield only ``dict`` instances successfully parsed from JSON; empty/malformed lines are
+    ignored.
+
+Side effects:
+    Every ``append_*`` helper may create parent directories and append to files.
+
+Idempotency:
+    Appends are **not** duplicate-safe—idempotency belongs to higher layers (for example dry-run
+    keys in execution records).
+
+Failure modes:
+    Disk full, permission denied, or antivirus locks manifest as ``OSError`` bubbling to FastAPI as
+    HTTP 500 unless caught by routers.
+
+Audit Notes:
+    Compare ``audit.jsonl`` timestamps with remediation execution rows when investigating “who
+    approved this script.” ``list_metrics`` performs full scans—acceptable for demos, not for very
+    large files without rotation.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +54,15 @@ DEFAULT_REL_PLATFORM_DATA = Path(__file__).resolve().parent.parent / "platform_d
 
 
 def platform_data_dir() -> Path:
-    """Resolve platform data directory (override with PLATFORM_DATA_DIR)."""
+    """Resolve the JSONL root directory.
+
+    Returns:
+        Absolute path from environment variable ``PLATFORM_DATA_DIR`` when set, else
+        ``<repo>/platform_data`` relative to this package's parent directory.
+
+    Side effects:
+        None.
+    """
     raw = os.environ.get("PLATFORM_DATA_DIR")
     if raw:
         return Path(raw).resolve()
@@ -26,7 +74,19 @@ def _path(name: str) -> Path:
 
 
 def append_jsonl(path: Path, record: dict[str, Any]) -> None:
-    """Append one JSON object per line (UTF-8)."""
+    """Append one JSON object as a single UTF-8 line (no advisory file locking).
+
+    Args:
+        path: Destination file; parent directories are created as needed.
+        record: JSON-serializable mapping (``default=str`` for non-JSON-native values).
+
+    Raises:
+        ``OSError`` if the path is not writable.
+
+    Side effects:
+        Creates ``path.parent`` and appends bytes atomically at the line level only—multi-line
+        atomicity is **not** guaranteed across processes.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(record, ensure_ascii=False, default=str)
     with path.open("a", encoding="utf-8") as fh:
@@ -34,7 +94,11 @@ def append_jsonl(path: Path, record: dict[str, Any]) -> None:
 
 
 def iter_jsonl(path: Path) -> Iterator[dict[str, Any]]:
-    """Yield parsed dicts; skip malformed lines."""
+    """Yield parsed ``dict`` rows in file order, tolerating blank or invalid JSON lines.
+
+    Malformed lines are dropped (typical after abrupt shutdown or concurrent writers). Missing
+    files produce zero yields.
+    """
     if not path.is_file():
         return
     with path.open(encoding="utf-8") as fh:
@@ -51,7 +115,11 @@ def iter_jsonl(path: Path) -> Iterator[dict[str, Any]]:
 
 
 def read_recent_jsonl(path: Path, limit: int = 100) -> list[dict[str, Any]]:
-    """Return up to ``limit`` most recent records (full scan; fine for portfolio scale)."""
+    """Return up to ``limit`` trailing records after a full-file read (O(n) in line count).
+
+    Engineering Notes:
+        Suited for dashboard demos; replace with tail-indexed storage if files grow large.
+    """
     rows = list(iter_jsonl(path))
     if limit >= len(rows):
         return rows
@@ -59,7 +127,7 @@ def read_recent_jsonl(path: Path, limit: int = 100) -> list[dict[str, Any]]:
 
 
 def find_by_id(path: Path, id_field: str, id_value: str) -> dict[str, Any] | None:
-    """Return last matching record (latest wins)."""
+    """Scan JSONL and return the **last** row whose ``id_field`` equals ``id_value``."""
     last: dict[str, Any] | None = None
     for obj in iter_jsonl(path):
         if obj.get(id_field) == id_value:
@@ -68,12 +136,16 @@ def find_by_id(path: Path, id_field: str, id_value: str) -> dict[str, Any] | Non
 
 
 def upsert_endpoint(record: dict[str, Any]) -> None:
-    """Append endpoint heartbeat row (latest wins for readers who take last match)."""
+    """Append a heartbeat row; logical ``upsert`` is **latest append wins** per reader conventions."""
     append_jsonl(_path("endpoints.jsonl"), record)
 
 
 def record_audit(record: dict[str, Any]) -> None:
-    """Append audit row."""
+    """Append an audit dict, injecting ``audit_id`` / ``timestamp`` into ``record`` when absent.
+
+    Side effects:
+        Mutates ``record`` in place for missing keys before appending to ``audit.jsonl``.
+    """
     if "audit_id" not in record:
         record["audit_id"] = str(uuid.uuid4())
     if "timestamp" not in record:
@@ -82,23 +154,40 @@ def record_audit(record: dict[str, Any]) -> None:
 
 
 def append_snapshot(record: dict[str, Any]) -> None:
+    """Append one :class:`~platform_core.models.EndpointSnapshot` dump to ``snapshots.jsonl``."""
     append_jsonl(_path("snapshots.jsonl"), record)
 
 
 def append_failure_event(record: dict[str, Any]) -> None:
+    """Append one serialized :class:`~platform_core.models.FailureEvent` row."""
     append_jsonl(_path("failure_events.jsonl"), record)
 
 
 def append_remediation_preview(record: dict[str, Any]) -> None:
+    """Persist a deterministic preview record before any live execution attempt."""
     append_jsonl(_path("remediation_previews.jsonl"), record)
 
 
 def append_remediation_execution(record: dict[str, Any]) -> None:
+    """Record dry-run or live script outcomes for success-rate style metrics."""
     append_jsonl(_path("remediation_executions.jsonl"), record)
 
 
 def list_metrics() -> dict[str, Any]:
-    """Cheap counters for dashboard / GET /platform/metrics."""
+    """Aggregate counters and rates from JSONL streams for ``GET /platform/metrics``.
+
+    Returns:
+        Plain dict with endpoint counts, open events, cluster aggregates, execution stats, and
+        optional rates (``None`` when denominators vanish).
+
+    Side effects:
+        Reads multiple JSONL files fully—fine for demos; streaming metrics would require a different
+        storage layout.
+
+    Failure modes:
+        Corrupt lines are skipped by :func:`iter_jsonl`. Unexpected field shapes skew counts silently
+        (for example strings where integers are assumed).
+    """
 
     from .incidents import cluster_failure_events
 

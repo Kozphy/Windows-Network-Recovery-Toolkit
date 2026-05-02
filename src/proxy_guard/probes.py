@@ -18,6 +18,7 @@ def snapshot_totally_unreadable(snap: ProxyRegistrySnapshot) -> bool:
         and snap.proxy_server is None
         and snap.auto_config_url is None
         and snap.auto_detect is None
+        and snap.proxy_override is None
     )
 
 

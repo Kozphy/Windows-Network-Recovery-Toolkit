@@ -1,0 +1,8 @@
+{
+  "comment": "Prefer config/proxy_guard_policy.json — repo-specific allowlists. Fallback: shared/proxy_guard_policy.example.json",
+  "allowed_process_name_substrings": ["chrome", "msedge", "Code", "devenv"],
+  "allowed_process_names_exact": [],
+  "allow_when_attribution_empty": false,
+  "trusted_exe_paths": ["C:\\\\Program Files\\\\", "C:\\\\Program Files (x86)\\\\"],
+  "allowed_autoconfig_url_substrings": ["proxy.pac"]
+}

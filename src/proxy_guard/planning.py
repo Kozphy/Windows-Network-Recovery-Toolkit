@@ -11,6 +11,7 @@ def normalize_registry_view(reg_dict: dict[str, Any], parsed_dict: dict[str, Any
     return {
         "proxy_enable": reg_dict.get("proxy_enable"),
         "proxy_server": reg_dict.get("proxy_server"),
+        "proxy_override": reg_dict.get("proxy_override"),
         "auto_config_url": reg_dict.get("auto_config_url"),
         "auto_detect": reg_dict.get("auto_detect"),
         "parsed": parsed_dict,

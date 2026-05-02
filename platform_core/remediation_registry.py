@@ -1,39 +1,31 @@
-"""Authorize and describe safe remediation paths for the Endpoint Reliability Platform.
+"""Canonical remediation allowlist for the Endpoint Reliability Platform.
 
-**Responsibility**
-  Hold the **canonical allowlist** of named remediation actions: risk tier,
-  typed-confirmation phrases, optional ``scripts/*.bat`` basenames,
-  deployment surface rules, and whether the FastAPI layer may spawn a subprocess.
+This module defines the single source of truth for named remediation actions: risk tier,
+typed confirmation phrases, optional ``scripts/*.bat`` basenames, deployment surface rules,
+and whether the HTTP API may spawn a subprocess for an action.
 
-**System placement**
-  Sits **before** subprocess execution (**``policy``** reads summaries here) and
-  alongside **``remediation.allowlisted_script``** (basename checks derive from this
-  registry):
+System placement:
+    ``FailureEvent`` and operator intent flow into :func:`get_remediation_action` and
+    :func:`canonical_action_name`. :mod:`platform_core.policy` reads summaries derived here;
+    :mod:`platform_core.remediation` uses basename sets from :func:`list_script_basenames`.
+    ``backend.platform_routes`` gates ``POST /platform/remediation/execute`` against these
+    definitions.
 
-  ``FailureEvent + operator intent`` → **registry lookup** → ``policy.evaluate_action`` /
-  ``policy.build_preview`` → ``backend.platform_routes`` execute path.
+Key invariants:
+    * ``forbidden`` and appropriately flagged ``high`` entries do not authorize API-bound
+      repair (additional denial lives in :mod:`platform_core.policy` and routes).
+    * :data:`_ACTION_ALIASES` maps legacy action strings to canonical registry keys without
+      duplicating :class:`RemediationActionDef` rows.
+    * :class:`RemediationActionDef` is frozen so registry rows are immutable at runtime.
 
-**Key invariants**
-  - **`forbidden`** and **`high`** entries do not authorize API-bound repair
-    (**``policy``** / routes enforce additional denial).
-  - **Alias map** preserves backward-compatible action strings (**``reset_firewall``**, etc.).
-  - Frozen **``RemediationActionDef``** rows prevent accidental mutation at runtime.
+Engineering notes:
+    The registry is code, not YAML/JSON, so changes are reviewable in PRs, type-checked,
+    and avoid parse cost at import. ``manual_only=True`` with ``api_execute_allowed=False``
+    marks runbook-only repair, distinct from ``forbidden`` (explicitly disallowed patterns).
 
-**Consumers**
-  ``platform_core.policy``, ``platform_core.remediation`` (basename allowlists),
-  and ``backend.platform_routes`` (execute gating).
-
-**Engineering Notes**
-  - YAML/JSON loaders were intentionally avoided — a code-defined registry trades
-    hot-reload for **reviewable PRs**, **type-checked literals**, and **zero parse** startup cost.
-  - **``manual_only=True``** + **``api_execute_allowed=False``** pairs express “explain in UI /
-    playbook only,” separate from **`forbidden`** (explicitly abusive patterns).
-
-**Audit Notes**
-  - Broadening **`api_execute_allowed`** or shortening confirmation phrases materially
-    widens blast radius — **detect** via code review of this file and **`tests/test_*`**.
-  - **Recovery**: revert commit; no runtime migration is required beyond redeploy.
-
+Audit notes:
+    Widening ``api_execute_allowed`` or weakening confirmation phrases increases blast radius;
+    catch via code review and :mod:`tests`. Recovery is redeploy or revert—no migration.
 """
 
 from __future__ import annotations
@@ -47,50 +39,45 @@ Surface = Literal["api", "cli", "dashboard"]
 
 @dataclass(frozen=True)
 class RemediationActionDef:
-    """Static row describing one operator-facing remediation primitive.
+    """Immutable safety metadata for one operator-facing remediation primitive.
 
-    **Responsibility**
-      Encode safety metadata so **policy**, **audit**, and **preview UIs** can reason
-      about blast radius **without** reading batch file bodies.
+    Encodes blast-radius and surface rules so policy, audit, and preview UIs can evaluate
+    an action without opening batch file contents.
 
-    **Key attributes**
-      action_name: Stable string key surfaced in previews and executions.
-      script_path: Optional ``scripts/<basename>.bat``; ``None`` for read-only or manual-only flows.
-      risk_level: Coarse **`read_only`** → **`forbidden`** tier used with org policy overlays.
-      allowed_surfaces: Where preview/execute intents may originate (empty forbids **all** surfaces).
-      api_execute_allowed: Whether **`POST /platform/remediation/execute`** may run a subprocess (still gated elsewhere).
-      requires_confirmation: Whether operator policy mandates human acknowledgment (paired with **`confirmation_phrase`**).
-      confirmation_phrase: Exact typed token for phrase matching (**empty** ⇒ no typed gate).
-      dry_run_allowed: Whether dry-run executions are sensible for this action (portfolio default **True** except forbidden).
-      manual_only: If **True**, real repair is **never** delegated to API subprocess — operator runbook path.
-      rollback_plan: Redacted, human-readable narrative stored on **``RemediationPreview``** rows.
+    Key attributes map to API/CLI identifiers, optional script basenames, risk tier, where
+    the action may be invoked, and gating for live execution vs dry-run or manual-only.
 
-    **Interaction**
-      Produced by **``get_remediation_action``**, consumed across **policy** previews and
-      **`backend`** execution validation.
+    Interacts with :func:`get_remediation_action` (construction source), :mod:`policy`
+    (preview and execute decisions), and ``backend`` execution validation.
 
-    **Engineering Notes**
-      ``frozen=True`` rejects silent field mutation — update via new instances / registry edits only.
+    Engineering notes:
+        ``frozen=True`` prevents accidental mutation; update the registry or construct a
+        new instance when definitions change.
 
-    **Audit Notes**
-      Drift between **``script_path``** and filesystem contents surfaces as **executor 400**
-      (**``script not allowlisted``**) — verify ``scripts/*.bat`` exists after registry edits.
+    Audit notes:
+        If ``script_path`` does not match a file under ``scripts/``, executors return allowlist
+        errors—verify filesystem layout after registry edits.
 
     Attributes:
-      action_name: Registry key identical to externally supplied action identifiers (post-alias).
-      script_path: Basename under repository ``scripts/`` when subprocess repair is modeled.
-      risk_level: Platform risk tier fused with **`RemediationPolicy.allowed_risk_levels`**.
-      allowed_surfaces: Tuple of **`api`**, **`cli`**, **`dashboard`** allowances.
-      api_execute_allowed: FastAPI-managed repair eligibility flag.
-      requires_confirmation: Mirrors org-level **`requires_confirmation`** for medium/low automation.
-      confirmation_phrase: Token required when phrase gating applies.
-      dry_run_allowed: Permits no-op execution records when **True**.
-      manual_only: Disables delegated repair despite medium/low tiering.
-      rollback_plan: Free-text operational guidance (**not executed**).
+        action_name: Stable key used in previews and execution requests (post-alias).
+        script_path: Basename under repository ``scripts/`` when a subprocess models repair;
+            ``None`` for read-only or manual-only entries without a script.
+        risk_level: Coarse tier from ``read_only`` through ``forbidden``; fused with
+            ``RemediationPolicy.allowed_risk_levels`` in policy.
+        allowed_surfaces: Where preview/execute may originate; empty tuple blocks all surfaces.
+        api_execute_allowed: Whether ``POST /platform/remediation/execute`` may run a subprocess
+            when other policy checks pass.
+        requires_confirmation: Whether operator flow must record human acknowledgment when
+            paired with org policy.
+        confirmation_phrase: Exact typed token for phrase gates; empty if no typed gate.
+        dry_run_allowed: Whether dry-run execution records are meaningful (``False`` for
+            forbidden actions).
+        manual_only: When ``True``, live repair is not delegated via API subprocess.
+        rollback_plan: Human-readable rollback hint for previews; never executed by this module.
 
     Raises:
-      None directly from instantiation (dataclass validation is structural only).
-
+        None from the dataclass itself; structural errors surface as typical ``TypeError`` /
+            ``dataclass`` init failures if callers construct invalid combinations.
     """
 
     action_name: str
@@ -106,24 +93,36 @@ class RemediationActionDef:
 
 
 def _all_surfaces() -> tuple[Surface, ...]:
-    """Return the triple of supported request surfaces used by benign registry rows.
+    """Return the tuple of every supported remediation caller surface.
 
-    **Decision intent**
-      Centralize repetition so widening **CLI** vs **dashboard** coverage is a single edit.
+    Supplies a shared ``("api", "cli", "dashboard")`` literal for benign registry rows so
+    adding or removing a surface is a single-code-path change.
 
-    **Output guarantees**
-      Always **``("api","cli","dashboard")``** — deterministic, allocation-free tuples are reused.
+    Decision intent:
+        Avoid copying the same triple across dozens of definitions and reduce review drift.
 
-    **Side effects:** None.
+    Input assumptions:
+        None (no parameters).
 
-    **Idempotency:** Every call yields an equal tuple value.
+    Output guarantees:
+        Always ``("api", "cli", "dashboard")``, same object identity pattern per call site
+        (tuple of three string literals).
 
-    Returns:
-        Tuple of literals naming supported caller surfaces.
-
-    Raises:
+    Side effects:
         None.
 
+    Idempotency:
+        Pure; repeated calls yield equal values.
+
+    Returns:
+        Tuple of surface names usable in ``RemediationActionDef.allowed_surfaces``.
+
+    Raises:
+        Nothing.
+
+    Example:
+        >>> _all_surfaces()
+        ('api', 'cli', 'dashboard')
     """
 
     return ("api", "cli", "dashboard")
@@ -265,34 +264,46 @@ _ACTION_ALIASES: dict[str, str] = {
 
 
 def canonical_action_name(action_name: str) -> str:
-    """Map historically stable alias strings onto canonical registry keys.
+    """Resolve a remediation label to its canonical registry key.
 
-    **What it does**
-      Normalizes externally supplied **`action_name`** values (CLI strings, previews,
-      tests) so lookups hit a **single authoritative** ``_REMEDIATION_REGISTRY`` row.
+    Translates historically stable alias strings into the authoritative key stored in
+    :data:`_REMEDIATION_REGISTRY`, so lookups and policy evaluation reference one row per
+    logical action.
 
-    **Decision intent**
-      Prevents duplication of remediation rows when renaming keys between releases.
+    Decision intent:
+        Keep a single remediation definition when external strings evolve (rename keys or
+        split actions) without duplicated :class:`RemediationActionDef` instances.
 
-    **Input data assumptions**
-      ``action_name`` is trimmed by callers; stray whitespace should be stripped upstream.
+    Constraints / limitations:
+        Does not validate that the resolved key exists; pair with :func:`get_remediation_action`.
 
-    **Output guarantees**
-      Returns either the unchanged canonical key **or** the alias target that exists in
-      **``_REMEDIATION_REGISTRY``** once resolved via **`get_remediation_action`**.
+    Known failure modes:
+        Callers treating any return value as defined may mis-handle unknown keys—always
+        follow with a registry lookup.
 
-    **Side effects:** None.
+    Input assumptions:
+        ``action_name`` is trimmed by callers; leading/trailing whitespace is not stripped here.
 
-    **Idempotency:** ``canonical_action_name(canonical_action_name(x))`` == ``canonical_action_name(x)`` for aliases.
+    Output guarantees:
+        If ``action_name`` is in :data:`_ACTION_ALIASES`, returns the mapped target; otherwise
+        returns ``action_name`` unchanged.
+
+    Side effects:
+        None.
+
+    Idempotency:
+        For any alias chain expressible by one hop, applying twice yields the same result as
+        once; canonical keys map to themselves.
 
     Args:
-        action_name: Raw remediation label from CLI/API/policy.
+        action_name: Raw remediation identifier from CLI, HTTP body, or policy.
 
     Returns:
-        Registry key suitable for **`_REMEDIATION_REGISTRY`** lookup (**may be absent**).
+        Canonical registry key suitable for ``_REMEDIATION_REGISTRY.get``. May still be
+        absent from the registry if unknown.
 
     Raises:
-        None.
+        Nothing.
 
     Example:
         >>> canonical_action_name("reset_firewall") == "firewall_reset_manual_only"
@@ -303,31 +314,52 @@ def canonical_action_name(action_name: str) -> str:
 
 
 def get_remediation_action(action_name: str) -> RemediationActionDef | None:
-    """Look up **`RemediationActionDef`** after resolving legacy aliases.
+    """Fetch frozen remediation metadata for an external action identifier.
 
-    **What it does**
-      Answers “what structured safety metadata applies to **`action_name`**?” for previews,
-      policy evaluation, and execute-time allowlisting.
+    Resolves aliases via :func:`canonical_action_name`, then performs a dictionary lookup into
+    the built-in registry—the primary read path for previews, risk evaluation, and execute
+    gating downstream.
 
-    **Constraints / limitations**
-      Unknown identifiers return **``None``** — callers (**``policy``**) treat that as **`unknown_action`**.
+    Decision intent:
+        Centralize "what metadata applies to this string?" so routes and policy do not fork
+        alias logic.
 
-    **Schema expectations**
-      ``action_name`` is a lowercase identifier string (**ASCII** expectation; not enforced here).
+    Constraints / limitations:
+        Unknown identifiers return ``None``. Callers (:mod:`policy`) map that outcome to an
+        ``unknown_action`` (or equivalent) denial path rather than inferring defaults.
 
-    **Side effects:** None.
+    Known failure modes:
+        Stale tests or dashboards sending deprecated strings without aliases yield ``None``;
+        mitigate by extending :data:`_ACTION_ALIASES` or updating callers.
 
-    **Idempotency:** Read-only memo-free — repeated calls identical for identical registry build.
+    Input assumptions:
+        ``action_name`` is treated as opaque UTF-8 string; callers supply stable lowercase
+        identifiers in practice—no timezone or schema normalization here.
 
-    Args:
-        action_name: External remediation key (**may be alias**).
+    Output guarantees:
+        Returns the exact :class:`RemediationActionDef` instance from the registry for the
+        canonical key when present.
 
-    Returns:
-        Frozen definition matching the canonical registry entry, **or** **`None`** if unknown.
-
-    Raises:
+    Side effects:
         None.
 
+    Idempotency:
+        Read-only; identical inputs yield identical outputs for a given deployment.
+
+    Args:
+        action_name: External remediation key, possibly an alias such as ``reset_firewall``.
+
+    Returns:
+        Matching frozen definition when the canonical key exists; otherwise ``None``.
+
+    Raises:
+        Nothing.
+
+    Example:
+        >>> get_remediation_action("inspect_proxy") is not None
+        True
+        >>> get_remediation_action("not_a_real_action") is None
+        True
     """
 
     key = canonical_action_name(action_name)
@@ -335,28 +367,41 @@ def get_remediation_action(action_name: str) -> RemediationActionDef | None:
 
 
 def list_script_basenames() -> frozenset[str]:
-    """Collect unique ``scripts/*.bat`` basenames referenced for automated repair primitives.
+    """Return every distinct ``scripts/*.bat`` basename tied to scripted repair definitions.
 
-    **What it does**
-      Derives subprocess allowlisting material (**``frozenset``**) from registry rows carrying
-      **non-null ``script_path``**.
+    Scans registry values for ``script_path`` entries that are not ``None``, collecting
+    basenames subprocess allowlisting uses (:mod:`platform_core.remediation`).
 
-    **Output guarantees**
-      Deterministic set membership for a given deployed registry body; alphabetical order **not implied**.
+    Input assumptions:
+        ``script_path`` values are stored as filenames only (no directories), enforced by how
+        the registry was authored—not validated at runtime beyond truthiness checks.
 
-    **Performance**
-      Linear in registry cardinality (~10 rows portfolio scale — trivial).
+    Output guarantees:
+        Result is immutable; duplicates collapse to one element; membership deterministic for current
+        :data:`_REMEDIATION_REGISTRY`. Order within the ``frozenset`` is unspecified.
 
-    **Side effects:** None.
-
-    **Idempotency:** Yes.
-
-    Returns:
-        Immutable set of basename strings (filenames **only**, no directories).
-
-    Raises:
+    Side effects:
         None.
 
+    Idempotency:
+        Deterministic pure function across calls for the same module state.
+
+    Returns:
+        ``frozenset`` of script basenames referenced by automate-able repair definitions.
+
+    Raises:
+        Nothing.
+
+    Engineering notes:
+        Linear scan of small dict O(n)—portfolio-scale registry cardinality.
+
+    Audit notes:
+        If paths slip in containing directory separators, allowlist matchers may mismatch
+        filenames—enforce basename-only authoring in reviews.
+
+    Example:
+        >>> "reset_dns.bat" in list_script_basenames()
+        True
     """
 
     out: set[str] = set()
@@ -367,29 +412,39 @@ def list_script_basenames() -> frozenset[str]:
 
 
 def to_policy_meta(defn: RemediationActionDef) -> dict[str, object]:
-    """Project a **`RemediationActionDef`** into legacy ``ACTION_REGISTRY`` dictionaries.
+    """Serialize a remediation definition into the legacy plain-dict projection.
 
-    **What it does**
-      Supplies compatibility fields consumed by transitional helpers that still iterate
-      string-keyed blobs (**``risk``**, **``script``**, **``phrase``**).
+    Builds the ``risk``, ``script``, ``phrase``, and related keys expected by transitional
+    helpers still iterating string-key blobs in :mod:`platform_core.policy` and tests—bridges
+    the dataclass-first registry without mutating callers in one refactor.
 
-    **Schema expectations**
-      Output keys (**``risk``**, **``script``**, **``phrase``**, etc.) mirror historical
-      **`ACTION_REGISTRY`** consumers in **`platform_core.policy`** tests/API glue.
+    Input assumptions:
+        ``defn`` is frozen and complete; callers do not mutate the returned dictionary.
 
-    **Side effects:** None.
+    Output guarantees:
+        Shallow mapping with primitive or tuple values (`risk`, `script`, `phrase`,
+        `allowed_surfaces`, `api_execute_allowed`, `manual_only`) suitable for comparison and
+        JSON-compatible logging payloads.
 
-    **Idempotency:** Yes for frozen input **``defn``**.
+    Side effects:
+        Allocates one new dictionary per call.
+
+    Idempotency:
+        Same ``defn`` always yields identical field-wise content until code changes registry.
 
     Args:
-        defn: Source frozen remediation row.
+        defn: Frozen row from :func:`get_remediation_action`.
 
     Returns:
-        Shallow **`dict`** of JSON-serializable primitives (**``tuple``** surfaces retained).
+        Dictionary keyed by legacy field names consumed by older policy integrations.
 
     Raises:
-        None.
+        Nothing.
 
+    Example:
+        >>> d = get_remediation_action("reset_dns")
+        >>> to_policy_meta(d)["phrase"] == "RUN_DNS_RESET"
+        True
     """
 
     return {
@@ -403,38 +458,55 @@ def to_policy_meta(defn: RemediationActionDef) -> dict[str, object]:
 
 
 def build_action_registry_legacy_dict() -> dict[str, dict[str, object]]:
-    """Materialize flattened alias-expanded maps for transitional policy imports.
+    """Build flatten alias-expanded dict for transitional ``ACTION_REGISTRY`` wiring.
 
-    **What it does**
-      Builds **`dict[actionAlias, legacyMeta]`**, duplicating **`to_policy_meta`** rows for
-      every canonical key **plus** every entry in **`_ACTION_ALIASES`**.
+    Produces ``dict[name, legacy_meta]`` including every canonical key and every alias in
+    :data:`_ACTION_ALIASES`, each projected through :func:`to_policy_meta` so ``policy.ACTION_REGISTRY``
+    can be assigned from a single import-time constant without divergence between aliases and canonical names.
 
-    **Decision intent**
-      Keeps **`ACTION_REGISTRY`** assignment in **`policy`** a single import-friendly constant
-      while **preventing divergence** between canonical and aliased lookups.
+    Decision intent:
+        Preserve backwards-compatible dict iteration in policy while the canonical registry
+        remains the authoring surface—prevents silently divergent metadata for aliases.
 
-    **Output guarantees**
-      Keys include both canonical (**``reset_proxy``**) and alias (**``reset_firewall``**) forms;
-      collisions **should not occur** unless alias definitions regress in review.
+    Constraints / limitations:
+        Rebuild new dict allocation each invocation; suited for module import/tests, not hot loops.
 
-    **Side effects:** None (**new dict** allocated each call — acceptable at import/test time).
+    Known failure modes:
+        If aliases pointed at unknown targets, omitted rows would silently drop alias keys;
+        current authoring keeps aliases valid—detect breakage via tests asserting presence of
+        expected alias keys.
 
-    **Idempotency:** Deterministic across process lifetime until module reload.
+    Input assumptions:
+        Backed exclusively by loaded module globals; no external data or clock.
+
+    Output guarantees:
+        Every canonical registry key maps to legacy meta every alias duplicates its target meta;
+        alphabetical key order unspecified.
+
+    Side effects:
+        None beyond allocation.
+
+    Idempotency:
+        Deterministic for fixed module globals until redeploy reloads the module.
 
     Returns:
-        Legacy-compatible mapping suitable for **`policy.ACTION_REGISTRY`**.
+        ``dict`` suitable for assigning ``policy.ACTION_REGISTRY`` in shim paths.
 
     Raises:
-        None.
+        Nothing.
 
-    **Engineering Notes**
-      Prefer **`get_remediation_action`** in new logic — this shim exists for readability of
-      old tests/dashboard assumptions.
+    Engineering notes:
+        Prefer :func:`get_remediation_action` in new surfaces; reserve this shim for legacy
+        policy constants and dashboards.
 
-    **Audit Notes**
-      Divergence between shim output and **`_REMEDIATION_REGISTRY`** indicates refactor bug —
-      **`pytest`** should fail if rows desync.
+    Audit notes:
+        If shim and :data:`_REMEDIATION_REGISTRY` desync during refactors—tests should trip;
+        recovery is aligning alias map and regenerate this dict at import.
 
+    Example:
+        >>> reg = build_action_registry_legacy_dict()
+        >>> reg["reset_firewall"] == reg["firewall_reset_manual_only"]
+        True
     """
 
     flat: dict[str, dict[str, object]] = {}

@@ -59,6 +59,7 @@ flowchart TD
 **FailureBlock category:** `proxy` / `tcp_tls` with **medium** risk framing.
 
 **Recommendation path:** **Preview** `reset_proxy` or **inspect** — **not** silent reset.
+For scripted guard loops, **`python -m src proxy-guard`** now distinguishes **polling heuristics vs Sysmon-backed attribution**, persists **Last Known Good** snapshots (`reports/proxy_guard_lkg.json`), and only performs **HKCU replay rollbacks** when `--auto-rollback` is combined with explicit non-dry-run intent (see **`docs/proxy_guard_attribution.md`**, **`docs/proxy_guard_rollback.md`**).
 
 **Platform policy:** **Medium** tier may form a **preview**, but **execute** still requires **confirmation phrase** / **dry_run=true** default; **firewall** tier is **blocked** from API execution in the prototype.
 

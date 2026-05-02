@@ -65,6 +65,7 @@ class ProxyRegistrySnapshot:
     proxy_server: str | None
     auto_config_url: str | None
     auto_detect: int | None
+    proxy_override: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return registry fields plus ``is_enabled`` boolean (``ProxyEnable == 1``)."""
@@ -74,6 +75,7 @@ class ProxyRegistrySnapshot:
             "proxy_server": self.proxy_server,
             "auto_config_url": self.auto_config_url,
             "auto_detect": self.auto_detect,
+            "proxy_override": self.proxy_override,
             "is_enabled": enabled,
         }
 

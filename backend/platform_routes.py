@@ -1,4 +1,56 @@
-"""Local-first platform API — no auth by default (bind 127.0.0.1 in production)."""
+"""FastAPI ``/platform/*`` routes for the optional Endpoint Reliability Platform prototype.
+
+Module responsibility:
+    Exposes heartbeat ingestion, sanitized snapshots/failure-event rows, deterministic remediation
+    preview/execute, read-only audits (RBAC gated), and JSONL-derived metrics—all backed by
+    :mod:`platform_core.storage` without an external database.
+
+System placement:
+    Mounted by ``backend/main.py``. The ``endpoint_agent`` package POSTs rows here when
+    configured; standalone ``failure_system`` / ``python -m src`` flows do **not** require this
+    router.
+
+Key invariants:
+    * Storage stays append-only JSONL; duplicate heartbeats imply “latest wins” readers.
+    * Remediation executes only after a persisted preview ``preview_id`` resolves.
+    * Live subprocess repair runs only when policy, registry tiering, confirmations, OS, script
+      allowlisting, and ``SAFE_MODE`` / env gates align (see body of :func:`remediation_execute`).
+    * Timestamps originate from agent/backend models (:func:`platform_core.models.utc_now_iso`);
+      no implicit timezone normalization beyond UTC ISO helpers in models.
+
+Input assumptions:
+    Request bodies validate via Pydantic models declared below; remediation actions must resolve in
+    :mod:`platform_core.remediation_registry`. Operator identity for RBAC derives from optional
+    ``X-Operator-Id`` / ``X-Operator-Role`` headers parsed by :func:`get_demo_principal`.
+
+Output guarantees:
+    JSON payloads are plain ``dict[str, Any]`` suitable for FastAPI serialization; audits return
+    redacted rationales tied to policy decisions.
+
+Side effects:
+    Every mutating handler appends JSONL via storage helpers **and** calls
+    :func:`platform_core.audit.write_audit` where operator visibility matters. Successful live
+    execution invokes ``subprocess.run`` on allowlisted repo-relative ``.bat`` scripts (Windows).
+
+Idempotency:
+    Retried POST bodies create **new** append rows; executions are not keyed for deduplication beyond
+    caller-supplied UUID fields inside models.
+
+Routes (summary):
+    * ``GET /platform/health`` — build metadata + JSONL directory.
+    * ``POST /platform/agent/heartbeat`` — register endpoint identity.
+    * ``POST /platform/snapshots`` — ingest :class:`~platform_core.models.EndpointSnapshot`.
+    * ``GET /platform/endpoints`` / ``GET /platform/endpoints/{id}`` — latest merged heartbeats.
+    * ``GET/POST .../failure-events`` — list/ingest :class:`~platform_core.models.FailureEvent`.
+    * ``POST /platform/remediation/preview|execute`` — policy-gated remediation pipeline.
+    * ``GET /platform/audit`` — recent audit rows (RBAC reader role).
+    * ``GET /platform/metrics`` — aggregate counters scanning JSONL (demo scale).
+
+Audit Notes:
+    Correlate ``audit.jsonl`` with ``remediation_executions.jsonl`` after contested runs. Treat
+    ``SAFE_MODE``, ``ALLOW_PLATFORM_EXECUTE``, and blocked executions as authoritative signals—even
+    when HTTP responses return 200 with ``result=blocked``.
+"""
 
 from __future__ import annotations
 
@@ -66,7 +118,19 @@ def get_demo_principal(
     x_operator_id: str | None = Header(default=None),
     x_operator_role: str | None = Header(default=None),
 ) -> DemoPrincipal:
-    """Resolve demo RBAC principal from optional headers (localhost portfolio pattern)."""
+    """FastAPI dependency that maps optional operator headers into a demo :class:`~platform_core.rbac.DemoPrincipal`.
+
+    Args:
+        x_operator_id: Optional ``X-Operator-Id`` header (portfolio demo identifier).
+        x_operator_role: Optional ``X-Operator-Role`` header controlling preview vs execute vs
+            audit readability.
+
+    Returns:
+        Parsed principal with deterministic defaults documented in :mod:`platform_core.rbac`.
+
+    Side effects:
+        None — malformed header combinations fall back per :func:`~platform_core.rbac.parse_demo_principal`.
+    """
 
     return parse_demo_principal(x_operator_id, x_operator_role)
 
@@ -81,6 +145,8 @@ class HealthResponse(BaseModel):
 
 @router.get("/health", response_model=HealthResponse)
 def platform_health() -> dict[str, Any]:
+    """Expose process version flags, JSONL mode, ``SAFE_MODE`` snapshot, and data directory."""
+
     return {
         "status": "ok",
         "backend_version": BACKEND_VERSION,
@@ -99,6 +165,8 @@ class HeartbeatIn(BaseModel):
 
 @router.post("/agent/heartbeat")
 def agent_heartbeat(body: HeartbeatIn) -> dict[str, Any]:
+    """Append an :class:`~platform_core.models.EndpointIdentity` heartbeat plus matching audit row."""
+
     ident = EndpointIdentity(
         endpoint_id=body.endpoint_id,
         os_family=body.os_family,
@@ -113,6 +181,8 @@ def agent_heartbeat(body: HeartbeatIn) -> dict[str, Any]:
 
 @router.post("/snapshots")
 def post_snapshot(snapshot: EndpointSnapshot) -> dict[str, Any]:
+    """Persist a privacy-scrubbed :class:`~platform_core.models.EndpointSnapshot` row."""
+
     append_snapshot(snapshot.model_dump())
     write_audit(actor="agent", action="snapshot", target_type="endpoint", target_id=snapshot.endpoint_id)
     return {"stored": True}
@@ -120,6 +190,8 @@ def post_snapshot(snapshot: EndpointSnapshot) -> dict[str, Any]:
 
 @router.get("/endpoints")
 def list_endpoints() -> dict[str, Any]:
+    """Return merged endpoint dicts keyed by ``endpoint_id`` (latest heartbeat wins within scan)."""
+
     seen: dict[str, dict[str, Any]] = {}
     for row in read_recent_jsonl(_path("endpoints.jsonl"), limit=2000):
         eid = row.get("endpoint_id")
@@ -130,6 +202,8 @@ def list_endpoints() -> dict[str, Any]:
 
 @router.get("/endpoints/{endpoint_id}")
 def get_endpoint(endpoint_id: str) -> dict[str, Any]:
+    """Fetch newest heartbeat dict for ``endpoint_id``."""
+
     row = find_by_id(_path("endpoints.jsonl"), "endpoint_id", endpoint_id)
     if not row:
         raise HTTPException(status_code=404, detail="endpoint not found")
@@ -138,13 +212,22 @@ def get_endpoint(endpoint_id: str) -> dict[str, Any]:
 
 @router.get("/failure-events")
 def list_failure_events(limit: int = 100) -> dict[str, Any]:
+    """Return capped recent failure-event rows newest-first semantics via :func:`read_recent_jsonl`."""
+
     rows = read_recent_jsonl(_path("failure_events.jsonl"), limit=max(1, min(limit, 500)))
     return {"items": rows}
 
 
 @router.post("/failure-events/ingest")
 def ingest_failure_event(body: FailureEvent) -> dict[str, Any]:
-    """Append one sanitized FailureEvent (from local endpoint_agent)."""
+    """Append one sanitized :class:`~platform_core.models.FailureEvent` originating from collectors.
+
+    Side effects:
+        Writes ``failure_events.jsonl`` plus an audit row referencing ``event_id``.
+
+    Note:
+        Invalid payloads return FastAPI 422 responses rather than bespoke ``HTTPException`` rows.
+    """
     append_failure_event(body.model_dump())
     write_audit(actor="agent", action="failure_event_ingest", target_type="event", target_id=body.event_id)
     return {"stored": True, "event_id": body.event_id}
@@ -152,6 +235,8 @@ def ingest_failure_event(body: FailureEvent) -> dict[str, Any]:
 
 @router.get("/failure-events/{event_id}")
 def get_failure_event(event_id: str) -> dict[str, Any]:
+    """Hydrate stored JSON plus optional FailureBlock-derived linkage via fleet helpers."""
+
     row = find_by_id(_path("failure_events.jsonl"), "event_id", event_id)
     if not row:
         raise HTTPException(status_code=404, detail="event not found")
@@ -174,6 +259,29 @@ def remediation_preview(
     body: PreviewIn,
     principal: DemoPrincipal = Depends(get_demo_principal),
 ) -> dict[str, Any]:
+    """Hydrate stored failure-event JSON, derive remediation preview rows, persist policy outcome.
+
+    Args:
+        body: Endpoint + failure event linkage plus requested remediation action slug.
+        principal: Resolved via :func:`get_demo_principal` for RBAC gating.
+
+    Returns:
+        Serialized :class:`~platform_core.models.RemediationPreview` suitable for dashboards.
+
+    Raises:
+        HTTPException: 403 when RBAC forbids previews, 400 on shell injection heuristics, 404 when
+            the referenced failure-event id is absent.
+
+    Side effects:
+        Appends ``remediation_previews.jsonl`` plus an audit entry carrying policy rationale.
+
+    Engineering Notes:
+        ``build_preview`` performs pure policy derivation; deterministic replays rely on immutable
+        failure-event payloads.
+
+    Audit Notes:
+        Compare ``policy_reason`` embedded in previews with audits when auditors challenge blocks.
+    """
     assert_can_preview(principal)
     if is_shell_injection(body.requested_action):
         raise HTTPException(status_code=400, detail="invalid action")
@@ -206,6 +314,36 @@ def remediation_execute(
     body: ExecuteIn,
     principal: DemoPrincipal = Depends(get_demo_principal),
 ) -> dict[str, Any]:
+    """Finalize remediation by rehydrating previews, enforcing policy tiers, optionally running scripts.
+
+    Args:
+        body: Preview identifier, typed confirmation phrase, dry-run toggle, informational actor slug.
+        principal: RBAC-bound operator used for confirmations and auditing.
+
+    Returns:
+        Serialized :class:`~platform_core.models.RemediationExecution` documenting ``dry_run``,
+        ``blocked``, ``success``, or ``failure``.
+
+    Raises:
+        HTTPException: 403 RBAC denial, 404 missing preview, 400 unknown action/disallowed script,
+            400 typed confirmation mismatches.
+
+    Side effects:
+        Always appends ``remediation_executions.jsonl``. Live Windows paths invoke ``cmd /c`` on
+        repo-allowlisted bat files with redacted stdout/stderr caps; timeouts append failure rows.
+
+    Idempotency:
+        Not idempotent—each invocation issues a fresh ``execution_id`` even for identical payloads.
+
+    Failure modes:
+        Non-Windows hosts short-circuit to failure executions. Preview/policy drift yields blocked
+        rows without subprocess execution.
+
+    Audit Notes:
+        Blocked executions still append JSONL rows—grep ``result`` + ``audit`` rows when operators
+        report “silent failures.” Inspect redacted stderr for scripting errors; widen caps only with
+        privacy review (:mod:`platform_core.privacy`).
+    """
     assert_can_execute(principal, dry_run=body.dry_run)
     if not SAFE_MODE and os.environ.get("ALLOW_PLATFORM_EXECUTE") != "1":
         pass  # still enforce policy
@@ -342,17 +480,34 @@ def platform_audit(
     limit: int = 50,
     principal: DemoPrincipal = Depends(get_demo_principal),
 ) -> dict[str, Any]:
+    """RBAC-filtered slice of newest ``audit.jsonl`` rows."""
+
     assert_can_read_audit(principal)
     return {"items": read_recent_jsonl(_path("audit.jsonl"), limit=max(1, min(limit, 200)))}
 
 
 @router.get("/metrics")
 def platform_metrics() -> dict[str, Any]:
+    """Expose aggregate counters recomputed via :func:`platform_core.storage.list_metrics`."""
+
     return list_metrics()
 
 
 def stable_id_from_host(os_version: str = "") -> str:
-    """Derive demo endpoint id without storing raw hostname."""
+    """Hash ``platform.node()`` with release metadata to synthesize repeatable ``endpoint_id`` values.
+
+    Args:
+        os_version: Optional caller-provided OS string; defaults to ``platform.release()``.
+
+    Returns:
+        Stable hash string from :func:`platform_core.privacy.stable_endpoint_hash`.
+
+    Side effects:
+        Reads local hostname via ``platform.node`` inside this process only.
+
+    Engineering Notes:
+        Purely illustrative for demos—not a cryptographic device identifier.
+    """
     import platform as plat
 
     hint = plat.node()

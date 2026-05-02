@@ -9,8 +9,190 @@ import subprocess
 from collections.abc import Callable
 from typing import Any
 
-from ..repair.executor import RegApplyResult, apply_mutations
+from ..repair.executor import RegApplyResult, apply_mutations, apply_reg_argv_sequences
+from .models import ProxySnapshot
 from .remediation import build_user_proxy_disable_mutations
+
+_INTERNET_SETTINGS_KEY = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
+
+
+def parse_netsh_winhttp_show(stdout: str) -> tuple[bool, str | None]:
+    """Parse ``netsh winhttp show proxy`` text into *(direct_access, proxy_server_literal)*."""
+    lowered = stdout.lower()
+    if "direct access (no proxy server)" in lowered:
+        return True, None
+    for line in stdout.splitlines():
+        ls = line.strip()
+        ll = ls.lower()
+        if "proxy server(s)" not in ll and "proxy-server" not in ll:
+            continue
+        sep = ":" if ":" in ls else "="
+        if sep not in ls:
+            continue
+        _, rhs = ls.split(sep, 1)
+        rhs = rhs.strip()
+        if not rhs or rhs.lower() in {"not set", "(none)", "none"}:
+            continue
+        return False, rhs
+    if "direct access" in lowered:
+        return True, None
+    return False, None
+
+
+def build_wininet_restore_argv_list(lkg: ProxySnapshot) -> tuple[tuple[str, ...], ...]:
+    """Build ordered ``reg.exe`` argv tuples to recreate WinINET HKCU fields from ``lkg``.
+
+    Deletes optional string keys when snapshots store ``None``/empty strings.
+    """
+    cmds: list[tuple[str, ...]] = []
+
+    def sz_or_delete(val: str | None, name: str) -> None:
+        if val is None or str(val).strip() == "":
+            cmds.append(
+                ("reg", "delete", _INTERNET_SETTINGS_KEY, "/v", name, "/f"),
+            )
+        else:
+            cmds.append(
+                (
+                    "reg",
+                    "add",
+                    _INTERNET_SETTINGS_KEY,
+                    "/v",
+                    name,
+                    "/t",
+                    "REG_SZ",
+                    "/d",
+                    str(val).strip(),
+                    "/f",
+                ),
+            )
+
+    sz_or_delete(lkg.proxy_server, "ProxyServer")
+    sz_or_delete(lkg.auto_config_url, "AutoConfigURL")
+    sz_or_delete(lkg.proxy_override, "ProxyOverride")
+
+    if lkg.auto_detect is not None:
+        cmds.append(
+            (
+                "reg",
+                "add",
+                _INTERNET_SETTINGS_KEY,
+                "/v",
+                "AutoDetect",
+                "/t",
+                "REG_DWORD",
+                "/d",
+                str(int(lkg.auto_detect)),
+                "/f",
+            ),
+        )
+
+    if lkg.proxy_enable is not None:
+        cmds.append(
+            (
+                "reg",
+                "add",
+                _INTERNET_SETTINGS_KEY,
+                "/v",
+                "ProxyEnable",
+                "/t",
+                "REG_DWORD",
+                "/d",
+                str(int(lkg.proxy_enable)),
+                "/f",
+            ),
+        )
+    return tuple(cmds)
+
+
+def run_netsh_winhttp_set_proxy(
+    *,
+    proxy_server_literal: str,
+    dry_run: bool,
+    run: Callable[..., Any] = subprocess.run,
+) -> dict[str, Any]:
+    """Apply ``netsh winhttp set proxy`` with opaque ``proxy-server=`` literal (no shell)."""
+    literal = proxy_server_literal.strip()
+    argv = ["netsh", "winhttp", "set", "proxy", f"proxy-server={literal}"]
+    if dry_run:
+        return {
+            "argv": argv,
+            "returncode": 0,
+            "stdout": "[dry-run] netsh winhttp set proxy not executed",
+            "stderr": "",
+        }
+    try:
+        proc = run(argv, capture_output=True, text=True, shell=False, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "argv": argv,
+            "returncode": -1,
+            "stdout": "",
+            "stderr": str(exc),
+        }
+    return {
+        "argv": argv,
+        "returncode": int(proc.returncode),
+        "stdout": proc.stdout or "",
+        "stderr": proc.stderr or "",
+    }
+
+
+def execute_lkg_snapshot_rollback(
+    lkg: ProxySnapshot | None,
+    *,
+    dry_run: bool,
+    restore_winhttp: bool,
+    run: Callable[..., Any] = subprocess.run,
+    restore_git_npm_env: bool = False,
+) -> dict[str, Any]:
+    """Restore WinINET (and optionally WinHTTP) strictly from ``lkg`` snapshot values.
+
+    Does **not** clear proxies blindly unlike :func:`execute_low_risk_proxy_rollback`.
+    Git/npm/user env restoration is flagged off by default pending explicit gates.
+    """
+    if restore_git_npm_env:
+        return {
+            "rollback_kind": "lkg_denied_git_env_not_implemented_in_tooling",
+            "wininet_reg": [],
+            "winhttp_restore": None,
+            "reason": "restore_git_npm_env_requires_separate_confirmation",
+            "skipped": True,
+        }
+    if lkg is None:
+        return {
+            "rollback_kind": "lkg_restore",
+            "skipped": True,
+            "reason": "skipped_no_lkg",
+            "wininet_reg": [],
+            "winhttp_restore": None,
+        }
+
+    argv_list = build_wininet_restore_argv_list(lkg)
+    reg_rows = apply_reg_argv_sequences(argv_list, dry_run=dry_run)
+    wininet_audit = reg_results_to_audit(reg_rows)
+    winhttp_row: dict[str, Any] | None = None
+    if restore_winhttp:
+        if lkg.winhttp_direct_access:
+            winhttp_row = run_netsh_winhttp_reset_proxy(dry_run=dry_run, run=run)
+        elif lkg.winhttp_proxy_server_literal:
+            winhttp_row = run_netsh_winhttp_set_proxy(
+                proxy_server_literal=lkg.winhttp_proxy_server_literal,
+                dry_run=dry_run,
+                run=run,
+            )
+
+    all_ok = all(r.returncode == 0 for r in reg_rows)
+    if winhttp_row is not None and int(winhttp_row.get("returncode", -1)) != 0:
+        all_ok = False
+
+    return {
+        "rollback_kind": "lkg_restore",
+        "skipped": False,
+        "success": all_ok,
+        "wininet_reg": wininet_audit,
+        "winhttp_restore": winhttp_row,
+    }
 
 
 def run_netsh_winhttp_reset_proxy(

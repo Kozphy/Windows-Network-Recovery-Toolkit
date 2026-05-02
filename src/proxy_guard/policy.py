@@ -84,6 +84,8 @@ class ProxyGuardPolicy:
         lowercasing (e.g. ``clash-win.exe``).
       allow_when_attribution_empty: If ``True``, an empty ``owner_rows`` list is treated
         as **allowed**; default behavior is deny when attribution produced no rows.
+      trusted_exe_paths: Case-insensitive path prefixes for verified EventLog/Sysmon rows.
+      allowed_autoconfig_url_substrings: Substrings that may appear in new ``AutoConfigURL``.
 
     **Interaction**
       Built only by ``load_proxy_guard_policy``; consumed by control flows that must gate
@@ -92,6 +94,11 @@ class ProxyGuardPolicy:
     **Engineering Notes**
       Tuple immutability prevents accidental mutation after load; trade-off is rebuilding
       the object when policy hot-reload is added later.
+
+    **observe_only_when_unknown_attribution**
+      When ``True`` and no allowlist hits, emits an ``observe`` decision for rows where
+      attribution lacked a deterministic process (**not** verified Sysmon/EventLog)—intended only
+      for lab environments reviewing manual installs.
 
     **Audit Notes**
       Setting ``allow_when_attribution_empty=True`` removes attribution as a safety gate—
@@ -102,6 +109,9 @@ class ProxyGuardPolicy:
     allowed_process_name_substrings: tuple[str, ...]
     allowed_process_names_exact: tuple[str, ...]
     allow_when_attribution_empty: bool
+    trusted_exe_paths: tuple[str, ...] = ()
+    allowed_autoconfig_url_substrings: tuple[str, ...] = ()
+    observe_only_when_unknown_attribution: bool = False
 
     def evaluate(self, owner_rows: list[dict[str, Any]]) -> PolicyDecision:
         """Decide whether attributed TCP owners satisfy the allowlist (default deny).
@@ -288,9 +298,25 @@ def load_proxy_guard_policy(path: Path) -> ProxyGuardPolicy:
 
     allow_empty = bool(blob.get("allow_when_attribution_empty", False))
 
+    trusted = blob.get("trusted_exe_paths") or []
+    ac_subs = blob.get("allowed_autoconfig_url_substrings") or []
+    if trusted is not None and not isinstance(trusted, list):
+        raise ValueError("trusted_exe_paths must be a list")
+    if ac_subs is not None and not isinstance(ac_subs, list):
+        raise ValueError("allowed_autoconfig_url_substrings must be a list")
+    for item in trusted:
+        if not isinstance(item, str):
+            raise ValueError("trusted_exe_paths entries must be strings")
+    for item in ac_subs:
+        if not isinstance(item, str):
+            raise ValueError("allowed_autoconfig_url_substrings entries must be strings")
+
     return ProxyGuardPolicy(
         source_path=path.resolve(),
         allowed_process_name_substrings=tuple(str(x) for x in subs),
         allowed_process_names_exact=tuple(str(x) for x in exact),
         allow_when_attribution_empty=allow_empty,
+        trusted_exe_paths=tuple(str(x) for x in trusted),
+        allowed_autoconfig_url_substrings=tuple(str(x) for x in ac_subs),
+        observe_only_when_unknown_attribution=bool(blob.get("observe_only_when_unknown_attribution", False)),
     )

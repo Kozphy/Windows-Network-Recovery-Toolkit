@@ -803,7 +803,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_pg.add_argument(
         "--auto-rollback",
         action="store_true",
-        help="On blocked changes, run HKCU WinINET disable + netsh winhttp reset proxy.",
+        help="On blocked changes, restore prior HKCU/WinHTTP snapshot via reg/netsh (still respects dry-run gates).",
+    )
+    p_pg.add_argument(
+        "--rollback",
+        action="store_true",
+        dest="cli_rollback",
+        help="Enable rollback planning/execution like --auto-rollback; live HKCU writes require --rollback-confirm RESTORE_PROXY unless using --auto-rollback alone.",
+    )
+    p_pg.add_argument(
+        "--rollback-confirm",
+        type=str,
+        default="",
+        dest="rollback_confirm_phrase",
+        metavar="PHRASE",
+        help='When using --rollback (not --auto-rollback), live restore requires phrase "RESTORE_PROXY".',
     )
     p_pg.add_argument(
         "--policy",
@@ -835,6 +849,42 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         dest="structured_log",
         help="Append JSON-lines operational log (same schema as stderr; optional file sink).",
+    )
+    p_pg.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="proxy_guard_dry_run",
+        help="Prevent live HKCU / WinHTTP restore even when auto-rollback is enabled (audit + dry commands only).",
+    )
+    p_pg.add_argument(
+        "--trust-current",
+        action="store_true",
+        dest="trust_current_lkg",
+        help="Persist the first captured snapshot under reports/proxy_guard_lkg.json as last-known-good.",
+    )
+    p_pg.add_argument(
+        "--show-lkg",
+        action="store_true",
+        dest="show_lkg",
+        help="Print reports/proxy_guard_lkg.json and exit.",
+    )
+    p_pg.add_argument(
+        "--clear-lkg",
+        action="store_true",
+        dest="clear_lkg",
+        help="Remove reports/proxy_guard_lkg.json and exit.",
+    )
+    p_pg.add_argument(
+        "--attribution-mode",
+        choices=("auto", "best-effort", "eventlog"),
+        default="auto",
+        help="Prefer Sysmon EventID 13 (auto/eventlog) or skip to listen-owner heuristics (best-effort).",
+    )
+    p_pg.add_argument(
+        "--restore-git-npm-env",
+        action="store_true",
+        dest="restore_git_npm_env",
+        help="Reserved — currently guarded off inside rollback until an explicit confirmation story exists.",
     )
     p_pg.set_defaults(func=cmd_proxy_guard)
 

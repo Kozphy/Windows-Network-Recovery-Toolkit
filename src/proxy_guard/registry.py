@@ -97,15 +97,18 @@ def read_proxy_registry(
     ps_code, ps_out = _run_reg_query("ProxyServer", run=run, **tkw)
     pac_code, pac_out = _run_reg_query("AutoConfigURL", run=run, **tkw)
     ad_code, ad_out = _run_reg_query("AutoDetect", run=run, **tkw)
+    po_code, po_out = _run_reg_query("ProxyOverride", run=run, **tkw)
 
     proxy_enable = _parse_reg_dword(pe_out) if pe_code == 0 else None
     proxy_server = _parse_reg_sz(ps_out) if ps_code == 0 else None
     auto_config_url = _parse_reg_sz(pac_out) if pac_code == 0 else None
     auto_detect = _parse_reg_dword(ad_out) if ad_code == 0 else None
+    proxy_override = _parse_reg_sz(po_out) if po_code == 0 else None
 
     return ProxyRegistrySnapshot(
         proxy_enable=proxy_enable,
         proxy_server=proxy_server,
         auto_config_url=auto_config_url,
         auto_detect=auto_detect,
+        proxy_override=proxy_override,
     )

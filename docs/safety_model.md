@@ -91,7 +91,13 @@ Unless **you** copy files or configure optional demo components yourself:
 - Default posture is **no upload** of `logs/`, `reports/`, or `data/failure_blocks/*.jsonl` to external telemetry sinks.
 - Treat JSONL and logs as **operator-private**; redact before sharing in public issues.
 
-## Gitignore expectations
+## Proxy Guard LKG rollback (Python CLI)
+
+When `python -m src proxy-guard --auto-rollback` is enabled without `--dry-run` / `--dry-run-rollback`,
+the loop may **replay `reports/proxy_guard_lkg.json`** into HKCU Internet Settings plus optional WinHTTP restores.
+Treat this like any other remediation: reviewers must widen `trusted_exe_paths` / process allowlists only through PRs.
+
+## Gitignore expectations / logging hygiene
 
 Real operational artifacts should remain untracked:
 

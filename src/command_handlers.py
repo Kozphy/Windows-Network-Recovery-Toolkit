@@ -42,6 +42,7 @@ from .proxy_guard.parser import parse_proxy_server, summarize_proxy_risk
 from .proxy_guard.registry import read_proxy_registry
 from .proxy_guard.config import build_service_config
 from .proxy_guard.policy import load_proxy_guard_policy
+from .proxy_guard.snapshot_capture import load_lkg_snapshot
 from .proxy_guard.service import run_proxy_guard_service
 from .proxy_guard.remediation import CONFIRMATION_PHRASE, build_user_proxy_disable_mutations
 from .proxy_guard.watcher import monitor_proxy_registry
@@ -204,11 +205,35 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
         print("proxy-guard is supported on Windows only.", file=sys.stderr)
         return 2
     repo = _repo_root(getattr(args, "repo_root", None))
+    reports_dir = repo / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir = repo / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    if getattr(args, "show_lkg", False):
+        snap = load_lkg_snapshot(repo / "reports" / "proxy_guard_lkg.json")
+        print(json.dumps(snap.to_jsonable() if snap else {}, indent=2, ensure_ascii=False))
+        return 0
+
+    if getattr(args, "clear_lkg", False):
+        tgt = repo / "reports" / "proxy_guard_lkg.json"
+        if tgt.is_file():
+            tgt.unlink()
+        return 0
+
     policy_arg = getattr(args, "policy", None)
-    policy_path = Path(policy_arg) if policy_arg else repo / "shared" / "proxy_guard_policy.example.json"
+    config_pol = repo / "config" / "proxy_guard_policy.json"
+    if policy_arg:
+        policy_path = Path(policy_arg)
+    elif config_pol.is_file():
+        policy_path = config_pol
+    else:
+        policy_path = repo / "shared" / "proxy_guard_policy.example.json"
+
     if not policy_path.is_file():
         print(f"Policy file not found: {policy_path}", file=sys.stderr)
         return 2
+
     policy = load_proxy_guard_policy(policy_path)
     jsonl_arg = getattr(args, "jsonl", None)
     jsonl = Path(jsonl_arg) if jsonl_arg else repo / "logs" / "proxy_guard_control.jsonl"
@@ -218,17 +243,24 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
     cfg_path = Path(cfg_arg) if cfg_arg else None
     slog = getattr(args, "structured_log", None)
     structured_log_path = Path(slog) if slog else None
+    dry_combo = bool(getattr(args, "dry_run_rollback", False) or getattr(args, "proxy_guard_dry_run", False))
     cfg = build_service_config(
         policy=policy,
         jsonl_path=jsonl,
         interval=interval,
         once=bool(getattr(args, "once", False)),
         auto_rollback=bool(getattr(args, "auto_rollback", False)),
-        dry_run_rollback=bool(getattr(args, "dry_run_rollback", False)),
+        dry_run_rollback=dry_combo,
         run=subprocess.run,
         config_file=cfg_path,
         structured_log_path=structured_log_path,
         exit_after_registry_change_events=None,
+        repo_root=repo,
+        attribution_mode=str(getattr(args, "attribution_mode", "auto")),
+        trust_current_lkg=bool(getattr(args, "trust_current_lkg", False)),
+        restore_git_npm_env=bool(getattr(args, "restore_git_npm_env", False)),
+        cli_rollback=bool(getattr(args, "cli_rollback", False)),
+        rollback_confirm_phrase=str(getattr(args, "rollback_confirm_phrase", "") or ""),
     )
     run_proxy_guard_service(cfg)
     return 0

@@ -67,3 +67,51 @@ def apply_mutations(
             ),
         )
     return tuple(outcomes)
+
+
+def apply_reg_argv_sequences(
+    argv_list: tuple[tuple[str, ...], ...],
+    *,
+    dry_run: bool,
+    subprocess_timeout_seconds: float = 30,
+) -> tuple[RegApplyResult, ...]:
+    """Run arbitrary ``reg.exe`` argument vectors without shell redirection.
+
+    Used for richer WinINET restore paths than :class:`ProxyDisableMutation` previews.
+
+    Args:
+        argv_list: Ordered ``argv`` tuples (each must begin with executable name).
+        dry_run: When true, skips subprocess calls and echoes synthetic successes.
+        subprocess_timeout_seconds: Per-invocation watchdog.
+
+    Returns:
+        One :class:`RegApplyResult` per attempted argv.
+
+    Side effects:
+        Non-dry invocations mutate HKCU proxy keys targeted by callers.
+    """
+    outcomes: list[RegApplyResult] = []
+    for argv in argv_list:
+        if dry_run:
+            outcomes.append(RegApplyResult(tuple(argv), 0, "", "[dry-run] not executed"))
+            continue
+        try:
+            proc = subprocess.run(
+                list(argv),
+                capture_output=True,
+                text=True,
+                shell=False,
+                timeout=subprocess_timeout_seconds,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            outcomes.append(RegApplyResult(tuple(argv), -1, str(exc), ""))
+            continue
+        outcomes.append(
+            RegApplyResult(
+                tuple(argv),
+                proc.returncode,
+                proc.stderr or "",
+                proc.stdout or "",
+            ),
+        )
+    return tuple(outcomes)
