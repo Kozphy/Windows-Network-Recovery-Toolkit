@@ -2,6 +2,11 @@
 
 Live execution stays **deny-by-default**: only ``admin`` may receive ``execute_allowed=True`` for
 eligible allowlisted registry actions pending typed confirmation enforced by callers.
+
+Audit Notes:
+    Misconfigured ``reason_codes`` hide operator/admin gaps—diff ``StructuredPolicyDecision`` responses against
+    ``platform_data/audit.jsonl`` rows for the same correlation id. Recovery requires adjusting ``RemediationPolicy``
+    fixtures or elevating role explicitly; never bypass ``allow_arbitrary_shell`` in production paths (tests only flag).
 """
 
 from __future__ import annotations

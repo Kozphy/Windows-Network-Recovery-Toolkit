@@ -2,6 +2,12 @@
 
 This folder contains the project guides, runbooks, and troubleshooting references for the **Windows Network Recovery Toolkit** and its **Failure Knowledge System**: guided Windows 10/11 network diagnosis and repair workflows (batch tooling, Python CLIs, structured FailureBlocks, optional demo backend/frontend).
 
+## Source documentation (quick orientation)
+
+Primary Python surfaces document themselves with **Google-style docstrings** (module summaries, Args/Returns, explicit side-effect callouts). Critical persistence or remediation paths additionally tag **Audit Notes** where forensic follow-up matters. Operational batch/PowerShell entry points under `scripts/` use `REM`/comment headers for privileges and safety envelopes. Frontend TypeScript (Next.js) uses file-level summaries where components export routes — refer to adjacent `backend/` README for API layering.
+
+Reading order (~10 minutes for new engineers): root `README.md` → [`architecture.md`](architecture.md) (if using FKS) → [`proxy_guard.md`](proxy_guard.md) → [`network_state_manager.md`](network_state_manager.md) when using `python -m src network-state`.
+
 ## Failure Knowledge System (start here)
 
 | Doc | Purpose |

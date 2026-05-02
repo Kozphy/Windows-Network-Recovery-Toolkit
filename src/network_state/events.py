@@ -1,4 +1,24 @@
-"""Append-only operational events for future UI / tray consumers."""
+"""Append-only UX-oriented events emitted by Network State CLI surfaces.
+
+Feeds ``logs/network_state_events.jsonl`` for future tray/daemon ingestion and reporting rollups (`network-state report` scans this stream).
+
+Constraints:
+    * Payloads intentionally avoid machine identifiers beyond what proxy configuration literals already imply.
+    * Event taxonomy is enumerated via typing literal for static checks.
+
+Malformed consumers:
+    Downstream scanners should tolerate partial JSON writes identical to general JSONL guidance (skip corrupt lines).
+
+Raises:
+    None from emitter — IO failures propagate as ``OSError`` only.
+
+Audit Notes:
+    Compare ``event_id`` monotonic timelines with drift detections logged elsewhere when reconciling flaky automation triggering duplicate ``drift_detected`` rows.
+
+See Also:
+    :mod:`report` aggregator for ingestion semantics.
+
+"""
 
 from __future__ import annotations
 
@@ -29,9 +49,24 @@ def emit_network_state_event(
 ) -> dict[str, Any]:
     """Append one JSON line to ``logs/network_state_events.jsonl``.
 
-    Payload should avoid raw host identifiers beyond proxy configuration strings.
-    """
+    Args:
+        repo_root: Toolkit checkout root honoring ``--repo-root``.
+        event_type: Canonical label matching literal union for grep-friendly dashboards.
+        payload: JSON-serializable dict (trim large blobs before invoking).
 
+    Returns:
+        Persisted envelope including deterministic ``schema_version``.
+
+    Side effects:
+        Creates ``logs`` directory as needed.
+
+    Raises:
+        ``TypeError``: Non-JSON-serializable nested values.
+        ``OSError``: Append failures only.
+
+    Idempotency:
+        Each emission is unique UUID — duplicate logical events still append independently.
+    """
     row: dict[str, Any] = {
         "schema_version": 1,
         "event_id": str(uuid.uuid4()),

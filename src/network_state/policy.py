@@ -1,4 +1,26 @@
-"""Allowlist/blocklist policy for network-state drift (pure evaluation)."""
+"""Pure policy evaluation helpers for Network State drift overlays.
+
+:class:`NetworkStatePolicy` materializes lowercase tuple rules from optional JSON beside the
+checkout. Evaluation never touches subprocesses — consumers embed results inside CLI payloads,
+reports, and JSONL tails.
+
+Decision intent:
+    Enrich heuristic drift codes with coarse **blocked / observe / rollback_suggested** cues while
+    keeping human operators in charge of restores.
+
+Malformed policy files:
+    Unreadable paths or JSON yield :meth:`NetworkStatePolicy.default`; partial keys fall back field by field where coded.
+
+Timezone:
+    N/A — policy JSON contains no timestamps; evaluation is instantaneous.
+
+Raises:
+    None — ``evaluate_network_state_policy`` always returns structured dict output.
+
+See Also:
+    ``shared/network_state_policy.example.json`` for authoring guidance.
+
+"""
 
 from __future__ import annotations
 
@@ -11,13 +33,23 @@ from ..proxy_guard.parser import ParsedProxy
 
 
 def _host_guess(parsed: ParsedProxy) -> str | None:
+    """Return lowercase host heuristic from parser fields (fallback to raw ProxyServer blob)."""
     h = parsed.localhost_host or (parsed.raw or "").strip()
     return h.lower() if h else None
 
 
 @dataclass(frozen=True)
 class NetworkStatePolicy:
-    """Loaded from ``config/network_state_policy.json``."""
+    """Declarative knobs loaded from optional ``network_state_policy.json``.
+
+    Attributes:
+        allowed_process_names: Substrings matched (case-insensitive) against attribution owner names.
+        blocked_process_names: Substrings signalling ``blocked`` verdict when heuristic owners hit.
+        allowed_proxy_hosts: Host tokens reducing loopback escalation severity when matched literally.
+        blocked_proxy_hosts: Substrings denying configuration outright when seen in normalized host/raw.
+        rollback_on_unknown_loopback: Elevate decision toward ``rollback_suggested`` advisory path.
+        alert_on_unknown_loopback: Attach ``reasons`` entry when suspicion list references loopbacks.
+    """
 
     allowed_process_names: tuple[str, ...]
     blocked_process_names: tuple[str, ...]
@@ -28,10 +60,25 @@ class NetworkStatePolicy:
 
     @classmethod
     def default(cls) -> NetworkStatePolicy:
+        """Return conservative permissive baseline with alert-on-loopback only."""
         return cls((), (), (), (), False, True)
 
     @classmethod
     def from_file(cls, path: Path) -> NetworkStatePolicy:
+        """Parse JSON dictionary into lowercase tuple fields tolerant of missing arrays.
+
+        Args:
+            path: Expected ``config/network_state_policy.json``.
+
+        Returns:
+            Materialized dataclass OR :meth:`default` upon any parse failure.
+
+        Side effects:
+            Read-only filesystem access without logging.
+
+        Failure modes:
+            Invalid UTF-8, JSON SyntaxError, or non-dict payloads transparently degrade to defaults.
+        """
         if not path.is_file():
             return cls.default()
         try:
@@ -64,8 +111,28 @@ def evaluate_network_state_policy(
     suspicions: list[str],
     attribution: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Return advisory decision consumed by CLI/report (no subprocess side effects)."""
+    """Rank heuristic drift overlays using allow/block tuples and loopback escalation flags.
 
+    Args:
+        policy: Effective policy snapshot.
+        parsed: Parser output for ``current.proxy_server`` contextual host classification.
+        suspicions: Deterministic textual codes emitted by drift heuristics.
+        attribution:
+            Loose owner mapping (typically ``proxy-attribution`` JSON subset with ``owners`` list).
+
+    Returns:
+        Mapping ``{"decision": str, "reasons": list[str]}`` where ``reasons`` is sorted deduplicated tokens.
+
+    Side effects:
+        None.
+
+    Constraints:
+        Process name checks use substring containment — maintain narrow literals in JSON to minimize false negatives.
+
+    Engineering Notes:
+        ``blocked`` dominates other states; rollback suggestions downgrade to advisory text only because execution still
+        requires explicit typed confirms in CLI pathways.
+    """
     reasons: list[str] = []
     decision = "observe"
     host_s = (_host_guess(parsed) or "") or ""

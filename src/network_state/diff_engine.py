@@ -1,4 +1,23 @@
-"""Normalize drift: field-level diff plus suspicious transition heuristics."""
+"""Drift normalization for Network State compare flows.
+
+Delegates structural diff equality to :func:`~src.proxy_guard.known_good_diff.diff_snapshots`, then stacks
+deterministic heuristic flags (:func:`detect_suspicious_cases`) and optional advisory policy overlays from
+:class:`NetworkStatePolicy`.
+
+Key invariants:
+    * Outputs are JSON-serializable dicts destined for CLI / reports.
+    * Suspicion markers are advisory — they **do not** assert malware or authorship.
+
+Raises:
+    None from public helpers; malformed ``ProxySnapshot`` inputs should surface earlier during hydration.
+
+Audit Notes:
+    Callers emitting ``network_state_events`` should include trimmed payloads only (baseline label,
+    suspicion counts); avoid dumping full snapshots into JSONL tails.
+
+See Also:
+    ``python -m src network-state diff``.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +36,27 @@ def _empty(val: Any) -> bool:
 
 
 def detect_suspicious_cases(saved: ProxySnapshot, current: ProxySnapshot, changed_fields: dict[str, Any]) -> list[str]:
-    """Flag notable transitions (heuristic — not proof of malicious intent)."""
+    """Enumerate advisory transition codes for tooling and policy correlation.
+
+    ``changed_fields`` mirrors :func:`~src.proxy_guard.known_good_diff.diff_snapshots` output for future
+    expansion; today heuristics also compare snapshots directly for clarity.
+
+    Args:
+        saved: Baseline labeled profile capture.
+        current: Latest live capture identical schema.
+        changed_fields: Redundant structural map retained for callers passing precomputed deltas.
+
+    Returns:
+        Sorted unique string codes (ASCII snake tokens).
+
+    Side effects:
+        None.
+
+    Constraints:
+        Regex loopback heuristics target ``127.0.0.1`` / ``localhost`` / ``::1`` substrings only;
+        other literal forms may omit ``proxy_server_loopback_port_pattern``.
+    """
+    _ = changed_fields
 
     flags: list[str] = []
 
@@ -57,8 +96,29 @@ def drift_bundle(
     policy: NetworkStatePolicy | None,
     attribution_heuristic: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Produce changed-fields diff, suspicion flags, and optional policy overlay."""
+    """Produce diff + suspicion markers + optional policy verdict for telemetry export.
 
+    Args:
+        saved: Named baseline capture.
+        current: Latest capture evaluated on operator workstation.
+        policy: Parsed policy JSON or defaults; ``None`` suppresses overlays.
+        attribution_heuristic:
+            Loose owner rows (for example ``{"owners":[{"process_name":...}]}``).
+
+    Returns:
+        Dict with keys:
+            * ``changed_fields`` — structural deltas.
+            * ``suspicious_loopback_hints`` — parser-level hints propagated from Proxy Guard diff.
+            * ``suspicious_cases`` — Network State heuristic codes.
+            * ``policy`` — mapping from ``evaluate_network_state_policy`` or ``None``.
+            * ``attribution_note`` — constant reminder text for downstream consumers.
+
+    Side effects:
+        None.
+
+    Raises:
+        None.
+    """
     base = base_diff_snapshots(saved, current)
     changed = base.get("changed_fields") or {}
     suspicions = detect_suspicious_cases(saved, current, changed)

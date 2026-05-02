@@ -1,4 +1,24 @@
-"""Persistent named proxy snapshots (JSONL + optional default JSON) for last-known-good restores."""
+"""Append-only named snapshots for legacy ``proxy-snapshot`` tooling.
+
+Writes ``logs/proxy_known_good_snapshots.jsonl`` and optional
+``config/last_known_good_proxy.json``. Mirrors the schema used by broader Proxy Guard rollback
+utilities but namespaces storage separately from transient ``logs/proxy_snapshots.jsonl`` rollback
+captures consumed by ``proxy-rollback``.
+
+Key invariants:
+    * **Append-only JSONL**: latest row wins per ``name`` when readers scan sequentially.
+    * ``schema_version`` is fixed per module constant; parsers skip malformed JSON lines silently.
+    * ``risk_summary`` is derived from typed ``ProxySnapshot`` via parser risk labels (never raw host IDs).
+
+Malformed or duplicate lines:
+    Readers ignore JSON decode failures and malformed objects; deterministic tests should write clean payloads.
+
+Timezone:
+    ``saved_at`` comes from ``utc_now_iso()`` (timezone-aware UTC string).
+
+Raises:
+    :func:`snapshot_from_record` returns ``None`` on conversion failure instead of raising.
+"""
 
 from __future__ import annotations
 
@@ -17,16 +37,26 @@ DEFAULT_CONFIG_RELPATH = Path("config") / "last_known_good_proxy.json"
 
 
 def snapshots_jsonl_path(repo_root: Path) -> Path:
+    """Return absolute JSONL sink under ``repo_root``."""
     return repo_root / "logs" / SNAPSHOTS_FILENAME
 
 
 def default_known_good_path(repo_root: Path) -> Path:
+    """Return pointer JSON path for optional default profile replication."""
     return repo_root / DEFAULT_CONFIG_RELPATH
 
 
 def summarize_snapshot_risk(snapshot: ProxySnapshot) -> str:
-    """Return a short categorical label for list/diff output (no hostname)."""
+    """Produce a categorical risk banner for CLI ``list`` output.
 
+    Uses parser heuristics (loopback literals, PAC enablement) independent of attribution.
+
+    Args:
+        snapshot: Joined HKCU/Git/npm/env/WinHTTP capture.
+
+    Returns:
+        Short human-readable slug (still **configuration-derived**, never a hostname token).
+    """
     parsed = parse_proxy_server(snapshot.proxy_server)
     return summarize_proxy_risk(parsed, snapshot.proxy_enable == 1)
 
@@ -38,8 +68,23 @@ def append_named_snapshot(
     snapshot: ProxySnapshot,
     risk_summary: str | None = None,
 ) -> dict[str, Any]:
-    """Append one record to ``logs/proxy_known_good_snapshots.jsonl``."""
+    """Persist one immutable JSON line for ``name``.
 
+    Args:
+        repo_root: Toolkit checkout root.
+        name: Operator label (latest row supersedes prior semantics for lookups).
+        snapshot: Canonical :class:`~src.proxy_guard.models.ProxySnapshot`.
+        risk_summary: Optional override; recomputed automatically when omitted.
+
+    Returns:
+        The serialized row dictionary (excluding trailing newline bookkeeping).
+
+    Side effects:
+        Creates ``logs`` if missing and appends one UTF-8 JSON line atomically via ``open(..., 'a')``.
+
+    Raises:
+        ``OSError`` if disk permissions block append.
+    """
     path = snapshots_jsonl_path(repo_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     risk = risk_summary or summarize_snapshot_risk(snapshot)
@@ -57,8 +102,24 @@ def append_named_snapshot(
 
 
 def write_default_config(repo_root: Path, record: dict[str, Any]) -> Path:
-    """Write ``config/last_known_good_proxy.json`` from a full row (name, saved_at, snapshot, ...)."""
+    """Flatten the latest composite row into a single curated JSON artifact.
 
+    Args:
+        repo_root: Toolkit checkout root.
+        record: Payload previously returned by :func:`append_named_snapshot`.
+
+    Returns:
+        Path written (``config/last_known_good_proxy.json``).
+
+    Side effects:
+        Overwrites destination file atomically via ``write_text``.
+
+    Raises:
+        ``OSError`` on encoding or permission failures.
+
+    Failures modes:
+        Partial JSON corrupts tooling; callers should serialize ``record`` verbatim without mutation.
+    """
     path = default_known_good_path(repo_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     out = {
@@ -73,6 +134,7 @@ def write_default_config(repo_root: Path, record: dict[str, Any]) -> Path:
 
 
 def iter_named_records(repo_root: Path) -> Iterator[dict[str, Any]]:
+    """Yield dictionaries for every well-formed logical row in chronological order."""
     path = snapshots_jsonl_path(repo_root)
     if not path.is_file():
         return
@@ -90,8 +152,21 @@ def iter_named_records(repo_root: Path) -> Iterator[dict[str, Any]]:
 
 
 def get_latest_named_record(repo_root: Path, name: str) -> dict[str, Any] | None:
-    """Return the last JSONL row matching ``name`` (file order)."""
+    """Return the youngest JSON row for ``name`` based on linear scan ordering.
 
+    Args:
+        repo_root: Toolkit checkout root.
+        name: Snapshot label trimmed for comparison.
+
+    Returns:
+        Parsed dict or ``None`` when absent or file missing.
+
+    Idempotency:
+        Function is read-only; concurrent writers may race—callers tolerate eventual consistency.
+
+    Constraints:
+        Relies purely on insertion order rather than timestamps for tie-breaking stability.
+    """
     want = name.strip()
     last: dict[str, Any] | None = None
     for rec in iter_named_records(repo_root):
@@ -101,6 +176,20 @@ def get_latest_named_record(repo_root: Path, name: str) -> dict[str, Any] | None
 
 
 def snapshot_from_record(rec: dict[str, Any] | None) -> ProxySnapshot | None:
+    """Materialize a typed snapshot stored inside a JSON dict.
+
+    Args:
+        rec: Optional row dict containing ``snapshot`` mapping.
+
+    Returns:
+        Hydrated snapshot or ``None`` when coercion fails.
+
+    Failure modes:
+        Legacy rows missing fields fall back via :meth:`ProxySnapshot.from_json_dict` defaults.
+
+    Raises:
+        None — conversion failures return ``None`` for operator-friendly CLI ergonomics.
+    """
     if rec is None:
         return None
     snap = rec.get("snapshot")
@@ -113,6 +202,7 @@ def snapshot_from_record(rec: dict[str, Any] | None) -> ProxySnapshot | None:
 
 
 def load_default_record(repo_root: Path) -> dict[str, Any] | None:
+    """Load curated default pointer JSON produced by ``--as-default`` flows."""
     path = default_known_good_path(repo_root)
     if not path.is_file():
         return None
@@ -126,8 +216,18 @@ def load_default_record(repo_root: Path) -> dict[str, Any] | None:
 
 
 def list_snapshot_summaries(repo_root: Path) -> list[dict[str, Any]]:
-    """One row per distinct name (latest win), plus optional default file flag."""
+    """Summarize newest row per snapshot name sorted lexicographically by name.
 
+    Args:
+        repo_root: Toolkit checkout root.
+
+    Returns:
+        Rows include ``has_default_file`` aligning with ``last_known_good_proxy.json``.
+        Missing files or malformed JSON yield an empty iterable from readers, producing an empty list.
+
+    Raises:
+        None.
+    """
     by_name: dict[str, dict[str, Any]] = {}
     for rec in iter_named_records(repo_root):
         n = str(rec.get("name"))
@@ -137,7 +237,6 @@ def list_snapshot_summaries(repo_root: Path) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for nm in sorted(by_name.keys()):
         rec = by_name[nm]
-        snap = snapshot_from_record(rec)
         out.append(
             {
                 "name": nm,

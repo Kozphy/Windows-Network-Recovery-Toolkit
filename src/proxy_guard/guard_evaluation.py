@@ -1,6 +1,25 @@
-"""Higher-order policy for HKCU proxy value transitions (PAC, localhost, trust paths).
+"""HKCU proxy transition policy for Proxy Guard.
 
-Complements substring allowlists in :mod:`policy` — **default deny** for suspicious edits.
+Ranks consecutive :class:`~src.proxy_guard.models.ProxySnapshot` probes into
+:class:`~src.proxy_guard.models.ProxyGuardPolicyDecision` (**allowed**, **blocked**,
+**observe**) using PAC allowlists, attribution mode, localhost listener probes, and
+process allowlists from :mod:`~src.proxy_guard.policy`. Sits in the guard pipeline after
+snapshots diff and attribution resolution (see :mod:`~src.proxy_guard.guard`).
+
+Key invariants:
+    * Suspicious PAC and loopback edits default toward **blocked** when not explicitly trusted.
+    * ``hkcu_proxy_core_tuple`` defines which WinINET columns gate "no-op" early exit.
+    * Attribution verdicts are **hints** unless ``verified_eventlog`` satisfies policy hooks.
+
+Raises:
+    This module intentionally avoids raising during evaluation; unexpected ``None``
+    snapshots should be prevented by callers upstream.
+
+Audit Notes:
+    Decisions propagate to structured pipeline audit sinks. Mis-tuned JSON policy can
+    over-block (rollback storms) or over-observe (silent drift). Compare control JSONL
+    timestamps against ``proxy-snapshot diff`` output and reconcile
+    ``config/proxy_guard_policy.json`` against ``shared/proxy_guard_policy.example.json``.
 """
 
 from __future__ import annotations
@@ -10,13 +29,22 @@ from typing import Any
 
 from .models import AttributionResult, ProxyGuardPolicyDecision, ProxySnapshot
 from .parser import ParsedProxy
-from .planning import listen_port_for_attribution
 from .pipeline import disabling_transition_allowed
 from .policy import ProxyGuardPolicy, PolicyDecision
 
 
 def hkcu_proxy_core_tuple(snapshot: ProxySnapshot) -> tuple[Any, ...]:
-    """Comparable tuple for user-visible WinINET fields only."""
+    """Return a comparable tuple of user-visible HKCU WinINET fields.
+
+    Enables detecting meaningful registry transitions while ignoring unrelated probe
+    fields (for example Git or WinHTTP narration) unless those fields also changed elsewhere.
+
+    Args:
+        snapshot: Point-in-time join that includes HKCU-derived columns.
+
+    Returns:
+        ``(proxy_enable, proxy_server, proxy_override, auto_config_url, auto_detect)``.
+    """
     return (
         snapshot.proxy_enable,
         snapshot.proxy_server,
@@ -31,6 +59,7 @@ def _norm_str(val: str | None) -> str:
 
 
 def _exe_basename_candidate(process_exe: str | None, process_name: str | None) -> str | None:
+    """Lowercase basename for whitelist checks; tolerant of quoted Win32 paths."""
     if process_exe:
         try:
             return PureWindowsPath(process_exe.strip().strip('"')).name.lower()
@@ -42,7 +71,18 @@ def _exe_basename_candidate(process_exe: str | None, process_name: str | None) -
 
 
 def exe_path_trusted(candidate_path: str | None, prefixes: tuple[str, ...]) -> bool:
-    """Return True when ``candidate_path`` sits under administrator-configured prefixes."""
+    """Return True when ``candidate_path`` is prefixed by administrator trust roots.
+
+    Args:
+        candidate_path: Executable image path resolved by attribution (possibly quoted).
+        prefixes: Absolute path prefixes normalized to lowercase backslashes.
+
+    Returns:
+        True if ``candidate_path`` nestles under any non-empty normalized prefix.
+
+    Constraints:
+        Compares lexical prefix only; symbolic links across roots are intentionally ignored.
+    """
     if not candidate_path or not prefixes:
         return False
     norm = candidate_path.strip().strip('"').lower().replace("/", "\\")
@@ -56,7 +96,17 @@ def exe_path_trusted(candidate_path: str | None, prefixes: tuple[str, ...]) -> b
 
 
 def attribution_to_owner_rows(attribution: AttributionResult) -> list[dict[str, Any]]:
-    """Map :class:`~src.proxy_guard.models.AttributionResult` into legacy whitelist rows."""
+    """Convert :class:`~src.proxy_guard.models.AttributionResult` into policy rows.
+
+    Downstream substring allowlists expect ``process_name`` + ``pid`` keys mirroring probe
+    owner rows.
+
+    Args:
+        attribution: Event-log or heuristic identity bundle produced by attribution layer.
+
+    Returns:
+        Zero or one row dictionaries suitable for ``ProxyGuardPolicy.evaluate``.
+    """
     if attribution.process is None:
         return []
     proc = attribution.process
@@ -76,7 +126,29 @@ def evaluate_proxy_transition(
     policy: ProxyGuardPolicy,
     port_listen: bool | None,
 ) -> ProxyGuardPolicyDecision:
-    """Classify registry transition with guarded defaults."""
+    """Classify a WinINET-facing transition with guarded defaults.
+
+    Args:
+        prior_snap: HKCU-aligned snapshot captured before polling interval.
+        curr_snap: HKCU-aligned snapshot captured after polling interval.
+        parsed_prior: Parser output prior to detection (unused for branching today but kept symmetric for audits).
+        parsed_after: Parsed ``ProxyServer`` after change.
+        attribution: Resolved identity/mode/confidence tuple for the suspicion context.
+        policy: Loaded Proxy Guard policy defining allow/block substrings + paths.
+        port_listen:
+            Tri-state loopback probe: ``True`` listener present, ``False`` absent, ``None`` unknown.
+
+    Returns:
+        :class:`~src.proxy_guard.models.ProxyGuardPolicyDecision` including rollback hints.
+
+    Side effects:
+        None (pure classification).
+
+    Engineering Notes:
+        ``observe_only_when_unknown_attribution`` trades automatic rollback friction for noisy
+        environments lacking Sysmon/EventLog corroboration.
+    """
+
     core_before = hkcu_proxy_core_tuple(prior_snap)
     core_after = hkcu_proxy_core_tuple(curr_snap)
     if core_before == core_after:
@@ -126,7 +198,6 @@ def evaluate_proxy_transition(
             )
 
     if parsed_after.is_localhost_proxy:
-        port_guess = listen_port_for_attribution(parsed_after)
         base_rows = attribution_to_owner_rows(attribution)
         pd_name: PolicyDecision = policy.evaluate(base_rows)
         trusted_path = attribution.process is not None and exe_path_trusted(
