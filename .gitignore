@@ -1,36 +1,111 @@
+# -----------------------------
+# OS / Editor
+# -----------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# -----------------------------
 # Python
 # -----------------------------
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
+*.pyc
+.python-version
+.venv/
+venv/
+env/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
+build/
+dist/
+*.egg-info/
 
-# Node / build (if you reintroduce a frontend)
+# -----------------------------
+# Node / Next.js
+# -----------------------------
 node_modules/
 .next/
-dist/
-build/
-.cache/
+out/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
 
-# Runtime (local only)
+# -----------------------------
+# Environment files / secrets
+# -----------------------------
+.env
+.env.*
+!.env.example
+
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+frontend/.env.local
+frontend/.env.*.local
+!frontend/.env.local.example
+
+*.local
+config/*.local.json
+config/last_known_good_proxy.json
+config/network_state_default.json
+config/proxy_guard_policy.json
+
+# -----------------------------
+# Backend local data
+# -----------------------------
+backend/toolkit.db
+backend/*.db
+backend/.pytest_cache/
+
+# -----------------------------
+# Logs / runtime outputs
+# Keep folder placeholders, ignore generated files
+# -----------------------------
 *.log
+
 logs/*
 !logs/.gitignore
+
 reports/*
 !reports/.gitignore
-platform_data*/
 
-# OS / editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+platform_data/*
+!platform_data/.gitignore
 
-# Large / generated artifacts
-*.sqlite
-*.jsonl
-*.zip
-*.exe
-*.msi
+platform_data_fleet_demo/
+
+data/failure_blocks/*.jsonl
+
+# -----------------------------
+# Snapshots / evidence
+# -----------------------------
+*_snapshot*.json
+*_snapshots*.jsonl
+evidence/*.csv
+evidence/*.jsonl
+attribution_context.jsonl
+
+# -----------------------------
+# Temp files
+# -----------------------------
+*.tmp
+*.temp
+
+# -----------------------------
+# Repo generated files
+# -----------------------------
+structure.txt
