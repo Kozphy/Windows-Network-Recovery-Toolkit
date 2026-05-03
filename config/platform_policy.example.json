@@ -1,7 +1,0 @@
-{
-  "_comment": "Optional portfolio policy hints consumed by platform_core.policy_engine.load_policy_hints — NOT a remediation allowlist.",
-  "developer_proxy_allowlist_ports": [7890, 8888],
-  "localhost_proxy_requires_alert": true,
-  "unsigned_path_alert_only": true,
-  "rollback_requires_confirmation": true
-}

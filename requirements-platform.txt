@@ -1,7 +1,0 @@
-# Endpoint Reliability Platform + backend /platform routes (minimal CI set)
-pydantic>=2.6
-fastapi>=0.110
-python-jose[cryptography]>=3.3.0
-httpx>=0.27
-pytest>=8.0
-stripe>=9.0

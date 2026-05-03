@@ -1,4 +1,0 @@
-# Failure Knowledge System (failure_system package)
-pydantic>=2.6
-fastapi>=0.110
-uvicorn[standard]>=0.27
