@@ -29,10 +29,12 @@ from pathlib import Path
 # Source prefixes: allow narrowly-scoped artifact deletes (bytecode caches) beneath these.
 _PROTECTED_SOURCE_PREFIXES = (
     "src/",
+    "core/",
     "backend/",
     "platform_core/",
     "endpoint_agent/",
     "failure_system/",
+    "auto_remediation/",
 )
 
 # Never delete *anything* beneath these trees (fixtures, scripted tooling, authored docs).
@@ -106,7 +108,7 @@ def _is_under_frontend(rel_posix: str) -> bool:
 
 
 def _is_protected_tree(rel_posix: str) -> bool:
-    """True inside backend/src packages and frontend (excluding allowlisted frontend artifacts)."""
+    """True inside package trees listed in `_PROTECTED_SOURCE_PREFIXES` (and all of ``frontend/`` except allowlisted dirs)."""
 
     if _is_frontend_exception(rel_posix):
         return False

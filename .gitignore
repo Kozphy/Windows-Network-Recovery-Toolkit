@@ -1,5 +1,5 @@
 # -----------------------------
-# OS / Editor
+# OS / editor
 # -----------------------------
 .DS_Store
 Thumbs.db
@@ -10,102 +10,84 @@ Desktop.ini
 # -----------------------------
 # Python
 # -----------------------------
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.pyc
-.python-version
 .venv/
 venv/
 env/
+__pycache__/
+*.pyc
+*.pyo
+*.py[cod]
+*.pyd
+.python-version
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
-build/
-dist/
-*.egg-info/
 
 # -----------------------------
-# Node / Next.js
+# Node / frontend
 # -----------------------------
 node_modules/
 .next/
+dist/
+build/
+.cache/
 out/
 frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/pnpm-debug.log*
 
+*.egg-info/
+
 # -----------------------------
-# Environment files / secrets
+# Runtime data
+# -----------------------------
+*.log
+logs/*
+!logs/.gitignore
+reports/*
+!reports/.gitignore
+platform_data/*
+!platform_data/.gitignore
+platform_data_fleet_demo/
+evidence/
+*.jsonl
+
+# -----------------------------
+# Packaged artefacts
+# -----------------------------
+*.exe
+*.msi
+*.zip
+*.7z
+*.tar
+*.gz
+*.sqlite
+*.db
+*.parquet
+
+# -----------------------------
+# Secrets / env (keep examples tracked)
 # -----------------------------
 .env
 .env.*
 !.env.example
-
-backend/.env
-backend/.env.*
-!backend/.env.example
-
-frontend/.env.local
-frontend/.env.*.local
-!frontend/.env.local.example
-
 *.local
 config/*.local.json
-config/last_known_good_proxy.json
-config/network_state_default.json
-config/proxy_guard_policy.json
 
 # -----------------------------
-# Backend local data
-# -----------------------------
-backend/toolkit.db
-backend/*.db
-backend/.pytest_cache/
-
-# -----------------------------
-# Logs / runtime outputs
-# Keep folder placeholders, ignore generated files
-# -----------------------------
-*.log
-
-logs/*
-!logs/.gitignore
-
-reports/*
-!reports/.gitignore
-
-platform_data/*
-!platform_data/.gitignore
-
-platform_data_fleet_demo/
-
-data/failure_blocks/*.jsonl
-
-# -----------------------------
-# Snapshots / evidence
-# -----------------------------
-*_snapshot*.json
-*_snapshots*.jsonl
-evidence/*.csv
-evidence/*.jsonl
-attribution_context.jsonl
-
-# -----------------------------
-# Temp files
+# Misc generated
 # -----------------------------
 *.tmp
 *.temp
-
-# -----------------------------
-# Repo generated files
-# -----------------------------
 structure.txt

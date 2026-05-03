@@ -151,6 +151,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Top {top_n} largest files:")
     for p, sz in sorted_files:
         print(f"  {_format_bytes(sz):>12}  {p.relative_to(root).as_posix()}")
+    print()
+    print(
+        "Hint: bulky trees are often `.venv/`/`venv/`, `node_modules/`, `.next/`, caches, ",
+        "`logs/`/`reports/`/`platform_data/`, `.git/` (use `--include-git`), and blobs matching ",
+        "`.jsonl`, `.sqlite`, `.zip`, installers.",
+        sep="",
+    )
     return 0
 
 
