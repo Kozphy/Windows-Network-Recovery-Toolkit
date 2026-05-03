@@ -36,7 +36,17 @@ from failure_system.storage import append_failure_block, default_data_dir
 
 
 def _data_dir_from_env() -> Path:
-    """Resolve JSONL storage directory using the same rules as ``api.resolve_data_dir``."""
+    """Resolve JSONL storage directory using the same rules as ``api.resolve_data_dir``.
+
+    Returns:
+        Absolute path from ``FAILURE_SYSTEM_DATA_DIR`` when set, else :func:`failure_system.storage.default_data_dir`.
+
+    Raises:
+        None.
+
+    Side effects:
+        Reads environment only.
+    """
 
     env = os.environ.get("FAILURE_SYSTEM_DATA_DIR")
     if env:
@@ -45,7 +55,24 @@ def _data_dir_from_env() -> Path:
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
-    """Run probes, emit JSON payload to stdout, append FailureBlock shard."""
+    """Run probes, emit JSON payload to stdout, append FailureBlock shard.
+
+    Args:
+        args: Parsed namespace including ``intermittent``, optional ``diagram``, ``diagram_file``.
+
+    Returns:
+        Exit code ``0`` after emitting JSON or Mermaid (see ``--diagram`` behavior).
+
+    Raises:
+        None — subprocess/tool failures are encoded inside ``DiagnosticSnapshot``.
+
+    Safety constraints:
+        Does not execute repair scripts; delegates probes to :func:`~failure_system.collector.collect_diagnostics`
+        and appends JSONL read-only from other operators’ perspective except append side effect.
+
+    Side effects:
+        Appends one FailureBlock line via :func:`~failure_system.storage.append_failure_block`; may write Mermaid file if requested.
+    """
 
     snapshot = collect_diagnostics(intermittent_reported=args.intermittent)
     outcomes = RuleEngine().evaluate(snapshot)
@@ -93,7 +120,20 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
 
 
 def cmd_search(args: argparse.Namespace) -> int:
-    """Print JSON array of FailureBlocks matching the token-AND query."""
+    """Print JSON array of FailureBlocks matching the token-AND query.
+
+    Args:
+        args: Namespace with ``query`` string and ``limit`` integer.
+
+    Returns:
+        Exit code ``0``.
+
+    Raises:
+        None.
+
+    Side effects:
+        Read-only scan of JSONL shards under data dir; stdout JSON only.
+    """
 
     from failure_system.search import search_failure_blocks
 
@@ -103,7 +143,20 @@ def cmd_search(args: argparse.Namespace) -> int:
 
 
 def cmd_recommend(args: argparse.Namespace) -> int:
-    """Emit ``FixRecommendation`` JSON for ``--id`` or first ``--query`` hit."""
+    """Emit ``FixRecommendation`` JSON for ``--id`` or first ``--query`` hit.
+
+    Args:
+        args: Namespace with optional ``id`` (UUID) or ``query`` text.
+
+    Returns:
+        ``0`` on hit; ``1`` no match; ``2`` invalid invocation printed to stderr.
+
+    Raises:
+        None.
+
+    Side effects:
+        Read-only JSONL access; stdout recommendation JSON only (no repair execution).
+    """
 
     data_dir = _data_dir_from_env()
     rec = None
@@ -127,7 +180,14 @@ def cmd_recommend(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Construct the ``failure_system`` argparse tree without parsing argv."""
+    """Construct the ``failure_system`` argparse tree without parsing argv.
+
+    Returns:
+        Root parser with ``diagnose``, ``search``, ``recommend`` subcommands.
+
+    Raises:
+        None.
+    """
 
     p = argparse.ArgumentParser(
         prog="failure_system",
@@ -169,7 +229,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Parse CLI arguments and dispatch to subcommand handlers."""
+    """Parse CLI arguments and dispatch to subcommand handlers.
+
+    Args:
+        argv: Optional argv list; defaults to process argv when ``None``.
+
+    Returns:
+        Integer exit code propagated from subcommands.
+
+    Raises:
+        ``SystemExit`` not raised here — callers receive integer codes.
+    """
 
     parser = build_parser()
     args = parser.parse_args(argv)

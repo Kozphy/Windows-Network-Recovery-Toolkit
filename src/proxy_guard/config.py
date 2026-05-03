@@ -1,4 +1,34 @@
-"""Runtime configuration for Proxy Guard (env vars, optional JSON file, CLI overrides)."""
+"""Runtime configuration for Proxy Guard (environment variables, optional JSON file, CLI overrides).
+
+Module responsibility:
+    Merge probe timeouts, rollback rate limits, and policy artifacts into immutable :class:`ProxyGuardServiceConfig`
+    consumed by ``proxy-guard`` / ``proxy-watch`` services—single source for subprocess probe tuning.
+
+System placement:
+    Imported by proxy guard CLI handlers and service runners after :func:`~src.proxy_guard.policy.load_proxy_guard_policy`.
+
+Key invariants:
+    * Numeric precedence: defaults → optional JSON ``config_file`` blob → environment variable overrides (see :func:`build_service_config`).
+    * JSON root must be an object or :func:`load_optional_json_config` raises :exc:`ValueError`.
+
+Input assumptions:
+    Environment variables parse leniently—invalid floats/ints fall back to baked defaults without crashing callers.
+
+Output guarantees:
+    :class:`ProxyGuardServiceConfig` is frozen after construction; mutation happens via :func:`merge_config_overrides` in tests only.
+
+Side effects:
+    Reads optional JSON path from disk when ``config_file`` resolves to an existing file.
+
+Failure modes:
+    Missing env vars silently retain defaults; malformed JSON raises before service loop starts when explicitly loaded.
+
+Audit Notes:
+    Rollback limits guard against rapid ``reg`` replay storms—tune via env for incident response but record rationale when widening limits.
+
+Engineering Notes:
+    ``legacy_control_kwargs_to_config`` preserves older control-plane signatures while routing everything through :func:`build_service_config`.
+"""
 
 from __future__ import annotations
 
@@ -39,7 +69,20 @@ def _env_bool(key: str, default: bool) -> bool:
 
 
 def load_optional_json_config(path: Path | None) -> dict[str, Any]:
-    """Load a JSON object from disk; missing path yields empty dict."""
+    """Load a JSON object from disk; missing path yields empty dict.
+
+    Args:
+        path: Optional repository-relative config file.
+
+    Returns:
+        Parsed mapping.
+
+    Raises:
+        ValueError: When JSON root is not an object.
+
+    Side effects:
+        Reads file bytes once.
+    """
     if path is None or not path.is_file():
         return {}
     blob = json.loads(path.read_text(encoding="utf-8"))

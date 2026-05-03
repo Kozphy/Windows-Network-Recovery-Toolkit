@@ -34,10 +34,23 @@ _ROOT = Path(__file__).resolve().parent.parent
 
 
 def _invoke_src_json(argv: list[str]) -> dict[str, Any]:
-    """Run ``python -m src <argv>`` and parse stdout as JSON.
+    """Run ``python -m src`` with fixed argv and parse stdout as JSON.
+
+    Args:
+        argv: Tokens after ``python -m src`` (subcommand and flags); must not include shell metacharacters—callers pass lists only.
+
+    Returns:
+        Parsed JSON object; empty dict when stdout is blank.
 
     Raises:
-        HTTPException: On non-zero exit codes or JSON decode failure.
+        HTTPException: When the subprocess exits non-zero or stdout is not valid JSON.
+
+    Safety constraints:
+        No shell invocation—argument vector only. Delegates policy inside ``src`` CLI (typed confirmations,
+        dry-run, blocked high-risk actions). Review ``logs/repair_audit.jsonl`` on the API host when routes touch remediation.
+
+    Side effects:
+        Spawns a subprocess with repo root as cwd; bounded by ``timeout`` (300s).
     """
     proc = subprocess.run(
         [sys.executable, "-m", "src", *argv],
@@ -63,7 +76,23 @@ def _invoke_src_json(argv: list[str]) -> dict[str, Any]:
 
 
 def _invoke_src_text(argv: list[str]) -> str:
-    """Run CLI subcommand returning raw stdout text (non-JSON commands)."""
+    """Run ``python -m src`` and return raw stdout text (non-JSON commands).
+
+    Args:
+        argv: Tokens after ``python -m src``; list form only (no shell).
+
+    Returns:
+        Stripped stdout text on success.
+
+    Raises:
+        HTTPException: When the subprocess exits non-zero.
+
+    Safety constraints:
+        Same as :func:`_invoke_src_json` regarding subprocess and delegated CLI safety.
+
+    Side effects:
+        Subprocess with 300s timeout, cwd at repo root.
+    """
     proc = subprocess.run(
         [sys.executable, "-m", "src", *argv],
         cwd=str(_ROOT),

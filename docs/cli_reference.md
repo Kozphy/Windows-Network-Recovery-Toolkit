@@ -2,6 +2,20 @@
 
 Long-form command inventory for **`python -m src`**, **proxy / network-state**, **endpoint agent**, **Failure Knowledge System**, and platform helpers. Beginner **`.bat`** flows stay in [`script_reference.md`](script_reference.md).
 
+## Purpose
+
+Centralizes copy/paste commands referenced by the root [`README.md`](../README.md) so the README stays a short landing page for interviews.
+
+## Safety boundaries
+
+- Commands may invoke **local probes** (subprocess, registry reads, HTTP checks). None of the snippets here imply **silent repair**—guided repairs remain in **`scripts/*.bat`** with explicit prompts where implemented.
+- Platform snippets assume **localhost** FastAPI and optional **`PLATFORM_DATA_DIR`**—do not point demos at production hosts without reviewing RBAC headers documented in [`platform_api_contract.md`](platform_api_contract.md).
+
+## Audit notes for reviewers
+
+- Proxy attribution CLIs record honest telemetry tiers—correlate CLI JSON with append-only logs under **`logs/`** and **`platform_data/`** when demonstrating decisions.
+- CI executes **`pytest`** only; destructive Windows batch files are **not** invoked by automated tests (see [`test_strategy.md`](test_strategy.md)).
+
 ## Decision engine (`python -m src`)
 
 ```powershell

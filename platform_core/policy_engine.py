@@ -1,25 +1,49 @@
 """High-level policy router for Endpoint Reliability Platform demos.
 
-Wraps :func:`~platform_core.policy.evaluate` with ergonomic **verb** projections plus optional declarative rule
-hints loaded from ``config/platform_policy.example.json``. Does **not** replace :mod:`platform_core.remediation_registry`
-— unknown actions remain registry-denied.
+Module responsibility:
+    Project :func:`~platform_core.policy.evaluate` (:class:`~platform_core.policy.StructuredPolicyDecision`) into
+    short **verb** labels for UX copy and portfolio narration, and optionally fuse optional JSON **hints** about
+    localhost proxy posture without weakening registry-backed forbid rules.
 
-Decision verbs map to remediation posture:
-    * ``allow`` — live execute may proceed downstream when RBAC + confirmation gates also pass (rare standalone signal).
-    * ``alert`` — surface to operator dashboards without implying execute permission.
-    * ``block`` — deny execution unconditionally for this posture (forbidden/high shell patterns).
-    * ``preview_only`` — operator-tier may stage previews; execute denied.
-    * ``require_confirmation`` — admin path still needs typed phrases from registry definitions.
+System placement:
+    Sits beside :mod:`platform_core.policy.classic` (ACTION_REGISTRY gates) and :mod:`platform_core.remediation_registry`.
+    FastAPI routes continue to call classic helpers directly—this module is **additive** for dashboards/tests.
+
+Key invariants:
+    * ``high`` / ``forbidden`` remediation tiers always coerce the verb to ``block`` even when previews might exist.
+    * ``applied_rules`` strings are diagnostic tags only—they do **not** bypass RBAC or typed confirmation in routers.
 
 Input assumptions:
-    ``signal_bundle`` dictionaries may carry ``proxy_server``, ``unsigned_path_hint``, ``summary`` placeholders
-    from fixtures — tagging results surface in ``applied_rules`` alongside structured policy reasons.
+    ``signal_bundle`` may include ``proxy_server``, ``unsigned_path_hint``, ``rollback_context``, ``summary`` keys
+    used only for ``applied_rules`` tagging.
+
+Output guarantees:
+    Tuple ``(verb, detail_dict)`` where ``detail_dict`` contains ``structured`` (full decision dump) and
+    ``applied_rules`` (string tags).
 
 Side effects:
-    File load helpers read JSON once per path string (callers cache if hot).
+    :func:`load_policy_hints` reads JSON from disk when path exists (stdlib only).
+
+Failure modes:
+    Malformed JSON in hint files raises :exc:`json.JSONDecodeError`—callers should catch in interactive demos.
+
+Audit Notes:
+    Verbs summarize policy posture only—actual **execute** remains gated in ``backend.platform_routes`` with
+    dry-run defaults and allowlisted scripts; reconcile ``detail_dict["structured"]["reason_codes"]`` with
+    ``platform_data/audit.jsonl`` when operators dispute UI wording.
+
+Engineering Notes:
+    Hint bundles stay JSON for zero extra dependencies; YAML mirrors exist for human editing only until a loader is wired.
 
 See Also:
     ``docs/rbac_and_remediation.md``.
+
+Decision verbs map to remediation posture:
+    * ``allow`` — structured evaluation produced ``execute_allowed=True`` (still subject to route confirmation).
+    * ``alert`` — neither preview nor execute is permitted under current structured gate (viewer-like denial paths).
+    * ``block`` — forbidden/high-tier or substring ``forbidden`` reason codes tripped forced deny.
+    * ``preview_only`` — previews allowed; live execute false until admin + confirmation elsewhere.
+    * ``require_confirmation`` — confirmation phrases required per registry before subprocess spawn.
 """
 
 from __future__ import annotations
@@ -35,7 +59,17 @@ PlatformDecisionVerb = Literal["allow", "alert", "block", "preview_only", "requi
 
 @dataclass(frozen=True)
 class PlatformPolicyHints:
-    """Declarative knobs mirrored from optional JSON/YAML bundles for interviews."""
+    """Declarative knobs mirrored from optional JSON bundles (see ``config/platform_policy.example.json``).
+
+    Attributes:
+        allow_developer_proxy_ports: Loopback ports treated as benign developer proxies when matched in ``proxy_server`` text.
+        localhost_proxy_requires_alert: When true, emit ``unknown_localhost_proxy`` tag for loopback literals.
+        unsigned_path_alert_only: When true, emit ``unsigned_suspicious_path`` when ``unsigned_path_hint`` is truthy.
+        rollback_requires_confirmation: When true, emit ``rollback_confirmation_required`` if ``rollback_context`` present.
+
+    Constraints:
+        Tags influence ``applied_rules`` only—they never widen execution permission beyond :mod:`platform_core.policy`.
+    """
 
     allow_developer_proxy_ports: list[int]
     localhost_proxy_requires_alert: bool
@@ -52,10 +86,22 @@ DEFAULT_HINTS = PlatformPolicyHints(
 
 
 def load_policy_hints(path: str | Path | None) -> PlatformPolicyHints:
-    """Hydrate hints from JSON on disk — missing file yields :data:`DEFAULT_HINTS`.
+    """Hydrate hints from JSON on disk — missing path or file yields :data:`DEFAULT_HINTS`.
+
+    Args:
+        path: Optional filesystem path to JSON with keys matching portfolio examples.
+
+    Returns:
+        Frozen :class:`PlatformPolicyHints`.
 
     Raises:
-        json.JSONDecodeError: Propagates when malformed (callers validate in demos).
+        json.JSONDecodeError: When file exists but JSON is invalid.
+
+    Side effects:
+        Reads file once per call (no caching).
+
+    Idempotency:
+        Pure relative to disk contents—identical files yield identical structs.
     """
     if not path:
         return DEFAULT_HINTS
@@ -94,8 +140,25 @@ def evaluate_route_decision(
 ) -> tuple[PlatformDecisionVerb, dict[str, Any]]:
     """Return ``(verb, detail_dict)`` fusing structured policy + heuristic signal tagging.
 
-    The ``detail_dict`` includes upstream ``StructuredPolicyDecision`` dump plus ``applied_rules`` string keys
-    documenting which portfolio hints influenced alert posture (never bypasses forbidden registry tiers).
+    Args:
+        remediation_action: Registry key forwarded to :func:`~platform_core.policy.evaluate` after canonicalization.
+        operator_role: Portfolio role string accepted by :class:`~platform_core.policy.OperatorContext` (e.g. ``admin``).
+        surface: Ingress channel hint for classic policy evaluation.
+        signal_bundle: Optional telemetry snippets used solely for ``applied_rules`` tagging.
+        hints: Optional declarative bundle; defaults to :data:`DEFAULT_HINTS`.
+
+    Returns:
+        Tuple of UI verb plus ``{"structured": StructuredPolicyDecision dict, "applied_rules": list[str]}``.
+
+    Raises:
+        None intentionally—invalid roles propagate via structured ``reason_codes`` inside ``structured``.
+
+    Side effects:
+        None (pure evaluation aside from structured policy internals).
+
+    Audit Notes:
+        Compare ``structured["reason_codes"]`` with FastAPI ``403`` responses when debugging mismatched verbs—the
+        router remains authoritative for HTTP enforcement.
     """
     hc = hints or DEFAULT_HINTS
     applied_rules: list[str] = []

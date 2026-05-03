@@ -1,11 +1,35 @@
 """Populate three synthetic endpoints for dashboard / metrics demos (no host mutation).
 
-Run from repo root::
+Module responsibility:
+    Append deterministic JSONL rows (endpoints, failure events, signals, audit, attribution context) so operators
+    can **rehearse** ``GET /platform/*`` and Next.js ``/platform`` without running Windows collectors.
+
+System placement:
+    Invoked as ``python -m platform_core.demo_fleet``; optional import of :func:`populate_fleet` from tests.
+
+Key invariants:
+    * Synthetic ``endpoint_id`` strings are fixed literals—never collide with hashed identities from real agents when
+      operators merge directories manually (prefer isolated ``--data-dir``).
+    * Writes target caller-supplied directory only—never touches repository ``platform_data/`` unless explicitly chosen.
+
+Side effects:
+    Creates/overwrites JSONL files under *target*; sets ``PLATFORM_DATA_DIR`` in CLI ``main()`` process env.
+
+Idempotency:
+    Without ``--reset``, appends duplicate-looking rows (metrics counters inflate)—use ``--reset`` for clean demos.
+
+Failure modes:
+    Disk permission errors propagate as :exc:`OSError`.
+
+Audit Notes:
+    Rows are labeled ``fleet_demo`` / synthetic summaries—do not ship these shards as forensic evidence of production incidents.
+
+Run::
 
     python -m platform_core.demo_fleet --data-dir platform_data_fleet_demo
 
-Overrides ``PLATFORM_DATA_DIR`` for the process lifetime so :func:`platform_core.metrics.compute_platform_metrics`
-reflects the seeded corpus when pointed at the same directory via env or default ``platform_data``.
+CLI ``main()`` overrides ``PLATFORM_DATA_DIR`` for the process lifetime so :func:`platform_core.metrics.compute_platform_metrics`
+prints excerpts aligned with the seeded corpus.
 """
 
 from __future__ import annotations
@@ -23,11 +47,30 @@ from platform_core.storage import append_jsonl
 
 
 def _line(path: Path, row: dict) -> None:
+    """Append one JSON object via :func:`~platform_core.storage.append_jsonl`."""
+
     append_jsonl(path, row)
 
 
 def populate_fleet(target: Path, *, reset: bool = False) -> None:
-    """Write JSONL shards under *target* mimicking a tiny three-endpoint fleet."""
+    """Write JSONL shards under *target* mimicking a tiny three-endpoint fleet.
+
+    Args:
+        target: Directory receiving ``*.jsonl`` files consumed by :mod:`platform_core.metrics` and routers.
+        reset: When ``True``, unlink listed shard files before append so KPI runs stay interpretable.
+
+    Returns:
+        ``None``.
+
+    Raises:
+        ``OSError`` when directories/files cannot be written.
+
+    Side effects:
+        UTF-8 append-only writes per shard; does **not** invoke subprocess or network probes.
+
+    Recovery guidance:
+        Delete *target* entirely or rerun with ``reset=True`` when duplicate seeds confuse dashboards.
+    """
 
     target.mkdir(parents=True, exist_ok=True)
     files = [
@@ -183,6 +226,15 @@ def populate_fleet(target: Path, *, reset: bool = False) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entry: parse args, seed fleet, print metrics excerpt JSON to stdout.
+
+    Returns:
+        Process exit code ``0``.
+
+    Side effects:
+        Sets ``PLATFORM_DATA_DIR`` env var and writes JSONL under chosen directory.
+    """
+
     p = argparse.ArgumentParser(description="Seed fake fleet JSONL for dashboards (read-only demo data).")
     p.add_argument(
         "--data-dir",

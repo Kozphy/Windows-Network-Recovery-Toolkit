@@ -1,3 +1,16 @@
+"""Offline tests for fleet seeding, ingest route aliases, policy verbs, and attribution coercion.
+
+Module responsibility:
+    Guard portfolio additions ``demo_fleet``, ``/platform/ingest/*``, and ``policy_engine`` without live HTTP servers
+    beyond FastAPI ``TestClient`` fixtures.
+
+System placement:
+    Complements ``tests/test_api_platform_routes.py`` with narrower ingest-alias coverage.
+
+Side effects:
+    Uses ``tmp_path`` / monkeypatch only—no writes to developer ``platform_data/``.
+"""
+
 from __future__ import annotations
 
 import json

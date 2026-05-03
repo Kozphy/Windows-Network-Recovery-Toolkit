@@ -43,7 +43,17 @@ from failure_system.storage import append_failure_block, default_data_dir, iter_
 
 
 def resolve_data_dir() -> Path:
-    """Return JSONL directory from ``FAILURE_SYSTEM_DATA_DIR`` or package default."""
+    """Resolve the Failure Knowledge JSONL root directory.
+
+    Returns:
+        Absolute path from ``FAILURE_SYSTEM_DATA_DIR`` when set, else :func:`failure_system.storage.default_data_dir`.
+
+    Raises:
+        None.
+
+    Side effects:
+        Reads environment only.
+    """
 
     env = os.environ.get("FAILURE_SYSTEM_DATA_DIR")
     if env:
@@ -52,7 +62,21 @@ def resolve_data_dir() -> Path:
 
 
 def create_app() -> FastAPI:
-    """Construct FastAPI app wiring diagnose/search/recommend routes."""
+    """Build the Failure Knowledge HTTP API (diagnose, list/search blocks, recommend-fix).
+
+    Returns:
+        Configured ``FastAPI`` instance (also exposed as module-level ``app``).
+
+    Raises:
+        None from this factory; routes raise ``HTTPException`` for missing rows or bad requests.
+
+    Safety constraints:
+        Does not run repairs. ``POST /diagnose`` appends one FailureBlock via ``append_failure_block``.
+        ``POST /recommend-fix`` returns JSON recommendations only.
+
+    Side effects:
+        ``POST /diagnose`` writes JSONL under :func:`resolve_data_dir`; other routes read JSONL only.
+    """
 
     app = FastAPI(
         title="Failure Knowledge System",

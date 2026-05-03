@@ -1,4 +1,15 @@
-"""Privacy helpers — hash identifiers, mask IPs, redact paths (portfolio-safe defaults)."""
+"""Privacy helpers: hash hostnames, mask IPs, redact paths for logs and exports.
+
+Purpose:
+    Produce stable redacted strings suitable for JSONL and HTTP responses without storing raw
+    hostnames or Windows profile paths.
+
+Safety constraints:
+    Functions are pure string transforms—callers remain responsible for not persisting secrets elsewhere.
+
+Notes:
+    ``sanitize_domain`` allows a tiny public-probe allowlist; other domains become hashed labels.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +28,17 @@ _PUBLIC_SUFFIX_ALLOWLIST: Final[frozenset[str]] = frozenset(
 
 
 def sanitize_hostname(value: str) -> str:
-    """Replace hostname with a non-reversible short hash label for logs."""
+    """Replace a hostname with a short non-reversible hash label.
+
+    Args:
+        value: Raw hostname string (may be empty).
+
+    Returns:
+        ``host_sha256_<hex>`` or ``[empty]`` when input is blank.
+
+    Raises:
+        None.
+    """
     if not value or not value.strip():
         return "[empty]"
     digest = hashlib.sha256(value.strip().lower().encode()).hexdigest()[:16]
@@ -25,14 +46,34 @@ def sanitize_hostname(value: str) -> str:
 
 
 def sanitize_username(value: str) -> str:
-    """Never persist raw Windows username."""
+    """Redact a Windows username for logging.
+
+    Args:
+        value: Raw username (may be empty).
+
+    Returns:
+        Fixed token ``user_redacted`` or ``[user]`` when empty.
+
+    Raises:
+        None.
+    """
     if not value or not value.strip():
         return "[user]"
     return "user_redacted"
 
 
 def sanitize_ip(value: str) -> str:
-    """Mask private IPv4; pass through loopback; coarse-mask IPv6 private UC."""
+    """Mask private IPv4; pass loopback through; coarse-mask IPv6 link-local.
+
+    Args:
+        value: IP address string.
+
+    Returns:
+        Loopback unchanged; RFC1918 IPv4 replaced with coarse buckets; ``fe80:`` as prefix token.
+
+    Raises:
+        None.
+    """
     s = value.strip()
     if s in {"127.0.0.1", "::1"}:
         return s
@@ -48,7 +89,17 @@ def sanitize_ip(value: str) -> str:
 
 
 def sanitize_domain(value: str) -> str:
-    """Allowlist a tiny set of public probe domains; otherwise redact."""
+    """Allowlist a small set of probe domains; otherwise emit a hashed token.
+
+    Args:
+        value: Domain or hostname-like string.
+
+    Returns:
+        Lowercase allowlisted domain, ``[domain]`` when empty, or ``domain_sha256_<hex>``.
+
+    Raises:
+        None.
+    """
     v = value.strip().lower().rstrip(".")
     if v in _PUBLIC_SUFFIX_ALLOWLIST:
         return v
@@ -59,14 +110,39 @@ def sanitize_domain(value: str) -> str:
 
 
 def stable_endpoint_hash(hostname: str, os_version: str, machine_hint: str | None = None) -> str:
-    """Deterministic truncated SHA-256 for stable endpoint_id (no raw hostname stored)."""
+    """Compute a deterministic truncated SHA-256 for a stable endpoint identifier.
+
+    Args:
+        hostname: Raw hostname (combined into the hash; not returned).
+        os_version: OS version string.
+        machine_hint: Optional extra entropy (e.g. install id).
+
+    Returns:
+        First 32 hex chars of SHA-256 over joined fields.
+
+    Raises:
+        None.
+
+    Safety constraints:
+        Does not persist inputs; callers should avoid logging raw ``hostname`` alongside this hash if policy forbids it.
+    """
     parts = [hostname, os_version, machine_hint or ""]
     raw = "|".join(parts).encode("utf-8", errors="replace")
     return hashlib.sha256(raw).hexdigest()[:32]
 
 
 def redact_text(text: str) -> str:
-    """Remove common user profile path segments and mask private IPs in free text."""
+    """Redact user profile path segments and coarse-mask private IPv4 in free text.
+
+    Args:
+        text: Arbitrary message text.
+
+    Returns:
+        Text with ``C:\\Users\\...`` / ``/users/...`` segments and common private IPv4 ranges masked.
+
+    Raises:
+        None.
+    """
     s = text
     s = re.sub(
         r"(?i)C:\\\\Users\\\\[^\\]+",

@@ -41,17 +41,52 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
 def _utc_now_iso() -> str:
-    """Return current UTC timestamp in ISO-8601 format."""
+    """Return the current instant in UTC as an ISO-8601 string.
+
+    Returns:
+        Timezone-aware ISO string suitable for SQLite text columns.
+
+    Raises:
+        None.
+    """
     return datetime.now(timezone.utc).isoformat()
 
 
 def get_connection() -> sqlite3.Connection:
+    """Open the demo SQLite database at :data:`DB_PATH` with row dict access.
+
+    Returns:
+        Open ``sqlite3.Connection`` with ``row_factory`` set to ``sqlite3.Row``.
+
+    Raises:
+        sqlite3.Error: When the database file cannot be opened (permissions, path).
+
+    Safety constraints:
+        Persists to ``backend/toolkit.db`` by default; treat the file as sensitive (PII, usage) in exports.
+
+    Side effects:
+        May create the database file on first open.
+    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db() -> None:
+    """Apply ``schema.sql`` to the SQLite database (idempotent DDL).
+
+    Returns:
+        None.
+
+    Raises:
+        sqlite3.Error: When ``schema.sql`` cannot be read or ``executescript`` fails.
+
+    Side effects:
+        Creates tables and indices; may fail mid-script if disk is full (operator should restore backup).
+
+    Safety constraints:
+        Destructive only insofar as DDL matches ``schema.sql``; intended for local demo bootstrap.
+    """
     schema = SCHEMA_PATH.read_text(encoding="utf-8")
     with get_connection() as conn:
         conn.executescript(schema)
@@ -59,12 +94,37 @@ def init_db() -> None:
 
 
 def month_key(now: datetime | None = None) -> str:
+    """Format a UTC month bucket ``YYYY-MM`` for usage counters.
+
+    Args:
+        now: Reference time; defaults to current UTC.
+
+    Returns:
+        Seven-character month key string.
+
+    Raises:
+        None.
+    """
     dt = now or datetime.now(timezone.utc)
     return dt.strftime("%Y-%m")
 
 
 def ensure_user_org_project(user_id: str, email: str) -> None:
-    """Ensure a user row exists and owns one org with a default project and subscription."""
+    """Ensure demo bootstrap rows exist: user, default org, project, free subscription.
+
+    Args:
+        user_id: Stable user identifier (JWT subject or synthetic).
+        email: Email stored on insert/update.
+
+    Returns:
+        None.
+
+    Raises:
+        sqlite3.Error: On insert/update failure.
+
+    Side effects:
+        Commits inserts when the user lacks an organization.
+    """
     with get_connection() as conn:
         existing = conn.execute("SELECT id, email FROM users WHERE id = ?", (user_id,)).fetchone()
         if existing is None:
@@ -95,7 +155,21 @@ def ensure_user_org_project(user_id: str, email: str) -> None:
 
 
 def get_project_for_user(user_id: str, requested_project_id: Optional[str]) -> Optional[dict[str, Any]]:
-    """Return `{project_id, org_id, name}` for owner, optionally scoped by project id."""
+    """Resolve a project owned by ``user_id``, optionally pinned to a specific project id.
+
+    Args:
+        user_id: Owner user id.
+        requested_project_id: When set, require that exact project id under the user’s orgs.
+
+    Returns:
+        Dict with ``project_id``, ``org_id``, and ``name``, or ``None`` when no row matches.
+
+    Raises:
+        None.
+
+    Side effects:
+        Read-only SQL.
+    """
     with get_connection() as conn:
         if requested_project_id:
             row = conn.execute(
@@ -124,6 +198,20 @@ def get_project_for_user(user_id: str, requested_project_id: Optional[str]) -> O
 
 
 def get_subscription(org_id: str) -> dict[str, Any]:
+    """Load subscription metadata for an organization, or return a free-tier default.
+
+    Args:
+        org_id: Organization UUID string.
+
+    Returns:
+        Dict with at least ``plan``, ``status``, ``org_id``, and optional Stripe ids when present.
+
+    Raises:
+        None — missing rows synthesize ``plan=free``.
+
+    Side effects:
+        Read-only SQL.
+    """
     with get_connection() as conn:
         row = conn.execute(
             """
@@ -144,6 +232,24 @@ def update_subscription(
     stripe_customer_id: Optional[str] = None,
     stripe_subscription_id: Optional[str] = None,
 ) -> None:
+    """Upsert subscription fields for billing demos (Stripe ids optional).
+
+    Args:
+        org_id: Organization id.
+        plan: Plan label string stored verbatim.
+        status: Subscription status string.
+        stripe_customer_id: Optional Stripe customer id.
+        stripe_subscription_id: Optional Stripe subscription id.
+
+    Returns:
+        None.
+
+    Raises:
+        sqlite3.Error: On constraint or I/O failure.
+
+    Side effects:
+        Commits one upsert to ``subscriptions``.
+    """
     with get_connection() as conn:
         conn.execute(
             """
@@ -163,6 +269,21 @@ def update_subscription(
 
 
 def get_usage(org_id: str, month: str) -> dict[str, Any]:
+    """Return diagnosis usage count for an org/month bucket.
+
+    Args:
+        org_id: Organization id.
+        month: ``YYYY-MM`` key matching :func:`month_key`.
+
+    Returns:
+        Dict with ``org_id``, ``month``, and ``diagnosis_count`` (zero when absent).
+
+    Raises:
+        None.
+
+    Side effects:
+        Read-only SQL.
+    """
     with get_connection() as conn:
         row = conn.execute(
             "SELECT org_id, month, diagnosis_count FROM usage WHERE org_id = ? AND month = ?",
@@ -174,7 +295,22 @@ def get_usage(org_id: str, month: str) -> dict[str, Any]:
 
 
 def try_increment_usage_with_limit(org_id: str, limit: int, month: str) -> Optional[int]:
-    """Return new diagnosis_count after increment, or None when plan limit is reached."""
+    """Atomically increment monthly diagnosis usage when under plan limit.
+
+    Args:
+        org_id: Organization id.
+        limit: Max diagnoses for the month; ``-1`` means unlimited.
+        month: ``YYYY-MM`` bucket.
+
+    Returns:
+        New ``diagnosis_count`` after increment, or ``None`` when already at limit (no increment).
+
+    Raises:
+        sqlite3.Error: On transaction failure.
+
+    Side effects:
+        Uses ``BEGIN IMMEDIATE`` and commits or rolls back.
+    """
     with get_connection() as conn:
         conn.execute("BEGIN IMMEDIATE")
         row = conn.execute(
@@ -203,6 +339,22 @@ def try_increment_usage_with_limit(org_id: str, limit: int, month: str) -> Optio
 
 
 def insert_diagnosis(*, project_id: str, input_data: dict[str, Any], result: dict[str, Any]) -> int:
+    """Persist one diagnosis request/response pair as JSON blobs.
+
+    Args:
+        project_id: Owning project UUID.
+        input_data: Request payload dict (serialized with ``json.dumps``).
+        result: Response payload dict.
+
+    Returns:
+        SQLite ``lastrowid`` for the inserted ``diagnosis_logs`` row.
+
+    Raises:
+        sqlite3.Error: On insert failure.
+
+    Side effects:
+        Commits one insert with UTC ``created_at``.
+    """
     created = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
         cur = conn.execute(
@@ -217,6 +369,22 @@ def insert_diagnosis(*, project_id: str, input_data: dict[str, Any], result: dic
 
 
 def insert_metric(*, project_id: str, time_wait: int, established: int) -> int:
+    """Record coarse TCP connection metrics for a project.
+
+    Args:
+        project_id: Owning project UUID.
+        time_wait: Count or gauge stored as integer (caller's semantics).
+        established: Count or gauge stored as integer.
+
+    Returns:
+        SQLite ``lastrowid`` for ``connection_metrics``.
+
+    Raises:
+        sqlite3.Error: On insert failure.
+
+    Side effects:
+        Commits one insert.
+    """
     created = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
         cur = conn.execute(
@@ -231,6 +399,21 @@ def insert_metric(*, project_id: str, time_wait: int, established: int) -> int:
 
 
 def get_recent_metrics(project_id: str, limit: int) -> list[dict[str, Any]]:
+    """Return recent connection metric rows for a project (newest first).
+
+    Args:
+        project_id: Project UUID.
+        limit: Desired row cap (clamped to 1..100).
+
+    Returns:
+        List of dicts with ``time_wait``, ``established``, and ``timestamp`` keys.
+
+    Raises:
+        None.
+
+    Side effects:
+        Read-only SQL.
+    """
     safe = max(1, min(limit, 100))
     with get_connection() as conn:
         rows = conn.execute(
@@ -256,6 +439,22 @@ def get_history(
     project_id: Optional[str],
     limit: int,
 ) -> dict[str, Any]:
+    """Fetch recent diagnosis logs and connection metrics for an organization.
+
+    Args:
+        org_id: Organization UUID filtering joined projects.
+        project_id: Optional project scope; when omitted, uses all projects in the org.
+        limit: Per-stream cap for diagnoses and metrics (clamped to 1..500 each).
+
+    Returns:
+        Dict with ``diagnoses`` and ``metrics`` lists (each sorted by id desc within limit).
+
+    Raises:
+        json.JSONDecodeError: If stored JSON blobs are corrupted (should not occur for normal inserts).
+
+    Side effects:
+        Read-only SQL; parses JSON columns into Python dicts.
+    """
     safe = max(1, min(limit, 500))
 
     diag_sql = """

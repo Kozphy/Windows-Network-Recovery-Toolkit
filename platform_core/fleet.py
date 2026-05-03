@@ -19,13 +19,33 @@ from uuid import UUID
 
 @dataclass(frozen=True)
 class FleetConfigStub:
-    """Reserved for future fleet policy sync (content-addressed bundles)."""
+    """Placeholder fleet configuration (local prototype; no remote control).
+
+    Attributes:
+        enabled: When ``True``, reserved for future signed policy-bundle sync (currently unused).
+
+    Notes:
+        Does not fetch or apply policies by itself; backend/agent wiring checks this shape only.
+    """
 
     enabled: bool = False
 
 
 def failure_system_blocks_dir() -> Path:
-    """Resolve Failure Knowledge JSONL root (respects ``FAILURE_SYSTEM_DATA_DIR``)."""
+    """Resolve the Failure Knowledge JSONL directory for cross-package linkage.
+
+    Returns:
+        Absolute path from ``FAILURE_SYSTEM_DATA_DIR`` when set, else :func:`failure_system.storage.default_data_dir`.
+
+    Raises:
+        None.
+
+    Side effects:
+        Reads environment only.
+
+    Safety constraints:
+        Read-only with respect to configuration; callers that scan JSONL should treat shards as operator data.
+    """
 
     from failure_system.storage import default_data_dir
 
