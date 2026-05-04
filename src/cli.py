@@ -268,7 +268,10 @@ def _read_last_diagnosis(repo: Path) -> dict[str, Any]:
     """
     path = repo / "reports" / "last_diagnosis.json"
     if not path.is_file():
-        raise FileNotFoundError("No last_diagnosis.json - run diagnose first.")
+        raise FileNotFoundError(
+            "No reports/last_diagnosis.json - run `python -m src diagnose` first, "
+            "or use `diagnose-live` plus `--live` on explain, recommend, repair-safe, and export-report."
+        )
     return json.loads(path.read_text(encoding="utf-8"))
 
 
@@ -323,6 +326,13 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         trail; ``reports/last_diagnosis.json`` is overwritten each run.
     """
     repo = _repo_root(args.repo_root)
+    if not args.fixture and platform.system() != "Windows":
+        print(
+            "diagnose without --fixture requires Windows (live probes use reg, netsh, PowerShell, etc.). "
+            "Use --fixture <features.json> on other platforms.",
+            file=sys.stderr,
+        )
+        return 2
     if args.fixture:
         features = load_features_json(Path(args.fixture))
         commands_executed = [
@@ -404,7 +414,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
     if getattr(args, "live", False):
         live_path = repo / "reports" / "last_diagnosis_live.json"
         if not live_path.is_file():
-            print("No last_diagnosis_live.json — run diagnose-live first.")
+            print("No last_diagnosis_live.json - run diagnose-live first.")
             return 1
         payload = json.loads(live_path.read_text(encoding="utf-8"))
         print(payload.get("explain_paragraph") or "No explanation available.")
@@ -441,7 +451,7 @@ def cmd_recommend(args: argparse.Namespace) -> int:
     if getattr(args, "live", False):
         live_path = repo / "reports" / "last_diagnosis_live.json"
         if not live_path.is_file():
-            print("No last_diagnosis_live.json — run diagnose-live first.")
+            print("No last_diagnosis_live.json - run diagnose-live first.")
             return 1
         payload = json.loads(live_path.read_text(encoding="utf-8"))
         blob = payload.get("recommendations") or {}
@@ -492,7 +502,17 @@ def cmd_repair_safe(args: argparse.Namespace) -> int:
         `append_feedback`; verify ``logs/decision_feedback.jsonl``.
     """
     repo = _repo_root(args.repo_root)
-    payload = _read_last_diagnosis(repo)
+    if getattr(args, "live", False):
+        live_path = repo / "reports" / "last_diagnosis_live.json"
+        if not live_path.is_file():
+            print("No last_diagnosis_live.json - run diagnose-live first.", file=sys.stderr)
+            return 1
+        payload = json.loads(live_path.read_text(encoding="utf-8"))
+    else:
+        payload = _read_last_diagnosis(repo)
+    if getattr(args, "apply", False) and platform.system() != "Windows":
+        print("repair-safe --apply requires Windows (elevated script launch).", file=sys.stderr)
+        return 2
     safe_items = payload.get("recommendations", {}).get("repair_safe") or []
 
     printable = []
@@ -612,6 +632,95 @@ def cmd_feedback(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_live_diagnosis_report(repo: Path, payload: dict[str, Any], args: argparse.Namespace) -> int:
+    """Write plaintext from ``last_diagnosis_live.json`` (v2 engine)."""
+    ranked = payload.get("hypotheses_ranked") or []
+    blob = payload.get("recommendations") or {}
+    lines: list[str] = [
+        "WINDOWS NETWORK RECOVERY TOOLKIT — LIVE DIAGNOSIS REPORT (v2)",
+        f"Generated (UTC): {payload.get('generated_at_utc')}",
+        f"Toolkit version : {payload.get('script_version')}",
+        f"Diagnosis ID    : {payload.get('diagnosis_id')}",
+        f"Snapshot file   : {payload.get('live_snapshot_ref')}",
+        "",
+        "SUMMARY",
+        "-------",
+        str(payload.get("explain_paragraph") or ""),
+        "",
+        "HYPOTHESES (ranked)",
+        "---------------------",
+    ]
+    for row in ranked[:12]:
+        if not isinstance(row, dict):
+            continue
+        lines.append(
+            f"{row.get('rank', '?')}. {row.get('hypothesis')} — {float(row.get('confidence') or 0):.2f}"
+        )
+        for ev in row.get("evidence") or []:
+            lines.append(f"   • {ev}")
+    lines.extend(
+        [
+            "",
+            "RECOMMENDED ACTIONS (tiered)",
+            "-----------------------------",
+            "Diagnostics:",
+        ]
+    )
+    for item in blob.get("diagnose", []):
+        if isinstance(item, dict):
+            lines.append(f"  • [{item.get('risk')}] {item.get('title')}")
+            if item.get("script"):
+                lines.append(f"      Command/script: {item['script']}")
+    lines.extend(["", "Repair-safe:"])
+    for item in blob.get("repair_safe", []):
+        if isinstance(item, dict):
+            lines.append(f"  • [{item.get('risk')}] {item.get('title')}")
+            lines.append(f"      {item.get('detail')}")
+            if item.get("script"):
+                lines.append(f"      Script: {item['script']}")
+    lines.extend(["", "Guided repair:"])
+    for item in blob.get("guided_repair", []):
+        if isinstance(item, dict):
+            lines.append(f"  • [{item.get('risk')}] {item.get('title')}")
+            if item.get("script"):
+                lines.append(f"      Script: {item['script']}")
+    lines.extend(["", "Advanced repair (never auto-applied):"])
+    for item in blob.get("advanced_repair", []):
+        if isinstance(item, dict):
+            lines.append(f"  • [{item.get('risk')}] {item.get('title')}")
+            if item.get("script"):
+                lines.append(f"      Script reference: {item['script']}")
+    lines.extend(
+        [
+            "",
+            "COMMANDS EXECUTED (labels only)",
+            "--------------------------------",
+        ]
+    )
+    for cmd in payload.get("commands_executed") or []:
+        if isinstance(cmd, dict):
+            lines.append(f"- {cmd.get('label')}: {cmd.get('cmd')}")
+    lines.extend(
+        [
+            "",
+            "NEXT STEPS",
+            "----------",
+            "1) Execute the safest matching recommendation first.",
+            "2) Record feedback via `python -m src feedback ...` after trying a repair.",
+            "3) Re-run diagnose-live to validate post-change signals.",
+            "",
+            "NOTICE: This report stays on-disk; upload only if your policy permits.",
+        ]
+    )
+    report_dir = repo / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    outfile = Path(args.out) if args.out else report_dir / f"diagnosis_live_report_{ts}.txt"
+    outfile.write_text("\n".join(lines), encoding="utf-8")
+    print(f"Wrote {outfile}")
+    return 0
+
+
 def cmd_export_report(args: argparse.Namespace) -> int:
     """Materialize human-readable plaintext from ``last_diagnosis.json``.
 
@@ -623,6 +732,13 @@ def cmd_export_report(args: argparse.Namespace) -> int:
         OSError: If report path cannot be written.
     """
     repo = _repo_root(args.repo_root)
+    if getattr(args, "live", False):
+        live_path = repo / "reports" / "last_diagnosis_live.json"
+        if not live_path.is_file():
+            print("No last_diagnosis_live.json - run diagnose-live first.", file=sys.stderr)
+            return 1
+        payload = json.loads(live_path.read_text(encoding="utf-8"))
+        return _write_live_diagnosis_report(repo, payload, args)
     payload = _read_last_diagnosis(repo)
     ranked = payload.get("ranked_root_causes") or []
     blob = payload.get("recommendations") or {}
@@ -779,6 +895,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Preview safe-tier fixes from the last diagnose run.",
     )
     p_safe.add_argument(
+        "--live",
+        action="store_true",
+        help="Use reports/last_diagnosis_live.json (diagnose-live) instead of last_diagnosis.json.",
+    )
+    p_safe.add_argument(
         "--apply",
         action="store_true",
         help="Prompt to launch the first LOW-risk *.bat recommendation (otherwise preview only).",
@@ -793,6 +914,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_fb.set_defaults(func=cmd_feedback)
 
     p_exp = sub.add_parser("export-report", help="Render a plaintext report under reports/.")
+    p_exp.add_argument(
+        "--live",
+        action="store_true",
+        help="Use reports/last_diagnosis_live.json (diagnose-live) instead of last_diagnosis.json.",
+    )
     p_exp.add_argument("--out", type=str, default=None, help="Custom output filename.")
     p_exp.set_defaults(func=cmd_export_report)
 
@@ -1160,7 +1286,14 @@ def main(argv: list[str] | None = None) -> int:
     if handler is None:
         parser.print_help()
         return 1
-    return int(handler(args))
+    try:
+        return int(handler(args))
+    except FileNotFoundError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as exc:
+        print(f"Invalid JSON in diagnosis snapshot: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

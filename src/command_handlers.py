@@ -31,6 +31,7 @@ from typing import Any
 
 from .core.jsonl import append_jsonl as append_jsonl_core
 from .core.models import registry_with_parsed
+from .core.windows_cli import exit_code_if_not_windows
 from .core.time_utils import utc_now_iso
 from .decision_engine.explanations import primary_explanation_paragraph
 from .decision_engine.live_scoring import ranked_dicts, score_live_snapshot
@@ -58,6 +59,16 @@ from .proxy_guard.snapshot_capture import load_lkg_snapshot
 from .proxy_guard.service import run_proxy_guard_service
 from .proxy_guard.remediation import CONFIRMATION_PHRASE, build_user_proxy_disable_mutations
 from .proxy_guard.watcher import monitor_proxy_registry
+from .network_state.event_log import (
+    correlation_key as v2_correlation_key,
+    incident_id_from_proxy as v2_incident_id_from_proxy,
+    log_attribution as v2_log_attribution,
+    log_snapshot as v2_log_snapshot,
+    log_repair_attempt as v2_log_repair_attempt,
+    log_verification as v2_log_verification,
+    parse_proxy as v2_parse_observed_proxy,
+    update_or_write_incident_summary as v2_update_incident_summary,
+)
 from .network_state.snapshot_store import resolve_named_snapshot
 from .proxy_guard.known_good_store import get_latest_named_record, snapshot_from_record
 from .proxy_guard.models import ProxySnapshot
@@ -74,6 +85,15 @@ from .repair.executor import apply_mutations, apply_reg_argv_sequences
 from .repair.policy import assert_no_firewall_reset_in_preview
 from .repair.preview import summarize_mutations_plaintext
 from .version import SCRIPT_VERSION
+
+
+_V2_REL_INCIDENT_HELP = [
+    "Identify process listening on the loopback proxy port",
+    "Check startup entries",
+    "Check scheduled tasks",
+    "Check browser/VPN/proxy tools",
+    "Monitor registry value changes over time",
+]
 
 
 def _repo_root(cli: Path | None) -> Path:
@@ -110,6 +130,8 @@ def cmd_proxy_diagnose(args: argparse.Namespace) -> int:
     Returns:
         Shell exit ``0``.
     """
+    if (code := exit_code_if_not_windows("proxy-diagnose")) is not None:
+        return code
     run = subprocess.run
     repo = _repo_root(getattr(args, "repo_root", None))
     reg = read_proxy_registry(run=run)
@@ -168,6 +190,8 @@ def cmd_proxy_diagnose(args: argparse.Namespace) -> int:
 
 def cmd_proxy_attribution(args: argparse.Namespace) -> int:
     """Print structured localhost proxy listener attribution JSON or human-readable rows."""
+    if (code := exit_code_if_not_windows("proxy-attribution")) is not None:
+        return code
     run = subprocess.run
     reg = read_proxy_registry(run=run)
     parsed = parse_proxy_server(reg.proxy_server)
@@ -205,9 +229,8 @@ def cmd_proxy_rollback(args: argparse.Namespace) -> int:
     from_snapshot = getattr(args, "rollback_from_snapshot", None)
 
     if from_snapshot:
-        if platform.system() != "Windows":
-            print("proxy-rollback (--from-snapshot) requires Windows.", file=sys.stderr)
-            return 2
+        if (code := exit_code_if_not_windows("proxy-rollback (--from-snapshot)")) is not None:
+            return code
         snap_path_fs = Path(str(from_snapshot)).expanduser().resolve()
         if not snap_path_fs.is_file():
             print(f"Snapshot file not found: {snap_path_fs}", file=sys.stderr)
@@ -244,6 +267,9 @@ def cmd_proxy_rollback(args: argparse.Namespace) -> int:
         )
         print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
         return 0 if result.get("success") else 1
+
+    if (code := exit_code_if_not_windows("proxy-rollback (--snapshot-id)")) is not None:
+        return code
 
     snap_path = repo / "logs" / "proxy_snapshots.jsonl"
     snapshot_id = str(getattr(args, "snapshot_id", "") or "").strip()
@@ -310,6 +336,8 @@ def cmd_proxy_status(args: argparse.Namespace) -> int:
     Returns:
         Process exit code ``0``.
     """
+    if (code := exit_code_if_not_windows("proxy-status")) is not None:
+        return code
     reg = read_proxy_registry()
     parsed = parse_proxy_server(reg.proxy_server)
     merged = registry_with_parsed(reg, parsed)
@@ -343,6 +371,8 @@ def cmd_proxy_owner(args: argparse.Namespace) -> int:
     Side effects:
         Executes ``netstat``, ``tasklist``, and PowerShell CIM enrichment on Windows.
     """
+    if (code := exit_code_if_not_windows("proxy-owner")) is not None:
+        return code
     run = subprocess.run
     port: int | None = args.port
     if port is None:
@@ -395,9 +425,8 @@ def cmd_proxy_watch(args: argparse.Namespace) -> int:
         Missing evidence CSV paths log to stderr and continue with zero boost.
     """
 
-    if platform.system() != "Windows":
-        print("proxy-watch requires Windows.", file=sys.stderr)
-        return 2
+    if (code := exit_code_if_not_windows("proxy-watch")) is not None:
+        return code
     repo = _repo_root(getattr(args, "repo_root", None))
     eb = 0.0
     csv_arg = getattr(args, "proxy_watch_evidence_csv", None)
@@ -497,6 +526,8 @@ def cmd_proxy_monitor(args: argparse.Namespace) -> int:
     Audit Notes:
         Review ``--jsonl`` target for append growth; correlates with ``proxy_guard`` events.
     """
+    if (code := exit_code_if_not_windows("proxy-monitor")) is not None:
+        return code
     jsonl = Path(args.jsonl) if getattr(args, "jsonl", None) else None
     interval = max(1.0, float(getattr(args, "interval", 5.0)))
 
@@ -528,9 +559,8 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
     Returns:
         ``0`` on normal loop exit, ``2`` when the platform or policy file is unusable.
     """
-    if platform.system() != "Windows":
-        print("proxy-guard is supported on Windows only.", file=sys.stderr)
-        return 2
+    if (code := exit_code_if_not_windows("proxy-guard")) is not None:
+        return code
     repo = _repo_root(getattr(args, "repo_root", None))
     reports_dir = repo / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -626,6 +656,8 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         Recovery: verify keys via ``proxy-status``; rollback via ``proxy-rollback``; software may
         reapply proxy policy afterward.
     """
+    if (code := exit_code_if_not_windows("proxy-disable")) is not None:
+        return code
     repo = _repo_root(args.repo_root)
     run = subprocess.run
     logs_dir = repo / "logs"
@@ -689,6 +721,91 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
     }
     append_jsonl_core(repo / "logs" / "repair_audit.jsonl", audit)
 
+    # Reliability events (schema 2.0) alongside v1 repair_audit
+    observed_pre = dict(capture_pre.values)
+    proxy_s_raw = observed_pre.get("ProxyServer")
+    proxy_s = proxy_s_raw if isinstance(proxy_s_raw, str) else ""
+    incident = v2_incident_id_from_proxy(proxy_s if proxy_s else None)
+    corr = v2_correlation_key(proxy_s if proxy_s else None)
+    snapshot_eid = v2_log_snapshot(
+        repo,
+        observed=observed_pre,
+        incident_id=incident,
+        correlation_key_val=corr,
+    )
+
+    repair_primary_eid = ""
+    for mutation, res in zip(mutations, results):
+        argv_list = list(mutation.argv)
+        action_type = "disable_wininet_hkcu_proxy"
+        if argv_list[:2] == ["reg", "delete"]:
+            action_type = "delete_wininet_proxyserver_value"
+        rd = {
+            "exit_code": res.returncode,
+            "stdout": res.stdout[:4000] if res.stdout else "",
+            "stderr": res.stderr[:4000] if res.stderr else "",
+            "command_success": res.returncode == 0,
+        }
+        rid = v2_log_repair_attempt(
+            repo,
+            snapshot_event_id=snapshot_eid,
+            incident_id=incident,
+            correlation_key_val=corr,
+            mutation_argv=argv_list,
+            result=rd,
+            action_type=action_type,
+        )
+        if not repair_primary_eid:
+            repair_primary_eid = rid
+
+    if not repair_primary_eid:
+        repair_primary_eid = snapshot_eid
+
+    obs_verif = {
+        "ProxyEnable": reg_after.proxy_enable,
+        "ProxyServer": reg_after.proxy_server,
+    }
+    v2_log_verification(
+        repo,
+        repair_event_id=repair_primary_eid,
+        incident_id=incident,
+        correlation_key_val=corr,
+        expected={"ProxyEnable": verification.expected_proxy_enable},
+        observed=dict(obs_verif),
+        ok=verification.ok,
+        interpretation=verification.detail,
+        confidence=(0.99 if verification.ok else 0.4),
+    )
+
+    parsed_prev = v2_parse_observed_proxy(observed_pre)
+    uniq_ports: list[int] = []
+    if isinstance(parsed_prev.get("localhost_port"), int):
+        uniq_ports.append(parsed_prev["localhost_port"])
+
+    v2_update_incident_summary(
+        repo,
+        incident_id=incident,
+        correlation_key_val=corr,
+        symptom={
+            "proxy_server": proxy_s or observed_pre.get("ProxyServer"),
+            "proxy_mode": parsed_prev.get("proxy_mode"),
+            # Drift summaries set this True when drift_detected rows exist for the incident.
+            "proxy_reenabled_repeatedly": False,
+        },
+        counters_patch={
+            "repair_attempts": len(results),
+            "successful_repairs": (1 if verification.ok else 0),
+            "unique_ports": uniq_ports,
+        },
+        assessment={
+            "repair_effectiveness": ("temporary_success" if verification.ok else "failed_verify"),
+            "root_cause_status": "unknown",
+            "likely_category": "pending_investigation",
+            "confidence": (0.75 if verification.ok else 0.35),
+        },
+        recommended_next_actions=list(_V2_REL_INCIDENT_HELP),
+    )
+
     print("Applied mutations; see logs\\repair_audit.jsonl for snapshot + verification.")
 
     if not verification.ok:
@@ -710,6 +827,8 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
     Side effects:
         Writes under ``reports/snapshots/`` and appends one JSONL line.
     """
+    if (code := exit_code_if_not_windows("snapshot")) is not None:
+        return code
     repo = _repo_root(args.repo_root)
     snapshot, cmds = build_live_network_snapshot(run=subprocess.run)
     snap_dir = repo / "reports" / "snapshots"
@@ -748,6 +867,8 @@ def cmd_diagnose_live(args: argparse.Namespace) -> int:
     Audit Notes:
         Compare ``hypotheses_ranked`` with ``live_snapshot_ref`` file for evidence drill-down.
     """
+    if (code := exit_code_if_not_windows("diagnose-live")) is not None:
+        return code
     repo = _repo_root(args.repo_root)
     snapshot, cmds = build_live_network_snapshot(run=subprocess.run)
     ranked = score_live_snapshot(snapshot)
@@ -837,7 +958,10 @@ def _read_live_or_legacy(repo: Path) -> tuple[dict[str, Any], str]:
         return json.loads(live.read_text(encoding="utf-8")), "live"
     if legacy.is_file():
         return json.loads(legacy.read_text(encoding="utf-8")), "legacy"
-    raise FileNotFoundError("No last_diagnosis_live.json or last_diagnosis.json — run diagnose-live or diagnose.")
+    raise FileNotFoundError(
+        "No reports/last_diagnosis_live.json or reports/last_diagnosis.json - "
+        "run `python -m src diagnose-live` or `python -m src diagnose` first."
+    )
 
 
 def _normalize_recommendations_blob(payload: dict[str, Any]) -> dict[str, Any]:
@@ -890,6 +1014,8 @@ def cmd_repair_apply(args: argparse.Namespace) -> int:
     Audit Notes:
         Skips launching when ``action_key`` is ``proxy_disable``—operators must run ``proxy-disable``.
     """
+    if (code := exit_code_if_not_windows("repair-apply")) is not None:
+        return code
     repo = _repo_root(args.repo_root)
     payload, source = _read_live_or_legacy(repo)
     blob = _normalize_recommendations_blob(payload)

@@ -54,6 +54,7 @@ from typing import Any
 import subprocess
 
 from ..core.time_utils import utc_now_iso
+from ..network_state import event_log as reliability_v2
 from .audit import emit_proxy_change_detected_audit
 from .change_attribution import attribute_proxy_change
 from .process_inventory import capture_process_inventory
@@ -201,6 +202,144 @@ def _print_human_banner(
     print("\n".join(msg), file=sys.stderr)
 
 
+def _emit_v2_watch_events(
+    repo_root: Path,
+    *,
+    diff: dict[str, Any],
+    attribution: dict[str, Any],
+) -> None:
+    """Append reliability v2 drift/attribution rows (best-effort; never raises to callers).
+
+    Implements policy: listener evidence correlates processes to ports—it does **not**
+    prove registry-authorship absent separate registry-write forensic evidence.
+    """
+
+    try:
+        before_f = diff.get("before") or {}
+        after_f = diff.get("after") or {}
+        pe_before = before_f.get("proxy_enable")
+        pe_after = after_f.get("proxy_enable")
+
+        srv_raw = after_f.get("proxy_server")
+        srv = srv_raw.strip() if isinstance(srv_raw, str) else (str(srv_raw) if srv_raw is not None else "")
+        normalized_after = {
+            "ProxyEnable": pe_after,
+            "ProxyServer": after_f.get("proxy_server"),
+            "AutoConfigURL": after_f.get("auto_config_url"),
+            "AutoDetect": after_f.get("auto_detect"),
+            "ProxyOverride": after_f.get("proxy_override"),
+        }
+        parsed_after = reliability_v2.parse_proxy(normalized_after)
+
+        hypothesis_s = str(parsed_after.get("proxy_mode") or "manual_localhost")
+
+        host = str(parsed_after.get("localhost_host") or "127.0.0.1")
+        port_hint = parsed_after.get("localhost_port")
+        corr = reliability_v2.correlation_key(srv if srv else None)
+        incident = reliability_v2.incident_id_from_proxy(srv if srv else None)
+
+        suspect = attribution.get("primary_suspect") if isinstance(attribution, dict) else None
+        pid_i: int | None = None
+        proc_name_s: str | None = None
+        proc_path: str | None = None
+        cmdline: str | None = None
+        if isinstance(suspect, dict):
+            pid_any = suspect.get("pid")
+            try:
+                pid_i = int(pid_any) if pid_any is not None else None
+            except (TypeError, ValueError):
+                pid_i = None
+            proc_name_s = str(suspect.get("name") or suspect.get("process_name") or "") or None
+            if suspect.get("exe"):
+                proc_path = str(suspect.get("exe"))
+            cli = suspect.get("command_line")
+            if isinstance(cli, str):
+                cmdline = cli
+
+        if isinstance(port_hint, int):
+            evt_conf = attribution.get("confidence") if isinstance(attribution, dict) else None
+            conf_f = 0.55
+            if isinstance(evt_conf, (float, int)):
+                conf_f = float(evt_conf)
+            elif evt_conf is not None:
+                try:
+                    conf_f = float(str(evt_conf))
+                except ValueError:
+                    conf_f = 0.55
+            limits = [
+                "Listener attribution shows which process held the inferred proxy port.",
+                "It does not prove that process authored the HKCU ProxyEnable change without registry-write forensic evidence.",
+            ]
+            evid = {
+                "listener_found": pid_i is not None,
+                "pid": pid_i,
+                "process_name": proc_name_s,
+                "process_path": proc_path,
+                "command_line": cmdline,
+                "startup_match": None,
+                "scheduled_task_match": None,
+            }
+            reliability_v2.log_attribution(
+                repo_root,
+                incident_id=incident,
+                correlation_key_val=corr,
+                target={"host": host, "port": port_hint},
+                evidence=evid,
+                hypothesis=hypothesis_s,
+                confidence=conf_f,
+                limits=limits,
+            )
+
+        if pe_before == 0 and pe_after == 1:
+            rc = reliability_v2.count_drift_events(repo_root, corr, "proxy_reenabled") + 1
+            reliability_v2.log_drift(
+                repo_root,
+                drift_type="proxy_reenabled",
+                incident_id=incident,
+                correlation_key_val=corr,
+                previous_known_good={"ProxyEnable": 0},
+                current={
+                    "ProxyEnable": pe_after,
+                    "ProxyServer": after_f.get("proxy_server"),
+                },
+                repeat_count=rc,
+                confidence=0.95,
+                interpretation=(
+                    "WinINET proxy was re-enabled after ProxyEnable indicated disabled. "
+                    "Repair appears temporary—look for startup items, VPN/corporate policy, browser extensions, "
+                    "or tooling that rewrites HKCU proxy keys."
+                ),
+            )
+            reliability_v2.update_or_write_incident_summary(
+                repo_root,
+                incident_id=incident,
+                correlation_key_val=corr,
+                symptom={
+                    "proxy_server": srv or after_f.get("proxy_server"),
+                    "proxy_mode": parsed_after.get("proxy_mode"),
+                    "proxy_reenabled_repeatedly": True,
+                },
+                counters_patch={"drift_events": 1, "unique_ports": [parsed_after["localhost_port"]]}
+                if isinstance(parsed_after.get("localhost_port"), int)
+                else {"drift_events": 1},
+                assessment={
+                    "repair_effectiveness": "temporary_success",
+                    "root_cause_status": "unknown",
+                    "likely_category": "external_reapply_mechanism",
+                    "confidence": 0.9,
+                },
+                recommended_next_actions=[
+                    "Identify process listening on the loopback proxy port",
+                    "Check startup entries",
+                    "Check scheduled tasks",
+                    "Check browser/VPN/proxy tools",
+                    "Monitor registry value changes over time",
+                ],
+            )
+    except Exception:
+        return
+
+
 def run_proxy_watch_loop(
     *,
     repo_root: Path,
@@ -268,6 +407,7 @@ def run_proxy_watch_loop(
                     attribution=attribution,
                     decision=decision,
                 )
+                _emit_v2_watch_events(repo_root, diff=diff, attribution=attribution)
                 _print_human_banner(diff=diff, attribution=attribution, decision=decision)
 
                 if bool(policy.get("auto_rollback")):
