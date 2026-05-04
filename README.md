@@ -248,6 +248,7 @@ pytest -q
 Strategy: [`docs/test_strategy.md`](docs/test_strategy.md).
 
 ---
+<<<<<<< HEAD
 
 ## Repository hygiene
 
@@ -259,3 +260,15 @@ Huge working trees usually mean **`node_modules`**, **`.venv`**, **`.next`**, **
 
 MIT — see [LICENSE](LICENSE).
 
+=======
+
+## Repository hygiene
+
+Huge working trees usually mean **`node_modules`**, **`.venv`**, **`.next`**, **logs/reports JSONL**, and similar—not authored source. See **[`docs/repository_hygiene.md`](docs/repository_hygiene.md)** and run `python tools/repo_size_audit.py --top 30` before `python tools/cleanup_generated.py` (dry-run by default).
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+>>>>>>> 2609f55ada5543cab47f6014e609bd664d09eb54
