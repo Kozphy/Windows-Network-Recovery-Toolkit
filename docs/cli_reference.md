@@ -14,15 +14,68 @@ Centralizes copy/paste commands referenced by the root [`README.md`](../README.m
 ## Audit notes for reviewers
 
 - Proxy attribution CLIs record honest telemetry tiers—correlate CLI JSON with append-only logs under **`logs/`** and **`platform_data/`** when demonstrating decisions.
+- Reliability **`schema_version: "2.0"`** events under **`logs/snapshots.jsonl`**, **`repairs.jsonl`**, **`verifications.jsonl`**, **`drifts.jsonl`**, **`attribution.jsonl`**, **`incidents.jsonl`** complement legacy rows; see [`event_model_v2.md`](event_model_v2.md).
 - CI executes **`pytest`** only; destructive Windows batch files are **not** invoked by automated tests (see [`test_strategy.md`](test_strategy.md)).
+
+## `python -m src` global option
+
+Put **`--repo-root`** **before** the subcommand (argparse parses it on the root parser):
+
+```powershell
+python -m src --repo-root D:\checkout diagnose
+```
+
+Wrong: ~~`python -m src diagnose --repo-root D:\checkout`~~ (unrecognized).
+
+## `python -m src` platform and prerequisites
+
+Implementation reference: **`exit_code_if_not_windows`** / **`platform.system()`** in [`src/command_handlers.py`](../src/command_handlers.py), [`src/cli.py`](../src/cli.py), [`src/network_state/cli_handlers.py`](../src/network_state/cli_handlers.py), [`src/proxy_guard/proxy_snapshot_commands.py`](../src/proxy_guard/proxy_snapshot_commands.py).
+
+| Subcommand | OS | Prerequisites / notes |
+|------------|---:|-----------------------|
+| **diagnose** | **Windows**, unless **`--fixture <features.json>`** | Without fixture uses `reg`, netsh, PowerShell probes. Fixture mode is CI/off-Windows friendly. |
+| **explain** | Any | **`reports/last_diagnosis.json`** from **`diagnose`**. Or **`--live`** + **`reports/last_diagnosis_live.json`** from **`diagnose-live`**. |
+| **recommend** | Any | Same as **explain**. |
+| **repair-safe** | Preview: any (**needs artifacts** below). **`--apply`**: **Windows only** | Default: **`last_diagnosis.json`**. **`--live`**: **`last_diagnosis_live.json`**. |
+| **repair-preview** | Any | Loads **`last_diagnosis_live.json`** if present, else **`last_diagnosis.json`** (**`diagnose-live`** / **`diagnose`**). |
+| **repair-apply** | **Windows** | Same artifact rule as **repair-preview**. May elevate via PowerShell (`Start-Process -Verb RunAs`). |
+| **feedback** | Any | Writes **`logs/decision_feedback.jsonl`**. |
+| **export-report** | Any | **`last_diagnosis.json`**, or **`--live`** + **`last_diagnosis_live.json`**. |
+| **diagnose-live** | **Windows** | Live snapshot + v2 hypotheses; writes **`reports/last_diagnosis_live.json`**. |
+| **snapshot** | **Windows** | Full **`LiveNetworkSnapshot`** under **`reports/snapshots/`**. |
+| **proxy-status**, **proxy-owner**, **proxy-monitor**, **proxy-watch**, **proxy-guard**, **proxy-diagnose**, **proxy-attribution**, **proxy-disable** | **Windows** | HKCU WinINET / `reg` / netstat-style probes. (**`proxy-guard`** is guarded before **`--show-lkg`** too.) |
+| **proxy-report** | Any | Reads **`logs/proxy_guard.jsonl`** under repo root. |
+| **proxy-rollback** | **Windows** | **`--snapshot-id`** or **`--from-snapshot`** per help; typed confirm for destructive paths. |
+| **proxy-snapshot save**, **diff**, **restore** | **Windows** | Live capture/compare/restore of allowlisted surfaces. |
+| **proxy-snapshot list**, **show** | Any | Read **`logs/proxy_known_good_snapshots.jsonl`** (and related paths). |
+| **network-state snapshot save** | **Windows** | Live capture path. |
+| **network-state snapshot list**, **show**, **set-default** | Any | Baseline metadata / JSONL only. |
+| **network-state diff** | **Windows** | Compares live machine to saved profile. |
+| **network-state report** | Any (see notes) | Aggregates JSONL events; **`drift_vs_default`** may be **`capture_unavailable`** if **`capture_proxy_snapshot`** fails off-Windows. |
+| **network-state restore** | **Windows** | Gated confirmations; previews without live apply unless confirm phrase matches. |
+| **network-state evidence import** | Any | Appends **`logs/network_state_evidence.jsonl`** from CSV. |
+
+**Exit semantics (typical):** non-Windows guarded commands exit **`2`** with a stderr line; missing diagnosis files exit **`1`** or raise a handled **`FileNotFoundError`** (**`explain`/`recommend`/`repair-safe`/`export-report`** print a hint).
 
 ## Decision engine (`python -m src`)
 
 ```powershell
 cd <repo-root>
 python -m src diagnose
+python -m src diagnose --fixture path\to\features.json
+python -m src diagnose-live
+python -m src snapshot
 python -m src explain
+python -m src explain --live
 python -m src recommend
+python -m src recommend --live
+python -m src repair-safe
+python -m src repair-safe --live
+python -m src repair-preview
+python -m src repair-apply
+python -m src export-report
+python -m src export-report --live
+python -m src feedback --diagnosis-id <id> --recommended-action <what> --user-feedback-fixed <true|false|unknown>
 ```
 
 ## Proxy observability and WinINET
