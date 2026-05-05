@@ -40,6 +40,10 @@ class RuleEngine:
 
         Engineering Notes:
             Confidence literals are static weights tuned for readability, not calibrated ML scores.
+
+        Audit Notes:
+            The healthy ``baseline_ok`` rule is intentionally low confidence and may co-exist with
+            other hypotheses; downstream consumers should inspect top-N outcomes, not only one row.
         """
         rules: list[RuleOutcome] = []
 

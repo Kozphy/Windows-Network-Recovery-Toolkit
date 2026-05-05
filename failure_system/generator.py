@@ -31,6 +31,7 @@ from failure_system.safety import DEFAULT_SAFETY_BOUNDARY, escalate_if_destructi
 
 
 def _risk_for_rule(top: RuleOutcome | None) -> RiskLevel:
+    """Map a primary rule id to a baseline risk tier before fix-text escalation."""
     if top is None:
         return RiskLevel.LOW
     rid = top.rule_id
@@ -48,6 +49,7 @@ def _risk_for_rule(top: RuleOutcome | None) -> RiskLevel:
 
 
 def _symptom_from_rules(snapshot: DiagnosticSnapshot, top: RuleOutcome | None) -> str:
+    """Compose a short symptom sentence from probe booleans and top rule context."""
     if top is None:
         return "Network behavior unclear from current probes."
     parts: list[str] = []
@@ -65,12 +67,14 @@ def _symptom_from_rules(snapshot: DiagnosticSnapshot, top: RuleOutcome | None) -
 
 
 def _name_from_top(top: RuleOutcome | None) -> str:
+    """Derive a compact FailureBlock title from the top rule cause."""
     if top is None:
         return "Undifferentiated network symptom"
     return top.cause[:120]
 
 
 def _recommended_fix(top: RuleOutcome | None, snapshot: DiagnosticSnapshot) -> str:
+    """Select conservative remediation guidance text for the primary rule."""
     if top is None:
         return (
             "Re-run diagnostics; consult toolkit scripts/README for targeted resets only after manual review."
@@ -102,6 +106,7 @@ def _recommended_fix(top: RuleOutcome | None, snapshot: DiagnosticSnapshot) -> s
 
 
 def _rollback(top: RuleOutcome | None) -> str:
+    """Describe rollback expectations for the suggested guidance path."""
     if top and top.rule_id == "dns_failure_likely":
         return (
             "Note prior DNS server list; restore static DNS if changed; resolver cache repopulates automatically."
@@ -118,6 +123,7 @@ def _rollback(top: RuleOutcome | None) -> str:
 
 
 def _observed_signals(snapshot: DiagnosticSnapshot) -> list[str]:
+    """Serialize booleans into stable ``key=value`` signal strings."""
     return [
         f"ping_ip={'ok' if snapshot.ping_ip_ok else 'fail'}",
         f"nslookup={'ok' if snapshot.nslookup_ok else 'fail'}",

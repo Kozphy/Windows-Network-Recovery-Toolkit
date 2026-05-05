@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from failure_system.api import create_app
+from failure_system.cli import main as failure_cli_main
 from failure_system.collector import DiagnosticSnapshot
 from failure_system.generator import build_failure_block
 from failure_system.models import DiagnosticCommandResult, FailureBlock, RiskLevel, RuleOutcome
@@ -148,3 +149,111 @@ def test_api_health_and_diagnose(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     line = shard.read_text(encoding="utf-8").strip().splitlines()[-1]
     obj = json.loads(line)
     assert obj["symptom"]
+
+
+def _cli_fixture_snapshot() -> DiagnosticSnapshot:
+    return DiagnosticSnapshot(
+        ping_ip_ok=True,
+        nslookup_ok=True,
+        curl_https_ok=True,
+        winhttp_direct=True,
+        proxy_server_line_present=False,
+        intermittent_reported=False,
+        raw={
+            "ping_8_8_8_8": DiagnosticCommandResult(
+                command=["ping"], exit_code=0, stdout="Reply from 8.8.8.8", ok=True
+            ),
+            "curl_example_com": DiagnosticCommandResult(
+                command=["curl"],
+                exit_code=0,
+                stdout="<html><body>Example Domain</body></html>",
+                ok=True,
+            ),
+            "ipconfig_all": DiagnosticCommandResult(command=["ipconfig"], exit_code=0, stdout="Windows IP Configuration", ok=True),
+        },
+    )
+
+
+def test_cli_diagnose_default_human_output(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import failure_system.cli as cli_mod
+
+    monkeypatch.setenv("FAILURE_SYSTEM_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(cli_mod, "collect_diagnostics", lambda **_: _cli_fixture_snapshot())
+
+    rc = failure_cli_main(["diagnose"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Diagnosis Summary" in out
+    assert "Observed Signals" in out
+    assert "Recommended Action" in out
+    assert "ipconfig_all" not in out
+    assert "<html>" not in out
+
+
+def test_cli_diagnose_json_output(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import failure_system.cli as cli_mod
+
+    monkeypatch.setenv("FAILURE_SYSTEM_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(cli_mod, "collect_diagnostics", lambda **_: _cli_fixture_snapshot())
+
+    rc = failure_cli_main(["diagnose", "--json"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert "diagnostic_commands" in payload["failure_block"]
+    assert "rule_outcomes" in payload
+    assert "safety_boundary" in payload["failure_block"]
+    assert "source_logs" in payload["failure_block"]
+
+
+def test_cli_diagnose_markdown_output(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import failure_system.cli as cli_mod
+
+    monkeypatch.setenv("FAILURE_SYSTEM_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(cli_mod, "collect_diagnostics", lambda **_: _cli_fixture_snapshot())
+
+    rc = failure_cli_main(["diagnose", "--markdown"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "## Diagnosis Result" in out
+    assert "| Field | Value |" in out
+    assert "### Observed Signals" in out
+    assert "### Recommended Action" in out
+
+
+def test_cli_diagnose_verbose_output(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import failure_system.cli as cli_mod
+
+    monkeypatch.setenv("FAILURE_SYSTEM_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(cli_mod, "collect_diagnostics", lambda **_: _cli_fixture_snapshot())
+
+    rc = failure_cli_main(["diagnose", "--verbose"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "Diagnosis Summary" in out
+    assert "Raw Evidence" in out
+    assert "[ping_8_8_8_8]" in out
+    assert "Source Logs" in out
+
+
+def test_formatters_missing_field_resilience() -> None:
+    from failure_system.formatters import format_human_summary, format_markdown_report, format_verbose_report
+
+    payload = {
+        "failure_block": {"name": "Unknown"},
+        "rule_outcomes": [],
+    }
+    human = format_human_summary(payload)
+    markdown = format_markdown_report(payload)
+    verbose = format_verbose_report(payload)
+    assert "Diagnosis Summary" in human
+    assert "## Diagnosis Result" in markdown
+    assert "Raw Evidence" in verbose

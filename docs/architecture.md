@@ -24,10 +24,11 @@ Repairs are **not** on the same automatic edge as collection or scoring. The fin
 | --- | --- | --- |
 | **Signal** | Raw Windows evidence: subprocess output, registry/proxy views, routing, ports. | `src/diagnostics/`, `network_agent/collectors/`, `failure_system/collector.py`, `scripts/*.bat` |
 | **Feature** | Normalized booleans and counts (e.g. `FeatureVector`, `DiagnosticSnapshot`) for deterministic logic. | `src/diagnostics/features.py`, `failure_system/models.py` |
-| **Decision** | Deterministic rules + confidence-like scores; ranked hypotheses with explanations. | `src/decision_engine/`, `failure_system/rules.py`, `network_agent/engine/` |
+| **Decision** | Deterministic rules + confidence-like scores; ranked hypotheses with explanations. | `src/hypothesis/` (compat shims in `src/decision_engine/`), `failure_system/rules.py`, `network_agent/engine/` |
 | **Knowledge** | Typed **FailureBlock** records and append-only JSONL for audit and search. | `failure_system/generator.py`, `failure_system/storage.py`, `data/failure_blocks/` |
 | **Interface** | Operator access: `python -m src`, `python -m failure_system`, FastAPI apps, batch wrappers, optional UIs. | `src/cli.py`, `failure_system/api.py`, `scripts/`, `network_agent/api.py`, `backend/`, `frontend/` |
 | **Control** | Safety boundary: no auto-repair from FKS, typed confirmations, policy-gated repair preview/execute. | `failure_system/safety.py`, `src/repair/`, `network_agent/safety/`, batch prompts |
+| **Output contract** | Decision/evidence/markdown/debug output layers for operator UX + automation stability. | `failure_system/formatters.py`, `docs/failure_system_output_contract.md` |
 
 ## Why deterministic rules (not opaque ML) for local recommendations
 

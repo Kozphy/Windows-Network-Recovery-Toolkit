@@ -25,6 +25,7 @@ from failure_system.storage import iter_failure_blocks
 
 
 def _norm(q: str) -> str:
+    """Normalize search text to lowercase single-spaced tokens."""
     return re.sub(r"\s+", " ", q.strip().lower())
 
 

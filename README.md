@@ -320,6 +320,9 @@ python -m src diagnose
 ```powershell
 pip install -r failure_system\requirements.txt
 python -m failure_system diagnose
+python -m failure_system diagnose --json
+python -m failure_system diagnose --markdown
+python -m failure_system diagnose --verbose
 ```
 
 ### Backend + observe-only agent

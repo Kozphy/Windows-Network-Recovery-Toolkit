@@ -86,10 +86,22 @@ def create_app() -> FastAPI:
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
+        """Return API liveness metadata only (no storage touch)."""
         return HealthResponse(status="ok", version=__version__)
 
     @app.post("/diagnose", response_model=DiagnoseResponse)
     def diagnose(body: DiagnoseRequest | None = Body(default=None)) -> DiagnoseResponse:
+        """Collect snapshot, evaluate rules, append one FailureBlock, and return structured diagnosis.
+
+        Args:
+            body: Optional intermittent flag wrapper.
+
+        Returns:
+            ``DiagnoseResponse`` including persisted ``stored_path`` and explanation text.
+
+        Side effects:
+            Appends one JSONL line under the resolved data directory.
+        """
         req = body or DiagnoseRequest()
         snapshot = collect_diagnostics(intermittent_reported=req.intermittent)
         engine = RuleEngine()
@@ -119,6 +131,7 @@ def create_app() -> FastAPI:
 
     @app.get("/failure-blocks", response_model=list[FailureBlockSummary])
     def list_failure_blocks(limit: int = Query(default=100, ge=1, le=500)) -> list[FailureBlockSummary]:
+        """List newest FailureBlock summaries (metadata only) up to ``limit``."""
         data_dir = resolve_data_dir()
         blocks = list(iter_failure_blocks(data_dir))
         blocks.sort(key=lambda b: b.created_at, reverse=True)
@@ -129,6 +142,7 @@ def create_app() -> FastAPI:
         q: Annotated[str, Query(min_length=1)],
         limit: int = Query(default=25, ge=1, le=200),
     ) -> list[FailureBlock]:
+        """Search persisted blocks with token-AND matching across symptom/cause/evidence fields."""
         from failure_system.search import search_failure_blocks
 
         data_dir = resolve_data_dir()
@@ -136,6 +150,7 @@ def create_app() -> FastAPI:
 
     @app.post("/recommend-fix")
     def recommend_fix(body: RecommendFixRequest) -> dict[str, object]:
+        """Return recommendation metadata by block id or query without executing repairs."""
         data_dir = resolve_data_dir()
         if body.failure_block_id is not None:
             rec = recommend_by_id(body.failure_block_id, data_dir=data_dir)

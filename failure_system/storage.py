@@ -57,6 +57,14 @@ def _shard_path(data_dir: Path, day: date | None = None) -> Path:
 
 
 def ensure_data_dir(data_dir: Path) -> None:
+    """Create the JSONL directory tree when absent.
+
+    Args:
+        data_dir: Target folder for daily shard files.
+
+    Side effects:
+        Filesystem directory creation with ``parents=True``.
+    """
     data_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -103,7 +111,22 @@ def iter_failure_blocks(data_dir: Path | None = None) -> Iterator[FailureBlock]:
 
 
 def iter_shard(path: Path) -> Iterator[FailureBlock]:
-    """Parse ``path`` line-by-line into ``FailureBlock`` objects."""
+    """Parse one shard file line-by-line into ``FailureBlock`` objects.
+
+    Args:
+        path: Daily JSONL shard path.
+
+    Yields:
+        Validated ``FailureBlock`` rows in file order.
+
+    Raises:
+        json.JSONDecodeError: If a line is not valid JSON.
+        pydantic.ValidationError: If JSON exists but violates ``FailureBlock`` schema.
+
+    Audit Notes:
+        This strict parser surfaces malformed lines intentionally so maintenance scripts can locate
+        and repair corruption rather than silently ignoring bad evidence.
+    """
 
     with path.open(encoding="utf-8") as fh:
         for line in fh:

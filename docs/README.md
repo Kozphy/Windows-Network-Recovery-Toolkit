@@ -43,6 +43,7 @@ Reading order (~10 minutes for new engineers): root `README.md` → [`architectu
 | --- | --- |
 | [`architecture.md`](architecture.md) | End-to-end layers: signals → features → rules → FailureBlocks → JSONL → interfaces → human repair. |
 | [`failure_block_contract.md`](failure_block_contract.md) | FailureBlock field contract and safe example. |
+| [`failure_system_output_contract.md`](failure_system_output_contract.md) | CLI output-layer contract for `python -m failure_system diagnose` (human/json/markdown/verbose). |
 | [`interview_pitch.md`](interview_pitch.md) | Concise portfolio / interview framing. |
 | [`safety_model.md`](safety_model.md) | Diagnose-first rules; FKS never auto-repairs; local-only logs. |
 

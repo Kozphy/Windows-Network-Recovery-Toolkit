@@ -11,6 +11,9 @@ Exit codes:
 
 Audit Notes:
     Operators should redirect stdout when capturing evidence; stderr carries operator guidance only.
+
+See Also:
+    ``docs/failure_system_output_contract.md`` for human/json/markdown/verbose stdout guarantees.
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ from failure_system.diagram_generator import (
     snapshot_to_signal_dict,
 )
 from failure_system.explanation_text import generate_explanation_text
+from failure_system.formatters import format_human_summary, format_markdown_report, format_verbose_report
 from failure_system.generator import build_failure_block
 from failure_system.recommend import recommend_by_id, recommend_by_query
 from failure_system.rules import RuleEngine
@@ -55,13 +59,13 @@ def _data_dir_from_env() -> Path:
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
-    """Run probes, emit JSON payload to stdout, append FailureBlock shard.
+    """Run probes, append FailureBlock shard, and emit the requested output layer.
 
     Args:
         args: Parsed namespace including ``intermittent``, optional ``diagram``, ``diagram_file``.
 
     Returns:
-        Exit code ``0`` after emitting JSON or Mermaid (see ``--diagram`` behavior).
+        Exit code ``0`` after emitting one selected output mode.
 
     Raises:
         None — subprocess/tool failures are encoded inside ``DiagnosticSnapshot``.
@@ -102,6 +106,11 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     }
 
     diagram_flag = getattr(args, "diagram", False)
+    if diagram_flag and any(
+        bool(getattr(args, k, False)) for k in ("emit_json", "emit_markdown", "emit_verbose")
+    ):
+        print("--diagram cannot be combined with --json/--markdown/--verbose", file=sys.stderr)
+        return 2
     diagram_path = getattr(args, "diagram_file", None)
     want_diagram = bool(diagram_flag) or bool(diagram_path)
     mermaid: str | None = None
@@ -115,7 +124,17 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         print(mermaid or "")
         return 0
 
-    print(json.dumps(payload, indent=2))
+    if getattr(args, "emit_json", False):
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+    if getattr(args, "emit_markdown", False):
+        print(format_markdown_report(payload))
+        return 0
+    if getattr(args, "emit_verbose", False):
+        print(format_verbose_report(payload))
+        return 0
+
+    print(format_human_summary(payload))
     return 0
 
 
@@ -205,6 +224,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--diagram",
         action="store_true",
         help="Print an explainable Mermaid flowchart (flowchart TD) instead of JSON.",
+    )
+    output = d.add_mutually_exclusive_group()
+    output.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Print full machine-readable JSON evidence.",
+    )
+    output.add_argument(
+        "--markdown",
+        dest="emit_markdown",
+        action="store_true",
+        help="Print Markdown diagnosis report.",
+    )
+    output.add_argument(
+        "--verbose",
+        dest="emit_verbose",
+        action="store_true",
+        help="Print human summary plus raw diagnostic evidence.",
     )
     d.add_argument(
         "--diagram-file",
