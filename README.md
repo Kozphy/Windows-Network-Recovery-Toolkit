@@ -81,7 +81,151 @@ End-to-end mental model:
 
 Diagrams and depth: `[docs/architecture_platform.md](docs/architecture_platform.md)`, `[docs/platform_architecture.md](docs/platform_architecture.md)`.
 
+**Future multi-host / SaaS seams (interfaces only, no hosted impl):** [`docs/extension_points_multi_host_saas.md`](docs/extension_points_multi_host_saas.md).
+
 Contracts: `platform_core/platform_event_contract.py`, `platform_core/policy_engine.py`, `config/platform_policy.example.json`.
+
+---
+
+## Decision pipeline: heuristics vs proof (`python -m src`)
+
+The CLI chains **[observation](#1-observation)** → **[hypothesis / confidence](#2-hypothesis--confidence-heuristic-layer)** → **[trust & uncertainty](#3-data-trust--uncertainty)** → **[proof](#4-proof-proof-engine--targeted-read-only-checks)** (optional) → **[policy](#5-policy-allow--preview--block)** → **[audit](#6-audit--replay)**. Understanding **where guesswork stops** avoids treating ranked scores like lab-grade causality.
+
+### Heuristic vs proof (one glance)
+
+| | **Heuristic layer** | **Proof layer** |
+| --- | --- | --- |
+| **Question** | “What failure mode best matches the snapshot?” | “Does a narrow causal story hold for this path?” |
+| **Input** | Normalized probes, registry, parsed proxy, listeners… | Same context **plus** a fixed contrast procedure (e.g. HTTPS via proxy vs `--noproxy`). |
+| **Output** | Ranked hypotheses + **confidence** (0–1 rules, **not** probabilities) | `CONFIRMED` / `REJECTED` / `INCONCLUSIVE` for that check |
+| **Role** | Prioritization, copy, recommendations | Tightens **policy** when the engine can run (`diagnose --proof`, `diagnose-live --proofs`) |
+
+Heuristic confidence can be **high** while proof stays **UNPROVEN** if you did not run the Proof Engine. Proof **CONFIRMED** still **does not** auto-run repairs—**policy** only moves the gate to **ALLOW** for safe-tier paths; operators confirm at execute boundaries.
+
+### 1. Observation
+
+**What:** Immutable snapshot of what was measured—pings, DNS-style checks, TCP/HTTPS probes, WinINET/WinHTTP proxy text, listener attribution, etc.
+
+**Code concept:** `LiveNetworkSnapshot` / `FeatureVector` (see [`docs/decision_engine_v2.md`](docs/decision_engine_v2.md)).
+
+### 2. Hypothesis + confidence (heuristic layer)
+
+**What:** Deterministic rules map signals to named hypotheses (e.g. proxy path, DNS-only, TLS path) and produce **confidence** scores with evidence bullets.
+
+**Important:** Confidence is an **ordinal-style weight** for ranking and narrative—it is **not** a calibrated P(failure).
+
+### 3. Data trust & uncertainty
+
+Trust aggregates, conflicts, and “degraded mode” can **cap** an otherwise strong story (e.g. downgrades **ALLOW → PREVIEW**) when signals disagree or the proof layer fails—see `uncertainty` in live JSON and [`docs/decision_engine_v2.md`](docs/decision_engine_v2.md).
+
+### 4. Proof (Proof Engine, targeted read-only checks)
+
+**What:** Optional **read-only** contrasts (e.g. localhost-proxy HTTPS: `curl` **with** proxy vs **without** via `--noproxy`), producing a structured **ProofResult** attached to the run.
+
+**CLI:** `python -m src diagnose --proof` or `python -m src diagnose-live --proofs`.  
+Standalone probe: `python -m src proof-localhost-https`.
+
+### 5. Policy (ALLOW / PREVIEW / BLOCK)
+
+**What:** Maps **confidence + proof outcome + trust** to operator-facing gates. Example: **CONFIRMED** proof for an in-scope hypothesis → **ALLOW** (safe-tier only; no silent destructive work). Unproven high confidence → **PREVIEW**.
+
+### 6. Audit & replay
+
+**What:** Append-only rows (e.g. `logs/decision_runs.jsonl` with embedded **observations**) so you can re-score later without re-probing: `python -m src replay RUN_ID`.
+
+---
+
+### Flow (end-to-end)
+
+```mermaid
+flowchart LR
+  subgraph obs [Observation]
+    O[Probes + registry + listeners]
+  end
+  subgraph heur [Heuristic]
+    H[Hypotheses + confidence]
+  end
+  subgraph pr [Proof optional]
+    P[Contrast checks]
+  end
+  subgraph pol [Policy]
+    G[ALLOW / PREVIEW / BLOCK]
+  end
+  subgraph aud [Audit]
+    A[JSONL + replay]
+  end
+  O --> H
+  H --> P
+  P --> G
+  H --> G
+  G --> A
+```
+
+_Rectangle **H** runs for every scored run; **P** runs only when you enable proofs; **G** consumes both._
+
+---
+
+### Worked example (signals → hypothesis → proof → decision)
+
+Summary path:
+
+`ping OK · DNS OK · HTTPS fail · proxy detected` → **hypothesis:** proxy / browser-proxy path (high confidence heuristic) → **proof:** HTTPS **bypass** succeeds (proxy contrast) → **`CONFIRMED`** → **policy decision:** **`ALLOW`** (safe-tier only; manual confirm still required).
+
+**Observed signals**
+
+- Ping to a public IP: **OK**
+- DNS resolution (e.g. nslookup-style): **OK**
+- App-layer HTTPS (e.g. curl HTTPS): **fail**
+- User/system **proxy detected** (WinINET/WinHTTP consistent with routing through a proxy)
+
+**Heuristic read**
+
+- **Hypothesis:** a **proxy / browser–proxy path** story fits best (transport and DNS look fine; HTTPS fails while proxy is in play).  
+  In v2 live scoring you may see keys such as `browser_proxy_path_issue` or `unexpected_user_proxy` depending on the full snapshot; v1 buckets include a **`proxy_issue`**-style cause.
+
+**Proof (when you run the Proof Engine)**
+
+- **Check:** same HTTPS URL **through the configured proxy** vs **bypassing proxy** (`--noproxy '*'`).
+- **Outcome:** **Bypass succeeds** while the proxied path shows the failure mode the engine tests for → causal contrast supports “localhost/manual proxy path is materially involved.”  
+- **Proof status:** **`CONFIRMED`** (for that proof’s hypothesis scope—see payload `hypothesis_decisions[]`).
+
+**Policy decision**
+
+- **Decision:** **`CONFIRMED`** + in-scope hypothesis → **`ALLOW`** for **safe-tier** remediation previews only—**still** confirm before any script that changes state; destructive paths stay manual/off-CLI.
+
+**Audit**
+
+- The run is written with **embedded observations** so `python -m src replay RUN_ID` (same value as `diagnosis_id`) recomputes scores and compares them to what was stored.
+
+```mermaid
+sequenceDiagram
+  participant Obs as Observation
+  participant Hyp as Hypothesis ranker
+  participant Pr as Proof Engine
+  participant Pol as Policy
+  participant Aud as Audit JSONL
+
+  Obs->>Hyp: ping OK, DNS OK, HTTPS fail, proxy on
+  Hyp->>Hyp: confidence high for proxy path hypothesis
+  Obs->>Pr: optional HTTPS contrast proxy vs bypass
+  Pr->>Pol: CONFIRMED
+  Hyp->>Pol: confidence + evidence
+  Pol->>Pol: ALLOW safe-tier lane
+  Pol->>Aud: hypothesis_decisions + observations row
+```
+
+---
+
+### CLI quick refs
+
+| Intent | Command |
+| --- | --- |
+| Live diagnose + hypotheses + policy rows | `python -m src diagnose --live` or `python -m src diagnose-live` |
+| Above + Proof Engine | `python -m src diagnose --proof` or `python -m src diagnose-live --proofs` |
+| Replay a recorded run | `python -m src replay <run_id>` |
+| Tiered repair **preview** (no execution) | `python -m src preview` |
+
+Deeper contract: [`docs/decision_engine_v2.md`](docs/decision_engine_v2.md).
 
 ---
 
@@ -262,16 +406,6 @@ Strategy: `[docs/test_strategy.md](docs/test_strategy.md)`.
 ## Repository hygiene
 
 Huge working trees usually mean `**node_modules`**, `**.venv**`, `**.next**`, **logs/reports JSONL**, and similar—not authored source. See `**[docs/repository_hygiene.md](docs/repository_hygiene.md)`** and run `python tools/repo_size_audit.py --top 30` before `python tools/cleanup_generated.py` (dry-run by default).
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
-## Repository hygiene
-
-Huge working trees usually mean `**node_modules**`, `**.venv**`, `**.next**`, **logs/reports JSONL**, and similar—not authored source. See `**[docs/repository_hygiene.md](docs/repository_hygiene.md)`** and run `python tools/repo_size_audit.py --top 30` before `python tools/cleanup_generated.py` (dry-run by default).
 
 ---
 

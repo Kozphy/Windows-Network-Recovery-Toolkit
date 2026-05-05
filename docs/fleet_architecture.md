@@ -2,6 +2,8 @@
 
 This document describes an optional **fleet deployment**: lightweight Windows **agents** retain all **local safety-first** behavior (deterministic policy, default deny, **no destructive automation** beyond today’s explicitly scoped, opt-in rollback); a **central FastAPI** service ingests **audit/operational events**, serves a **dashboard**, and distributes **policy revisions** to agents **pull-based** (agents remain authoritative on enforcement timing).
 
+**Companion (abstract interfaces, no cloud code):** [`extension_points_multi_host_saas.md`](extension_points_multi_host_saas.md) — normalized **telemetry ingestion envelope**, optional **remote control** intents, and aggregation **extension hooks** for SaaS-style wiring later.
+
 ---
 
 ## 1. Architecture diagram (text)

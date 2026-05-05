@@ -1,38 +1,42 @@
-"""Command-line interface for the v1 decision architecture (`python -m src`).
+"""Argparse routers for ``python -m src``; delegates execution to ``src.command_handlers``.
 
-This module wires **feature collection** (live Windows probes or fixture JSON),
-**deterministic scoring** (`src.decision_engine`), **tiered recommendations**
-(`src.recommendations`), **append-only audit/feedback logs** (`src.logging`), and
-**artifact persistence** under `reports/` and `logs/` at the toolkit repo root.
+Module responsibility:
+    Register subcommands (legacy diagnostics, Proxy Guard, live hypothesis exports, repair previews/replay wrappers,
+    proof probes) and map ``Namespace`` objects to handler callables defined outside this module for testability.
+
+System placement:
+    Sits atop ``src.diagnostics`` collectors, ``src.hypothesis`` scoring, optional ``src.proof`` checks, persistence
+    helpers under ``src.logging``, and toolkit-specific remediation preview logic routed through handlers. FastAPI
+    demo APIs live separately under ``backend/``—not imported here unless tests patch.
 
 Pipeline position:
-    ``diagnostics`` → ``decision_engine.scoring`` → ``recommendations`` →
-    JSON snapshot + JSONL audit (+ optional repair-safe subprocess launch).
+    Legacy path: collectors → ``hypothesis.v1_scoring`` (via ``decision_engine.scoring`` shim) →
+    ``src.recommendations.build_recommendations`` → artefacts. Live path: handlers orchestrate snapshots, scoring,
+    policy, proof, and audits (see ``cmd_diagnose_live`` docstring).
+
+Side effects:
+    This module performs no filesystem writes directly; delegated handlers mutate ``reports/`` and ``logs/`` per command.
 
 Key invariants:
-    Machine identity in audit rows uses a **truncated SHA-256** of
-    hostname/release/arch (see `_fingerprint`), not raw hostnames.
-    ``repair-safe --apply`` only runs the first **LOW**-risk ``*.bat`` under
-    ``scripts/``, after the user types ``RUN``; destructive and firewall resets
-    stay out of this path per recommendation policy.
+    Audit fingerprints truncate SHA-256 digests rather than emitting raw hostname strings where documented.
+
+    ``repair-safe --apply`` elevates LOW-risk scripts only after ``RUN``; firewall resets remain outside this shortcut.
 
 Failure modes:
-    Missing ``reports/last_diagnosis.json`` causes ``explain``, ``recommend``,
-    ``repair-safe``, and ``export-report`` to raise ``FileNotFoundError`` until
-    ``diagnose`` runs successfully.
+    Missing ``reports/last_diagnosis.json`` surfaces ``FileNotFoundError`` for explain/recommend/export until
+    ``diagnose`` populates artefacts.
 
 Audit Notes:
-    Each ``diagnose`` appends one line to ``logs/decision_audit.jsonl`` and
-    overwrites ``reports/last_diagnosis.json``. Inspect those files to verify
-    scores, evidence, and which probe commands ran.
-    ``proxy-watch`` additionally appends ``schema_version`` ``1`` rows to ``logs/proxy_guard.jsonl`` for HKCU
-    drift + attribution replays (see :mod:`src.proxy_guard.audit`).
+    Legacy ``diagnose`` appends ``logs/decision_audit.jsonl`` rows and replaces ``reports/last_diagnosis.json``.
 
-Live (v2) surfaces:
-    ``snapshot``, ``proxy-*``, ``diagnose-live``, and structured proxy disable previews append or
-    refresh artefacts under ``reports/snapshots/``, ``reports/last_diagnosis_live.json``,
-    ``logs/decision_audit.jsonl``, ``logs/network_snapshots.jsonl``, ``logs/repair_audit.jsonl``,
-    and optionally ``logs/proxy_guard_events.jsonl`` / ``logs/proxy_guard_control.jsonl`` mirroring README paths.
+    ``proxy-watch`` tails HKCU churn into ``logs/proxy_guard.jsonl`` (`schema_version=1`) for attribution replays.
+
+    Live commands refresh ``reports/snapshots/*.json``, ``reports/last_diagnosis_live.json``,
+    ``logs/decision_runs.jsonl`` (replayable audits), companion JSONL tails, ``logs/network_snapshots.jsonl``,
+    ``logs/repair_audit.jsonl`` for guarded registry flows, optionally ``logs/proxy_guard_*`` artefacts.
+
+See Also:
+    ``docs/cli_reference.md``, ``docs/decision_engine_v2.md``.
 """
 
 from __future__ import annotations
@@ -50,9 +54,10 @@ from typing import Any
 
 from .diagnostics.collector import collect_features, load_features_json
 from .diagnostics.features import FeatureVector
-from .decision_engine.scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
+from .hypothesis.v1_scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
 from .command_handlers import (
     cmd_diagnose_live,
+    cmd_replay_live_run,
     cmd_proxy_attribution,
     cmd_proxy_diagnose,
     cmd_proxy_disable,
@@ -84,6 +89,7 @@ from .network_state.cli_handlers import (
 )
 from .logging.audit import append_jsonl
 from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
+from .proof.proxy_https import run_localhost_proxy_https_proof
 from .recommendations.engine import RecommendationBundle, build_recommendations
 from .version import SCRIPT_VERSION
 
@@ -314,6 +320,8 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         ``--fixture`` points at JSON with ``FeatureVector`` fields (see
         `load_features_json`); live mode assumes Windows tooling used by the
         collector (``ping``, ``nslookup``, ``curl``, PowerShell).
+        Use ``--live`` or ``--proof`` for the v2 live engine (same as ``diagnose-live``);
+        ``--proof`` enables the Proof Engine (HTTPS localhost-proxy contrast).
 
     Raises:
         Propagates exceptions from collection, scoring, or I/O helpers.
@@ -325,6 +333,34 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         Review ``logs/decision_audit.jsonl`` for the authoritative append-only
         trail; ``reports/last_diagnosis.json`` is overwritten each run.
     """
+    use_live = bool(getattr(args, "live_engine", False) or getattr(args, "proof_engine", False))
+    if use_live:
+        if getattr(args, "fixture", None):
+            print(
+                "diagnose: --fixture is only for legacy v1 mode; omit it when using --live or --proof, "
+                "or run `python -m src diagnose-live` directly.",
+                file=sys.stderr,
+            )
+            return 2
+        if getattr(args, "json", False) and getattr(args, "both_formats", False):
+            print("diagnose: use only one of --json or --both with --live/--proof.", file=sys.stderr)
+            return 2
+        live_ns = argparse.Namespace(
+            repo_root=args.repo_root,
+            emit_json=bool(getattr(args, "json", False)),
+            emit_both=bool(getattr(args, "both_formats", False)),
+            live_proofs=bool(getattr(args, "proof_engine", False)),
+            replay_run_id=None,
+        )
+        return cmd_diagnose_live(live_ns)
+
+    if getattr(args, "both_formats", False):
+        print(
+            "diagnose: --both is for live v2 output; add --live or --proof, or use `diagnose-live --both`.",
+            file=sys.stderr,
+        )
+        return 2
+
     repo = _repo_root(args.repo_root)
     if not args.fixture and platform.system() != "Windows":
         print(
@@ -357,7 +393,18 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     last_path = _write_last_diagnosis(repo, payload)
 
     human = [
-        "=== Windows Network Recovery Toolkit - Decision Architecture ===",
+        "=== Windows Network Recovery Toolkit — diagnose (legacy v1) ===",
+        "",
+        "What this does",
+        "--------------",
+        "Collects connectivity/proxy/feature signals (or loads --fixture JSON), scores fixed v1 root-cause",
+        "buckets (DNS, proxy, Winsock, …), persists reports/last_diagnosis.json, and appends logs/decision_audit.jsonl.",
+        "Scores are heuristic confidences — not calibrated probabilities.",
+        "",
+        "For richer loopback-proxy / listener context and policy gates, prefer:",
+        "  python -m src diagnose --live",
+        "  python -m src diagnose --proof",
+        "",
         f"Diagnosis ID: {diagnosis_id}",
         "",
         payload["explain_sentence"],
@@ -393,11 +440,53 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     )
 
     print("\n".join(human))
-    if args.json:
+    if getattr(args, "json", False):
         print("\nJSON_PAYLOAD_START")
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         print("JSON_PAYLOAD_END")
     return 0
+
+
+def cmd_replay(args: argparse.Namespace) -> int:
+    """Offline replay CLI entry (wraps ``cmd_replay_live_run``)."""
+    pid = getattr(args, "replay_positional_id", None)
+    rid = (str(pid).strip() if pid is not None else "") or ""
+    alt = getattr(args, "replay_flag_id", None)
+    if isinstance(alt, str) and alt.strip():
+        rid = rid or alt.strip()
+    ej = bool(getattr(args, "emit_json", False))
+    eb = bool(getattr(args, "emit_both", False))
+    if ej and eb:
+        print("replay: use only one of --json or --both.", file=sys.stderr)
+        return 2
+    if not rid:
+        print(
+            "replay: missing RUN_ID — try: python -m src replay <uuid>   or   python -m src replay --run-id <uuid>",
+            file=sys.stderr,
+        )
+        return 2
+    ns = argparse.Namespace(
+        repo_root=args.repo_root,
+        replay_run_id=rid,
+        emit_json=ej,
+        emit_both=eb,
+    )
+    return cmd_replay_live_run(ns)
+
+
+def cmd_preview(args: argparse.Namespace) -> int:
+    """Repair tier preview CLI entry (`preview` ≡ `repair-preview`)."""
+    ej = bool(getattr(args, "emit_json_preview", False))
+    eb = bool(getattr(args, "emit_both_preview", False))
+    if ej and eb:
+        print("preview: use only one of --json or --both.", file=sys.stderr)
+        return 2
+    ns = argparse.Namespace(
+        repo_root=args.repo_root,
+        emit_json_preview=ej,
+        emit_both_preview=eb,
+    )
+    return cmd_repair_preview(ns)
 
 
 def cmd_explain(args: argparse.Namespace) -> int:
@@ -629,6 +718,20 @@ def cmd_feedback(args: argparse.Namespace) -> int:
     )
     append_feedback(repo / "logs" / "decision_feedback.jsonl", record)
     print("Recorded feedback.")
+    return 0
+
+
+def cmd_proof_localhost_https(args: argparse.Namespace) -> int:
+    """Run read-only localhost-proxy HTTPS causal contrast (:mod:`src.proof`)."""
+    if platform.system() != "Windows":
+        print(
+            "proof-localhost-https uses Windows registry, netsh, netstat, and curl only.",
+            file=sys.stderr,
+        )
+        return 2
+    url = str(getattr(args, "proof_test_url", None) or "https://www.google.com")
+    result = run_localhost_proxy_https_proof(test_url=url)
+    print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
     return 0
 
 
@@ -864,15 +967,51 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_diag = sub.add_parser("diagnose", help="Collect features, score, audit, persist last snapshot.")
+    p_diag = sub.add_parser(
+        "diagnose",
+        help="Diagnose connectivity: legacy v1 scoring, or live v2 via --live / --proof.",
+        description=(
+            "Default (no flags): collects signals, applies v1 root-cause scores, writes "
+            "`reports/last_diagnosis.json`, appends `logs/decision_audit.jsonl`. "
+            "`--live`: same snapshot + v2 engine as `diagnose-live`. "
+            "`--proof`: live run plus Proof Engine (HTTPS localhost-proxy contrast). "
+            "With `--live`/`--proof`, `--json` streams JSON-only (API-friendly); "
+            "`--both` adds a human preamble before JSON_PAYLOAD delimiters."
+        ),
+    )
     p_diag.add_argument(
         "--fixture",
         type=str,
         default=None,
-        help="Load features JSON instead of probing live Windows state.",
+        help="Load features JSON instead of probing (legacy v1 only; incompatible with --live/--proof).",
     )
-    p_diag.add_argument("--json", action="store_true", help="Print machine-readable payload after summary.")
-    p_diag.set_defaults(func=cmd_diagnose)
+    p_diag.add_argument(
+        "--live",
+        dest="live_engine",
+        action="store_true",
+        help="Run live v2 diagnosis (snapshot + hypotheses + policy); alias of `diagnose-live`.",
+    )
+    p_diag.add_argument(
+        "--proof",
+        dest="proof_engine",
+        action="store_true",
+        help="Live v2 with Proof Engine enabled (implies --live).",
+    )
+    p_diag.add_argument(
+        "--json",
+        action="store_true",
+        help=(
+            "Legacy v1: append JSON payload after human text (JSON_PAYLOAD_* delimiters). "
+            "Live (`--live`/`--proof`): JSON only on stdout — same behavior as `diagnose-live --json`."
+        ),
+    )
+    p_diag.add_argument(
+        "--both",
+        dest="both_formats",
+        action="store_true",
+        help="With --live/--proof only: explainable prose, then JSON block (exclusive with --json).",
+    )
+    p_diag.set_defaults(func=cmd_diagnose, live_engine=False, proof_engine=False, both_formats=False)
 
     p_exp_sub = sub.add_parser("explain", help="Print rationale for last diagnose or diagnose-live.")
     p_exp_sub.add_argument(
@@ -1189,16 +1328,107 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_dl = sub.add_parser(
         "diagnose-live",
-        help="Snapshot + deterministic v2 hypotheses + live recommendations artifact.",
+        help="Snapshot + deterministic v2 hypotheses + live recommendations (or offline --replay run_id).",
+        description=(
+            "Preferred long-form name for the live stack. Equivalent to `python -m src diagnose --live`; "
+            "add `--replay RUN_ID` (or Top-level command `replay`) for offline parity checks."
+        ),
     )
-    p_dl.add_argument("--json", dest="emit_json", action="store_true", help="Print JSON payload.")
-    p_dl.set_defaults(func=cmd_diagnose_live)
+    p_dl.add_argument("--json", dest="emit_json", action="store_true", help="Stdout JSON payload only.")
+    p_dl.add_argument(
+        "--both",
+        dest="emit_both",
+        action="store_true",
+        help="Human-readable summary first, then JSON_PAYLOAD_START … JSON_PAYLOAD_END wrapping the same payload.",
+    )
+    p_dl.add_argument(
+        "--proofs",
+        dest="live_proofs",
+        action="store_true",
+        help="Run read-only Proof Engine (HTTPS via localhost proxy vs bypass) and attach hypothesis_decisions.",
+    )
+    p_dl.add_argument(
+        "--replay",
+        dest="replay_run_id",
+        default=None,
+        metavar="RUN_ID",
+        help=(
+            "Offline: load logs/decision_runs.jsonl by run_id — same as `python -m src replay RUN_ID`. "
+            "Use `--json` for JSON-only tooling output; `--both` for human plus JSON markers."
+        ),
+    )
+    p_dl.set_defaults(func=cmd_diagnose_live, live_proofs=False, emit_both=False)
+
+    p_replay_cli = sub.add_parser(
+        "replay",
+        help="Offline replay: parity check a saved live run from logs/decision_runs.jsonl.",
+        description=(
+            "Recomputes deterministic scores from archived observations — no probes. "
+            "RUN_ID equals `diagnosis_id` / `run_id` in the audit row. "
+            "`--json` prints the structured parity object only; `--both` emits narration then JSON_PAYLOAD delimiters. "
+            "Positional RUN_ID overrides `--run-id` when both are set."
+        ),
+    )
+    p_replay_cli.add_argument(
+        "replay_positional_id",
+        nargs="?",
+        default=None,
+        metavar="RUN_ID",
+        help="UUID/key from logs/decision_runs.jsonl (same as diagnose-live `--replay`).",
+    )
+    p_replay_cli.add_argument(
+        "--run-id",
+        dest="replay_flag_id",
+        default=None,
+        metavar="RUN_ID",
+        help="Same UUID as positional RUN_ID; ignored when positional is provided.",
+    )
+    p_replay_cli.add_argument("--json", dest="emit_json", action="store_true", help="JSON report on stdout only.")
+    p_replay_cli.add_argument(
+        "--both",
+        dest="emit_both",
+        action="store_true",
+        help="Human execution-flow text, then extractable JSON between JSON_PAYLOAD_* lines.",
+    )
+    p_replay_cli.set_defaults(func=cmd_replay, emit_json=False, emit_both=False)
+
+    p_plhp = sub.add_parser(
+        "proof-localhost-https",
+        help="Proof Engine: causal HTTPS probe via localhost proxy vs curl --noproxy (no config changes).",
+    )
+    p_plhp.add_argument(
+        "--url",
+        dest="proof_test_url",
+        default="https://www.google.com",
+        metavar="HTTPS_URL",
+        help="Target URL for HTTPS contrast probes (default: %(default)s).",
+    )
+    p_plhp.set_defaults(func=cmd_proof_localhost_https)
+
+    p_pv = sub.add_parser(
+        "preview",
+        help="Explainable read-only preview of tiered repairs from latest diagnosis (no scripts run).",
+        description=(
+            "Shows diagnose / repair_safe / guided / advanced tiers from `last_diagnosis_live.json` "
+            "(preferred) or legacy `last_diagnosis.json`. Use `--both` when you want human text plus extractable JSON."
+        ),
+    )
+    p_pv.add_argument("--json", dest="emit_json_preview", action="store_true", help="Structured tiers JSON only.")
+    p_pv.add_argument(
+        "--both",
+        dest="emit_both_preview",
+        action="store_true",
+        help="Tier list for humans, then JSON_PAYLOAD markers with the `--json` object.",
+    )
+    p_pv.set_defaults(func=cmd_preview, emit_json_preview=False, emit_both_preview=False)
 
     p_rp = sub.add_parser(
         "repair-preview",
-        help="Preview repair tiers from latest live or legacy diagnosis artifact.",
+        help="Synonym for `preview` — tiered repairs from latest diagnosis artifact.",
     )
-    p_rp.set_defaults(func=cmd_repair_preview)
+    p_rp.add_argument("--json", dest="emit_json_preview", action="store_true", help="Structured JSON only.")
+    p_rp.add_argument("--both", dest="emit_both_preview", action="store_true", help="Human tiers + JSON delimiters.")
+    p_rp.set_defaults(func=cmd_repair_preview, emit_json_preview=False, emit_both_preview=False)
 
     p_ra = sub.add_parser(
         "repair-apply",

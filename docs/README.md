@@ -2,13 +2,28 @@
 
 ## Ten-minute orientation (new engineers)
 
-1. Root ``README.md`` — Interview-oriented landing (problem → demo → architecture → safety) + pointers to **[`cli_reference.md`](cli_reference.md)** for long command lists.
-2. **[`architecture_platform.md`](architecture_platform.md)** + [`platform_architecture.md`](platform_architecture.md) — platform Mermaid + agent → JSONL → API diagrams.
-3. **[`demo_script.md`](demo_script.md)** — safe 5–8 minute live demo with **fleet** + dashboard.
-4. ``docs/architecture.md`` + ``failure_block_contract.md`` — Failure Knowledge System signal → FailureBlock flow (read-only remediation from FKS APIs).
-5. ``docs/proxy_guard.md`` + ``docs/proxy_attribution.md`` — HKCU drift, honest attribution boundaries, tooling entry points.
-6. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, ingest aliases, remediation rules.
-7. Run ``pytest -q`` before changing critical paths — suites stay offline and avoid destructive Windows repair.
+### Repository map (what lives where)
+
+| Path | Responsibility |
+| --- | --- |
+| ``scripts/`` | Beginner-facing ``.bat/.ps1`` wrappers; safety headers describe privilege + dry-run cues. |
+| ``src/`` | ``python -m src`` — collectors, heuristic + policy pipelines, Proof Engine adapters, argparse + handlers. |
+| ``failure_system/`` | Failure Knowledge System — FailureBlocks + read-only probes (distinct CLI entry). |
+| ``platform_core/`` + ``backend/`` + ``frontend/`` | Optional localhost platform prototype (policy, JSONL, FastAPI `/platform`, Next.js). |
+| ``endpoint_agent/`` | Optional observe-only cycles with optional ingest; no bundled cloud. |
+| ``tests/`` | Offline regressions covering scoring, audits, remediation guards — run before risky edits. |
+
+### Reading order (~10 minutes)
+
+1. Root ``README.md`` — problem statement, demo, decision pipeline (**heuristic vs proof**), safety table, links to **[`cli_reference.md`](cli_reference.md)** for long command lists.
+2. **[`decision_engine_v2.md`](decision_engine_v2.md)** — live hypotheses, proofs, audits, replay contracts.
+3. **[`architecture_platform.md`](architecture_platform.md)** + [`platform_architecture.md`](platform_architecture.md) — platform Mermaid + agent → JSONL → API diagrams.
+4. **[`demo_script.md`](demo_script.md)** — safe short demo paths (fleet + dashboard when enabled).
+5. ``docs/architecture.md`` + ``failure_block_contract.md`` — Failure Knowledge System signal → FailureBlock flow (read-only remediation from FKS APIs).
+6. ``docs/proxy_guard.md`` + ``docs/proxy_attribution.md`` — HKCU drift, honest attribution boundaries, tooling entry points.
+7. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, ingest aliases, remediation rules.
+
+Run ``pytest -q`` before changing critical paths — suites stay offline and avoid destructive Windows repair.
 
 Then dive into topical guides below as needed.
 
@@ -90,6 +105,7 @@ Reading order (~10 minutes for new engineers): root `README.md` → [`architectu
 | [`demo_walkthrough.md`](demo_walkthrough.md) | Safe demo script incl. attribution fixture hooks |
 | [`safety_and_privacy.md`](safety_and_privacy.md) | Allowed / redacted fields |
 | [`test_strategy.md`](test_strategy.md) | pytest safety boundaries — offline regressions without repair scripts |
+| [`extension_points_multi_host_saas.md`](extension_points_multi_host_saas.md) | **Design only:** ingestion + optional remote-control interfaces; multi-host → SaaS extension points (no cloud code) |
 
 ## Tests and CI posture
 
@@ -129,3 +145,5 @@ Automated suites live under **`tests/`** (see **`docs/test_strategy.md`** for de
 ## Skipped or out of scope here
 
 These markdown files describe only what exists in-repo. They do **not** imply a hosted production deployment, SLAs, fleet management, or centralized log ingestion unless you add that infrastructure separately.
+
+For **deliberate future seams** (multi-host ingestion, aggregation, SaaS wiring) without implementing cloud, see [`extension_points_multi_host_saas.md`](extension_points_multi_host_saas.md). Operational fleet sketches live in [`fleet_architecture.md`](fleet_architecture.md).

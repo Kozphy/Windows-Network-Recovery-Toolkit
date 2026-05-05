@@ -2,7 +2,7 @@
 
 Runs read-only subprocess commands (``ping``, ``nslookup``, ``netsh``, ``reg``,
 ``netstat``, PowerShell probes, ``curl``) and normalizes booleans/counts consumed
-by `src.decision_engine.scoring`. Malformed subprocess failures return soft
+by `src.hypothesis.v1_scoring` (import path `src.decision_engine.scoring` shim). Malformed subprocess failures return soft
 signals (non-zero codes, empty parses) rather than crashing the collector.
 
 Timezone:

@@ -1,32 +1,7 @@
-"""Canonical v2 hypothesis string literals referenced by ranking and audits."""
+"""Backward compatibility shim; canonical definitions live in :mod:`src.hypothesis.keys`."""
 
 from __future__ import annotations
 
-from typing import Literal
+from ..hypothesis.keys import ALL_HYPOTHESES, HypothesisKey
 
-HypothesisKey = Literal[
-    "unexpected_user_proxy",
-    "local_proxy_hijack",
-    "browser_proxy_path_issue",
-    "localhost_proxy_owner_suspicious",
-    "socket_exhaustion",
-    "dns_resolution_issue",
-    "tls_path_issue",
-    "winhttp_proxy_issue",
-    "winsock_corruption_possible",
-    "isp_router_path_issue",
-]
-
-
-ALL_HYPOTHESES: tuple[HypothesisKey, ...] = (
-    "unexpected_user_proxy",
-    "local_proxy_hijack",
-    "browser_proxy_path_issue",
-    "localhost_proxy_owner_suspicious",
-    "socket_exhaustion",
-    "dns_resolution_issue",
-    "tls_path_issue",
-    "winhttp_proxy_issue",
-    "winsock_corruption_possible",
-    "isp_router_path_issue",
-)
+__all__ = ["ALL_HYPOTHESES", "HypothesisKey"]

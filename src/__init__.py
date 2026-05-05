@@ -1,22 +1,21 @@
-"""Toolkit decision pipelines (`FeatureVector`, scoring, Proxy Guard CLI wiring).
+"""Windows Network Recovery Toolkit — Python diagnostics, proxy guard, and decision CLI surfaces.
 
 Package responsibility:
-    Hosts collectors, deterministic root-cause scoring, tiered recommendation bundles,
-    audit JSONL helpers, and the ``python -m src`` argument router implemented in
-    ``src.cli``.
+    Exposes ``SCRIPT_VERSION`` and hosts the layered implementation behind ``python -m src``: collectors under
+    ``src.diagnostics``, observe-only proof helpers under ``src.proof``, heuristic + policy pipelines under
+    ``src.hypothesis``, ``src.observation``, ``src.policy``, ``src.audit``, and argparse wiring in ``src.cli`` with
+    execution bodies in ``src.command_handlers``.
 
 System placement:
-    Primary advanced operator path beside ``failure_system`` (structured FailureBlocks)
-    and optional ``endpoint_agent`` uploads. Shares repository ``scripts/*.bat``
-    referrals but does not import those files.
+    Sits beside ``failure_system/`` (Failure Knowledge System) and optional ``endpoint_agent`` / ``backend`` bridges.
+    Batch workflows under ``scripts/`` invoke this package indirectly; importing ``src`` does not execute probes.
 
 Side effects:
-    Importing this package is lightweight—it reads ``SCRIPT_VERSION`` from disk via
-    ``src.version``. Running subcommands persists under ``reports/`` and ``logs/`` per
-    command docstrings.
+    Package import resolves ``src.version`` from disk synchronously once. Actual filesystem or subprocess activity
+    happens only inside invoked commands (see submodule docstrings).
 
 See Also:
-    Root ``README`` advanced CLI section and ``docs/decision_engine_v2.md``.
+    Root ``README.md`` decision-pipeline narrative, ``docs/decision_engine_v2.md``, and ``docs/cli_reference.md``.
 """
 
 from .version import SCRIPT_VERSION

@@ -1,7 +1,26 @@
-"""Immutable data contracts for live snapshots, proxy parsing, and attribution rows.
+"""Immutable dataclasses for WinINET HKCU snapshots, parsed proxy strings, and live correlate payloads.
 
-``LiveNetworkSnapshot.to_dict`` is the canonical JSON shape under ``reports/snapshots/`` and
-feeds v2 hypothesis scoring inputs alongside ``FeatureVector``.
+Module responsibility:
+    Define JSON-serializable frozen records shared by ``src.observability``, ``src.diagnostics``, and replay
+    tooling so hypothesis engines consume stable field names without dict sprawl.
+
+System placement:
+    Consumed downstream by ``LiveNetworkSnapshot`` assembly, ``reports/snapshots/*.json`` persistence, and replay
+    hydrators such as ``src.audit.replay.live_network_snapshot_from_observations`` for ``observations`` blobs.
+
+Schema / timestamps:
+    ``generated_at_utc`` strings follow ``utc_now_iso`` formatting from callers (UTC-aware ISO-like text).
+
+Validation boundaries:
+    Parsers coerce missing registry values to sentinel flags (`is_missing`, ``proxy_mode='missing'`); callers
+    must not assume benign defaults imply healthy connectivity.
+
+Key invariants:
+    Dataclasses are frozen; transformations happen via constructors or dedicated builders—mutations require new
+    instances.
+
+Audit Notes:
+    When attributing proxies, correlate ``ParsedProxy.localhost_port`` with ``LiveNetworkSnapshot.port_owners``.
 """
 
 from __future__ import annotations

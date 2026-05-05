@@ -1,20 +1,59 @@
-"""Argparse-backed handlers for live observability and Proxy Guard CLIs.
+"""Argparse-backed handlers for Proxy Guard flows, snapshots, live diagnosis, repair previews/replay.
 
-This module sits beside ``src.cli`` (which imports these callables into subparsers).
+Module responsibility:
+    Maps ``argparse.Namespace`` objects from ``src.cli`` subcommands onto filesystem writes,
+    ``reg.exe`` argv sequences (HKCU-only where documented), subprocess probes for live snapshots,
+    and append-only JSONL audit trails. Keeps orchestration here; deterministic scoring lives in
+    ``src.hypothesis``, policy gates in ``src.policy``, proofs in ``src.proof``.
 
-Responsibilities:
-    Normalize operator-facing flows for HKCU proxy inspection, attribution, monitoring,
-    safe registry mutation, correlated snapshots, v2 hypothesis exports, and repair previews.
+System placement:
+    Called only from ``src.cli`` dispatch (and tests). FastAPI toolkit routes in
+    ``backend/live_observability.py`` subprocess ``python -m src …`` rather than importing these
+    callables directly, preserving identical stdin/confirmation semantics.
 
 Key invariants:
-    Writes never occur during ``proxy-disable --dry-run`` or ``repair-apply --dry-run``.
-    ``emit_json`` branches emit **only** JSON to stdout where implemented (machine-readable).
-    Fingerprints reuse SHA-256 truncation like legacy diagnosis (no raw hostnames in payloads).
+    * No registry mutations or repair ``reg`` argv execution during ``proxy-disable --dry-run`` or
+      ``repair-apply --dry-run``.
+    * Where a handler documents JSON-only stdout (e.g. ``emit_json`` on live/replay paths), human
+      banners must not precede payloads on success paths for that branch.
+    * Live diagnosis fingerprints use ``_fingerprint()`` (truncated SHA-256); payloads avoid raw hostname
+      strings unless already present from upstream tooling.
+
+Input assumptions:
+    * Windows-only commands guard with ``exit_code_if_not_windows`` before probing WinINET/registry.
+    * ``args.repo_root`` is optional; ``_repo_root`` resolves toolkit root hosting ``reports/`` and ``logs/``.
+    * JSON artefacts consumed by helpers (last diagnosis files) match writer schemas; malformed files
+      raise decode errors at the read site.
+
+Output guarantees:
+    * Exit codes: ``0`` success; ``1`` operator cancel / post-mutation verification soft-failure where
+      documented; ``2`` unsupported platform or policy/assertion refusal.
+    * Append-only logs grow by one logical record per mutation or diagnosis row where implemented.
+
+Side effects:
+    * Vary by ``cmd_*``: see each docstring for exact paths under ``reports/``, ``logs/``, subprocess
+      execution, and ``network_state`` correlation hooks.
+
+Failure modes:
+    * Abrupt termination can leave partially written trailing JSONL lines; tail readers should skip
+      invalid JSON per ``src.core.jsonl`` guidance.
+    * Proof Engine exceptions during live diagnosis set ``proof_engine_error`` on the audit row and
+      degrade trust instead of terminating the CLI (unless gated elsewhere).
+
+Raises:
+    * Most handlers swallow or print recoverable faults; ``_read_live_or_legacy`` raises
+      ``FileNotFoundError`` when no diagnosis artefacts exist.
 
 Audit Notes:
-    Inspect ``logs/repair_audit.jsonl`` after ``proxy-disable``,
-    ``logs/decision_audit.jsonl`` ``type=diagnosis_live`` rows after ``diagnose-live``,
-    and ``reports/last_diagnosis_live.json`` for structured recommendations.
+    * HKCU mutations: correlate ``logs/repair_audit.jsonl`` with ``logs/proxy_snapshots.jsonl``.
+    * Live stacks: ``logs/decision_audit.jsonl`` (`type=diagnosis_live`),
+      ``logs/decision_runs.jsonl`` (replay schema), ``reports/last_diagnosis_live.json``.
+
+Engineering Notes:
+    * Centralizes long-running CLI choreography so smaller packages remain test-friendly and reusable.
+
+See Also:
+    ``docs/cli_reference.md``, ``docs/decision_engine_v2.md``, ``docs/proxy_guard.md``, ``docs/safety_model.md``.
 """
 
 from __future__ import annotations
@@ -33,9 +72,19 @@ from .core.jsonl import append_jsonl as append_jsonl_core
 from .core.models import registry_with_parsed
 from .core.windows_cli import exit_code_if_not_windows
 from .core.time_utils import utc_now_iso
-from .decision_engine.explanations import primary_explanation_paragraph
-from .decision_engine.live_scoring import ranked_dicts, score_live_snapshot
-from .decision_engine.recommendations import live_recommendation_bundle
+from .audit.replay import (
+    SCHEMA_VERSION as _REPLAY_SCHEMA_VERSION,
+    build_replay_report,
+    find_decision_run,
+    format_replay_flow_text,
+)
+from .hypothesis.explanations import primary_explanation_paragraph
+from .hypothesis.live_scoring import ranked_dicts, score_live_snapshot
+from .hypothesis.recommendations import live_recommendation_bundle
+from .observation.adversarial import adversarial_hints
+from .observation.trust import assess_trust
+from .policy.hypothesis_gates import build_hypothesis_decisions
+from .proof.proxy_https import run_localhost_proxy_https_proof
 from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
 from .observability.snapshot import build_live_network_snapshot
 from .proxy_guard.failure_block import build_proxy_failure_blocks
@@ -640,21 +689,42 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
 
 
 def cmd_proxy_disable(args: argparse.Namespace) -> int:
-    """Preview or apply HKCU ``ProxyEnable=0`` (+ optional ``ProxyServer`` delete).
+    """Preview or apply HKCU WinINET proxy disable mutations (structured ``reg`` argv only).
 
-    Side effects (non-dry-run):
-        Runs ``reg.exe`` argv lists; appends ``logs/repair_audit.jsonl``.
-        Immediately before mutations, persists ``logs/proxy_snapshots.jsonl`` for rollback.
+    Purpose:
+        Surface current HKCU proxy state, summarize planned ``reg.exe`` mutations, optionally apply
+        them after a typed phrase, then verify reads and emit append-only audit plus network-state
+        correlation rows.
 
-    Raises:
-        None directly; policy violations print and return ``2``.
+    Args:
+        args: Typical fields:
+            ``repo_root`` — optional toolkit root Path.
+            ``dry_run`` — when True, print planned actions only (no snapshots or ``reg`` execution).
+            ``clear_server`` — when True, include deleting the ``ProxyServer`` value path.
 
     Returns:
-        ``0`` success, ``1`` cancelled confirmation, ``2`` policy guard failure.
+        ``0`` when dry-run exits cleanly or apply + verification succeeds.
+        ``1`` when the operator declines the typed confirmation or verification warns (non-zero verification).
+        ``2`` when not on Windows or ``assert_no_firewall_reset_in_preview`` rejects the plaintext plan.
+
+    Raises:
+        None intentionally; subprocess failures remain inside structured ``results`` in the audit row.
+
+    Side effects:
+        Dry-run: stdout only (no persistent writes beyond printing).
+        Apply: persists ``logs/proxy_snapshots.jsonl`` rollback payload, executes ``apply_mutations``,
+        appends ``logs/repair_audit.jsonl``, and emits related ``network_state`` JSONL envelopes.
+
+    Idempotency:
+        Re-disabling yields stable HKCU booleans absent external policy overwriting keys; reversing
+        state uses documented rollback tooling, not this command blindly re-run.
 
     Audit Notes:
-        Recovery: verify keys via ``proxy-status``; rollback via ``proxy-rollback``; software may
-        reapply proxy policy afterward.
+        Compare ``verification_result`` inside ``repair_audit.jsonl`` versus ``proxy-status``.
+        Mis-verification indicates policy or tooling re-enabled proxy concurrently—investigate before retry.
+
+        Recovery guidance: rerun ``proxy-status``, use ``proxy-rollback`` snapshot flow when available,
+        expect enterprise policy software to recreate keys after remediation.
     """
     if (code := exit_code_if_not_windows("proxy-disable")) is not None:
         return code
@@ -819,13 +889,35 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
 
 
 def cmd_snapshot(args: argparse.Namespace) -> int:
-    """Persist ``LiveNetworkSnapshot`` JSON and append ``network_snapshots.jsonl`` row.
+    """Capture a frozen ``LiveNetworkSnapshot`` JSON file and emit a locator JSONL row.
 
-    Output guarantees:
-        Filename uses UTC timestamp slug with ``:`` stripped; snapshot body includes commands list.
+    Purpose:
+        Operator-facing export of correlate-at-once probes + registry/socket/process context for audits
+        without invoking v2 hypothesis scoring.
+
+    Args:
+        args: ``repo_root`` optional Path to toolkit checkout.
+
+    Returns:
+        ``0`` after persist; ``2`` when gated off Windows platforms.
 
     Side effects:
-        Writes under ``reports/snapshots/`` and appends one JSONL line.
+        Writes ``reports/snapshots/<UTC_ts>.json`` (timestamp from ``utc_now_iso`` slug) and appends one
+        object to ``logs/network_snapshots.jsonl`` referencing that path plus a UUID ``snapshot_id``.
+
+    Output guarantees:
+        Snapshot dictionary matches ``LiveNetworkSnapshot.to_dict`` augmented with ``commands_executed``.
+        Timestamp fields originate from ``utc_now_iso`` (UTC, ISO-like string consistency with other artefacts).
+
+    Idempotency:
+        Each invocation issues fresh probes; filenames differ per run even if host state repeats.
+
+    Failure modes:
+        Subprocess probes may fail softly inside ``collect_features``/netstat parity—inspect payload fields
+        and stderr-equivalent booleans rather than assuming full transport success.
+
+    Audit Notes:
+        Pair file path printed on stdout with the JSONL append for incident tooling queries.
     """
     if (code := exit_code_if_not_windows("snapshot")) is not None:
         return code
@@ -852,26 +944,82 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
 
 
 def cmd_diagnose_live(args: argparse.Namespace) -> int:
-    """Run live snapshot + v2 hypothesis scoring + recommendation bundle export.
+    """Run live ``LiveNetworkSnapshot`` capture, deterministic v2 scoring, proof (optional), and policy export.
 
-    Side effects:
-        Writes ``reports/snapshots/<uuid>.json``, ``reports/last_diagnosis_live.json``,
-        appends ``logs/network_snapshots.jsonl`` and ``logs/decision_audit.jsonl``.
+    Purpose:
+        Materialize replayable artefacts: hypothesis ranks, ALLOW/PREVIEW/BLOCK rows, optional proof blob,
+        trust and uncertainty aggregates, tiered recommendation dict, and append-only audits for review.
 
     Args:
-        args: ``emit_json`` prints JSON-only payload to stdout when true.
+        args: Expected attributes include:
+            ``repo_root`` — optional toolkit root Path.
+            ``replay_run_id`` — when truthy, short-circuit to offline ``cmd_replay_live_run`` (no probes).
+            ``live_proofs`` — when True, invokes ``run_localhost_proxy_https_proof``; failures degrade trust.
+            ``emit_json`` — when True without ``emit_both``, stdout receives live payload JSON only.
+            ``emit_both`` — when True without ``emit_json``, stdout receives human explanatory text plus
+            ``JSON_PAYLOAD_*`` wrappers around identical JSON.
 
     Returns:
-        ``0`` on success.
+        ``0`` on completed live run or replay. Non-zero values propagate from replay paths or gate helpers.
+
+    Raises:
+        None deliberately; malformed filesystem JSON raises during downstream replay tooling only.
+
+    Side effects:
+        Writes ``reports/snapshots/<diagnosis_uuid>.json`` (embedded observations JSON), overwrites
+        ``reports/last_diagnosis_live.json``, appends rows to ``logs/network_snapshots.jsonl``,
+        ``logs/decision_audit.jsonl``, and ``logs/decision_runs.jsonl``.
+
+    Decision intent / constraints:
+        Hypothesis confidences rank plausibility; policy mapping consumes proof outcomes and trust aggregates.
+        Heuristic scores are not calibrated probabilities.
+
+    Failure modes:
+        Mutually exclusive stdout modes yield exit ``2`` when both ``emit_json`` and ``emit_both`` are set.
 
     Audit Notes:
-        Compare ``hypotheses_ranked`` with ``live_snapshot_ref`` file for evidence drill-down.
+        Cross-check ``hypotheses_ranked`` against ``reports/…/<uuid>.json`` observations and rerun
+        ``python -m src replay RUN_ID`` for parity. Corrupt tails in append-only logs require line-skip parsers.
+
+        Recovery guidance: rerun live diagnosis after remediation; duplicate ``run_id`` lines are unexpected—
+        prefer append-only scanners that honour last matching row semantics used by replay finders.
     """
+    replay_id = getattr(args, "replay_run_id", None)
+    if replay_id:
+        return cmd_replay_live_run(args)
+
+    if getattr(args, "emit_json", False) and getattr(args, "emit_both", False):
+        print("diagnose-live: use only one of --json or --both.", file=sys.stderr)
+        return 2
+
     if (code := exit_code_if_not_windows("diagnose-live")) is not None:
         return code
     repo = _repo_root(args.repo_root)
     snapshot, cmds = build_live_network_snapshot(run=subprocess.run)
     ranked = score_live_snapshot(snapshot)
+    proofs_enabled = bool(getattr(args, "live_proofs", False))
+    localhost_proof = None
+    proof_engine_error: str | None = None
+    if proofs_enabled:
+        try:
+            localhost_proof = run_localhost_proxy_https_proof()
+        except Exception as exc:  # noqa: BLE001 — surface proof-layer failure as degraded mode
+            proof_engine_error = f"{type(exc).__name__}:{exc}"
+    trust_bundle = assess_trust(
+        snapshot,
+        proof_result=localhost_proof,
+        proofs_requested=proofs_enabled,
+        proof_engine_error=proof_engine_error,
+    )
+    adversarial = adversarial_hints(snapshot)
+    ranked_tuples = [(s.hypothesis, s.confidence, s.evidence) for s in ranked]
+    hypothesis_decisions = build_hypothesis_decisions(
+        ranked=ranked_tuples,
+        localhost_proxy_proof=localhost_proof,
+        proofs_enabled=proofs_enabled,
+        trust_assessment=trust_bundle,
+    )
+
     top = ranked[0]
     reco = live_recommendation_bundle(top, primary_hypothesis=top.hypothesis)
     explain = primary_explanation_paragraph(snapshot, top)
@@ -893,6 +1041,10 @@ def cmd_diagnose_live(args: argparse.Namespace) -> int:
             "diagnosis_id": diagnosis_id,
         },
     )
+    proof_engine_blob: dict[str, Any] = {}
+    if proofs_enabled and localhost_proof is not None:
+        proof_engine_blob["localhost_proxy_https_contrast"] = localhost_proof.to_dict()
+
     live_payload: dict[str, Any] = {
         "diagnosis_id": diagnosis_id,
         "generated_at_utc": utc_now_iso(),
@@ -901,6 +1053,20 @@ def cmd_diagnose_live(args: argparse.Namespace) -> int:
         "machine": _fingerprint(),
         "live_snapshot_ref": str(snap_path),
         "hypotheses_ranked": ranked_dicts(ranked),
+        "hypothesis_decisions": hypothesis_decisions,
+        "proof_engine": proof_engine_blob,
+        "decision_policy": {
+            "proofs_requested": proofs_enabled,
+            "rules": (
+                "CONFIRMED proof → ALLOW (safe-tier only; no auto-destructive). "
+                "High confidence unproven → PREVIEW only. Low confidence → BLOCK. "
+                "Uncertain band → PREVIEW with confirmation."
+            ),
+        },
+        "uncertainty": {
+            **trust_bundle.to_dict(),
+            "adversarial_hints": list(adversarial),
+        },
         "primary_hypothesis": top.hypothesis,
         "primary_confidence": top.confidence,
         "primary_evidence": list(top.evidence),
@@ -912,6 +1078,7 @@ def cmd_diagnose_live(args: argparse.Namespace) -> int:
     last_path = repo / "reports" / "last_diagnosis_live.json"
     last_path.write_text(json.dumps(live_payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    primary_decision = hypothesis_decisions[0] if hypothesis_decisions else {}
     append_jsonl_core(
         repo / "logs" / "decision_audit.jsonl",
         {
@@ -921,9 +1088,38 @@ def cmd_diagnose_live(args: argparse.Namespace) -> int:
             "script_version": SCRIPT_VERSION,
             "machine": live_payload["machine"],
             "hypotheses": live_payload["hypotheses_ranked"],
+            "hypothesis_policy": {
+                "decision": primary_decision.get("decision"),
+                "proof_status": primary_decision.get("proof_status"),
+                "proofs_requested": proofs_enabled,
+                "trust_aggregate": trust_bundle.trust_aggregate,
+                "degraded_mode": trust_bundle.degraded_mode,
+            },
             "primary": top.hypothesis,
             "confidence": top.confidence,
             "safety_tier": "diagnose",
+        },
+    )
+    append_jsonl_core(
+        repo / "logs" / "decision_runs.jsonl",
+        {
+            "schema_version": "live_run_audit_v1",
+            "type": "live_run_audit",
+            "run_id": diagnosis_id,
+            "timestamp_utc": live_payload["generated_at_utc"],
+            "script_version": SCRIPT_VERSION,
+            "machine": live_payload["machine"],
+            "observations": snapshot.to_dict(),
+            "hypotheses_ranked": live_payload["hypotheses_ranked"],
+            "hypothesis_decisions": hypothesis_decisions,
+            "proof_engine": proof_engine_blob,
+            "proof_engine_error": proof_engine_error,
+            "proofs_requested": proofs_enabled,
+            "uncertainty": live_payload["uncertainty"],
+            "commands_executed": list(cmds),
+            "live_snapshot_ref": str(snap_path),
+            "primary_hypothesis": top.hypothesis,
+            "primary_confidence": top.confidence,
         },
     )
 
@@ -931,26 +1127,154 @@ def cmd_diagnose_live(args: argparse.Namespace) -> int:
         print(json.dumps(live_payload, indent=2, ensure_ascii=False))
         return 0
     print("=== Live diagnosis (v2) ===")
+    print()
+    print(
+        "What this does: captures a read-only observability snapshot (registry, probes, listeners), "
+        "ranks v2 hypotheses from those signals, attaches policy rows (ALLOW/PREVIEW/BLOCK), "
+        "and writes reports/last_diagnosis_live.json plus append-only audit JSONL (replayable)."
+    )
+    if proofs_enabled:
+        print(
+            "Proof mode: ran the localhost-proxy HTTPS contrast (curl via proxy vs bypass) where applicable; "
+            "see proof_engine and hypothesis_decisions in the saved JSON."
+        )
+    else:
+        print(
+            "Proof mode: off (proof_status may read UNPROVEN). For causal contrast, run: "
+            "`python -m src diagnose --proof` or `python -m src diagnose-live --proofs`."
+        )
+    print()
     print(f"Diagnosis ID: {diagnosis_id}")
+    print()
+    print("Summary (primary hypothesis)")
+    print("----------------------------")
     print(explain)
-    print("\nRanked hypotheses:")
+    print()
+    print("Ranked hypotheses (top 10, deterministic scores — not calibrated probabilities)")
+    print("--------------------------------------------------------------------")
     for row in live_payload["hypotheses_ranked"][:10]:
         print(f"  {row['rank']}. {row['hypothesis']}: {float(row['confidence']):.2f}")
         for ev in row.get("evidence") or []:
             print(f"      - {ev}")
     print(f"\nSnapshot: {snap_path}")
     print(f"Last live payload: {last_path}")
+    if hypothesis_decisions:
+        hd0 = hypothesis_decisions[0]
+        print(
+            f"\nPolicy (primary hypothesis): decision={hd0.get('decision')} "
+            f"proof_status={hd0.get('proof_status')} (use hypothesis_decisions in JSON)",
+        )
+    ub = live_payload.get("uncertainty") or {}
+    if ub:
+        ta = float(ub.get("trust_aggregate") or 0.0)
+        print(
+            f"\nUncertainty: trust_aggregate={ta:.2f} degraded_mode={ub.get('degraded_mode')} "
+            f"adversarial_hints={ub.get('adversarial_hints') or []}",
+        )
+    if getattr(args, "emit_both", False):
+        print()
+        print("JSON_PAYLOAD_START")
+        print(json.dumps(live_payload, indent=2, ensure_ascii=False))
+        print("JSON_PAYLOAD_END")
+    return 0
+
+
+def cmd_replay_live_run(args: argparse.Namespace) -> int:
+    """Offline replay against ``live_run_audit_v1`` rows in ``logs/decision_runs.jsonl``.
+
+    Purpose:
+        Re-score embedded observations deterministically without live probes and compare recomputed ranks,
+        confidences, and policy rows to archival values for forensic drift detection.
+
+    Args:
+        args: ``repo_root`` optional Path; ``replay_run_id`` non-empty run UUID; ``emit_json`` for JSON-only
+            stdout wrapping ``replay_execution`` plus metadata; ``emit_both`` for human narration plus framed JSON.
+
+    Returns:
+        ``0`` when record located and formatted output emitted.
+        ``1`` when schema row missing or log absent.
+        ``2`` when run id omitted or incompatible stdout flags set.
+
+    Side effects:
+        None beyond reading JSONL lines from disk—no probes, writes, or network.
+
+    Raises:
+        None deliberately.
+
+    Audit Notes:
+        Proof curl steps archived in-record are not replayed live; divergence may indicate scorer changes,
+        not host tampering. Treat mismatches as cues to rebuild baselines after intentional rule updates.
+
+    Engineering Notes:
+        ``find_decision_run`` prefers the last matching line for duplicate ids—tests rely on ordering when
+        simulating corrections.
+    """
+    if getattr(args, "emit_json", False) and getattr(args, "emit_both", False):
+        print("replay: use only one of --json or --both.", file=sys.stderr)
+        return 2
+    repo = _repo_root(args.repo_root)
+    run_id = str(getattr(args, "replay_run_id", "") or "").strip()
+    if not run_id:
+        print(
+            "replay: provide a run_id (e.g. `python -m src replay <uuid>`); "
+            "matches diagnosis_id from logs/decision_runs.jsonl",
+            file=sys.stderr,
+        )
+        return 2
+    rec = find_decision_run(repo, run_id)
+    if rec is None:
+        print(
+            f"replay: no {_REPLAY_SCHEMA_VERSION} record for run_id={run_id!r} in {repo / 'logs' / 'decision_runs.jsonl'}",
+            file=sys.stderr,
+        )
+        return 1
+    report = build_replay_report(rec)
+    json_out = {
+        "replay_execution": report,
+        "stored_snapshot_ref": rec.get("live_snapshot_ref"),
+        "stored_commands_count": len(rec.get("commands_executed") or []),
+        "stored_script_version": rec.get("script_version"),
+        "replay_script_version_now": SCRIPT_VERSION,
+        "explain": {
+            "what": "Offline replay re-scores hypotheses from the embedded observation blob only (no new probes).",
+            "verify": "Compares replayed confidences, order, and policy fields to the stored audit row.",
+        },
+    }
+    if getattr(args, "emit_json", False):
+        print(json.dumps(json_out, indent=2, ensure_ascii=False))
+        return 0
+    print("=== Replay (offline) ===")
+    print()
+    print(
+        "What this does: loads one `live_run_audit_v1` row from logs/decision_runs.jsonl by run_id, "
+        "re-runs deterministic scoring on the frozen observations, and shows whether stored vs replayed "
+        "results still match (confidence drift, order, decision fields)."
+    )
+    print(f"Run ID: {run_id}")
+    print()
+    print(format_replay_flow_text(report))
+    if getattr(args, "emit_both", False):
+        print()
+        print("JSON_PAYLOAD_START")
+        print(json.dumps(json_out, indent=2, ensure_ascii=False))
+        print("JSON_PAYLOAD_END")
     return 0
 
 
 def _read_live_or_legacy(repo: Path) -> tuple[dict[str, Any], str]:
-    """Load newest diagnosis artifact preferring live v2 JSON when present.
+    """Normalize access to persisted diagnosis artefacts (live v2 preferred over legacy).
 
-    Raises:
-        FileNotFoundError: When neither artefact exists.
+    Args:
+        repo: Toolkit root containing ``reports/``.
 
     Returns:
-        Tuple of payload dict and source label ``live`` or ``legacy``.
+        Tuple ``(payload_dict, "live"|"legacy")`` describing which snapshot was sourced.
+
+    Raises:
+        ``FileNotFoundError`` when neither ``last_diagnosis_live.json`` nor ``last_diagnosis.json`` exists.
+
+    Failure modes / malformed JSON:
+        Propagate ``json.JSONDecodeError`` from callers if files are corrupt—repair by rerunning diagnoses.
     """
     live = repo / "reports" / "last_diagnosis_live.json"
     legacy = repo / "reports" / "last_diagnosis.json"
@@ -965,26 +1289,92 @@ def _read_live_or_legacy(repo: Path) -> tuple[dict[str, Any], str]:
 
 
 def _normalize_recommendations_blob(payload: dict[str, Any]) -> dict[str, Any]:
-    """Extract nested recommendations dict for both v1 and v2 payload shapes."""
+    """Isolate the recommendations tier dict from mixed diagnosis artefacts.
+
+    Args:
+        payload: Either legacy ``reports/last_diagnosis.json`` blob or ``engine=live_v2`` payloads.
+
+    Returns:
+        Nested dict containing ``diagnose``, ``repair_safe``, ``guided_repair``, ``advanced_repair`` keys when
+        authored; defaults to empty mappings when tiers absent—callers iterate defensively.
+
+    Constraints:
+        Does not coerce missing scripts or validate casing; malformed lists surface when iterated by callers only.
+    """
     if payload.get("engine") == "live_v2":
         return payload.get("recommendations") or {}
     return payload.get("recommendations") or {}
 
 
 def cmd_repair_preview(args: argparse.Namespace) -> int:
-    """Print tiered repair rows from latest live (preferred) or legacy diagnosis file.
+    """Emit tiered repair suggestions from persisted diagnosis artefacts (read-only).
+
+    Purpose:
+        Surface ``diagnose``, ``repair_safe``, ``guided_repair``, ``advanced_repair`` entries so operators can
+        plan next steps without executing scripts.
+
+    Args:
+        args: ``repo_root`` optional; ``emit_json_preview`` emits structured JSON tiers only;
+            ``emit_both_preview`` appends framed JSON after human stdout.
 
     Returns:
-        ``0`` after printing.
+        ``0`` normally; ``2`` when both structured-output flags contradict.
 
     Raises:
-        FileNotFoundError propagates when no artefact exists.
+        ``FileNotFoundError`` propagates via ``_read_live_or_legacy`` when neither artefact exists.
+
+    Side effects:
+        stdout/stderr only—no subprocess launches or filesystem writes beyond reading diagnosis JSON files.
+
+    Data handling:
+        Accepts legacy v1 payloads and live v2 ``engine=live_v2`` shapes via ``_normalize_recommendations_blob``.
+
+    Audit Notes:
+        Always pair preview output with the underlying ``reports/last_diagnosis*.json`` timestamp before acting.
     """
     repo = _repo_root(args.repo_root)
     payload, source = _read_live_or_legacy(repo)
     blob = _normalize_recommendations_blob(payload)
-    print(f"Repair preview source: {source}")
     sections = ("diagnose", "repair_safe", "guided_repair", "advanced_repair")
+    emit_json_preview = getattr(args, "emit_json_preview", False)
+    emit_both_preview = getattr(args, "emit_both_preview", False)
+    if emit_json_preview and emit_both_preview:
+        print("preview: use only one of --json or --both.", file=sys.stderr)
+        return 2
+
+    explain_block = {
+        "what": (
+            "Lists recommended next steps by tier from the last diagnosis artefact — nothing is executed."
+        ),
+        "source": (
+            "`live` means reports/last_diagnosis_live.json; `legacy` means reports/last_diagnosis.json (v1)."
+        ),
+    }
+    tiers: dict[str, list[dict[str, Any]]] = {}
+    for section in sections:
+        tiers[section] = [dict(x) for x in blob.get(section, []) if isinstance(x, dict)]
+    preview_json = {
+        "cli": "preview",
+        "artifact_source": source,
+        "primary_hypothesis": payload.get("primary_hypothesis") or payload.get("selected_root_cause"),
+        "explain": explain_block,
+        "tiers": tiers,
+    }
+
+    json_only_preview = emit_json_preview and not emit_both_preview
+    if json_only_preview:
+        print(json.dumps(preview_json, indent=2, ensure_ascii=False))
+        return 0
+    print("=== Repair preview (read-only) ===")
+    print()
+    print(
+        "What this does: shows scripted / guided repair suggestions from your last diagnose run. "
+        "No commands are executed. Prefer `repair-safe --apply` only after reviewing LOW-risk items."
+    )
+    print(f"Source artefact: {source} (last_diagnosis_live.json preferred when present).")
+    print()
+    print(f"Repair preview source: {source}")
+    print()
     for section in sections:
         print(section.upper())
         for item in blob.get(section, []):
@@ -999,20 +1389,40 @@ def cmd_repair_preview(args: argparse.Namespace) -> int:
             if ak:
                 print(f"      action_key: {ak}")
         print()
+    if emit_both_preview:
+        print()
+        print("JSON_PAYLOAD_START")
+        print(json.dumps(preview_json, indent=2, ensure_ascii=False))
+        print("JSON_PAYLOAD_END")
     return 0
 
 
 def cmd_repair_apply(args: argparse.Namespace) -> int:
-    """Optionally elevate first LOW-tier ``scripts/*.bat`` after ``RUN`` confirmation.
+    """Optionally launch the first eligible LOW-tier ``scripts/*.bat`` recommendation after confirmations.
 
-    Side effects:
-        May launch elevated PowerShell; appends JSONL feedback identical to legacy repair-safe.
+    Purpose:
+        Provide the same guarded elevation path historically exposed through ``repair-safe --apply``, while
+        preferring live artefacts when present.
+
+    Args:
+        args: ``repo_root`` optional; ``dry_run`` suppresses subprocess launch entirely.
 
     Returns:
-        ``0`` success path, ``1`` cancel/not applicable, ``2`` path guard violation.
+        ``0`` when dry-run exits, runnable script launches successfully, or no runnable LOW actions exist.
+        ``1`` operator cancel/wrong passphrase where applicable downstream.
+        ``2`` gated off Windows or path guard forbids elevation target.
+
+    Side effects:
+        Non-dry-run may spawn elevated PowerShell ``Start-Process`` and append ``logs/decision_feedback.jsonl``.
+
+    Idempotency:
+        Re-running may re-elevate batches if operator confirms ``RUN`` again—scripts themselves must be safe
+        against duplicate application.
 
     Audit Notes:
-        Skips launching when ``action_key`` is ``proxy_disable``—operators must run ``proxy-disable``.
+        Skips ``proxy_disable`` action keys so HKCU remediation stays on the typed phrase CLI path—do not bypass.
+
+        Evidence: correlate feedback JSON lines with rerun ``diagnose`` snapshots to judge effectiveness.
     """
     if (code := exit_code_if_not_windows("repair-apply")) is not None:
         return code
