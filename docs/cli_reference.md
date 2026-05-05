@@ -141,6 +141,24 @@ uvicorn failure_system.api:app --host 127.0.0.1 --port 8010
 
 Output layering contract: [`failure_system_output_contract.md`](failure_system_output_contract.md).
 
+### Layer-aware diagnosis and preview
+
+```powershell
+scripts\diagnose_layers.bat
+scripts\repair_preview.bat
+python -m failure_system.layer_decision
+python -m failure_system.layer_decision --no-write
+```
+
+Artifacts:
+
+- `logs/network_layer_audit.jsonl` (append-only diagnosis ledger)
+- `reports/network_layer_diagnosis_<timestamp>.md` (human-readable run report)
+
+Safety:
+
+- This path is diagnose/preview only: no silent process kill, firewall reset, adapter disable, or registry mutation.
+
 ## Endpoint agent (observe-only)
 
 ```powershell

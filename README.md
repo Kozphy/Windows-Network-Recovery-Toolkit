@@ -12,6 +12,92 @@ Windows often looks “online” while **browser or dev-tool traffic fails**—t
 
 ---
 
+## What This Toolkit Does
+
+This repository provides a diagnose-first Windows network reliability toolkit that:
+
+- collects read-only network/proxy observations;
+- classifies failures by layer (L1/L2, L3, L4, L7, Infra);
+- separates observation, inference, and proof claims;
+- emits append-only audit records and human-readable reports;
+- previews repair actions before any operator-triggered mutation path.
+
+### L1/L2 vs L3 vs L4 vs L7 vs Infra
+
+- **L1/L2**: link/adapter/local segment problems (media disconnected, adapter down, missing gateway).
+- **L3**: IP routing reachability (public IP ping/path issues).
+- **L4**: transport reachability (TCP 443 path blocked despite ICMP success).
+- **L7**: DNS/HTTP/HTTPS/browser/proxy behavior (for example DNS-only failure or proxy drift).
+- **Infra**: router/ISP/upstream/shared-network failures often affecting multiple devices.
+
+### Ping Works but Browser Fails
+
+`ping` success does not prove browser-path success. Browser traffic can fail when:
+
+- WinINET proxy is enabled while WinHTTP appears direct,
+- localhost proxy endpoint is stale or unhealthy,
+- TCP is reachable but HTTPS request path still fails.
+
+Layer diagnosis treats this as a likely L7/browser-path regression candidate.
+
+### Observation vs Inference vs Proof
+
+- **Observation**: direct probe results (ping/nslookup/tcp/curl/registry snapshots).
+- **Inference**: rule-based layer classification from multiple observations.
+- **Proof**: stronger telemetry or corroborated evidence; not implied by heuristic process correlation.
+
+### Heuristic Attribution != Proof
+
+Listener ownership or process correlation can indicate candidate actors, but does not prove
+which process wrote registry values without stronger registry-write telemetry.
+
+### Safe Repair Policy
+
+- Diagnose before repair.
+- No silent process kill.
+- No silent firewall reset.
+- No silent adapter disable.
+- No registry changes without explicit confirmation.
+- Repair preview remains descriptive unless operator executes a separate confirmed action.
+
+### Example JSON Output (Layer Diagnosis)
+
+```json
+{
+  "timestamp": "2026-05-05T13:35:00+00:00",
+  "layer": "L7",
+  "failure_type": "browser_layer_proxy_drift",
+  "observed_signals": ["winhttp=direct", "wininet_proxy_enable=1"],
+  "hypotheses": ["WinINET proxy drift can break browser traffic while WinHTTP remains direct."],
+  "confidence_score": 0.86,
+  "evidence_level": "inference",
+  "recommended_next_test": "Compare WinINET proxy settings with direct curl and browser behavior.",
+  "repair_preview": [
+    "Preview only: Compare WinINET and WinHTTP proxy states before any changes.",
+    "Preview only: Restore previous proxy fields (ProxyEnable/ProxyServer/AutoConfigURL/ProxyOverride) with confirmation."
+  ],
+  "safety_policy": {
+    "diagnose_first": true,
+    "requires_user_confirmation": true,
+    "no_silent_process_kill": true,
+    "no_silent_firewall_reset": true,
+    "no_silent_adapter_disable": true,
+    "no_registry_change_without_confirmation": true
+  },
+  "attribution_notes": []
+}
+```
+
+### Example Troubleshooting Flow
+
+1. Run `scripts\diagnose_layers.bat`.
+2. Review JSON stdout + `logs/network_layer_audit.jsonl`.
+3. Open the generated markdown report in `reports/network_layer_diagnosis_<timestamp>.md`.
+4. Follow `recommended_next_test` for confidence improvement.
+5. Use repair preview guidance first; execute mutations only through explicit confirmation paths.
+
+---
+
 ## Beyond `scripts/*.bat`
 
 The beginner toolkit under `[scripts/](scripts/)` remains **unchanged** in layout and intent: familiar `.bat` flows for operators who want guided steps.
