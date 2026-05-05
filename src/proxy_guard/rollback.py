@@ -71,22 +71,6 @@ def build_wininet_restore_argv_list(lkg: ProxySnapshot) -> tuple[tuple[str, ...]
     sz_or_delete(lkg.auto_config_url, "AutoConfigURL")
     sz_or_delete(lkg.proxy_override, "ProxyOverride")
 
-    if lkg.auto_detect is not None:
-        cmds.append(
-            (
-                "reg",
-                "add",
-                _INTERNET_SETTINGS_KEY,
-                "/v",
-                "AutoDetect",
-                "/t",
-                "REG_DWORD",
-                "/d",
-                str(int(lkg.auto_detect)),
-                "/f",
-            ),
-        )
-
     if lkg.proxy_enable is not None:
         cmds.append(
             (

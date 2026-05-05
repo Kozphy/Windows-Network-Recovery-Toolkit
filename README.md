@@ -60,6 +60,33 @@ More detail: `[docs/safety_model.md](docs/safety_model.md)`, `[SECURITY.md](SECU
 
 ---
 
+## Proxy Guard Decision Model
+
+`proxy-guard` separates evidence layers deliberately:
+
+- **Observation**: registry polling detects *that* proxy keys changed.
+- **Inference**: localhost listener/process correlation provides candidate actors only.
+- **Proof**: stronger writer proof requires Sysmon/EventLog registry write telemetry.
+- **Decision**: policy + post-change connectivity validation finalize risk/action.
+- **Action**: rollback remains policy-gated and safe-by-default.
+
+Important behavior:
+
+- Listener correlation does **not** prove registry writer identity.
+- Localhost proxy presence alone is only a provisional allow signal.
+- After proxy-registry change, guard validates DNS/TCP443/HTTPS checks and can emit `allowed_but_connectivity_regressed`.
+- Rollback paths restore targeted proxy fields only and never reset firewall/adapters.
+
+### Troubleshooting: ping works but Edge/Chrome fail after proxy change
+
+- `ping` does not exercise browser proxy routing.
+- TCP 443 can still pass while HTTPS (curl/browser path) fails.
+- Edge/Chrome rely on WinINET user proxy settings (`ProxyEnable`, `ProxyServer`).
+- A registry proxy toggle can break browser-path traffic even when core network is up.
+- Proxy Guard classifies this as HTTPS/browser-path regression and recommends safe restore/prompt.
+
+---
+
 ## Architecture
 
 End-to-end mental model:

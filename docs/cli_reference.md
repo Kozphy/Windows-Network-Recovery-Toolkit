@@ -106,6 +106,13 @@ python -m src proxy-guard --interval 5 --known-good my-baseline --auto-rollback
 
 **Safety:** Listener and process correlation are **not cryptographic proof** of who wrote registry values. `**proxy-disable`** appends `**logs/proxy_snapshots.jsonl**` before `reg` mutations. See `[proxy_guard.md](proxy_guard.md)`, `[proxy_attribution.md](proxy_attribution.md)`.
 
+### Proxy Guard decision notes
+
+- `proxy-guard` first evaluates policy, then can run post-change connectivity validation (DNS/TCP443/HTTPS).
+- Localhost listener presence is a **provisional signal**, not proof of registry writer identity.
+- Regression-aware outcomes include states like `allowed_no_regression` and `allowed_but_connectivity_regressed`.
+- Rollback actions remain policy-gated and explicit (`rollback_preview` / applied paths) and are limited to proxy-relevant surfaces.
+
 ## Network State Manager
 
 ```powershell

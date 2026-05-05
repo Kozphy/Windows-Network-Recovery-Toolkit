@@ -54,9 +54,31 @@ def policy_payload_for_audit(
     *,
     curr_snap: ProxySnapshot,
     parsed_after: ParsedProxy,
+    final_decision: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Unified ``policy`` subtree for pipeline JSONL."""
+    """Build normalized ``policy`` subtree for pipeline JSONL.
 
+    Args:
+        gd: Base transition policy decision.
+        curr_snap: Current proxy snapshot used for risk inference fallback.
+        parsed_after: Parsed current ``ProxyServer`` metadata.
+        final_decision:
+            Optional regression-aware decision payload from ``decision.finalize_decision``.
+            When provided, this function emits the final decision values directly.
+
+    Returns:
+        dict[str, Any]: Policy subtree with ``decision``, ``reason``, ``matched_policy``,
+        ``risk_level``, and ``recommended_action``.
+    """
+
+    if final_decision is not None:
+        return {
+            "decision": final_decision.get("decision"),
+            "reason": final_decision.get("reason"),
+            "matched_policy": final_decision.get("matched_policy"),
+            "risk_level": final_decision.get("risk_level"),
+            "recommended_action": final_decision.get("recommended_action"),
+        }
     return {
         "decision": public_decision_label(gd.decision),
         "reason": gd.reason,
@@ -89,10 +111,40 @@ def summarize_stdout_event(
     rollback_subtree: dict[str, Any],
     curr_snap: ProxySnapshot,
     parsed_after: ParsedProxy,
+    final_decision: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Console JSON summary (backward-compat keys retained)."""
+    """Create console JSON summary while preserving backward-compatible fields.
 
-    pol = policy_payload_for_audit(gd, curr_snap=curr_snap, parsed_after=parsed_after)
+    Args:
+        gd: Base policy decision.
+        rollback_subtree: Rollback action payload.
+        curr_snap: Current snapshot for risk fallback when ``final_decision`` is absent.
+        parsed_after: Parsed current proxy metadata for fallback risk inference.
+        final_decision:
+            Optional full decision envelope (connectivity + attribution + evidence).
+
+    Returns:
+        dict[str, Any]: Human-facing stdout blob containing policy, rollback, and optional
+        connectivity/attribution/evidence subtrees.
+
+    Audit Notes:
+        Keep this payload aligned with pipeline JSONL keys so incident responders can compare
+        terminal output against append-only audit lines.
+    """
+
+    pol = policy_payload_for_audit(
+        gd,
+        curr_snap=curr_snap,
+        parsed_after=parsed_after,
+        final_decision=final_decision,
+    )
+    connectivity_blob = {}
+    attribution_blob = {}
+    evidence_blob = []
+    if final_decision is not None:
+        connectivity_blob = final_decision.get("connectivity_validation") or {}
+        attribution_blob = final_decision.get("attribution") or {}
+        evidence_blob = final_decision.get("evidence") or []
     return {
         "decision": pol["decision"],
         "reason": pol["reason"],
@@ -105,6 +157,9 @@ def summarize_stdout_event(
             "verification": rollback_subtree["verification"],
             "error": rollback_subtree["error"],
         },
+        "connectivity_validation": connectivity_blob,
+        "attribution": attribution_blob,
+        "evidence": evidence_blob,
         "legacy_detail": gd.reason,
     }
 

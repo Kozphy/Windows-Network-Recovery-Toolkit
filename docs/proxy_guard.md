@@ -60,6 +60,22 @@ flowchart LR
 - **Rollback source of truth**: the HKCU probe snapshot captured **before** the change (`ProxyEnable`, `ProxyServer`, `AutoConfigURL`, `AutoDetect`; `ProxyOverride` when present)—**not** a blind disable.
 - **`reports/proxy_guard_lkg.json`**: optional last-known-good file for onboarding (`--trust-current`) and auxiliary WinHTTP heuristics—not a prerequisite for rollback when a prior probe exists.
 - **Unified audit**: `logs/proxy_guard_pipeline_audit.jsonl` (schema_version `1`, nested `policy`/`rollback` payloads). Legacy SOC rows still populate `reports/proxy_guard_watch.jsonl`, `reports/proxy_guard_actions.jsonl`, and `logs/proxy_guard_audit.jsonl`.
+- **Post-change validation**: after detected proxy change, guard captures DNS (`nslookup`), TCP443 (`Test-NetConnection`), and HTTPS (`curl -I`) checks to detect regression before finalizing a low-risk allow.
+
+#### Decision states (structured)
+
+The control-plane output includes normalized states such as:
+
+- `allowed_no_regression`
+- `allowed_but_connectivity_regressed`
+- `blocked_high_risk`
+- `insufficient_evidence`
+- rollback actions: `rollback_preview`, `rollback_recommended`, `rollback_skipped`, `rollback_applied`, `rollback_failed`
+
+This keeps attribution language honest:
+
+- **Do:** “`node.exe` is a candidate actor based on localhost listener correlation.”
+- **Do not:** claim “`node.exe` changed the registry” unless direct registry-write telemetry exists.
 
 Operational flags:
 

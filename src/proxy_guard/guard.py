@@ -19,13 +19,16 @@ from .attribution_engine import (
     layered_to_heuristic_pipeline,
 )
 from .audit import build_rollback_plan, emit_pipeline_audit_v1, emit_proxy_guard_audit
+from .connectivity import compare_connectivity, capture_connectivity_snapshot
 from .config import ProxyGuardServiceConfig
+from .decision import finalize_decision
 from .diff import (
     proxy_state_audit_dict,
     verify_hkcu_core_matches_prior,
     wininet_argv_restored_fields,
 )
 from .events import proxy_guard_control_event
+from .evidence import build_connectivity_evidence, build_registry_change_evidence
 from .guard_evaluation import evaluate_proxy_transition
 from .models import (
     AttributionResult,
@@ -121,6 +124,7 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
     limiter = RollbackLimiter(cfg.rollback_limits)
     prior_registry_view: dict[str, Any] | None = None
     prior_full_snap: ProxySnapshot | None = None
+    prior_connectivity = None
     registry_change_events = 0
 
     emit_structured_log(
@@ -177,6 +181,11 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
             print(json.dumps(view, indent=2, ensure_ascii=False))
             prior_registry_view = view
             prior_full_snap = full_snap_curr
+            prior_connectivity = capture_connectivity_snapshot(
+                run=cfg.run,
+                snapshot=full_snap_curr,
+                timeout_seconds=cfg.probe.timeout_seconds,
+            )
             if cfg.once:
                 return
             time.sleep(cfg.interval_seconds)
@@ -184,12 +193,19 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
 
         if registry_views_equal(prior_registry_view, view):
             prior_full_snap = full_snap_curr
+            prior_connectivity = capture_connectivity_snapshot(
+                run=cfg.run,
+                snapshot=full_snap_curr,
+                timeout_seconds=cfg.probe.timeout_seconds,
+            )
             if cfg.once:
                 return
             time.sleep(cfg.interval_seconds)
             continue
 
         print("[proxy-guard] registry change detected", file=sys.stderr)
+        prev_view = copy.deepcopy(prior_registry_view)
+        curr_view = copy.deepcopy(view)
         try:
             win = int(max(60, min(600, getattr(cfg, "attribution_since_seconds", 90))))
             layered = registry_layer_attribute_proxy_change(
@@ -220,8 +236,6 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
             extra={"attribute": heuristic_pipeline.to_jsonable()},
         )
 
-        prev_view = copy.deepcopy(prior_registry_view)
-        curr_view = copy.deepcopy(view)
         parsed_prev = parse_proxy_server(prev_view.get("proxy_server"))
         parsed_after = parsed
         prev_snap_guard = prior_full_snap or capture_proxy_snapshot(
@@ -265,6 +279,18 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
             attribution=attrib,
             policy=cfg.policy,
             port_listen=port_listen,
+        )
+        post_connectivity = capture_connectivity_snapshot(
+            run=cfg.run,
+            snapshot=curr_snap_guard,
+            timeout_seconds=cfg.probe.timeout_seconds,
+        )
+        validation = compare_connectivity(pre_change=prior_connectivity, post_change=post_connectivity)
+        final_decision = finalize_decision(
+            policy_decision=gd,
+            connectivity_validation=validation,
+            attribution=attrib,
+            parsed_is_localhost=parsed_after.is_localhost_proxy,
         )
 
         restore_basis = cfg.known_good_snapshot
@@ -419,6 +445,35 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
             ),
             error=rb_error,
         )
+        final_decision["rollback"] = {
+            "action": rollback_audit_payload["action"],
+            "restored_fields": rollback_audit_payload["restored_fields"],
+            "requires_confirmation": bool(cfg.cli_rollback and not cfg.auto_rollback),
+            "verification": rollback_audit_payload["verification"],
+            "error": rollback_audit_payload["error"],
+        }
+        evidence_rows = [
+            build_registry_change_evidence(
+                observed_at=full_snap_curr.captured_at,
+                value_name="ProxyEnable",
+                old_value=prev_snap_guard.proxy_enable,
+                new_value=curr_snap_guard.proxy_enable,
+            ).to_jsonable(),
+            build_registry_change_evidence(
+                observed_at=full_snap_curr.captured_at,
+                value_name="ProxyServer",
+                old_value=prev_snap_guard.proxy_server,
+                new_value=curr_snap_guard.proxy_server,
+            ).to_jsonable(),
+        ]
+        evidence_rows.extend(
+            x.to_jsonable()
+            for x in build_connectivity_evidence(
+                observed_at=full_snap_curr.captured_at,
+                validation=validation,
+            )
+        )
+        final_decision["evidence"] = evidence_rows
 
         emit_pipeline_audit_v1(
             repo_root,
@@ -433,8 +488,11 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
                     gd,
                     curr_snap=curr_snap_guard,
                     parsed_after=parsed_after,
+                    final_decision=final_decision,
                 ),
                 "rollback": rollback_audit_payload,
+                "connectivity_validation": validation.to_jsonable(),
+                "evidence": evidence_rows,
             },
         )
 
@@ -481,12 +539,14 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
             rollback_subtree=rollback_audit_payload,
             curr_snap=curr_snap_guard,
             parsed_after=parsed_after,
+            final_decision=final_decision,
         )
         stdout_blob["detail"] = gd.reason
         stdout_blob["legacy_decision_code"] = gd.decision
         stdout_blob["action"] = action
         stdout_blob["rollback_suppressed_reason"] = suppressed_reason
         print(json.dumps(stdout_blob, indent=2, ensure_ascii=False))
+        prior_connectivity = post_connectivity
 
         if cfg.exit_after_registry_change_events is not None:
             if registry_change_events >= cfg.exit_after_registry_change_events:
