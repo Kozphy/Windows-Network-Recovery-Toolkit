@@ -56,6 +56,12 @@ def build_report_payload(
         "attribution": attribution,
         "persistence_indicators": persistence,
         "certificate_indicators": certificates,
+        "inferred_classification": risk.get("classification"),
+        "risk_score": risk.get("risk_score"),
+        "risk_level": risk.get("risk_level"),
+        "confidence": risk.get("confidence"),
+        "limitations": risk.get("limitations", []),
+        "recommended_next_steps": risk.get("recommended_actions", []),
         "inference": risk,
     }
 
@@ -81,12 +87,17 @@ def format_text_report(payload: dict[str, Any]) -> str:
     lines.extend(["", "recommended_actions:"])
     for r in inf.get("recommended_actions", []):
         lines.append(f"- {r}")
+    evidence = inf.get("evidence") or {}
+    if evidence.get("validations"):
+        lines.extend(["", "recommended_validation:"])
+        for item in evidence.get("validations", []):
+            lines.append(f"- {item}")
     return "\n".join(lines)
 
 
 def format_json_report(payload: dict[str, Any]) -> str:
     """Serialize report payload as pretty JSON."""
-    return json.dumps(payload, indent=2, ensure_ascii=False)
+    return json.dumps(payload, indent=2, ensure_ascii=True)
 
 
 def append_audit_event(payload: dict[str, Any], *, audit_path: Path | None = None) -> Path:

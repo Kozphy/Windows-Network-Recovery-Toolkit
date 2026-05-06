@@ -35,5 +35,4 @@ Thumbs.db
 *.exe
 *.msi
 
-# folder
-tests/*
+# Tests are source artifacts; keep test files visible while __pycache__/ remains ignored above.

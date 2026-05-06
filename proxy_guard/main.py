@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from typing import Any
 
@@ -32,17 +33,20 @@ from .proxy_signal_collector import collect_proxy_signals
 from .reporter import append_audit_event, build_report_payload, format_json_report, format_text_report
 
 
-def _scan_once() -> dict[str, Any]:
+def _scan_once(*, append_audit: bool = True) -> dict[str, Any]:
     """Run one full diagnostic scan and persist audit evidence.
+
+    Args:
+        append_audit: Whether to append the report payload to the JSONL audit ledger.
 
     Returns:
         dict[str, Any]: Full report payload with raw signals, attribution, and inference.
 
     Side effects:
-        Appends one audit row to ``logs/proxy_hijack_audit.jsonl``.
+        Appends one audit row to ``logs/proxy_hijack_audit.jsonl`` when ``append_audit`` is true.
 
     Idempotency:
-        Not idempotent by design because each call writes a new timestamped audit event.
+        Not idempotent when audit append is enabled because each call writes a timestamped event.
     """
     proxy = collect_proxy_signals()
     parsed = proxy.get("parsed_proxy") or {}
@@ -62,7 +66,8 @@ def _scan_once() -> dict[str, Any]:
         certificates=certificates,
         risk=risk,
     )
-    append_audit_event(payload)
+    if append_audit:
+        append_audit_event(payload)
     return payload
 
 
@@ -76,26 +81,31 @@ def _watch(interval_seconds: float) -> int:
         int: Never returns under normal operation; loop is continuous.
 
     Side effects:
-        Repeatedly runs scans (including audit writes) and prints JSON change events to stdout.
+        Polls WinINET proxy state and runs full audited scans when the proxy tuple changes.
     """
     last_key = None
     while True:
-        payload = _scan_once()
-        raw = payload.get("raw_signals") or {}
+        raw = collect_proxy_signals()
         key = (
             raw.get("proxy_enable"),
             raw.get("proxy_server"),
             raw.get("auto_config_url"),
         )
         if key != last_key:
+            payload = _scan_once(append_audit=True)
+            raw = payload.get("raw_signals") or raw
+            event_name = "proxy_registry_snapshot" if last_key is None else "proxy_registry_change_detected"
             print(
                 json.dumps(
                     {
                         "timestamp": payload.get("timestamp"),
-                        "event": "proxy_registry_change_detected",
+                        "event": event_name,
                         "proxy_enable": raw.get("proxy_enable"),
                         "proxy_server": raw.get("proxy_server"),
+                        "auto_config_url": raw.get("auto_config_url"),
                         "classification": (payload.get("inference") or {}).get("classification"),
+                        "risk_score": (payload.get("inference") or {}).get("risk_score"),
+                        "confidence": (payload.get("inference") or {}).get("confidence"),
                     },
                     ensure_ascii=False,
                 )
@@ -116,6 +126,11 @@ def main(argv: list[str] | None = None) -> int:
     Raises:
         ``SystemExit`` may be raised by argparse on invalid CLI usage.
     """
+    try:
+        sys.stdout.reconfigure(errors="replace")
+    except AttributeError:
+        pass
+
     parser = argparse.ArgumentParser(prog="proxy_guard")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -132,7 +147,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     if args.func in {"scan", "report"}:
-        payload = _scan_once()
+        payload = _scan_once(append_audit=True)
         if getattr(args, "emit_json", False):
             print(format_json_report(payload))
         else:

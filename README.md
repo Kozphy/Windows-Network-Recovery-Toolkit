@@ -108,6 +108,11 @@ This repository also includes a local-first security observability module under 
 - inspects startup persistence indicators and trusted-root certificate signals (preview only);
 - infers explainable risk classifications with explicit limitations.
 
+This upgrades the toolkit from break/fix network diagnostics into security observability by adding
+an evidence chain for browser traffic routing: registry observation -> listener/process attribution
+-> persistence and certificate validation prompts -> bounded risk decision. The output is designed
+for local triage and audit review, not autonomous containment.
+
 ### Design boundary
 
 This module is a **diagnostic and evidence engine**, not antivirus and not auto-remediation.
@@ -139,13 +144,19 @@ Outputs explicitly separate:
 
 1. observed signals
 2. inferred classification
-3. confidence + limitations
-4. recommended validation actions
+3. validation prompts
+4. confidence, limitations, and recommended next steps
 
 Heuristic attribution remains bounded:
 
 - listener/process correlation is useful evidence,
 - it is **not** proof of registry writer identity.
+- suspicious certificates and startup entries increase risk, but still require user or analyst validation.
+
+Every scan/report writes an append-only JSONL event to `logs/proxy_hijack_audit.jsonl` with raw
+signals, attribution data, persistence/certificate previews, classification, confidence, limitations,
+and recommended next steps. Watch mode polls the WinINET proxy tuple and emits audited events when
+the proxy state changes.
 
 ---
 
@@ -579,4 +590,3 @@ Huge working trees usually mean `**node_modules`**, `**.venv**`, `**.next**`, **
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
