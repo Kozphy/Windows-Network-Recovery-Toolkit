@@ -34,3 +34,6 @@ Thumbs.db
 *.zip
 *.exe
 *.msi
+
+# folder
+tests/*
