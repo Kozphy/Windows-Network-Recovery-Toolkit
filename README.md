@@ -98,6 +98,57 @@ which process wrote registry values without stronger registry-write telemetry.
 
 ---
 
+## Proxy Hijack & MITM Risk Detection Engine
+
+This repository also includes a local-first security observability module under `proxy_guard/`:
+
+- reads WinINET proxy posture (`ProxyEnable`, `ProxyServer`, `AutoConfigURL`);
+- detects loopback proxy routing (`127.0.0.1`, `localhost`, `::1`);
+- attributes proxy listener ports to process metadata when possible (PID/name/path/parent PID);
+- inspects startup persistence indicators and trusted-root certificate signals (preview only);
+- infers explainable risk classifications with explicit limitations.
+
+### Design boundary
+
+This module is a **diagnostic and evidence engine**, not antivirus and not auto-remediation.
+
+- It never disables proxy automatically.
+- It never kills processes automatically.
+- It never deletes certificates automatically.
+
+### Commands
+
+```powershell
+python -m proxy_guard scan
+python -m proxy_guard report --json
+python -m proxy_guard watch
+```
+
+### Classification vocabulary
+
+- `NO_PROXY`
+- `KNOWN_DEV_PROXY`
+- `KNOWN_SECURITY_TOOL`
+- `UNKNOWN_LOCAL_PROXY`
+- `SUSPICIOUS_PROXY`
+- `POSSIBLE_MITM_RISK`
+
+### Explainability model
+
+Outputs explicitly separate:
+
+1. observed signals
+2. inferred classification
+3. confidence + limitations
+4. recommended validation actions
+
+Heuristic attribution remains bounded:
+
+- listener/process correlation is useful evidence,
+- it is **not** proof of registry writer identity.
+
+---
+
 ## Beyond `scripts/*.bat`
 
 The beginner toolkit under `[scripts/](scripts/)` remains **unchanged** in layout and intent: familiar `.bat` flows for operators who want guided steps.

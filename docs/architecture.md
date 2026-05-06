@@ -29,6 +29,7 @@ Repairs are **not** on the same automatic edge as collection or scoring. The fin
 | **Interface** | Operator access: `python -m src`, `python -m failure_system`, FastAPI apps, batch wrappers, optional UIs. | `src/cli.py`, `failure_system/api.py`, `scripts/`, `network_agent/api.py`, `backend/`, `frontend/` |
 | **Control** | Safety boundary: no auto-repair from FKS, typed confirmations, policy-gated repair preview/execute. | `failure_system/safety.py`, `src/repair/`, `network_agent/safety/`, batch prompts |
 | **Output contract** | Decision/evidence/markdown/debug output layers for operator UX + automation stability. | `failure_system/formatters.py`, `docs/failure_system_output_contract.md` |
+| **Security observability** | Local-first proxy hijack/MITM risk diagnostics: WinINET proxy posture, port attribution, persistence/cert indicators, explainable risk output. | `proxy_guard/` (`python -m proxy_guard ...`) |
 
 ## Why deterministic rules (not opaque ML) for local recommendations
 
@@ -45,3 +46,4 @@ Machine learning is **not** claimed for core diagnosis paths in this repository;
 - [`system_architecture.md`](system_architecture.md) — Script-centric layered network model.
 - [`decision_engine_v2.md`](decision_engine_v2.md) — Live hypothesis scoring contract.
 - [`proxy_attribution.md`](proxy_attribution.md) — HKCU drift polling (`proxy-watch`), risk diff, probabilistic attribution, and ``logs/proxy_guard.jsonl`` audit schema (orthogonal to FailureBlock JSONL stores).
+- [`cli_reference.md`](cli_reference.md) — command surfaces including `python -m proxy_guard`.
