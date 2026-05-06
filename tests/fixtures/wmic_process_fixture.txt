@@ -1,4 +1,0 @@
-Caption=node.exe
-CommandLine=null
-ParentProcessId=7580
-ExecutablePath=C:\Program Files\node.exe
