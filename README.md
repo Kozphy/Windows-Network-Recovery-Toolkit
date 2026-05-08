@@ -167,9 +167,9 @@ The beginner toolkit under `[scripts/](scripts/)` remains **unchanged** in layou
 The Python layers add:
 
 - `**python -m src`** — explainable CLI: proxy guard, network-state snapshots, deterministic decision engine, repair-safe low-risk paths (see `[docs/cli_reference.md](docs/cli_reference.md)`).
-- `**failure_system/**` — Failure Knowledge System: safe probes → **FailureBlock** records in **append-only JSONL** (optional HTTP API mirrors CLI semantics; no auto-repair).
-- `**platform_core/`** + `**backend/**` — typed models, append-only `platform_data/*.jsonl`, policy gates, **FastAPI** routes under `**/platform/*`**.
-- `**frontend/**` — Next.js dashboard at `**/platform**` (points at `NEXT_PUBLIC_PLATFORM_API`).
+- `**failure_system/`** — Failure Knowledge System: safe probes → **FailureBlock** records in **append-only JSONL** (optional HTTP API mirrors CLI semantics; no auto-repair).
+- `**platform_core/`** + `**backend/`** — typed models, append-only `platform_data/*.jsonl`, policy gates, **FastAPI** routes under `**/platform/*`**.
+- `**frontend/`** — Next.js dashboard at `**/platform**` (points at `NEXT_PUBLIC_PLATFORM_API`).
 - `**endpoint_agent/**` — **observe-only** local cycles; optional POST to your backend when configured (no auto-repair from the agent module).
 
 ---
@@ -180,9 +180,9 @@ The Python layers add:
 | Track                 | What it is                                                                                                                                                  |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `**scripts/*.bat`**   | Beginner Windows batch toolkit (unchanged). See `[docs/script_reference.md](docs/script_reference.md)`.                                                     |
-| `**python -m src**`   | Explainable diagnostics CLI: proxy guard, network-state snapshots, decision engine, repair-safe low-risk batch path.                                        |
+| `**python -m src`**   | Explainable diagnostics CLI: proxy guard, network-state snapshots, decision engine, repair-safe low-risk batch path.                                        |
 | `**failure_system/**` | Failure Knowledge System: probes → **FailureBlock** + append-only JSONL (`[failure_system](failure_system/)`).                                              |
-| **Platform stack**    | Append-only `**platform_data/*.jsonl`**, `**/platform/***` ingest + reads, metrics, incidents, attribution, RBAC-shaped headers, `**frontend/**` dashboard. |
+| **Platform stack**    | Append-only `**platform_data/*.jsonl`**, `**/platform/*`** ingest + reads, metrics, incidents, attribution, RBAC-shaped headers, `**frontend/**` dashboard. |
 
 
 Full command matrix: `[docs/cli_reference.md](docs/cli_reference.md)`.
@@ -196,9 +196,9 @@ Full command matrix: `[docs/cli_reference.md](docs/cli_reference.md)`.
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Diagnose first**                | Collectors and APIs surface evidence before repair-oriented paths.                                                                                                                            |
 | **Preview before repair**         | CLI and `**POST /platform/remediation/preview`** describe intended actions.                                                                                                                   |
-| **Dry-run default**               | `**POST /platform/remediation/execute`** defaults to `**dry_run=true**` in the request model.                                                                                                 |
+| **Dry-run default**               | `**POST /platform/remediation/execute`** defaults to `**dry_run=true`** in the request model.                                                                                                 |
 | **Allowlist-only remediation**    | Executable remediation resolves through the platform registry and policy gates—not arbitrary strings.                                                                                         |
-| **No arbitrary shell from API**   | Platform routes do not accept free-form shell; `**/api/*`** toolkit bridges invoke fixed `**python -m src …**` argv (see `[backend/live_observability.py](backend/live_observability.py)`).   |
+| **No arbitrary shell from API**   | Platform routes do not accept free-form shell; `**/api/*`** toolkit bridges invoke fixed `**python -m src …`** argv (see `[backend/live_observability.py](backend/live_observability.py)`).   |
 | **No default log uploads**        | JSONL and logs stay **local** unless you explicitly point agents or tools at a backend.                                                                                                       |
 | **High-risk actions blocked**     | Firewall reset, adapter disable, and similar paths stay **off** API execution unless modeled as preview/manual-only (see tests under `[tests/](tests/)`).                                     |
 | **Heuristic attribution ≠ proof** | Process correlation and evidence tiers are **hypotheses**, not proof of who wrote a registry value—see `[evidence/](evidence/)` and `[docs/evidence_pipeline.md](docs/evidence_pipeline.md)`. |
@@ -244,19 +244,19 @@ End-to-end mental model:
 
 | Stage                   | Role                                                                                                                                       |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Collect**             | Safe probes via `**python -m src`**, `**failure_system**`, or `**endpoint_agent**` cycles (observe-only; no repair from the agent module). |
-| **Snapshot**            | Persist endpoint/network snapshots as JSONL under `**platform_data/`** (or paths set by `**PLATFORM_DATA_DIR**`).                          |
+| **Collect**             | Safe probes via `**python -m src`**, `**failure_system`**, or `**endpoint_agent**` cycles (observe-only; no repair from the agent module). |
+| **Snapshot**            | Persist endpoint/network snapshots as JSONL under `**platform_data/`** (or paths set by `**PLATFORM_DATA_DIR`**).                          |
 | **Detect drift**        | Compare snapshots / baselines for proxy, DNS, and related divergence.                                                                      |
 | **Attribute**           | Merge listener inventory with optional Procmon/Sysmon-style evidence—**ranked hypotheses**, not forensic proof.                            |
 | **Decide policy**       | Allowlists, risk tiers, RBAC headers, and `**platform_core`** policy evaluation before execution.                                          |
 | **Preview remediation** | `**/platform/remediation/preview`** and CLI previews; blocked actions remain blocked.                                                      |
 | **Audit**               | Append audit rows to JSONL / `**logs/`** for previews and allowlisted execution attempts.                                                  |
-| **Dashboard**           | `**frontend/`** Next.js app under `**/platform**` for health, metrics, events, incidents.                                                  |
+| **Dashboard**           | `**frontend/`** Next.js app under `**/platform`** for health, metrics, events, incidents.                                                  |
 
 
 Diagrams and depth: `[docs/architecture_platform.md](docs/architecture_platform.md)`, `[docs/platform_architecture.md](docs/platform_architecture.md)`.
 
-**Future multi-host / SaaS seams (interfaces only, no hosted impl):** [`docs/extension_points_multi_host_saas.md`](docs/extension_points_multi_host_saas.md).
+**Future multi-host / SaaS seams (interfaces only, no hosted impl):** `[docs/extension_points_multi_host_saas.md](docs/extension_points_multi_host_saas.md)`.
 
 Contracts: `platform_core/platform_event_contract.py`, `platform_core/policy_engine.py`, `config/platform_policy.example.json`.
 
@@ -268,12 +268,14 @@ The CLI chains **[observation](#1-observation)** → **[hypothesis / confidence]
 
 ### Heuristic vs proof (one glance)
 
-| | **Heuristic layer** | **Proof layer** |
-| --- | --- | --- |
-| **Question** | “What failure mode best matches the snapshot?” | “Does a narrow causal story hold for this path?” |
-| **Input** | Normalized probes, registry, parsed proxy, listeners… | Same context **plus** a fixed contrast procedure (e.g. HTTPS via proxy vs `--noproxy`). |
-| **Output** | Ranked hypotheses + **confidence** (0–1 rules, **not** probabilities) | `CONFIRMED` / `REJECTED` / `INCONCLUSIVE` for that check |
-| **Role** | Prioritization, copy, recommendations | Tightens **policy** when the engine can run (`diagnose --proof`, `diagnose-live --proofs`) |
+
+|              | **Heuristic layer**                                                   | **Proof layer**                                                                            |
+| ------------ | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Question** | “What failure mode best matches the snapshot?”                        | “Does a narrow causal story hold for this path?”                                           |
+| **Input**    | Normalized probes, registry, parsed proxy, listeners…                 | Same context **plus** a fixed contrast procedure (e.g. HTTPS via proxy vs `--noproxy`).    |
+| **Output**   | Ranked hypotheses + **confidence** (0–1 rules, **not** probabilities) | `CONFIRMED` / `REJECTED` / `INCONCLUSIVE` for that check                                   |
+| **Role**     | Prioritization, copy, recommendations                                 | Tightens **policy** when the engine can run (`diagnose --proof`, `diagnose-live --proofs`) |
+
 
 Heuristic confidence can be **high** while proof stays **UNPROVEN** if you did not run the Proof Engine. Proof **CONFIRMED** still **does not** auto-run repairs—**policy** only moves the gate to **ALLOW** for safe-tier paths; operators confirm at execute boundaries.
 
@@ -281,7 +283,7 @@ Heuristic confidence can be **high** while proof stays **UNPROVEN** if you did n
 
 **What:** Immutable snapshot of what was measured—pings, DNS-style checks, TCP/HTTPS probes, WinINET/WinHTTP proxy text, listener attribution, etc.
 
-**Code concept:** `LiveNetworkSnapshot` / `FeatureVector` (see [`docs/decision_engine_v2.md`](docs/decision_engine_v2.md)).
+**Code concept:** `LiveNetworkSnapshot` / `FeatureVector` (see `[docs/decision_engine_v2.md](docs/decision_engine_v2.md)`).
 
 ### 2. Hypothesis + confidence (heuristic layer)
 
@@ -291,7 +293,7 @@ Heuristic confidence can be **high** while proof stays **UNPROVEN** if you did n
 
 ### 3. Data trust & uncertainty
 
-Trust aggregates, conflicts, and “degraded mode” can **cap** an otherwise strong story (e.g. downgrades **ALLOW → PREVIEW**) when signals disagree or the proof layer fails—see `uncertainty` in live JSON and [`docs/decision_engine_v2.md`](docs/decision_engine_v2.md).
+Trust aggregates, conflicts, and “degraded mode” can **cap** an otherwise strong story (e.g. downgrades **ALLOW → PREVIEW**) when signals disagree or the proof layer fails—see `uncertainty` in live JSON and `[docs/decision_engine_v2.md](docs/decision_engine_v2.md)`.
 
 ### 4. Proof (Proof Engine, targeted read-only checks)
 
@@ -336,7 +338,9 @@ flowchart LR
   G --> A
 ```
 
-_Rectangle **H** runs for every scored run; **P** runs only when you enable proofs; **G** consumes both._
+
+
+*Rectangle **H** runs for every scored run; **P** runs only when you enable proofs; **G** consumes both.*
 
 ---
 
@@ -344,7 +348,7 @@ _Rectangle **H** runs for every scored run; **P** runs only when you enable proo
 
 Summary path:
 
-`ping OK · DNS OK · HTTPS fail · proxy detected` → **hypothesis:** proxy / browser-proxy path (high confidence heuristic) → **proof:** HTTPS **bypass** succeeds (proxy contrast) → **`CONFIRMED`** → **policy decision:** **`ALLOW`** (safe-tier only; manual confirm still required).
+`ping OK · DNS OK · HTTPS fail · proxy detected` → **hypothesis:** proxy / browser-proxy path (high confidence heuristic) → **proof:** HTTPS **bypass** succeeds (proxy contrast) → `**CONFIRMED*`* → **policy decision:** `**ALLOW`** (safe-tier only; manual confirm still required).
 
 **Observed signals**
 
@@ -356,17 +360,17 @@ Summary path:
 **Heuristic read**
 
 - **Hypothesis:** a **proxy / browser–proxy path** story fits best (transport and DNS look fine; HTTPS fails while proxy is in play).  
-  In v2 live scoring you may see keys such as `browser_proxy_path_issue` or `unexpected_user_proxy` depending on the full snapshot; v1 buckets include a **`proxy_issue`**-style cause.
+In v2 live scoring you may see keys such as `browser_proxy_path_issue` or `unexpected_user_proxy` depending on the full snapshot; v1 buckets include a `**proxy_issue`**-style cause.
 
 **Proof (when you run the Proof Engine)**
 
 - **Check:** same HTTPS URL **through the configured proxy** vs **bypassing proxy** (`--noproxy '*'`).
 - **Outcome:** **Bypass succeeds** while the proxied path shows the failure mode the engine tests for → causal contrast supports “localhost/manual proxy path is materially involved.”  
-- **Proof status:** **`CONFIRMED`** (for that proof’s hypothesis scope—see payload `hypothesis_decisions[]`).
+- **Proof status:** `**CONFIRMED`** (for that proof’s hypothesis scope—see payload `hypothesis_decisions[]`).
 
 **Policy decision**
 
-- **Decision:** **`CONFIRMED`** + in-scope hypothesis → **`ALLOW`** for **safe-tier** remediation previews only—**still** confirm before any script that changes state; destructive paths stay manual/off-CLI.
+- **Decision:** `**CONFIRMED`** + in-scope hypothesis → `**ALLOW**` for **safe-tier** remediation previews only—**still** confirm before any script that changes state; destructive paths stay manual/off-CLI.
 
 **Audit**
 
@@ -389,18 +393,22 @@ sequenceDiagram
   Pol->>Aud: hypothesis_decisions + observations row
 ```
 
+
+
 ---
 
 ### CLI quick refs
 
-| Intent | Command |
-| --- | --- |
-| Live diagnose + hypotheses + policy rows | `python -m src diagnose --live` or `python -m src diagnose-live` |
-| Above + Proof Engine | `python -m src diagnose --proof` or `python -m src diagnose-live --proofs` |
-| Replay a recorded run | `python -m src replay <run_id>` |
-| Tiered repair **preview** (no execution) | `python -m src preview` |
 
-Deeper contract: [`docs/decision_engine_v2.md`](docs/decision_engine_v2.md).
+| Intent                                   | Command                                                          |
+| ---------------------------------------- | ---------------------------------------------------------------- |
+| Live diagnose + hypotheses + policy rows | `python -m src diagnose --live` or `python -m src diagnose-live` |
+| Above + Proof Engine                     | or `python -m src diagnose-live --proofs`                        |
+| Replay a recorded run                    | `python -m src replay <run_id>`                                  |
+| Tiered repair **preview** (no execution) | `python -m src preview`                                          |
+
+
+Deeper contract: `[docs/decision_engine_v2.md](docs/decision_engine_v2.md)`.
 
 ---
 
@@ -409,18 +417,18 @@ Deeper contract: [`docs/decision_engine_v2.md`](docs/decision_engine_v2.md).
 
 | Path              | Role                                                                                                                   |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `scripts/`        | Beginner Windows `**.bat**` toolkit (unchanged)                                                                        |
+| `scripts/`        | Beginner Windows `**.bat`** toolkit (unchanged)                                                                        |
 | `src/`            | `**python -m src**` — explainable CLI, proxy guard, decision pipeline                                                  |
 | `failure_system/` | **FailureBlocks** and append-only JSONL                                                                                |
 | `platform_core/`  | Platform models, policy, append-only storage, metrics, incidents                                                       |
 | `endpoint_agent/` | **Observe-only** endpoint cycles; ingest client (optional HTTP)                                                        |
-| `backend/`        | **FastAPI** — `**/platform/*`** plus SaaS-demo and `**/api/***` toolkit bridges (`[backend/main.py](backend/main.py)`) |
+| `backend/`        | **FastAPI** — `**/platform/*`** plus SaaS-demo and `**/api/*`** toolkit bridges (`[backend/main.py](backend/main.py)`) |
 | `frontend/`       | **Next.js** dashboard (`**/platform`**)                                                                                |
 | `evidence/`       | Conservative attribution / evidence adapters (Procmon, Sysmon, ETW-style facades)                                      |
 | `tests/`          | Offline regression and safety tests                                                                                    |
 
 
-Do **not** commit real `**logs/`**, `**platform_data/**`, or operator-owned machine data.
+Do **not** commit real `**logs/`**, `**platform_data/`**, or operator-owned machine data.
 
 ---
 
@@ -583,7 +591,7 @@ Strategy: `[docs/test_strategy.md](docs/test_strategy.md)`.
 
 ## Repository hygiene
 
-Huge working trees usually mean `**node_modules`**, `**.venv**`, `**.next**`, **logs/reports JSONL**, and similar—not authored source. See `**[docs/repository_hygiene.md](docs/repository_hygiene.md)`** and run `python tools/repo_size_audit.py --top 30` before `python tools/cleanup_generated.py` (dry-run by default).
+Huge working trees usually mean `**node_modules`**, `**.venv`**, `**.next**`, logs/reports JSONL, and similar—not authored source. See `**[docs/repository_hygiene.md](docs/repository_hygiene.md)**` and run `python tools/repo_size_audit.py --top 30` before `python tools/cleanup_generated.py` (dry-run by default).
 
 ---
 
