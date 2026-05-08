@@ -43,6 +43,16 @@ from .models import (
     RemediationPreview,
     RemediationPolicy,
 )
+from .reasoning_models import (
+    EndpointEvent,
+    EvidenceTree,
+    Observation,
+    PolicyDecision,
+    ProofResult,
+    ReasoningRun,
+    ReliabilityImpact,
+    StateTransition,
+)
 
 __all__ = [
     "EndpointIdentity",
@@ -52,4 +62,12 @@ __all__ = [
     "RemediationPreview",
     "RemediationExecution",
     "PlatformAuditRecord",
+    "Observation",
+    "EndpointEvent",
+    "StateTransition",
+    "EvidenceTree",
+    "ProofResult",
+    "ReliabilityImpact",
+    "PolicyDecision",
+    "ReasoningRun",
 ]
