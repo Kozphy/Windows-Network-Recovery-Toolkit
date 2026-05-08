@@ -169,7 +169,7 @@ The Python layers add:
 - `**python -m src`** — explainable CLI: proxy guard, network-state snapshots, deterministic decision engine, repair-safe low-risk paths (see `[docs/cli_reference.md](docs/cli_reference.md)`).
 - `**failure_system/`** — Failure Knowledge System: safe probes → **FailureBlock** records in **append-only JSONL** (optional HTTP API mirrors CLI semantics; no auto-repair).
 - `**platform_core/`** + `**backend/`** — typed models, append-only `platform_data/*.jsonl`, policy gates, **FastAPI** routes under `**/platform/*`**.
-- `**frontend/`** — Next.js dashboard at `**/platform**` (points at `NEXT_PUBLIC_PLATFORM_API`).
+- `**frontend/`** — Next.js dashboard at `**/platform`** (points at `NEXT_PUBLIC_PLATFORM_API`).
 - `**endpoint_agent/**` — **observe-only** local cycles; optional POST to your backend when configured (no auto-repair from the agent module).
 
 ---
@@ -181,7 +181,7 @@ The Python layers add:
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `**scripts/*.bat`**   | Beginner Windows batch toolkit (unchanged). See `[docs/script_reference.md](docs/script_reference.md)`.                                                     |
 | `**python -m src`**   | Explainable diagnostics CLI: proxy guard, network-state snapshots, decision engine, repair-safe low-risk batch path.                                        |
-| `**failure_system/**` | Failure Knowledge System: probes → **FailureBlock** + append-only JSONL (`[failure_system](failure_system/)`).                                              |
+| `**failure_system/`** | Failure Knowledge System: probes → **FailureBlock** + append-only JSONL (`[failure_system](failure_system/)`).                                              |
 | **Platform stack**    | Append-only `**platform_data/*.jsonl`**, `**/platform/*`** ingest + reads, metrics, incidents, attribution, RBAC-shaped headers, `**frontend/**` dashboard. |
 
 
@@ -281,7 +281,7 @@ Heuristic confidence can be **high** while proof stays **UNPROVEN** if you did n
 
 ### 1. Observation
 
-**What:** Immutable snapshot of what was measured—pings, DNS-style checks, TCP/HTTPS probes, WinINET/WinHTTP proxy text, listener attribution, etc.
+**What:** Immutable snapshot of what was maeasured—pings, DNS-style checks, TCP/HTTPS probes, WinINET/WinHTTP proxy text, listener attribution, etc.
 
 **Code concept:** `LiveNetworkSnapshot` / `FeatureVector` (see `[docs/decision_engine_v2.md](docs/decision_engine_v2.md)`).
 
@@ -348,7 +348,7 @@ flowchart LR
 
 Summary path:
 
-`ping OK · DNS OK · HTTPS fail · proxy detected` → **hypothesis:** proxy / browser-proxy path (high confidence heuristic) → **proof:** HTTPS **bypass** succeeds (proxy contrast) → `**CONFIRMED*`* → **policy decision:** `**ALLOW`** (safe-tier only; manual confirm still required).
+`ping OK · DNS OK · HTTPS fail · proxy detected` → **hypothesis:** proxy / browser-proxy path (high confidence heuristic) → **proof:** HTTPS **bypass** succeeds (proxy contrast) → `**CONFIRMED`** → **policy decision:** `**ALLOW`** (safe-tier only; manual confirm still required).
 
 **Observed signals**
 
@@ -370,7 +370,7 @@ In v2 live scoring you may see keys such as `browser_proxy_path_issue` or `unexp
 
 **Policy decision**
 
-- **Decision:** `**CONFIRMED`** + in-scope hypothesis → `**ALLOW**` for **safe-tier** remediation previews only—**still** confirm before any script that changes state; destructive paths stay manual/off-CLI.
+- **Decision:** `**CONFIRMED`** + in-scope hypothesis → `**ALLOW*`* for **safe-tier** remediation previews only—**still** confirm before any script that changes state; destructive paths stay manual/off-CLI.
 
 **Audit**
 
@@ -418,7 +418,7 @@ Deeper contract: `[docs/decision_engine_v2.md](docs/decision_engine_v2.md)`.
 | Path              | Role                                                                                                                   |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `scripts/`        | Beginner Windows `**.bat`** toolkit (unchanged)                                                                        |
-| `src/`            | `**python -m src**` — explainable CLI, proxy guard, decision pipeline                                                  |
+| `src/`            | `**python -m src`** — explainable CLI, proxy guard, decision pipeline                                                  |
 | `failure_system/` | **FailureBlocks** and append-only JSONL                                                                                |
 | `platform_core/`  | Platform models, policy, append-only storage, metrics, incidents                                                       |
 | `endpoint_agent/` | **Observe-only** endpoint cycles; ingest client (optional HTTP)                                                        |
