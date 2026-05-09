@@ -89,7 +89,11 @@ python -m src proxy-diagnose --json
 python -m src proxy-attribution
 python -m src proxy-watch --interval 5
 python -m src proxy-report
-python -m src proxy-disable
+python -m src proxy disable
+python -m src proxy disable --dry-run
+python -m src proxy disable --dry-run false
+python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY
+python -m src proxy-disable --dry-run
 python -m src proxy-rollback --snapshot-id ...
 python -m src proxy-rollback --from-snapshot path\to\known_good.json --confirm RESTORE_PROXY_SNAPSHOT_FILE
 python -m src proxy-monitor
@@ -104,7 +108,14 @@ python -m src proxy-guard --interval 5 --known-good my-baseline --dry-run-rollba
 python -m src proxy-guard --interval 5 --known-good my-baseline --auto-rollback
 ```
 
-**Safety:** Listener and process correlation are **not cryptographic proof** of who wrote registry values. `**proxy-disable`** appends `**logs/proxy_snapshots.jsonl**` before `reg` mutations. See `[proxy_guard.md](proxy_guard.md)`, `[proxy_attribution.md](proxy_attribution.md)`.
+**Safety:** Listener and process correlation are **not cryptographic proof** of who wrote registry values. `**proxy disable**` and legacy `**proxy-disable**` default to dry-run preview. Live HKCU mutation requires `**--dry-run false --confirm DISABLE_WININET_PROXY**`; the allowlisted disable action may change only `**ProxyEnable**`. Confirmed mutation appends `**logs/proxy_snapshots.jsonl**` before `reg` writes and appends `**logs/repair_audit.jsonl**` for preview, execute request, block/success, and post-change validation. See `[proxy_guard.md](proxy_guard.md)`, `[proxy_attribution.md](proxy_attribution.md)`.
+
+Preview is not execute:
+
+- `python -m src proxy disable --dry-run` previews only.
+- `python -m src proxy disable` also previews only because dry-run is the default.
+- `python -m src proxy disable --dry-run false` blocks without confirmation.
+- `python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY` may execute the targeted allowlisted `ProxyEnable` change.
 
 ### Proxy Guard decision notes
 
@@ -201,4 +212,3 @@ Point the Next.js `NEXT_PUBLIC_PLATFORM_API` at a backend using the same `PLATFO
 $env:PYTHONPATH = (Get-Location).Path
 pytest -q
 ```
-

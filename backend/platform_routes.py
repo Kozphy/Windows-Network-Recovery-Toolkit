@@ -88,6 +88,24 @@ from platform_core.models import (
     RemediationPreview,
     utc_now_iso,
 )
+from platform_core.product_contract import (
+    AgentNextStepRequest,
+    AgentNextStepResponse,
+    DiagnosisRunRequest,
+    LkgSnapshotRequest,
+    RollbackPreviewRequest,
+    append_contract_audit,
+    audit_tail,
+    build_diagnosis_run,
+    build_rollback_preview,
+    get_diagnosis,
+    latest_diagnosis,
+    latest_lkg_snapshot,
+    list_endpoint_summaries,
+    replay_diagnosis,
+    store_lkg_snapshot,
+    PlatformAuditEvent,
+)
 from platform_core.policy import (
     ACTION_REGISTRY,
     PolicyDecision,
@@ -162,6 +180,10 @@ class HealthResponse(BaseModel):
     platform_mode: str = "local_jsonl"
     safe_mode: bool = True
     data_dir: str = ""
+    audit_store_status: str = "available"
+    policy_mode: str = "safe_preview_default"
+    local_first_mode: bool = True
+    remediation_default: str = "dry_run"
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -174,6 +196,10 @@ def platform_health() -> dict[str, Any]:
         "platform_mode": "local_jsonl",
         "safe_mode": SAFE_MODE,
         "data_dir": str(platform_data_dir()),
+        "audit_store_status": "available",
+        "policy_mode": "safe_preview_default",
+        "local_first_mode": True,
+        "remediation_default": "dry_run",
     }
 
 
@@ -239,24 +265,59 @@ def ingest_snapshot(
 
 @router.get("/endpoints")
 def list_endpoints() -> dict[str, Any]:
-    """Return merged endpoint dicts keyed by ``endpoint_id`` (latest heartbeat wins within scan)."""
+    """Return frontend-contract endpoint summaries keyed by ``endpoint_id``."""
 
-    seen: dict[str, dict[str, Any]] = {}
-    for row in read_recent_jsonl(_path("endpoints.jsonl"), limit=2000):
-        eid = row.get("endpoint_id")
-        if isinstance(eid, str):
-            seen[eid] = row
-    return {"endpoints": list(seen.values())}
+    return {"endpoints": [item.model_dump(mode="json") for item in list_endpoint_summaries()]}
 
 
 @router.get("/endpoints/{endpoint_id}")
 def get_endpoint(endpoint_id: str) -> dict[str, Any]:
-    """Fetch newest heartbeat dict for ``endpoint_id``."""
+    """Fetch latest frontend-contract endpoint summary for ``endpoint_id``."""
 
-    row = find_by_id(_path("endpoints.jsonl"), "endpoint_id", endpoint_id)
-    if not row:
+    summaries = {item.endpoint_id: item for item in list_endpoint_summaries()}
+    summary = summaries.get(endpoint_id)
+    if summary is None:
         raise HTTPException(status_code=404, detail="endpoint not found")
-    return row
+    return summary.model_dump(mode="json")
+
+
+@router.get("/diagnosis/latest")
+def platform_diagnosis_latest() -> dict[str, Any]:
+    """Return newest stored diagnosis, or a no-data envelope when none exists."""
+
+    result = latest_diagnosis()
+    if result is None:
+        return {
+            "diagnosis": None,
+            "message": "no stored diagnosis; POST /platform/diagnosis/run to collect read-only observations",
+        }
+    return {"diagnosis": result.model_dump(mode="json")}
+
+
+@router.get("/diagnosis/{run_id}")
+def platform_diagnosis_get(run_id: str) -> dict[str, Any]:
+    """Return one stored diagnosis by run id."""
+
+    result = get_diagnosis(run_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="diagnosis not found")
+    return result.model_dump(mode="json")
+
+
+@router.post("/diagnosis/run")
+def platform_diagnosis_run(
+    body: DiagnosisRunRequest | None = None,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Run read-only probes, persist diagnosis, and append a replayable audit event."""
+
+    request = body or DiagnosisRunRequest()
+    result = build_diagnosis_run(
+        endpoint_id=request.endpoint_id,
+        include_live_probes=request.include_live_probes,
+        actor=principal.operator_id,
+    )
+    return result.model_dump(mode="json")
 
 
 @router.get("/failure-events")
@@ -317,6 +378,12 @@ class PreviewIn(BaseModel):
     surface: Literal["api", "cli", "dashboard"] = "api"
 
 
+def _decision_for_preview(allowed: bool) -> Literal["preview_only", "blocked"]:
+    """Map legacy policy booleans onto the frontend remediation contract."""
+
+    return "preview_only" if allowed else "blocked"
+
+
 @router.post("/remediation/preview")
 def remediation_preview(
     body: PreviewIn,
@@ -362,7 +429,33 @@ def remediation_preview(
         decision="allowed" if preview.allowed_by_policy else "blocked",
         rationale=preview.policy_reason,
     )
-    return preview.model_dump()
+    contract_decision = _decision_for_preview(preview.allowed_by_policy)
+    audit_event_id = append_contract_audit(
+        PlatformAuditEvent(
+            endpoint_id=preview.endpoint_id,
+            event_kind="remediation_preview",
+            summary=f"Preview requested for {preview.proposed_action}",
+            hypothesis=[preview.rationale] if preview.rationale else [],
+            confidence=fe.confidence,
+            evidence_level="inference",
+            policy_decision=contract_decision,
+            actor=principal.operator_id,
+            replay_ref=preview.preview_id,
+        )
+    )
+    payload = preview.model_dump()
+    payload.update(
+        {
+            "action_id": preview.preview_id,
+            "allowed": preview.allowed_by_policy,
+            "decision": contract_decision,
+            "reason": preview.policy_reason,
+            "required_confirmation": preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+            "audit_event_id": audit_event_id,
+            "dry_run": True,
+        }
+    )
+    return payload
 
 
 class ExecuteIn(BaseModel):
@@ -370,6 +463,32 @@ class ExecuteIn(BaseModel):
     confirmation_phrase: str = ""
     dry_run: bool = True
     actor: str = "operator_local"
+
+
+def _execution_contract_payload(
+    execution: RemediationExecution,
+    *,
+    decision: Literal["allow", "preview_only", "blocked"],
+    reason: str,
+    allowed: bool,
+    audit_event_id: str,
+    required_confirmation: str = "",
+) -> dict[str, Any]:
+    """Layer the productized remediation contract onto legacy execution records."""
+
+    payload = execution.model_dump()
+    payload.update(
+        {
+            "action_id": execution.execution_id,
+            "allowed": allowed,
+            "decision": decision,
+            "reason": reason,
+            "required_confirmation": required_confirmation,
+            "audit_event_id": audit_event_id,
+            "dry_run": execution.result == "dry_run",
+        }
+    )
+    return payload
 
 
 @router.post("/remediation/execute")
@@ -417,6 +536,18 @@ def remediation_execute(
     action_name = preview.proposed_action
     defn = get_remediation_action(action_name)
     if defn is None:
+        append_contract_audit(
+            PlatformAuditEvent(
+                endpoint_id=preview.endpoint_id,
+                event_kind="remediation_blocked",
+                summary="unknown_action",
+                confidence=1.0,
+                evidence_level="observation",
+                policy_decision="blocked",
+                actor=principal.operator_id,
+                replay_ref=body.preview_id,
+            )
+        )
         raise HTTPException(status_code=400, detail="unknown action")
 
     pd: PolicyDecision = evaluate_action(action_name, "api")
@@ -437,10 +568,41 @@ def remediation_execute(
             decision="blocked",
             rationale=pd.reason,
         )
-        return ex.model_dump()
+        audit_event_id = append_contract_audit(
+            PlatformAuditEvent(
+                endpoint_id=preview.endpoint_id,
+                event_kind="remediation_blocked",
+                summary=pd.reason,
+                confidence=0.9,
+                evidence_level="inference",
+                policy_decision="blocked",
+                actor=principal.operator_id,
+                replay_ref=body.preview_id,
+            )
+        )
+        return _execution_contract_payload(
+            ex,
+            decision="blocked",
+            reason=pd.reason,
+            allowed=False,
+            audit_event_id=audit_event_id,
+            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+        )
 
     if preview.requires_typed_confirmation:
         if not validate_confirmation_phrase(action_name, body.confirmation_phrase):
+            append_contract_audit(
+                PlatformAuditEvent(
+                    endpoint_id=preview.endpoint_id,
+                    event_kind="remediation_blocked",
+                    summary="confirmation_phrase mismatch",
+                    confidence=1.0,
+                    evidence_level="observation",
+                    policy_decision="blocked",
+                    actor=principal.operator_id,
+                    replay_ref=body.preview_id,
+                )
+            )
             raise HTTPException(status_code=400, detail="confirmation_phrase mismatch")
 
     if not body.dry_run and (defn.manual_only or not defn.api_execute_allowed):
@@ -460,7 +622,26 @@ def remediation_execute(
             decision="blocked",
             rationale="manual_only_or_api_execute_disabled",
         )
-        return ex.model_dump()
+        audit_event_id = append_contract_audit(
+            PlatformAuditEvent(
+                endpoint_id=preview.endpoint_id,
+                event_kind="remediation_blocked",
+                summary="manual_only_or_api_execute_disabled",
+                confidence=0.95,
+                evidence_level="inference",
+                policy_decision="blocked",
+                actor=principal.operator_id,
+                replay_ref=body.preview_id,
+            )
+        )
+        return _execution_contract_payload(
+            ex,
+            decision="blocked",
+            reason="manual_only_or_api_execute_disabled",
+            allowed=False,
+            audit_event_id=audit_event_id,
+            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+        )
 
     script = defn.script_path
     if body.dry_run or script is None:
@@ -474,7 +655,26 @@ def remediation_execute(
             stdout_redacted="[dry-run] no subprocess",
         )
         append_remediation_execution(ex.model_dump())
-        return ex.model_dump()
+        audit_event_id = append_contract_audit(
+            PlatformAuditEvent(
+                endpoint_id=preview.endpoint_id,
+                event_kind="remediation_execute_attempt",
+                summary="[dry-run] no subprocess",
+                confidence=0.9,
+                evidence_level="observation",
+                policy_decision="preview_only",
+                actor=principal.operator_id,
+                replay_ref=body.preview_id,
+            )
+        )
+        return _execution_contract_payload(
+            ex,
+            decision="preview_only",
+            reason="[dry-run] no subprocess",
+            allowed=True,
+            audit_event_id=audit_event_id,
+            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+        )
 
     if sys.platform != "win32":
         ex = RemediationExecution(
@@ -487,10 +687,41 @@ def remediation_execute(
             stderr_redacted="execution_only_supported_on_windows",
         )
         append_remediation_execution(ex.model_dump())
-        return ex.model_dump()
+        audit_event_id = append_contract_audit(
+            PlatformAuditEvent(
+                endpoint_id=preview.endpoint_id,
+                event_kind="remediation_execute_attempt",
+                summary="execution_only_supported_on_windows",
+                confidence=1.0,
+                evidence_level="observation",
+                policy_decision="blocked",
+                actor=principal.operator_id,
+                replay_ref=body.preview_id,
+            )
+        )
+        return _execution_contract_payload(
+            ex,
+            decision="blocked",
+            reason="execution_only_supported_on_windows",
+            allowed=False,
+            audit_event_id=audit_event_id,
+            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+        )
 
     path = allowlisted_script(str(script), _REPO_ROOT)
     if path is None:
+        append_contract_audit(
+            PlatformAuditEvent(
+                endpoint_id=preview.endpoint_id,
+                event_kind="remediation_blocked",
+                summary="script not allowlisted",
+                confidence=1.0,
+                evidence_level="observation",
+                policy_decision="blocked",
+                actor=principal.operator_id,
+                replay_ref=body.preview_id,
+            )
+        )
         raise HTTPException(status_code=400, detail="script not allowlisted")
 
     write_audit(
@@ -532,7 +763,26 @@ def remediation_execute(
             target_id=body.preview_id,
             decision="success" if ok else "failure",
         )
-        return ex.model_dump()
+        audit_event_id = append_contract_audit(
+            PlatformAuditEvent(
+                endpoint_id=preview.endpoint_id,
+                event_kind="remediation_execute_attempt",
+                summary="allowlisted subprocess completed" if ok else "allowlisted subprocess failed",
+                confidence=1.0,
+                evidence_level="observation",
+                policy_decision="allow" if ok else "preview_only",
+                actor=principal.operator_id,
+                replay_ref=body.preview_id,
+            )
+        )
+        return _execution_contract_payload(
+            ex,
+            decision="allow" if ok else "preview_only",
+            reason="success" if ok else "failure",
+            allowed=ok,
+            audit_event_id=audit_event_id,
+            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+        )
     except subprocess.TimeoutExpired:
         ex = RemediationExecution(
             execution_id=str(uuid.uuid4()),
@@ -544,7 +794,26 @@ def remediation_execute(
             stderr_redacted="timeout",
         )
         append_remediation_execution(ex.model_dump())
-        return ex.model_dump()
+        audit_event_id = append_contract_audit(
+            PlatformAuditEvent(
+                endpoint_id=preview.endpoint_id,
+                event_kind="remediation_execute_attempt",
+                summary="timeout",
+                confidence=1.0,
+                evidence_level="observation",
+                policy_decision="preview_only",
+                actor=principal.operator_id,
+                replay_ref=body.preview_id,
+            )
+        )
+        return _execution_contract_payload(
+            ex,
+            decision="preview_only",
+            reason="timeout",
+            allowed=False,
+            audit_event_id=audit_event_id,
+            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+        )
 
 
 @router.get("/audit")
@@ -556,6 +825,47 @@ def platform_audit(
 
     assert_can_read_audit(principal)
     return {"items": read_recent_jsonl(_path("audit.jsonl"), limit=max(1, min(limit, 200)))}
+
+
+@router.get("/audit/tail")
+def platform_audit_tail(
+    limit: int = 50,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Return the append-only audit tail using the product contract shape when present."""
+
+    assert_can_read_audit(principal)
+    return {"items": audit_tail(limit)}
+
+
+@router.get("/lkg/{endpoint_id}")
+def get_lkg_snapshot(endpoint_id: str) -> dict[str, Any]:
+    """Return latest last-known-good snapshot metadata for an endpoint."""
+
+    row = latest_lkg_snapshot(endpoint_id)
+    return {"endpoint_id": endpoint_id, "available": row is not None, "snapshot": row}
+
+
+@router.post("/lkg/snapshot")
+def post_lkg_snapshot(
+    body: LkgSnapshotRequest,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Store a local, operator-provided LKG snapshot; no system state is changed."""
+
+    assert_can_preview(principal)
+    return store_lkg_snapshot(body)
+
+
+@router.post("/rollback/preview")
+def rollback_preview(
+    body: RollbackPreviewRequest,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Build a targeted rollback preview without applying registry or network changes."""
+
+    assert_can_preview(principal)
+    return build_rollback_preview(body)
 
 
 @router.get("/metrics")
@@ -716,6 +1026,69 @@ def replay_preview(
     assert_can_preview(principal)
     summary: ReplaySummary = summarize_inline(body.events)
     return {"summary": summary.__dict__, "replay_mode": "read_only"}
+
+
+@router.get("/replay/{run_id}")
+def replay_stored_diagnosis(
+    run_id: str,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Replay a stored diagnosis from persisted observations only; never re-probes the host."""
+
+    assert_can_read_normalized_events(principal)
+    payload = replay_diagnosis(run_id)
+    if payload is None:
+        raise HTTPException(status_code=404, detail="diagnosis not found")
+    return payload
+
+
+@router.post("/agent/next-step")
+def agent_next_step(
+    body: AgentNextStepRequest,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Return a bounded agentic next step. The agent may suggest and explain, but never repair."""
+
+    diag = get_diagnosis(body.run_id) if body.run_id else latest_diagnosis()
+    evidence_used: list[str] = []
+    confidence = 0.25
+    reason = "No stored diagnosis was available; run a read-only diagnosis first."
+    if diag is not None:
+        evidence_used = [probe.name for probe in diag.observations]
+        confidence = diag.confidence
+        if body.goal == "suggest_next_probe":
+            reason = diag.recommended_next_test
+        elif body.goal == "rank_hypotheses":
+            reason = "; ".join(diag.inferred_hypotheses[:3]) or "No inferred hypotheses."
+        elif body.goal == "explain_risk":
+            reason = f"Risk score {diag.risk_score:.2f}; evidence level {diag.evidence_level}."
+        elif body.goal == "generate_remediation_preview":
+            reason = "Generate a preview-only remediation request; live repair remains policy gated."
+        elif body.goal == "summarize_audit":
+            reason = f"Diagnosis audit event {diag.audit_event_id} is replayable as run {diag.run_id}."
+    response = AgentNextStepResponse(
+        next_step=body.goal,
+        reason=reason,
+        evidence_used=evidence_used,
+        confidence=confidence,
+        policy_boundary="agent_may_suggest_only_no_repair",
+    )
+    append_contract_audit(
+        PlatformAuditEvent(
+            endpoint_id=body.endpoint_id or (diag.endpoint_id if diag else ""),
+            event_kind="agent_next_step",
+            observations=[{"evidence_used": evidence_used}],
+            summary=reason,
+            hypothesis=diag.inferred_hypotheses if diag else [],
+            confidence=confidence,
+            evidence_level=diag.evidence_level if diag else "observation",
+            policy_decision="preview_only",
+            actor=principal.operator_id,
+            replay_ref=diag.run_id if diag else "",
+            run_id=diag.run_id if diag else "",
+        )
+    )
+    return response.model_dump(mode="json")
 
 
 def stable_id_from_host(os_version: str = "") -> str:

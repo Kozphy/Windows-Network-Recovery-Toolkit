@@ -106,7 +106,11 @@ from .proxy_guard.config import build_service_config
 from .proxy_guard.policy import load_proxy_guard_policy
 from .proxy_guard.snapshot_capture import load_lkg_snapshot
 from .proxy_guard.service import run_proxy_guard_service
-from .proxy_guard.remediation import CONFIRMATION_PHRASE, build_user_proxy_disable_mutations
+from .proxy_guard.remediation import (
+    CONFIRMATION_PHRASE,
+    build_user_proxy_disable_mutations,
+    validate_action_confirmation,
+)
 from .proxy_guard.watcher import monitor_proxy_registry
 from .network_state.event_log import (
     correlation_key as v2_correlation_key,
@@ -688,6 +692,64 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
     return 0
 
 
+def _reg_fields_for_proxy_disable(*, clear_server: bool) -> tuple[str, ...]:
+    """Return the WinINET registry values the proxy-disable command proposes to mutate."""
+
+    fields = ["ProxyEnable"]
+    if clear_server:
+        fields.append("ProxyServer")
+    return tuple(fields)
+
+
+def _proxy_disable_audit_row(
+    *,
+    event_kind: str,
+    action_id: str,
+    decision: str,
+    dry_run: bool,
+    mutated: bool,
+    reason: str,
+    before: dict[str, Any] | None = None,
+    after: dict[str, Any] | None = None,
+    action: dict[str, Any] | None = None,
+    planned_action: dict[str, Any] | None = None,
+    snapshot_id: str = "",
+    verification_result: dict[str, Any] | None = None,
+    rollback_plan: dict[str, Any] | None = None,
+    results: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build one append-only audit record for proxy remediation control gates."""
+
+    return {
+        "audit_event_id": str(uuid.uuid4()),
+        "type": "repair",
+        "subtype": "proxy_disable",
+        "event_kind": event_kind,
+        "action_id": action_id,
+        "decision": decision,
+        "dry_run": dry_run,
+        "mutated": mutated,
+        "reason": reason,
+        "timestamp": utc_now_iso(),
+        "before": before,
+        "after": after,
+        "action": action or {},
+        "planned_action": planned_action or {},
+        "snapshot_id": snapshot_id,
+        "verification_result": verification_result or {},
+        "rollback_plan": rollback_plan or {},
+        "results": results or [],
+        "confirmation_method": "typed_phrase",
+    }
+
+
+def _append_proxy_disable_audit(repo: Path, row: dict[str, Any]) -> str:
+    """Append a proxy-disable audit row and return its id."""
+
+    append_jsonl_core(repo / "logs" / "repair_audit.jsonl", row)
+    return str(row["audit_event_id"])
+
+
 def cmd_proxy_disable(args: argparse.Namespace) -> int:
     """Preview or apply HKCU WinINET proxy disable mutations (structured ``reg`` argv only).
 
@@ -730,43 +792,121 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         return code
     repo = _repo_root(args.repo_root)
     run = subprocess.run
+    emit_json = bool(getattr(args, "emit_json", False))
     logs_dir = repo / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     reg_before_preview = read_proxy_registry(run=run)
     parsed = parse_proxy_server(reg_before_preview.proxy_server)
     merged_before_preview = registry_with_parsed(reg_before_preview, parsed)
-    print("Current WinINET (HKCU) view:")
-    print(json.dumps(merged_before_preview, indent=2, ensure_ascii=False))
+    if not emit_json:
+        print("Current WinINET (HKCU) view:")
+        print(json.dumps(merged_before_preview, indent=2, ensure_ascii=False))
     mutations, human_lines = build_user_proxy_disable_mutations(
         clear_proxy_server_value=bool(getattr(args, "clear_server", False)),
     )
     text = "\n".join(human_lines)
-    print("\nPlanned actions:\n" + text)
+    if not emit_json:
+        print("\nPlanned actions:\n" + text)
     try:
         assert_no_firewall_reset_in_preview(text)
     except ValueError as exc:
-        print(exc)
+        if not emit_json:
+            print(exc)
+        row = _proxy_disable_audit_row(
+            event_kind="blocked_dangerous_action",
+            action_id="disable_wininet_proxy",
+            decision="BLOCK",
+            dry_run=True,
+            mutated=False,
+            reason=str(exc),
+            before=merged_before_preview,
+        )
+        _append_proxy_disable_audit(repo, row)
         return 2
-    print("\nStructured reg argv preview:\n" + summarize_mutations_plaintext(mutations))
-    dry = bool(getattr(args, "dry_run", False))
+    if not emit_json:
+        print("\nStructured reg argv preview:\n" + summarize_mutations_plaintext(mutations))
+    dry = bool(getattr(args, "dry_run", True))
+    action_id = str(getattr(args, "action_id", "disable_wininet_proxy") or "disable_wininet_proxy")
+    confirmation = str(getattr(args, "confirm_phrase", "") or getattr(args, "confirm", "") or "")
+    clear_server = bool(getattr(args, "clear_server", False))
+    requested_fields = _reg_fields_for_proxy_disable(clear_server=clear_server)
+    decision, reason, action_model = validate_action_confirmation(
+        action_id=action_id,
+        dry_run=dry,
+        confirmation=confirmation,
+        requested_registry_fields=requested_fields,
+    )
+    action_blob = action_model.to_dict() if action_model else {"action_id": action_id}
+    planned_action = {
+        "human": list(human_lines),
+        "mutation_argv": [list(m.argv) for m in mutations],
+        "clear_server": clear_server,
+        "requested_registry_fields": list(requested_fields),
+    }
+    preview_row = _proxy_disable_audit_row(
+        event_kind="preview_requested" if dry else "execute_requested",
+        action_id=action_id,
+        decision=decision,
+        dry_run=dry,
+        mutated=False,
+        reason=reason,
+        before=merged_before_preview,
+        action=action_blob,
+        planned_action=planned_action,
+    )
+    preview_audit_id = _append_proxy_disable_audit(repo, preview_row)
+
     if dry:
-        print("\n[dry-run] No registry writes or snapshot persisted.")
+        payload = {
+            "action_id": action_id,
+            "decision": decision,
+            "dry_run": True,
+            "mutated": False,
+            "reason": reason,
+            "audit_event_id": preview_audit_id,
+            "before": merged_before_preview,
+            "after": None,
+            "action": action_blob,
+        }
+        if emit_json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            print("\n[dry-run] No registry writes or rollback snapshot persisted. Audit row appended.")
         return 0
 
-    confirm = input(f"Type {CONFIRMATION_PHRASE} to continue: ")
-    if confirm.strip() != CONFIRMATION_PHRASE:
-        print("Cancelled.")
+    if decision != "ALLOW":
+        blocked_row = _proxy_disable_audit_row(
+            event_kind="blocked_missing_confirmation" if reason == "missing_confirmation" else "blocked_confirmation_or_policy",
+            action_id=action_id,
+            decision="BLOCK",
+            dry_run=False,
+            mutated=False,
+            reason=reason,
+            before=merged_before_preview,
+            action=action_blob,
+            planned_action=planned_action,
+        )
+        audit_event_id = _append_proxy_disable_audit(repo, blocked_row)
+        payload = {
+            "action_id": action_id,
+            "decision": "BLOCK",
+            "dry_run": False,
+            "mutated": False,
+            "reason": reason,
+            "audit_event_id": audit_event_id,
+            "before": merged_before_preview,
+            "after": None,
+            "action": action_blob,
+        }
+        if emit_json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            print(f"Blocked: {reason}. Provide --dry-run false --confirm {CONFIRMATION_PHRASE}.")
         return 1
 
     capture_pre = capture_wininet_snapshot(run=run)
     rollback_plan = build_rollback_plan(capture_pre)
     append_proxy_snapshots_jsonl(repo, merge_snapshot_payload(capture_pre, rollback_plan))
-
-    planned_action = {
-        "human": list(human_lines),
-        "mutation_argv": [list(m.argv) for m in mutations],
-        "clear_server": bool(getattr(args, "clear_server", False)),
-    }
 
     results = apply_mutations(mutations, dry_run=False)
     reg_after = read_proxy_registry(run=run)
@@ -774,11 +914,19 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
     merged_after = registry_with_parsed(reg_after, parse_proxy_server(reg_after.proxy_server))
 
     audit = {
+        "audit_event_id": str(uuid.uuid4()),
         "type": "repair",
         "subtype": "proxy_disable",
+        "event_kind": "successful_mutation",
+        "action_id": action_id,
+        "decision": "ALLOW",
+        "dry_run": False,
+        "mutated": True,
+        "reason": "confirmed_allowlisted_action",
         "timestamp": utc_now_iso(),
         "snapshot_id": capture_pre.snapshot_id,
         "before": capture_pre.to_jsonable(),
+        "action": action_blob,
         "planned_action": planned_action,
         "after": merged_after,
         "verification_result": verification.to_dict(),
@@ -790,6 +938,22 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         "confirmation_method": "typed_phrase",
     }
     append_jsonl_core(repo / "logs" / "repair_audit.jsonl", audit)
+    validation_row = _proxy_disable_audit_row(
+        event_kind="post_change_validation",
+        action_id=action_id,
+        decision="ALLOW" if verification.ok else "BLOCK",
+        dry_run=False,
+        mutated=False,
+        reason=verification.detail,
+        before=capture_pre.to_jsonable(),
+        after=merged_after,
+        action=action_blob,
+        planned_action=planned_action,
+        snapshot_id=capture_pre.snapshot_id,
+        verification_result=verification.to_dict(),
+        rollback_plan=rollback_plan,
+    )
+    validation_audit_event_id = _append_proxy_disable_audit(repo, validation_row)
 
     # Reliability events (schema 2.0) alongside v1 repair_audit
     observed_pre = dict(capture_pre.values)
@@ -875,6 +1039,23 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         },
         recommended_next_actions=list(_V2_REL_INCIDENT_HELP),
     )
+
+    payload = {
+        "action_id": action_id,
+        "decision": "ALLOW" if verification.ok else "BLOCK",
+        "dry_run": False,
+        "mutated": True,
+        "reason": "mutation_applied_validation_ok" if verification.ok else verification.detail,
+        "audit_event_id": str(audit["audit_event_id"]),
+        "validation_audit_event_id": validation_audit_event_id,
+        "before": capture_pre.to_jsonable(),
+        "after": merged_after,
+        "action": action_blob,
+    }
+
+    if emit_json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0 if verification.ok else 1
 
     print("Applied mutations; see logs\\repair_audit.jsonl for snapshot + verification.")
 
@@ -1447,7 +1628,7 @@ def cmd_repair_apply(args: argparse.Namespace) -> int:
 
     first = runnable[0]
     if first.get("action_key") == "proxy_disable":
-        print("Use `python -m src proxy-disable` for typed confirmation on HKCU disables.")
+        print("Use `python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY` for HKCU disables.")
         return 1
 
     script_rel = Path(str(first["script"]))

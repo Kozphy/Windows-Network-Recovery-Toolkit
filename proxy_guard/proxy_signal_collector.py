@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 INTERNET_SETTINGS_KEY = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 _LOGGER = logging.getLogger(__name__)
 _LOCALHOST_NAMES = {"localhost"}
-_REG_VALUE_NAMES = ("ProxyEnable", "ProxyServer", "AutoConfigURL")
+_REG_VALUE_NAMES = ("ProxyEnable", "ProxyServer", "AutoConfigURL", "ProxyOverride", "AutoDetect")
 
 
 def _is_windows() -> bool:
@@ -243,6 +243,8 @@ def collect_proxy_signals() -> dict[str, Any]:
             "proxy_enable": None,
             "proxy_server": None,
             "auto_config_url": None,
+            "proxy_override": None,
+            "auto_detect": None,
             "parsed_proxy": parse_proxy_server(None),
             "observations": ["WinINET proxy registry was not inspected because platform is not Windows."],
             "limitations": ["non_windows_platform"],
@@ -252,6 +254,8 @@ def collect_proxy_signals() -> dict[str, Any]:
     proxy_enable = _parse_int(proxy_enable_raw)
     proxy_server = _reg_value("ProxyServer")
     auto_config_url = _reg_value("AutoConfigURL")
+    proxy_override = _reg_value("ProxyOverride")
+    auto_detect = _parse_int(_reg_value("AutoDetect"))
     parsed_proxy = parse_proxy_server(proxy_server)
     observations = [
         f"WinINET ProxyEnable observed: {proxy_enable}",
@@ -272,6 +276,8 @@ def collect_proxy_signals() -> dict[str, Any]:
         "proxy_enable": proxy_enable,
         "proxy_server": proxy_server,
         "auto_config_url": auto_config_url,
+        "proxy_override": proxy_override,
+        "auto_detect": auto_detect,
         "parsed_proxy": parsed_proxy,
         "observations": observations,
         "limitations": limitations,

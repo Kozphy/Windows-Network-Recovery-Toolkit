@@ -82,7 +82,7 @@ Reading order (~10 minutes for new engineers): root `README.md` → [`architectu
 | --- | --- | --- |
 | Guided `.bat` repairs | Executes elevated Windows commands after confirmation | Logs under `logs/`, script exit prompts, rerun `auto_diagnose.bat` |
 | `python -m src repair-safe --apply` | First LOW-risk `scripts/*.bat` via `RunAs`; appends feedback JSONL | `logs/decision_feedback.jsonl`, rerun `diagnose` |
-| `python -m src proxy-disable` (confirmed apply) | Mutates HKCU WinINET proxy keys only | Compare `logs/repair_audit.jsonl`, rerun `proxy-status`, capture new `snapshot` |
+| `python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY` | Mutates targeted HKCU WinINET proxy keys only | Compare `logs/repair_audit.jsonl`, rerun `proxy-status`, capture new `snapshot` |
 | `python -m src diagnose-live` | Writes live diagnosis JSON plus JSONL context | Verify `reports/last_diagnosis_live.json` timestamps vs `logs/decision_audit.jsonl` |
 | `python -m src proxy-watch` | Appends drift/attribution NDJSON rows (no live rollback) | Correlate `logs/proxy_guard.jsonl` with stderr banners; optional `--evidence-csv` |
 | Hybrid `POST /repair/execute` | Host shell commands with `confirm: true` | JSON `results` array (`returncode`, stdout/stderr) |

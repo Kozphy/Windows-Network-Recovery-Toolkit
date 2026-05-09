@@ -10,8 +10,8 @@ REM Idempotency: disabling twice yields stable keys; reversing requires manual/p
 
 pushd "%~dp0.." >nul 2>&1
 
-echo This launches the structured proxy-disable command (confirmation inside Python).
-echo For dry-run only: python -m src proxy-disable --dry-run
+echo This launches the structured proxy-disable command. Default is dry-run preview.
+echo Live apply requires: python -m src proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY
 python -m src proxy-disable %*
 pause
 

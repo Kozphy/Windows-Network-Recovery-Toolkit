@@ -74,7 +74,7 @@ Rows include a non-empty **`limits`** list:
 
 ## Producer integration
 
-- **`python -m src proxy-disable`**: after typed confirmation (non–dry-run), emits `snapshot`, per-mutation `repair_attempt`, `verification`, and merges an `incident_summary` beside the legacy `repair_audit.jsonl` append.
+- **`python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY`**: after typed confirmation (non-dry-run), emits `snapshot`, per-mutation `repair_attempt`, `verification`, and merges an `incident_summary` beside the legacy `repair_audit.jsonl` append.
 - **`python -m src proxy-watch`**: on substantive transitions, emits v2 **`attribution`** when a localhost port parses, and **`drift_detected` + incident_summary rollup** when `proxy_enable` moves from disabled (`0`) to enabled (`1`).
 
 Legacy watchers (`logs/proxy_guard*.jsonl`) remain unchanged.

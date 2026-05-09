@@ -254,6 +254,11 @@ def evaluate_reasoning_policy(
         reason_codes.append("preview_required_until_proof_and_confirmation")
         outcome = "PREVIEW"
 
+    if impact_level in ("high", "critical") and proof_result.status != "CONFIRMED":
+        reason_codes.append("high_impact_requires_confirmed_proof_before_execute")
+    if impact_level == "critical" and trust_level != "high":
+        reason_codes.append("critical_impact_requires_high_trust_for_execute_authority")
+
     if proof_result.status != "CONFIRMED":
         reason_codes.append("unproven_high_confidence_is_not_execute_authority")
     if action in SAFE_REGISTRY_ACTIONS:

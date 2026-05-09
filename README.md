@@ -46,6 +46,22 @@ Layer diagnosis treats this as a likely L7/browser-path regression candidate.
 - **Inference**: rule-based layer classification from multiple observations.
 - **Proof**: stronger telemetry or corroborated evidence; not implied by heuristic process correlation.
 
+### Event-state reasoning (Revolut-style reliability chain)
+
+**Before:** observation → hypothesis → confidence → proof → policy → audit.
+
+**After:** observation → **event** → **state transition** → ranked hypotheses → **evidence tree** → optional proof → **reliability impact** → policy (ALLOW / PREVIEW / BLOCK) → append-only audit / replay → **diagnosis-to-text** from structured evidence only.
+
+Implementation lives under `platform_core/` (`reasoning_models`, `failure_scenarios`, `reasoning_engine`, `evidence_tree`, `impact_score`, `reasoning_audit`, `diagnosis_text`). Full architecture, policy boundaries, and LLM-safe explanation rules are documented in [docs/event_state_reasoning_platform.md](docs/event_state_reasoning_platform.md).
+
+**Interview pitch:** The platform treats endpoint reliability like a risk chain: signals become events, events move an explicit state machine, competing failure scenarios are ranked and rejected with reasons, proof strengthens or limits claims, an explainable impact score prioritizes user-visible degradation, and policy never executes destructive or unconfirmed paths. Decisions are replayable from JSONL without re-probing the machine.
+
+**Demo (read-only, no probes):**
+
+```powershell
+python -c "from platform_core.diagnosis_text import render_reasoning_summary; from platform_core.reasoning_engine import observation, run_reasoning; from platform_core.reasoning_models import ProofResult; o=[observation('ping_ok'),observation('dns_ok'),observation('tcp443_ok'),observation('browser_https_failed'),observation('wininet_proxy_enabled'),observation('proxy_bypass_succeeded'),observation('proxied_path_failed')]; r=run_reasoning(o, proof_result=ProofResult(hypothesis='browser_proxy_path_regression',status='CONFIRMED',checks_run=['proxy_bypass_contrast']), requested_action='restore_proxy'); import json; print(json.dumps(render_reasoning_summary(r), indent=2))"
+```
+
 ### Heuristic Attribution != Proof
 
 Listener ownership or process correlation can indicate candidate actors, but does not prove
@@ -128,6 +144,29 @@ python -m proxy_guard scan
 python -m proxy_guard report --json
 python -m proxy_guard watch
 ```
+
+### One-click local run
+
+For a Windows double-click workflow that runs read-only diagnostics and starts local demo services
+when dependencies are available:
+
+```powershell
+scripts\start_everything_safe.bat
+```
+
+First-time dependency install is explicit:
+
+```powershell
+scripts\start_everything_safe.ps1 -InstallDeps
+```
+
+Stop launcher-managed dev servers with:
+
+```powershell
+scripts\stop_everything_safe.bat
+```
+
+Details: [docs/one_click_run.md](docs/one_click_run.md).
 
 ### Classification vocabulary
 
@@ -539,6 +578,9 @@ Routes below are defined in `[backend/platform_routes.py](backend/platform_route
 | POST   | `/platform/ingest/snapshot`           | Alias of snapshots                                |
 | GET    | `/platform/endpoints`                 | List endpoints                                    |
 | GET    | `/platform/endpoints/{endpoint_id}`   | Endpoint detail                                   |
+| GET    | `/platform/diagnosis/latest`          | Latest stored diagnosis                           |
+| GET    | `/platform/diagnosis/{run_id}`        | Stored diagnosis by run id                        |
+| POST   | `/platform/diagnosis/run`             | Read-only diagnosis + audit row                   |
 | GET    | `/platform/failure-events`            | List failure events                               |
 | POST   | `/platform/failure-events/ingest`     | Ingest failure event                              |
 | POST   | `/platform/ingest/failure-event`      | Alias of failure-events ingest                    |
@@ -546,15 +588,22 @@ Routes below are defined in `[backend/platform_routes.py](backend/platform_route
 | POST   | `/platform/remediation/preview`       | Policy preview                                    |
 | POST   | `/platform/remediation/execute`       | Execute path; request defaults `**dry_run=True**` |
 | GET    | `/platform/audit`                     | Audit rows (RBAC gated)                           |
+| GET    | `/platform/audit/tail`                | Append-only audit tail                            |
+| GET    | `/platform/lkg/{endpoint_id}`         | Latest LKG snapshot metadata                      |
+| POST   | `/platform/lkg/snapshot`              | Store LKG snapshot                                |
+| POST   | `/platform/rollback/preview`          | Rollback preview only                             |
 | GET    | `/platform/metrics`                   | JSONL-derived KPIs                                |
 | GET    | `/platform/events`                    | Normalized envelopes                              |
 | GET    | `/platform/incidents`                 | Deterministic clusters                            |
 | GET    | `/platform/attribution/{event_id}`    | Evidence fusion                                   |
 | GET    | `/platform/policy/summary`            | Policy summary                                    |
+| GET    | `/platform/replay/{run_id}`           | Replay stored observations; no live reprobe       |
 | POST   | `/platform/replay/preview`            | Replay preview                                    |
+| POST   | `/platform/agent/next-step`           | Suggest/explain only; no repair                   |
 
 
 Contract and headers: `[docs/platform_api_contract.md](docs/platform_api_contract.md)`.
+Frontend product contract mapping: `[docs/backend_contract.md](docs/backend_contract.md)`, `[docs/productization_map.md](docs/productization_map.md)`.
 
 ### `/api/*` (JWT toolkit bridges)
 

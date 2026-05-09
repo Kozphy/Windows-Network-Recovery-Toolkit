@@ -217,6 +217,7 @@ Rules:
 - Conflicting signals downgrade to `PREVIEW`.
 - Registry changes require explicit typed confirmation.
 - Firewall reset, adapter disable, process kill, and arbitrary shell remain blocked/manual-only.
+- High or critical **impact** without confirmed proof adds `high_impact_requires_confirmed_proof_before_execute` to `reason_codes` (annotation for operators and replay); execute authority still requires proof plus confirmation for allowlisted actions.
 
 ## I. Audit and Replay
 

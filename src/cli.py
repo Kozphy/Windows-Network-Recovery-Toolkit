@@ -111,6 +111,21 @@ def _repo_root(explicit: Path | None) -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def _parse_bool_arg(value: str | bool | None) -> bool:
+    """Parse CLI boolean flags that accept explicit true/false strings."""
+
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return True
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError("expected true or false")
+
+
 def _fingerprint() -> dict[str, str]:
     """Build a non-reversible machine key for audit correlation.
 
@@ -1315,13 +1330,59 @@ def build_parser() -> argparse.ArgumentParser:
     p_pxrb.set_defaults(snapshot_id=None, func=cmd_proxy_rollback)
 
     p_pd = sub.add_parser("proxy-disable", help="Preview/apply safe HKCU WinINET proxy disable (typed confirm).")
-    p_pd.add_argument("--dry-run", action="store_true", help="Show planned reg commands only.")
+    p_pd.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        help="Preview only by default. Use --dry-run false with --confirm DISABLE_WININET_PROXY to apply.",
+    )
+    p_pd.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live apply requires exact phrase DISABLE_WININET_PROXY.",
+    )
+    p_pd.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
     p_pd.add_argument(
         "--clear-server",
         action="store_true",
         help='Also ``reg delete`` the ProxyServer value after ProxyEnable=0.',
     )
     p_pd.set_defaults(func=cmd_proxy_disable)
+
+    p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
+    p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)
+    p_proxy_disable = p_proxy_sub.add_parser(
+        "disable",
+        help="Preview/apply safe HKCU WinINET proxy disable (default dry-run).",
+    )
+    p_proxy_disable.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        help="Preview only by default. Use --dry-run false with --confirm DISABLE_WININET_PROXY to apply.",
+    )
+    p_proxy_disable.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live apply requires exact phrase DISABLE_WININET_PROXY.",
+    )
+    p_proxy_disable.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_proxy_disable.add_argument(
+        "--clear-server",
+        action="store_true",
+        help="Preview the older ProxyServer delete path; live apply is blocked by the allowlist.",
+    )
+    p_proxy_disable.set_defaults(func=cmd_proxy_disable)
 
     p_sn = sub.add_parser("snapshot", help="Persist full observability JSON under reports/snapshots/.")
     p_sn.set_defaults(func=cmd_snapshot)

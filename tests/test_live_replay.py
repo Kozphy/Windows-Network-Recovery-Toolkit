@@ -7,6 +7,8 @@ import json
 import uuid
 from pathlib import Path
 
+import pytest
+
 from src.command_handlers import cmd_diagnose_live, cmd_replay_live_run
 from src.decision_engine.hypothesis_decision import build_hypothesis_decisions
 from src.decision_engine.live_replay import (
@@ -110,3 +112,47 @@ def test_cmd_diagnose_live_replay_dispatches(monkeypatch, tmp_path: Path) -> Non
         live_proofs = False
 
     assert cmd_diagnose_live(A()) == 42
+
+
+def test_replay_does_not_reprobe_or_mutate(monkeypatch, tmp_path: Path) -> None:
+    """Replay reads stored observations only; proxy mutation/read helpers must not be called."""
+
+    import src.command_handlers as ch
+
+    repo = tmp_path / "r"
+    (repo / "logs").mkdir(parents=True)
+    snap = scenario_dns_failure()
+    ranked = score_live_snapshot(snap)
+    decisions = build_hypothesis_decisions(
+        ranked=[(s.hypothesis, s.confidence, s.evidence) for s in ranked],
+        localhost_proxy_proof=None,
+        proofs_enabled=False,
+        trust_assessment=None,
+    )
+    run_id = str(uuid.uuid4())
+    row = {
+        "schema_version": SCHEMA_VERSION,
+        "type": "live_run_audit",
+        "run_id": run_id,
+        "timestamp_utc": snap.generated_at_utc,
+        "script_version": "test",
+        "machine": {},
+        "observations": snap.to_dict(),
+        "hypotheses_ranked": ranked_dicts(ranked),
+        "hypothesis_decisions": decisions,
+        "proof_engine": {},
+        "proof_engine_error": None,
+        "proofs_requested": False,
+        "uncertainty": {"trust_aggregate": 0.71, "degraded_mode": False},
+        "commands_executed": [],
+        "live_snapshot_ref": "",
+        "primary_hypothesis": ranked[0].hypothesis,
+        "primary_confidence": ranked[0].confidence,
+    }
+    (repo / "logs" / "decision_runs.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+    monkeypatch.setattr(ch, "read_proxy_registry", lambda **_: pytest.fail("replay must not read registry"))
+    monkeypatch.setattr(ch, "apply_mutations", lambda *_a, **_k: pytest.fail("replay must not mutate"))
+
+    args = argparse.Namespace(repo_root=repo, replay_run_id=run_id, emit_json=True, emit_both=False)
+    assert cmd_replay_live_run(args) == 0

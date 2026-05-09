@@ -119,7 +119,7 @@ Reports and JSONL files **mask IPv4-like sequences** in narrative fields and avo
 
 ## Python CLI — advanced Proxy Guard
 
-Proxy Guard reads **HKCU** `Internet Settings` (`ProxyEnable`, `ProxyServer`, `AutoConfigURL`, `AutoDetect`), normalizes `ProxyServer` strings, correlates LISTENING `netstat` rows, optionally enriches via `Win32_Process` (through PowerShell/`Get-CimInstance`), emits JSONL audits, and offers a typed-phrase-guarded disable path (`DISABLE_PROXY`) that edits only WinINET user keys.
+Proxy Guard reads **HKCU** `Internet Settings` (`ProxyEnable`, `ProxyServer`, `AutoConfigURL`, `AutoDetect`), normalizes `ProxyServer` strings, correlates LISTENING `netstat` rows, optionally enriches via `Win32_Process` (through PowerShell/`Get-CimInstance`), emits JSONL audits, and offers a typed-phrase-guarded disable path (`DISABLE_WININET_PROXY`) that edits only targeted WinINET user keys.
 
 ## Commands
 
@@ -131,7 +131,8 @@ python -m src proxy-monitor [--interval 5] [--once] [--jsonl logs/proxy_guard_ev
 python -m src proxy-guard [--interval 5] [--once] [--auto-rollback] [--rollback] [--rollback-confirm RESTORE_PROXY]
 python -m src proxy-guard [--interval 5] [--dry-run] [--dry-run-rollback]
 python -m src proxy-guard [--policy PATH] [--jsonl PATH] [--config shared/proxy_guard_service.config.example.json] [--structured-log logs/proxy_guard_service.jsonl]
-python -m src proxy-disable [--dry-run] [--clear-server]
+python -m src proxy disable --dry-run
+python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY
 ```
 
 ## Proxy Guard control plane (`proxy-guard`)

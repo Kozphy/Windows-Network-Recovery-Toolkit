@@ -24,6 +24,7 @@ def test_unproven_high_confidence_remains_preview() -> None:
     assert run.proof_result.status == "NOT_RUN"
     assert run.policy_decision.outcome == "PREVIEW"
     assert "unproven_high_confidence_is_not_execute_authority" in run.policy_decision.reason_codes
+    assert "high_impact_requires_confirmed_proof_before_execute" in run.policy_decision.reason_codes
 
 
 def test_confirmed_proof_still_requires_confirmation_boundary() -> None:

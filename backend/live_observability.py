@@ -75,6 +75,34 @@ def _invoke_src_json(argv: list[str]) -> dict[str, Any]:
         raise HTTPException(status_code=502, detail={"parse_error": str(exc), "stdout": blob}) from exc
 
 
+def _invoke_src_json_status(argv: list[str], *, allowed_returncodes: set[int]) -> dict[str, Any]:
+    """Run ``python -m src`` and parse JSON even when policy returns a non-zero block code."""
+
+    proc = subprocess.run(
+        [sys.executable, "-m", "src", *argv],
+        cwd=str(_ROOT),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=300,
+    )
+    blob = proc.stdout.strip()
+    if proc.returncode not in allowed_returncodes:
+        raise HTTPException(
+            status_code=500,
+            detail={"stderr": proc.stderr, "stdout": proc.stdout, "returncode": proc.returncode},
+        )
+    try:
+        payload = json.loads(blob) if blob else {}
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=502, detail={"parse_error": str(exc), "stdout": blob}) from exc
+    if isinstance(payload, dict):
+        payload.setdefault("returncode", proc.returncode)
+        return payload
+    raise HTTPException(status_code=502, detail={"parse_error": "stdout JSON was not an object", "stdout": blob})
+
+
 def _invoke_src_text(argv: list[str]) -> str:
     """Run ``python -m src`` and return raw stdout text (non-JSON commands).
 
@@ -155,22 +183,24 @@ class DisablePreview(BaseModel):
 def api_proxy_disable_preview(
     body: DisablePreview,
     _user: AuthUser = Depends(get_current_user),
-) -> dict[str, str]:
-    """Surface plaintext preview produced by CLI ``proxy-disable --dry-run``."""
-    txt = _invoke_src_text(
-        ["proxy-disable", "--dry-run"]
+) -> dict[str, Any]:
+    """Surface read-only preview produced by CLI ``proxy-disable --dry-run``."""
+    payload = _invoke_src_json(
+        ["proxy-disable", "--json", "--dry-run", "true"]
         + (["--clear-server"] if body.clear_server else []),
     )
-    return {"preview_text": txt}
+    return {"preview_text": json.dumps(payload, indent=2, ensure_ascii=False), **payload}
 
 
 class DisableConfirm(BaseModel):
-    confirm: bool = Field(..., description="Must be true.")
-    confirmation_text: str = Field(..., min_length=1)
+    dry_run: bool = True
+    confirmation: str = ""
+    confirm: bool | None = Field(default=None, description="Legacy field; ignored unless confirmation_text is used.")
+    confirmation_text: str = ""
     clear_server: bool = False
 
 
-DISABLE_PROXY_PHRASE = "DISABLE_PROXY"
+DISABLE_PROXY_PHRASE = "DISABLE_WININET_PROXY"
 
 
 @router.post("/api/proxy/disable")
@@ -178,33 +208,19 @@ def api_proxy_disable(
     body: DisableConfirm,
     _user: AuthUser = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Apply HKCU proxy disable via CLI after validating JSON confirmation gate."""
-    if not body.confirm:
-        raise HTTPException(status_code=400, detail="confirm must be true.")
-    if body.confirmation_text != DISABLE_PROXY_PHRASE:
-        raise HTTPException(
-            status_code=400,
-            detail=f'confirmation_text must equal "{DISABLE_PROXY_PHRASE}"',
-        )
-    argv = ["proxy-disable"] + (["--clear-server"] if body.clear_server else [])
-    proc = subprocess.run(
-        [sys.executable, "-m", "src", *argv],
-        cwd=str(_ROOT),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=180,
-        input=f"{DISABLE_PROXY_PHRASE}\n",
-    )
-    ok = proc.returncode == 0
-    return {
-        "ok": ok,
-        "returncode": proc.returncode,
-        "stdout": proc.stdout,
-        "stderr": proc.stderr,
-        "logged_to": str(_ROOT / "logs" / "repair_audit.jsonl"),
-    }
+    """Preview or apply HKCU proxy disable through the CLI confirmation gate."""
+    confirmation = body.confirmation or body.confirmation_text or ""
+    argv = [
+        "proxy-disable",
+        "--json",
+        "--dry-run",
+        "true" if body.dry_run else "false",
+    ]
+    if confirmation:
+        argv.extend(["--confirm", confirmation])
+    if body.clear_server:
+        argv.append("--clear-server")
+    return _invoke_src_json_status(argv, allowed_returncodes={0, 1})
 
 
 @router.get("/api/snapshot")

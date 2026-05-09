@@ -41,3 +41,31 @@ Implementation: **`evidence/attribution_engine.py`** exposes **`build_attributio
 Append optional context rows keyed by **`event_id`** via **`platform_data/attribution_context.jsonl`** (see **`platform_core.storage.append_attribution_context`**) before calling **`GET /platform/attribution/{event_id}`**. This keeps demos **offline** with embedded Sysmon CSV exports.
 
 Correlate narrative flow with **`docs/proxy_attribution.md`** and **`docs/rbac_and_remediation.md`**.
+
+## Proxy writer attribution upgrade
+
+The live Proxy Guard writer path adds `logs/proxy_writer_audit.jsonl` and the
+`ProxyAttributionEvent` timeline model. It preserves the same evidence boundary:
+
+| Event level | Source |
+| --- | --- |
+| `OBSERVED_STATE` | Current WinINET proxy tuple. |
+| `STATE_CHANGE` | Before/after registry tuple diff. |
+| `CORRELATED_PROCESS` | Listener/process correlation for a configured localhost proxy port. |
+| `WRITER_PROOF` | Sysmon Event ID 13, Windows Security 4657, Procmon CSV, or ETW-style registry write telemetry. |
+
+Netstat tells who is listening. Sysmon/Procmon tells who wrote the registry. These are different.
+
+When telemetry is missing, reports must say:
+
+`writer proof unavailable; enable Sysmon registry telemetry or import Procmon trace.`
+
+The relevant commands are:
+
+```powershell
+python -m proxy_guard watch-writer
+python -m proxy_guard writer-report --json
+python -m proxy_guard writer-report --markdown
+python -m proxy_guard import-procmon path\to\procmon.csv
+python -m proxy_guard explain-event <event_id>
+```

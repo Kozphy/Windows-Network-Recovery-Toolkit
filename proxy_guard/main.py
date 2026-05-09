@@ -23,6 +23,7 @@ import argparse
 import json
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 from .certificate_checker import collect_certificate_indicators
@@ -31,6 +32,14 @@ from .port_process_attribution import attribute_proxy_port
 from .proxy_risk_inference import infer_proxy_risk
 from .proxy_signal_collector import collect_proxy_signals
 from .reporter import append_audit_event, build_report_payload, format_json_report, format_text_report
+from .watch_registry import (
+    build_writer_report,
+    explain_event,
+    format_writer_report_markdown,
+    import_procmon_trace,
+    load_writer_audit_events,
+    watch_writer,
+)
 
 
 def _scan_once(*, append_audit: bool = True) -> dict[str, Any]:
@@ -145,6 +154,30 @@ def main(argv: list[str] | None = None) -> int:
     w.add_argument("--interval", type=float, default=5.0, help="Polling interval seconds.")
     w.set_defaults(func="watch")
 
+    ww = sub.add_parser("watch-writer", help="Watch WinINET proxy changes and attribute registry writer evidence.")
+    ww.add_argument("--interval", type=float, default=5.0, help="Polling interval seconds.")
+    ww.add_argument("--since-seconds", type=int, default=120, help="Telemetry look-back window around a change.")
+    ww.add_argument("--procmon-csv", default=None, help="Optional Procmon CSV export to correlate with changes.")
+    ww.add_argument("--audit-path", default=None, help="Optional proxy writer audit JSONL path.")
+    ww.add_argument("--once", action="store_true", help="Capture and print one observed-state snapshot without appending.")
+    ww.set_defaults(func="watch_writer")
+
+    wr = sub.add_parser("writer-report", help="Read proxy writer audit JSONL and print a report.")
+    wr.add_argument("--json", dest="emit_json", action="store_true", help="Print machine-readable JSON.")
+    wr.add_argument("--markdown", dest="emit_markdown", action="store_true", help="Print Markdown report.")
+    wr.add_argument("--audit-path", default=None, help="Optional proxy writer audit JSONL path.")
+    wr.set_defaults(func="writer_report")
+
+    ip = sub.add_parser("import-procmon", help="Import a Procmon CSV export as writer-proof evidence.")
+    ip.add_argument("path", help="Path to Procmon CSV export.")
+    ip.add_argument("--audit-path", default=None, help="Optional proxy writer audit JSONL path.")
+    ip.set_defaults(func="import_procmon")
+
+    ee = sub.add_parser("explain-event", help="Explain one proxy writer attribution event by event_id.")
+    ee.add_argument("event_id", help="Event id from logs/proxy_writer_audit.jsonl.")
+    ee.add_argument("--audit-path", default=None, help="Optional proxy writer audit JSONL path.")
+    ee.set_defaults(func="explain_event")
+
     args = parser.parse_args(argv)
     if args.func in {"scan", "report"}:
         payload = _scan_once(append_audit=True)
@@ -155,5 +188,29 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.func == "watch":
         return _watch(args.interval)
+    if args.func == "watch_writer":
+        return watch_writer(
+            interval_seconds=args.interval,
+            audit_path=Path(args.audit_path) if args.audit_path else None,
+            since_seconds=args.since_seconds,
+            procmon_csv_path=args.procmon_csv,
+            once=args.once,
+        )
+    if args.func == "writer_report":
+        audit_path = Path(args.audit_path) if args.audit_path else None
+        events = load_writer_audit_events(audit_path)
+        report = build_writer_report(events, audit_path=audit_path)
+        if getattr(args, "emit_json", False):
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+        else:
+            print(format_writer_report_markdown(report))
+        return 0
+    if args.func == "import_procmon":
+        payload = import_procmon_trace(args.path, audit_path=Path(args.audit_path) if args.audit_path else None)
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+    if args.func == "explain_event":
+        print(explain_event(args.event_id, audit_path=Path(args.audit_path) if args.audit_path else None))
+        return 0
     return 2
 
