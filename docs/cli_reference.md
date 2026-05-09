@@ -137,6 +137,32 @@ python -m src network-state evidence import --file evidence.csv
 
 See `[network_state_manager.md](network_state_manager.md)`.
 
+## Safety surfaces (`proxy restore-lkg`, `proxy config-check`, `proxy registry-writer-proof`, `agent next-step`)
+
+These four subcommands round out the production-grade safety controls. All four default to read-only, audit every preview / block / execute, and follow the typed-confirmation gate for any mutation.
+
+```powershell
+# Preview-only WinINET LKG restore (default dry-run)
+python -m src proxy restore-lkg
+
+# Live restore, only allowed via the typed phrase and only for WinINET fields
+python -m src proxy restore-lkg --dry-run false --confirm RESTORE_WININET_PROXY_FROM_LKG
+
+# Read-only proxy config audit across WinINET, WinHTTP, Git, npm, env, browser policy
+python -m src proxy config-check --json
+
+# Read-only Sysmon / Security 4657 / Procmon CSV writer evidence
+python -m src proxy registry-writer-proof --json
+python -m src proxy registry-writer-proof --json --procmon-csv .\trace.csv --since-seconds 600
+
+# Bounded local agent planner; never mutates
+python -m src agent next-step --json
+python -m src agent next-step --goal recommend_preview_action --json
+python -m src agent next-step --run-id <diagnosis_id> --json
+```
+
+Audit rows for these surfaces are appended to `logs/safety_audit.jsonl`. The contract for the proxy restore / preview / block lifecycle is documented in [`proxy_remediation_contract.md`](proxy_remediation_contract.md). The agent planner contract is documented in [`agent_next_step.md`](agent_next_step.md).
+
 ## Failure Knowledge System
 
 ```powershell

@@ -1,4 +1,58 @@
-"""Deterministic event/state reasoning engine for endpoint reliability."""
+"""Deterministic event/state reasoning engine for endpoint reliability.
+
+Module responsibility:
+    Orchestrate the deterministic Observation → Event → State Transition → Hypothesis →
+    Reliability Impact → Policy chain. Produces a :class:`~platform_core.reasoning_models.ReasoningRun`
+    with embedded evidence tree and policy decision. Never mutates Windows state and never
+    spawns subprocesses; this module operates purely on caller-provided observations.
+
+System placement:
+    Used by ``platform_core.product_contract`` (diagnosis) and the ``platform_core.agent_planner``
+    indirectly through stored diagnoses. Replay paths in :mod:`platform_core.reasoning_audit`
+    feed observations back into :func:`run_reasoning` to recompute decisions without re-probing
+    the host.
+
+Key invariants:
+    * The function set is **pure** with respect to the input ``Observation`` list. Same
+      observations + same proof_result + same requested_action always produce the same
+      :class:`PolicyDecision` outcome and reason codes.
+    * ``DESTRUCTIVE_ACTION_TOKENS`` substring matches always BLOCK regardless of confidence
+      or proof status.
+    * Only action keys in :data:`SAFE_REGISTRY_ACTIONS` may ever reach an ``ALLOW`` outcome,
+      and only with ``CONFIRMED`` proof + explicit confirmation + no conflicting signals.
+    * High/critical impact without ``CONFIRMED`` proof is forced to ``PREVIEW`` even if the
+      ALLOW gate above is widened in the future (see :func:`evaluate_reasoning_policy`).
+
+Input assumptions:
+    Caller supplies a list of :class:`Observation` rows. Signal names and value semantics
+    must match those used by ``platform_core.failure_scenarios.normalize_signals``; unknown
+    signal names are tolerated (ignored) but contribute nothing to scoring.
+
+Output guarantees:
+    :func:`run_reasoning` returns a :class:`ReasoningRun` that is JSON-serializable via the
+    Pydantic/dataclass surfaces in ``reasoning_models``. ``confidence`` is an ordinal score
+    in ``[0.0, 0.98]``, never a calibrated probability.
+
+Side effects:
+    None. Persistence and audit row writes are caller responsibilities.
+
+Audit Notes:
+    The reasoning engine is the **single authoritative policy gate** for the endpoint
+    reliability platform. When operators dispute a decision:
+
+    * Capture the input ``observations`` list and ``proof_result`` from the audit row.
+    * Re-run :func:`run_reasoning` with the same arguments — output must match byte-for-byte
+      because the engine is deterministic.
+    * If outputs diverge, suspect a code change to scoring weights, scenario definitions, or
+      policy thresholds; review git history for ``platform_core/reasoning_engine.py``,
+      ``platform_core/failure_scenarios.py``, and ``platform_core/impact_score.py``.
+
+Engineering Notes:
+    The module deliberately avoids any I/O or subprocess to keep it replayable from JSONL
+    and easy to test offline. Heuristic confidence is **rule-derived ordinal weight**, not a
+    probability; widening it to a calibrated estimator would require fixture-driven
+    calibration plus a documented contract change in ``platform_core.reasoning_models``.
+"""
 
 from __future__ import annotations
 
@@ -174,20 +228,56 @@ def evaluate_reasoning_policy(
     explicit_confirmation: bool = False,
     conflicting_signals: bool = False,
 ) -> PolicyDecision:
-    """Evaluate reasoning-aware policy without executing remediation.
+    """Map (hypothesis, transitions, proof, impact, action) to a typed :class:`PolicyDecision`.
+
+    Decision intent:
+        Decide whether the reasoning chain is strong enough to ALLOW a known-safe registry
+        action, downgrade to PREVIEW for operator review, or BLOCK destructive paths. The
+        function never executes remediation; it only emits the decision plus reason codes
+        the audit log preserves.
 
     Args:
-        hypothesis: Accepted hypothesis ID.
-        transitions: State transitions for the run.
-        proof_result: Optional proof result.
-        confidence: Ordinal hypothesis confidence.
-        impact_level: Reliability impact level.
-        requested_action: Optional remediation action key.
-        explicit_confirmation: Whether a typed confirmation boundary was met.
-        conflicting_signals: Whether observations contain direct contradictions.
+        hypothesis: Accepted hypothesis identifier (e.g. ``"browser_proxy_path_regression"``).
+        transitions: Ordered :class:`StateTransition` list for this run; the last entry's
+            ``to_state`` is reported as ``state_transition`` on the decision.
+        proof_result: Outcome of the optional proof engine (status drives ALLOW eligibility).
+        confidence: Ordinal hypothesis confidence in ``[0.0, 1.0]``; **not** a calibrated
+            probability — used for explainability and audit trails only.
+        impact_level: Reliability impact bucket (``"low"`` | ``"medium"`` | ``"high"`` |
+            ``"critical"``); high/critical force PREVIEW unless proof is ``CONFIRMED``.
+        requested_action: Optional remediation key. ``None`` returns a diagnostic-only
+            ``PREVIEW`` decision. Substring matches in :data:`DESTRUCTIVE_ACTION_TOKENS`
+            BLOCK unconditionally.
+        explicit_confirmation: ``True`` when the operator typed the documented confirmation
+            phrase via the CLI/API confirmation gate.
+        conflicting_signals: ``True`` when normalized observations contain direct
+            contradictions (e.g. ``browser_https_failed`` and ``browser_https_ok``).
 
     Returns:
-        Policy decision. The function never performs remediation.
+        Immutable :class:`PolicyDecision` carrying ``outcome`` (``ALLOW`` | ``PREVIEW`` |
+        ``BLOCK``), the resolved ``trust_level``/``evidence_level``, deduplicated
+        ``reason_codes``, ``limitations``, and recommended next steps.
+
+    Constraints and limitations:
+        * Confidence alone never grants ALLOW — proof status and impact must align.
+        * Unknown / unallowlisted action keys always BLOCK.
+        * Tokens in :data:`DESTRUCTIVE_ACTION_TOKENS` BLOCK regardless of evidence.
+
+    Audit Notes:
+        This is the **single authoritative policy gate** for action evaluation. When an
+        operator disputes ``outcome``:
+
+        * What could go wrong: A widened ALLOW path could let a high-impact action through
+          without proof. The defense-in-depth block (see ``# Defense-in-depth`` comment) is
+          designed to catch this — every guardrail re-asserts ``outcome = "PREVIEW"`` rather
+          than only annotating ``reason_codes``.
+        * How to detect: ``reason_codes`` always carries the rule that fired; cross-check
+          against ``outcome``. If ``outcome == "ALLOW"`` but a ``*_requires_*`` reason code
+          is present, the gate has regressed.
+        * How to recover: Re-run with the same inputs to verify determinism, then revert the
+          offending change in this module or :mod:`platform_core.impact_score`.
+        * Evidence available: Reason codes, limitations, and trust level are persisted on
+          every reasoning run (``platform_data/audit.jsonl`` via callers).
     """
     action = (requested_action or "").strip().lower() or None
     reason_codes: list[str] = []
@@ -254,13 +344,34 @@ def evaluate_reasoning_policy(
         reason_codes.append("preview_required_until_proof_and_confirmation")
         outcome = "PREVIEW"
 
+    # Defense-in-depth: each impact/trust guardrail below MUST also enforce a
+    # downgrade to PREVIEW, not just annotate `reason_codes`. Today the ALLOW
+    # gate (the elif above) already requires CONFIRMED proof + no conflicts,
+    # so these conditions are mutually exclusive with ALLOW. We still re-assert
+    # the downgrade here so any future widening of the ALLOW gate cannot
+    # silently bypass the impact policy.
     if impact_level in ("high", "critical") and proof_result.status != "CONFIRMED":
         reason_codes.append("high_impact_requires_confirmed_proof_before_execute")
+        if outcome == "ALLOW":
+            limitations.append(
+                "High or critical reliability impact requires CONFIRMED proof before live execute."
+            )
+        outcome = "PREVIEW"
     if impact_level == "critical" and trust_level != "high":
         reason_codes.append("critical_impact_requires_high_trust_for_execute_authority")
+        if outcome == "ALLOW":
+            limitations.append(
+                "Critical reliability impact requires high trust (CONFIRMED proof, no conflicting signals)."
+            )
+        outcome = "PREVIEW"
 
     if proof_result.status != "CONFIRMED":
         reason_codes.append("unproven_high_confidence_is_not_execute_authority")
+        if outcome == "ALLOW":
+            limitations.append(
+                "Unproven hypothesis cannot grant execute authority even with high confidence."
+            )
+        outcome = "PREVIEW"
     if action in SAFE_REGISTRY_ACTIONS:
         reason_codes.append("registry_change_requires_typed_confirmation")
 
@@ -298,18 +409,47 @@ def run_reasoning(
     source: str = "reasoning_engine",
     run_id: str | None = None,
 ) -> ReasoningRun:
-    """Run the deterministic endpoint reasoning pipeline.
+    """Drive the full deterministic Observation → Decision pipeline for endpoint reliability.
+
+    Pipeline stages:
+        1. ``normalize_signals`` — project raw observations into a canonical signal map.
+        2. ``detect_endpoint_events`` — emit :class:`EndpointEvent` rows for matched signals.
+        3. ``infer_browser_proxy_transitions`` — walk the state machine for proxy/browser path.
+        4. ``rank_hypotheses`` — score candidate hypotheses; pick the top entry as accepted.
+        5. ``calculate_reliability_impact`` — derive severity/scope and the impact bucket.
+        6. :func:`evaluate_reasoning_policy` — gate the requested action against policy.
+        7. ``build_evidence_tree`` — assemble an explainable, replay-friendly tree.
 
     Args:
-        observations: Replayable observations. No machine probes happen here.
-        proof_result: Optional proof result from a targeted checker.
-        requested_action: Optional remediation action key for policy evaluation.
-        explicit_confirmation: Whether typed confirmation boundary was met.
-        source: Caller source.
-        run_id: Optional stable ID for replay parity.
+        observations: Replayable observations. **No machine probes happen here**; the engine
+            is pure with respect to its inputs.
+        proof_result: Optional :class:`ProofResult` from a targeted checker (e.g. HTTPS
+            proxy bypass contrast). Defaults to ``ProofResult(NOT_RUN)`` shape.
+        requested_action: Optional remediation action key. See :data:`SAFE_REGISTRY_ACTIONS`
+            for the allowlist.
+        explicit_confirmation: ``True`` when the operator typed the documented confirmation
+            phrase. Required (along with ``CONFIRMED`` proof and no conflicts) for ``ALLOW``.
+        source: Free-form caller label persisted on the reasoning run for audit lookup.
+        run_id: Optional stable identifier for replay parity. Generated when omitted.
 
     Returns:
-        Full reasoning run with events, transitions, evidence tree, policy, and impact.
+        :class:`ReasoningRun` with events, transitions, hypothesis ranking, evidence tree,
+        proof result, reliability impact, policy decision, recommended next test, and an
+        optional remediation preview (only populated when ``policy.outcome == "PREVIEW"``).
+
+    Side effects:
+        None. Persistence and audit row writes are caller responsibilities.
+
+    Idempotency:
+        Calling :func:`run_reasoning` twice with identical arguments yields equivalent
+        :class:`ReasoningRun` objects (the only divergence is auto-generated ``run_id`` /
+        nested IDs when the caller omits them).
+
+    Audit Notes:
+        Use this function with the **stored observations** from
+        ``platform_data/audit.jsonl`` to replay any historical decision without touching
+        the host. Diverging output indicates a code change to scoring weights, scenario
+        rules, impact buckets, or policy thresholds — review git history accordingly.
     """
     scenarios = default_failure_scenarios()
     proof = proof_result or ProofResult(hypothesis="browser_proxy_path_regression")

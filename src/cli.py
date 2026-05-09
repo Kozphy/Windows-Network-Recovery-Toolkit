@@ -87,6 +87,12 @@ from .network_state.cli_handlers import (
     cmd_network_state_snapshot_set_default,
     cmd_network_state_snapshot_show,
 )
+from .command_handlers_safety import (
+    cmd_agent_next_step,
+    cmd_proxy_config_check,
+    cmd_proxy_registry_writer_proof,
+    cmd_proxy_restore_lkg,
+)
 from .logging.audit import append_jsonl
 from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
 from .proof.proxy_https import run_localhost_proxy_https_proof
@@ -1383,6 +1389,91 @@ def build_parser() -> argparse.ArgumentParser:
         help="Preview the older ProxyServer delete path; live apply is blocked by the allowlist.",
     )
     p_proxy_disable.set_defaults(func=cmd_proxy_disable)
+
+    p_proxy_restore_lkg = p_proxy_sub.add_parser(
+        "restore-lkg",
+        help="Restore HKCU WinINET proxy fields from latest known-good snapshot (typed-confirmation gated; default dry-run).",
+    )
+    p_proxy_restore_lkg.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        help="Preview only by default. Use --dry-run false with --confirm RESTORE_WININET_PROXY_FROM_LKG to apply.",
+    )
+    p_proxy_restore_lkg.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live restore requires exact phrase RESTORE_WININET_PROXY_FROM_LKG.",
+    )
+    p_proxy_restore_lkg.add_argument(
+        "--name",
+        type=str,
+        default="",
+        dest="snapshot_name",
+        metavar="NAME",
+        help="Optional snapshot label; defaults to the youngest stored snapshot.",
+    )
+    p_proxy_restore_lkg.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_proxy_restore_lkg.set_defaults(func=cmd_proxy_restore_lkg)
+
+    p_proxy_cc = p_proxy_sub.add_parser(
+        "config-check",
+        help="Read-only proxy config audit (WinINET, WinHTTP, Git, npm, env, browser policy).",
+    )
+    p_proxy_cc.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_proxy_cc.set_defaults(func=cmd_proxy_config_check)
+
+    p_proxy_rwp = p_proxy_sub.add_parser(
+        "registry-writer-proof",
+        help="Read-only Sysmon / Security 4657 / Procmon CSV evidence for WinINET proxy registry writes.",
+    )
+    p_proxy_rwp.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_proxy_rwp.add_argument("--since-seconds", type=int, default=120, help="Lookback window in seconds (default 120).")
+    p_proxy_rwp.add_argument(
+        "--procmon-csv",
+        type=str,
+        default=None,
+        dest="procmon_csv",
+        metavar="PATH",
+        help="Optional Procmon CSV export to enrich evidence.",
+    )
+    p_proxy_rwp.set_defaults(func=cmd_proxy_registry_writer_proof)
+
+    p_agent = sub.add_parser("agent", help="Bounded local agent surfaces (recommendation only; no mutation).")
+    p_agent_sub = p_agent.add_subparsers(dest="agent_cmd", required=True)
+    p_agent_ns = p_agent_sub.add_parser(
+        "next-step",
+        help="Recommend the next read-only probe or preview action based on the latest stored diagnosis.",
+    )
+    p_agent_ns.add_argument(
+        "--goal",
+        type=str,
+        default="suggest_next_probe",
+        choices=(
+            "suggest_next_probe",
+            "rank_hypotheses",
+            "explain_risk",
+            "recommend_preview_action",
+            "summarize_audit",
+            "identify_missing_evidence",
+        ),
+        help="Bounded planner goal.",
+    )
+    p_agent_ns.add_argument(
+        "--run-id",
+        type=str,
+        default="",
+        dest="run_id",
+        metavar="DIAGNOSIS_ID",
+        help="Optional diagnosis run id; defaults to the latest stored diagnosis.",
+    )
+    p_agent_ns.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_agent_ns.set_defaults(func=cmd_agent_next_step)
 
     p_sn = sub.add_parser("snapshot", help="Persist full observability JSON under reports/snapshots/.")
     p_sn.set_defaults(func=cmd_snapshot)

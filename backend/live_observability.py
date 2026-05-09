@@ -244,3 +244,58 @@ def api_reports_latest_live(_user: AuthUser = Depends(get_current_user)) -> dict
     if not pick.is_file():
         raise HTTPException(status_code=404, detail="No latest diagnosis artifact found.")
     return json.loads(pick.read_text(encoding="utf-8"))
+
+
+class RestoreLkgRequest(BaseModel):
+    dry_run: bool = True
+    confirmation: str = ""
+    snapshot_name: str = ""
+
+
+RESTORE_LKG_PHRASE = "RESTORE_WININET_PROXY_FROM_LKG"
+
+
+@router.post("/api/proxy/restore-lkg")
+def api_proxy_restore_lkg(
+    body: RestoreLkgRequest,
+    _user: AuthUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Preview or apply HKCU WinINET restore from latest known-good snapshot via the CLI confirmation gate."""
+
+    argv = [
+        "proxy",
+        "restore-lkg",
+        "--json",
+        "--dry-run",
+        "true" if body.dry_run else "false",
+    ]
+    if body.confirmation:
+        argv.extend(["--confirm", body.confirmation])
+    if body.snapshot_name:
+        argv.extend(["--name", body.snapshot_name])
+    return _invoke_src_json_status(argv, allowed_returncodes={0, 1, 2})
+
+
+@router.post("/api/proxy/config-check")
+def api_proxy_config_check(_user: AuthUser = Depends(get_current_user)) -> dict[str, Any]:
+    """Read-only proxy config audit (WinINET, WinHTTP, Git, npm, env, browser policy)."""
+
+    return _invoke_src_json(["proxy", "config-check", "--json"])
+
+
+class RegistryWriterProofRequest(BaseModel):
+    since_seconds: int = 120
+    procmon_csv: str | None = None
+
+
+@router.post("/api/proxy/registry-writer-proof")
+def api_proxy_registry_writer_proof(
+    body: RegistryWriterProofRequest,
+    _user: AuthUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Read-only Sysmon / Security 4657 / Procmon CSV registry writer evidence."""
+
+    argv = ["proxy", "registry-writer-proof", "--json", "--since-seconds", str(int(body.since_seconds))]
+    if body.procmon_csv:
+        argv.extend(["--procmon-csv", body.procmon_csv])
+    return _invoke_src_json(argv)

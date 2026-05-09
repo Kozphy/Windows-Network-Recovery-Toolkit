@@ -123,6 +123,25 @@ def collect_diagnostics() -> dict[str, Any]:
     }
 
 
+def _print_response_body(label: str, response: requests.Response) -> None:
+    """Print a labeled response body, falling back to raw text on JSON parse failure.
+
+    Defensive output helper: API contract may evolve, and an HTML error page or empty
+    body should still surface readable operator output instead of crashing the loop.
+    """
+    try:
+        parsed = response.json()
+    except ValueError as exc:
+        print(f"{label} (non-JSON response, {len(response.content)} bytes):")
+        snippet = response.text[:500]
+        if snippet:
+            print(snippet)
+        print(f"[parse error: {exc}]")
+        return
+    print(f"{label}:")
+    print(json.dumps(parsed, indent=2))
+
+
 def run_once(base_url: str, token: str, project_id: str | None) -> None:
     """Send one diagnose + monitor cycle to backend API.
 
@@ -137,7 +156,9 @@ def run_once(base_url: str, token: str, project_id: str | None) -> None:
 
     Raises:
         requests.HTTPError: If API returns non-success status.
-        requests.RequestException: On transport/timeout errors.
+        requests.RequestException: On transport/timeout errors. ``JSONDecodeError`` is
+            a subclass of ``RequestException`` and is also surfaced via
+            :func:`_print_response_body` rather than crashing the cycle.
     """
     payload = collect_diagnostics()
     if project_id:
@@ -150,8 +171,7 @@ def run_once(base_url: str, token: str, project_id: str | None) -> None:
 
     diag_resp = requests.post(f"{base_url}/diagnose", json=payload, headers=headers, timeout=20)
     diag_resp.raise_for_status()
-    print("Diagnosis result:")
-    print(json.dumps(diag_resp.json(), indent=2))
+    _print_response_body("Diagnosis result", diag_resp)
     print()
 
     monitor_payload = {"time_wait": payload["time_wait"], "established": payload["established"]}
@@ -164,8 +184,7 @@ def run_once(base_url: str, token: str, project_id: str | None) -> None:
         timeout=20,
     )
     mon_resp.raise_for_status()
-    print("Monitor result:")
-    print(json.dumps(mon_resp.json(), indent=2))
+    _print_response_body("Monitor result", mon_resp)
 
 
 def main() -> None:

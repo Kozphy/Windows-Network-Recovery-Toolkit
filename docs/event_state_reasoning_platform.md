@@ -217,7 +217,9 @@ Rules:
 - Conflicting signals downgrade to `PREVIEW`.
 - Registry changes require explicit typed confirmation.
 - Firewall reset, adapter disable, process kill, and arbitrary shell remain blocked/manual-only.
-- High or critical **impact** without confirmed proof adds `high_impact_requires_confirmed_proof_before_execute` to `reason_codes` (annotation for operators and replay); execute authority still requires proof plus confirmation for allowlisted actions.
+- High or critical **impact** without confirmed proof forces `outcome = "PREVIEW"` and appends `high_impact_requires_confirmed_proof_before_execute` to `reason_codes`. This is defense-in-depth: even if the ALLOW gate were widened in the future, an unproven high/critical impact path cannot escalate to execute authority.
+- Critical **impact** without high trust (CONFIRMED proof, no conflicting signals) forces `outcome = "PREVIEW"` and appends `critical_impact_requires_high_trust_for_execute_authority`.
+- Unproven hypothesis (`proof_result.status != "CONFIRMED"`) forces `outcome = "PREVIEW"` and appends `unproven_high_confidence_is_not_execute_authority`. Each guardrail is an independent gate, not just an annotation.
 
 ## I. Audit and Replay
 

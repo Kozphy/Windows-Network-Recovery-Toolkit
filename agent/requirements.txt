@@ -1,1 +1,4 @@
+# `requests` is only required by `agent/remote_uploader.py` (optional HTTP sync).
+# The local agent flow (collector → classifier → planner → executor) is stdlib-only;
+# you can skip this install if you only use `python -m agent` for local diagnostics.
 requests

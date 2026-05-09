@@ -41,7 +41,9 @@ AgentNextStep = Literal[
     "rank_hypotheses",
     "explain_risk",
     "generate_remediation_preview",
+    "recommend_preview_action",
     "summarize_audit",
+    "identify_missing_evidence",
 ]
 
 
@@ -156,11 +158,12 @@ class AgentNextStepRequest(BaseModel):
 
 
 class AgentNextStepResponse(BaseModel):
-    next_step: AgentNextStep
+    next_step: str = "suggest_next_probe"
     reason: str
     evidence_used: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0, default=0.0)
-    policy_boundary: str = "agent_may_suggest_only_no_repair"
+    policy_boundary: str = "recommendation_only_no_mutation"
+    blocked_actions: list[str] = Field(default_factory=list)
 
 
 def local_endpoint_id() -> str:

@@ -69,3 +69,42 @@ python -m proxy_guard writer-report --markdown
 python -m proxy_guard import-procmon path\to\procmon.csv
 python -m proxy_guard explain-event <event_id>
 ```
+
+## `registry_writer_proof` contract
+
+`evidence/registry_writer_proof.py` projects the rich evidence into a strict shape consumed by
+the CLI (`python -m src proxy registry-writer-proof --json`) and the optional API
+(`POST /api/proxy/registry-writer-proof`). The contract is intentionally narrow so dashboards
+and audits can reason about availability without parsing per-source bundles:
+
+```json
+{
+  "registry_writer_proof": {
+    "status": "unavailable | found",
+    "evidence_level": "observation | proof_candidate",
+    "events": [
+      {
+        "timestamp": "...",
+        "image": "...",
+        "process_id": 4242,
+        "user": "...",
+        "target_object": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyServer",
+        "value_name": "ProxyServer",
+        "details": "127.0.0.1:57863",
+        "event_source": "sysmon_event_13",
+        "source_event_id": "13",
+        "confidence": 0.94
+      }
+    ],
+    "limitation": "listener/process correlation does not prove registry writer identity ...",
+    "sysmon_status": {"installed": true, "running": true, "log_available": true}
+  }
+}
+```
+
+Boundaries enforced by the facade:
+
+- The adapter is **read-only**. It never installs Sysmon, never elevates, never clears event logs, never kills processes.
+- Permission errors and missing telemetry collapse into `status: "unavailable"` with a stable `reason` field; the CLI never crashes on a non-Sysmon host.
+- `evidence_level` is `proof_candidate`, never `proof`. Operators must still review process identity, parent context, and signing before treating a row as authoritative.
+- Listener / process correlation remains classified as `inference`; only registry-write telemetry is upgraded to `proof_candidate`.

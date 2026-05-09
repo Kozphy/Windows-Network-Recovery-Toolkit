@@ -60,6 +60,7 @@ Audit Notes:
 from __future__ import annotations
 
 import os
+import platform as plat
 import subprocess
 import sys
 import uuid
@@ -1049,38 +1050,37 @@ def agent_next_step(
 ) -> dict[str, Any]:
     """Return a bounded agentic next step. The agent may suggest and explain, but never repair."""
 
+    from platform_core.agent_planner import plan_next_step
+
     diag = get_diagnosis(body.run_id) if body.run_id else latest_diagnosis()
-    evidence_used: list[str] = []
-    confidence = 0.25
-    reason = "No stored diagnosis was available; run a read-only diagnosis first."
-    if diag is not None:
-        evidence_used = [probe.name for probe in diag.observations]
-        confidence = diag.confidence
-        if body.goal == "suggest_next_probe":
-            reason = diag.recommended_next_test
-        elif body.goal == "rank_hypotheses":
-            reason = "; ".join(diag.inferred_hypotheses[:3]) or "No inferred hypotheses."
-        elif body.goal == "explain_risk":
-            reason = f"Risk score {diag.risk_score:.2f}; evidence level {diag.evidence_level}."
-        elif body.goal == "generate_remediation_preview":
-            reason = "Generate a preview-only remediation request; live repair remains policy gated."
-        elif body.goal == "summarize_audit":
-            reason = f"Diagnosis audit event {diag.audit_event_id} is replayable as run {diag.run_id}."
+    goal_in = str(getattr(body, "goal", "suggest_next_probe") or "suggest_next_probe")
+    goal_alias = "recommend_preview_action" if goal_in == "generate_remediation_preview" else goal_in
+    if goal_alias not in {
+        "suggest_next_probe",
+        "rank_hypotheses",
+        "explain_risk",
+        "recommend_preview_action",
+        "summarize_audit",
+        "identify_missing_evidence",
+    }:
+        goal_alias = "suggest_next_probe"
+    plan = plan_next_step(diag, goal=goal_alias)  # type: ignore[arg-type]
     response = AgentNextStepResponse(
-        next_step=body.goal,
-        reason=reason,
-        evidence_used=evidence_used,
-        confidence=confidence,
-        policy_boundary="agent_may_suggest_only_no_repair",
+        next_step=plan.next_step,
+        reason=plan.reason,
+        evidence_used=plan.evidence_used,
+        confidence=plan.confidence,
+        policy_boundary=plan.policy_boundary,
+        blocked_actions=list(plan.blocked_actions),
     )
     append_contract_audit(
         PlatformAuditEvent(
             endpoint_id=body.endpoint_id or (diag.endpoint_id if diag else ""),
             event_kind="agent_next_step",
-            observations=[{"evidence_used": evidence_used}],
-            summary=reason,
+            observations=[{"evidence_used": plan.evidence_used, "blocked_actions": list(plan.blocked_actions)}],
+            summary=plan.reason,
             hypothesis=diag.inferred_hypotheses if diag else [],
-            confidence=confidence,
+            confidence=plan.confidence,
             evidence_level=diag.evidence_level if diag else "observation",
             policy_decision="preview_only",
             actor=principal.operator_id,
@@ -1105,8 +1105,8 @@ def stable_id_from_host(os_version: str = "") -> str:
 
     Engineering Notes:
         Purely illustrative for demos—not a cryptographic device identifier.
+        Uses the module-level ``plat`` import (stdlib ``platform``) per the workspace
+        no-inline-imports rule.
     """
-    import platform as plat
-
     hint = plat.node()
     return stable_endpoint_hash(hint, os_version or plat.release(), None)

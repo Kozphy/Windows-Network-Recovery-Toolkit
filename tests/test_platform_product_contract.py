@@ -220,8 +220,20 @@ def test_agent_next_step_is_suggestion_only(plat_client: TestClient, monkeypatch
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["next_step"] == "explain_risk"
-    assert body["policy_boundary"] == "agent_may_suggest_only_no_repair"
+    safe_next_steps = {
+        "run_diagnosis",
+        "run_proxy_disable_preview",
+        "inspect_node_process",
+        "run_registry_writer_proof",
+        "restart_browser",
+        "collect_lkg",
+        "compare_proxy_config",
+        "review_audit",
+    }
+    assert body["next_step"] in safe_next_steps
+    assert body["policy_boundary"] == "recommendation_only_no_mutation"
+    assert "process_kill" in body["blocked_actions"]
+    assert "firewall_reset" in body["blocked_actions"]
     assert body["confidence"] > 0
 
     invalid = plat_client.post("/platform/agent/next-step", json={"run_id": run_id, "goal": "repair"})

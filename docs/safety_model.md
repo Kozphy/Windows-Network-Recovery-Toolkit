@@ -48,6 +48,46 @@ Execute is any path that can change Windows state. Execute defaults to `dry_run=
 - `dry_run=false`
 - known allowlisted `action_id`
 - exact typed confirmation phrase
+
+### Allowlisted state-changing actions
+
+| `action_id` | Confirmation phrase | Allowed registry fields | Reversible |
+| --- | --- | --- | --- |
+| `disable_wininet_proxy` | `DISABLE_WININET_PROXY` | `ProxyEnable` (and optionally `ProxyServer` via `--clear-server`) | Yes (LKG snapshot) |
+| `restore_wininet_proxy_from_lkg` | `RESTORE_WININET_PROXY_FROM_LKG` | `ProxyEnable`, `ProxyServer`, `AutoConfigURL`, `ProxyOverride`, `AutoDetect` | Yes (previous snapshot) |
+
+### Permanently blocked actions
+
+The following remain blocked from any CLI / API remediation path even with confirmation. They must be handled manually with operator-supervised tooling:
+
+- `firewall_reset`
+- `disable_adapter`
+- `adapter_reset`
+- `winsock_reset`
+- `kill_process`
+- `delete_certificate`
+- `broad_registry_cleanup`
+- `arbitrary_shell`
+
+### Last Known Good (LKG) snapshot
+
+Before a confirmed mutation, the toolkit captures HKCU WinINET state into `logs/proxy_snapshots.jsonl` (transient rollback) and named snapshots into `logs/proxy_known_good_snapshots.jsonl`. The `proxy restore-lkg` subcommand is the only path that may restore those WinINET fields and only via the typed phrase `RESTORE_WININET_PROXY_FROM_LKG`. WinHTTP, Git, npm, environment variables, browser policies, and any non-WinINET registry path are intentionally out of scope for this command.
+
+### Post-change validation
+
+After a confirmed mutation the CLI re-reads HKCU WinINET, runs DNS / TCP 443 / HTTPS direct probes, and writes a `post_change_validation` audit row. Validation failure never triggers broad automatic repair; it is surfaced as `repair_effect: unchanged | unknown` so the operator can decide.
+
+### Agent next-step planner
+
+`python -m src agent next-step` and `POST /platform/agent/next-step` only suggest the next read-only probe or preview action. The planner output always includes `policy_boundary: "recommendation_only_no_mutation"` and a `blocked_actions` list. The planner cannot execute remediation, change registry, kill processes, reset firewall, disable adapters, delete certificates, or run arbitrary shell. See `docs/agent_next_step.md`.
+
+### LLM boundary
+
+LLMs may translate structured evidence into prose. They may not invent observations, attribution, proof, or remediation. See `docs/event_state_reasoning_platform.md` for the full structured-only contract.
+
+### What this toolkit is not
+
+This is not antivirus, not autonomous containment, and not a replacement for endpoint detection and response. It is a local-first diagnostic, evidence, and confirmation-gated remediation-preview toolkit.
 - mutation limited to the action's allowed fields
 - append-only audit rows for request, block/success, and validation
 

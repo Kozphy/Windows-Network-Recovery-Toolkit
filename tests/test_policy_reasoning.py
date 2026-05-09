@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from platform_core.reasoning_engine import observation, run_reasoning
-from platform_core.reasoning_models import ProofResult
+from platform_core.reasoning_engine import evaluate_reasoning_policy, observation, run_reasoning
+from platform_core.reasoning_models import ProofResult, StateTransition
 
 
 def _high_confidence_proxy_observations():
@@ -63,3 +63,76 @@ def test_high_risk_actions_remain_blocked() -> None:
     run = run_reasoning(_high_confidence_proxy_observations(), requested_action="firewall_reset")
     assert run.policy_decision.outcome == "BLOCK"
     assert "destructive_or_manual_only_action_blocked" in run.policy_decision.reason_codes
+
+
+def _confirmed_proof() -> ProofResult:
+    return ProofResult(
+        hypothesis="browser_proxy_path_regression",
+        status="CONFIRMED",
+        confidence=0.95,
+        checks_run=["proxy_bypass_contrast"],
+    )
+
+
+def _proven_transition() -> list[StateTransition]:
+    return [
+        StateTransition(
+            from_state="browser_path_failure_suspected",
+            to_state="proxy_path_failure_confirmed",
+            rule_id="proxy_path_confirmed",
+            confidence=0.92,
+            evidence_level="validated",
+        )
+    ]
+
+
+def test_high_impact_unconfirmed_proof_forces_preview_defense_in_depth() -> None:
+    """Unconfirmed proof + high impact MUST downgrade to PREVIEW even if upstream gate were widened."""
+    decision = evaluate_reasoning_policy(
+        hypothesis="browser_proxy_path_regression",
+        transitions=_proven_transition(),
+        proof_result=ProofResult(hypothesis="browser_proxy_path_regression", status="NOT_RUN"),
+        confidence=0.95,
+        impact_level="high",
+        requested_action="restore_proxy",
+        explicit_confirmation=True,
+        conflicting_signals=False,
+    )
+    assert decision.outcome == "PREVIEW"
+    assert "high_impact_requires_confirmed_proof_before_execute" in decision.reason_codes
+    assert "unproven_high_confidence_is_not_execute_authority" in decision.reason_codes
+
+
+def test_critical_impact_low_trust_forces_preview_defense_in_depth() -> None:
+    """Critical impact without high trust MUST downgrade to PREVIEW; reason code is a real gate."""
+    decision = evaluate_reasoning_policy(
+        hypothesis="browser_proxy_path_regression",
+        transitions=_proven_transition(),
+        proof_result=ProofResult(hypothesis="browser_proxy_path_regression", status="NOT_RUN"),
+        confidence=0.97,
+        impact_level="critical",
+        requested_action="restore_proxy",
+        explicit_confirmation=True,
+        conflicting_signals=False,
+    )
+    assert decision.outcome == "PREVIEW"
+    assert "critical_impact_requires_high_trust_for_execute_authority" in decision.reason_codes
+    assert "high_impact_requires_confirmed_proof_before_execute" in decision.reason_codes
+
+
+def test_critical_impact_with_confirmed_proof_and_confirmation_can_allow() -> None:
+    """The defense-in-depth gates do not trip when proof is CONFIRMED, trust is high, and confirmation is present."""
+    decision = evaluate_reasoning_policy(
+        hypothesis="browser_proxy_path_regression",
+        transitions=_proven_transition(),
+        proof_result=_confirmed_proof(),
+        confidence=0.95,
+        impact_level="critical",
+        requested_action="restore_proxy",
+        explicit_confirmation=True,
+        conflicting_signals=False,
+    )
+    assert decision.outcome == "ALLOW"
+    assert "high_impact_requires_confirmed_proof_before_execute" not in decision.reason_codes
+    assert "critical_impact_requires_high_trust_for_execute_authority" not in decision.reason_codes
+    assert "unproven_high_confidence_is_not_execute_authority" not in decision.reason_codes
