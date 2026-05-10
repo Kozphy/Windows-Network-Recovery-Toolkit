@@ -15,13 +15,14 @@
 
 ### Reading order (~10 minutes)
 
-1. Root ``README.md`` — problem statement, demo, decision pipeline (**heuristic vs proof**), safety table, links to **[`cli_reference.md`](cli_reference.md)** for long command lists.
-2. **[`decision_engine_v2.md`](decision_engine_v2.md)** — live hypotheses, proofs, audits, replay contracts.
-3. **[`architecture_platform.md`](architecture_platform.md)** + [`platform_architecture.md`](platform_architecture.md) — platform Mermaid + agent → JSONL → API diagrams.
-4. **[`demo_script.md`](demo_script.md)** — safe short demo paths (fleet + dashboard when enabled).
-5. ``docs/architecture.md`` + ``failure_block_contract.md`` — Failure Knowledge System signal → FailureBlock flow (read-only remediation from FKS APIs).
-6. ``docs/proxy_guard.md`` + ``docs/proxy_attribution.md`` — HKCU drift, honest attribution boundaries, tooling entry points.
-7. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, ingest aliases, remediation rules.
+1. **[`epistemic_model.md`](epistemic_model.md)** — **Observation ≠ Inference ≠ Proof**, confidence as ordinal ranking, replay without re-probing.
+2. Root ``README.md`` — problem statement, demo, decision pipeline (**heuristic vs proof**), safety table, links to **[`cli_reference.md`](cli_reference.md)** for long command lists.
+3. **[`decision_engine_v2.md`](decision_engine_v2.md)** — live hypotheses, proofs, audits, replay contracts.
+4. **[`architecture_platform.md`](architecture_platform.md)** + [`platform_architecture.md`](platform_architecture.md) — platform Mermaid + agent → JSONL → API diagrams.
+5. **[`demo_script.md`](demo_script.md)** — safe short demo paths (fleet + dashboard when enabled).
+6. ``docs/architecture.md`` + ``failure_block_contract.md`` — Failure Knowledge System signal → FailureBlock flow (read-only remediation from FKS APIs).
+7. ``docs/proxy_guard.md`` + ``docs/proxy_attribution.md`` — HKCU drift, honest attribution boundaries, tooling entry points.
+8. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, ingest aliases, remediation rules.
 
 Run ``pytest -q`` before changing critical paths — suites stay offline and avoid destructive Windows repair.
 

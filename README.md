@@ -46,6 +46,8 @@ Layer diagnosis treats this as a likely L7/browser-path regression candidate.
 - **Inference**: rule-based layer classification from multiple observations.
 - **Proof**: stronger telemetry or corroborated evidence; not implied by heuristic process correlation.
 
+Full epistemic boundaries (including confidence as ordinal ranking, not calibrated probability) are in [docs/epistemic_model.md](docs/epistemic_model.md).
+
 ### Event-state reasoning (Revolut-style reliability chain)
 
 **Before:** observation → hypothesis → confidence → proof → policy → audit.

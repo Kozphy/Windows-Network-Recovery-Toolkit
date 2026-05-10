@@ -250,6 +250,30 @@ _REMEDIATION_REGISTRY: dict[str, RemediationActionDef] = {
         manual_only=False,
         rollback_plan="Not applicable.",
     ),
+    "process_kill_forbidden": RemediationActionDef(
+        action_name="process_kill_forbidden",
+        script_path=None,
+        risk_level="forbidden",
+        allowed_surfaces=(),
+        api_execute_allowed=False,
+        requires_confirmation=False,
+        confirmation_phrase="",
+        dry_run_allowed=False,
+        manual_only=False,
+        rollback_plan="Not applicable.",
+    ),
+    "certificate_delete_forbidden": RemediationActionDef(
+        action_name="certificate_delete_forbidden",
+        script_path=None,
+        risk_level="forbidden",
+        allowed_surfaces=(),
+        api_execute_allowed=False,
+        requires_confirmation=False,
+        confirmation_phrase="",
+        dry_run_allowed=False,
+        manual_only=False,
+        rollback_plan="Not applicable.",
+    ),
 }
 
 
@@ -260,6 +284,10 @@ _ACTION_ALIASES: dict[str, str] = {
     "reset_firewall": "firewall_reset_manual_only",
     "arbitrary_command": "arbitrary_command_forbidden",
     "arbitrary_command_forbidden": "arbitrary_command_forbidden",
+    "process_kill": "process_kill_forbidden",
+    "kill_process": "process_kill_forbidden",
+    "certificate_delete": "certificate_delete_forbidden",
+    "delete_certificate": "certificate_delete_forbidden",
 }
 
 
