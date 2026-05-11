@@ -98,12 +98,12 @@ class RepairExecutor:
         Returns:
             tuple[bool, str]: Allow/deny decision and reason message.
         """
-        name_lower = step.script_relative_path.replace("/", "\\").lower()
-        if "reset_firewall" in name_lower:
+        script_key = self._normalize_script_path(step.script_relative_path)
+        if "reset_firewall" in script_key:
             if not self.confirm_firewall:
                 return False, "Blocked: firewall reset requires explicit confirmation flag."
         if step.requires_confirmation or step.destructive:
-            if step.script_relative_path not in self.confirmed_scripts:
+            if script_key not in self.confirmed_scripts:
                 return False, "Blocked: step requires explicit confirmation."
         return True, "ok"
 

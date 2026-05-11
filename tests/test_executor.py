@@ -38,3 +38,21 @@ def test_executor_blocks_firewall_without_dual_confirm() -> None:
         if "reset_firewall" in step.script_relative_path.lower():
             assert ok is False
             assert "firewall" in reason.lower()
+
+
+def test_executor_confirmed_script_matches_across_path_separators() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    step = RepairStep(
+        script_relative_path=r"scripts\reset_firewall.bat",
+        description="test",
+        risk="HIGH",
+        requires_confirmation=True,
+        destructive=True,
+    )
+    ex = RepairExecutor(
+        repo,
+        confirm_firewall=True,
+        confirmed_scripts=frozenset({"scripts/reset_firewall.bat"}),
+    )
+    ok, reason = ex.should_run(step)
+    assert ok is True, reason
