@@ -61,7 +61,14 @@ class RepairExecutor:
         """
         self.repo_root = repo_root.resolve()
         self.confirm_firewall = confirm_firewall
-        self.confirmed_scripts = confirmed_scripts or frozenset()
+        self.confirmed_scripts = frozenset(
+            self._normalize_script_path(path) for path in (confirmed_scripts or frozenset())
+        )
+
+    @staticmethod
+    def _normalize_script_path(rel: str) -> str:
+        """Normalize repository-relative script paths for policy comparisons."""
+        return rel.replace("/", "\\").lower()
 
     def _resolve_script(self, rel: str) -> Path:
         """Resolve and validate script path under repository root.

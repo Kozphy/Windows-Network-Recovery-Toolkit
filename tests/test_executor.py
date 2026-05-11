@@ -4,7 +4,7 @@ from pathlib import Path
 
 from agent.executor import RepairExecutor
 from agent.planner import plan
-from agent.schemas import DiagnosticEvidence, RankedCause
+from agent.schemas import DiagnosticEvidence, RankedCause, RepairStep
 
 
 def test_executor_blocks_firewall_without_dual_confirm() -> None:
