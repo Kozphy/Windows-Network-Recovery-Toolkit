@@ -56,3 +56,21 @@ def test_executor_confirmed_script_matches_across_path_separators() -> None:
     )
     ok, reason = ex.should_run(step)
     assert ok is True, reason
+
+
+def test_executor_confirmed_script_matches_mixed_case() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    step = RepairStep(
+        script_relative_path=r"Scripts\Reset_Firewall.bat",
+        description="test",
+        risk="HIGH",
+        requires_confirmation=True,
+        destructive=True,
+    )
+    ex = RepairExecutor(
+        repo,
+        confirm_firewall=True,
+        confirmed_scripts=frozenset({"scripts/reset_firewall.bat"}),
+    )
+    ok, reason = ex.should_run(step)
+    assert ok is True, reason
