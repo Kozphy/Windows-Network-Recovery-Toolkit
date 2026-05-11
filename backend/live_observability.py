@@ -260,7 +260,18 @@ def api_proxy_restore_lkg(
     body: RestoreLkgRequest,
     _user: AuthUser = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Preview or apply HKCU WinINET restore from latest known-good snapshot via the CLI confirmation gate."""
+    """Preview or apply HKCU WinINET restore from latest known-good snapshot via the CLI confirmation gate.
+
+    Subprocess exit codes (``python -m src proxy restore-lkg``), aligned with
+    :func:`src.command_handlers_safety.cmd_proxy_restore_lkg` and
+    :func:`src.core.windows_cli.exit_code_if_not_windows`:
+
+    * ``0`` — success path (e.g. PREVIEW) or live restore succeeded.
+    * ``1`` — blocked / failed (no LKG, bad confirmation, mutation failed, etc.).
+    * ``2`` — non-Windows host when a live execute was requested (typed BLOCK with JSON body).
+
+    Any other exit code still fails the HTTP handler (see :func:`_invoke_src_json_status`).
+    """
 
     argv = [
         "proxy",
@@ -273,6 +284,8 @@ def api_proxy_restore_lkg(
         argv.extend(["--confirm", body.confirmation])
     if body.snapshot_name:
         argv.extend(["--name", body.snapshot_name])
+    # {0,1,2} matches cmd_proxy_restore_lkg; 2 is not argparse noise here — it is
+    # exit_code_if_not_windows(...) when dry_run is false on a non-Windows OS.
     return _invoke_src_json_status(argv, allowed_returncodes={0, 1, 2})
 
 

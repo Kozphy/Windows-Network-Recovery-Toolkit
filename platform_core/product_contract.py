@@ -19,6 +19,7 @@ from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, Field
 
+from platform_core.agent_planner import PolicyBoundary, SafeNextStep
 from platform_core.models import utc_now_iso
 from platform_core.privacy import stable_endpoint_hash
 from platform_core.storage import _path, append_jsonl, find_by_id, iter_jsonl, read_recent_jsonl
@@ -36,6 +37,7 @@ PlatformEventKind = Literal[
     "rollback_preview",
     "agent_next_step",
 ]
+# Planner ``goal`` values (request). Distinct from :data:`SafeNextStep` / response ``next_step``.
 AgentNextStep = Literal[
     "suggest_next_probe",
     "rank_hypotheses",
@@ -158,11 +160,13 @@ class AgentNextStepRequest(BaseModel):
 
 
 class AgentNextStepResponse(BaseModel):
-    next_step: str = "suggest_next_probe"
+    """API response for agent next-step; ``next_step`` matches :data:`SafeNextStep` from the planner."""
+
+    next_step: SafeNextStep = "run_diagnosis"
     reason: str
     evidence_used: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0, default=0.0)
-    policy_boundary: str = "recommendation_only_no_mutation"
+    policy_boundary: PolicyBoundary = "recommendation_only_no_mutation"
     blocked_actions: list[str] = Field(default_factory=list)
 
 
