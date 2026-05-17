@@ -211,7 +211,7 @@ The Python layers add:
 - `**failure_system/`** — Failure Knowledge System: safe probes → **FailureBlock** records in **append-only JSONL** (optional HTTP API mirrors CLI semantics; no auto-repair).
 - `**platform_core/`** + `**backend/`** — typed models, append-only `platform_data/*.jsonl`, policy gates, **FastAPI** routes under `**/platform/*`**.
 - `**frontend/`** — Next.js dashboard at `**/platform`** (points at `NEXT_PUBLIC_PLATFORM_API`).
-- `**endpoint_agent/**` — **observe-only** local cycles; optional POST to your backend when configured (no auto-repair from the agent module).
+- `**endpoint_agent/`** — **observe-only** local cycles; optional POST to your backend when configured (no auto-repair from the agent module).
 
 ---
 
@@ -411,7 +411,7 @@ In v2 live scoring you may see keys such as `browser_proxy_path_issue` or `unexp
 
 **Policy decision**
 
-- **Decision:** `**CONFIRMED`** + in-scope hypothesis → `**ALLOW*`* for **safe-tier** remediation previews only—**still** confirm before any script that changes state; destructive paths stay manual/off-CLI.
+- **Decision:** `**CONFIRMED`** + in-scope hypothesis → `**ALLOW`** for **safe-tier** remediation previews only—**still** confirm before any script that changes state; destructive paths stay manual/off-CLI.
 
 **Audit**
 
@@ -627,7 +627,7 @@ Frontend product contract mapping: `[docs/backend_contract.md](docs/backend_cont
 
 ---
 
-## Tests & CI
+## aTests & CI
 
 ```powershell
 $env:PYTHONPATH = (Get-Location).Path
