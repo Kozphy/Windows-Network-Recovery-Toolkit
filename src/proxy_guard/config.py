@@ -136,6 +136,7 @@ class ProxyGuardServiceConfig:
     known_good_snapshot: Any | None = None
     evidence_csv: str | None = None
     attribution_since_seconds: int = 90
+    stdout_json: bool = False
 
 
 def build_service_config(
@@ -159,6 +160,7 @@ def build_service_config(
     known_good_snapshot: Any | None = None,
     evidence_csv: str | None = None,
     attribution_since_seconds: int = 90,
+    stdout_json: bool = False,
 ) -> ProxyGuardServiceConfig:
     """Merge CLI args with optional JSON file and environment variables.
 
@@ -219,6 +221,7 @@ def build_service_config(
         known_good_snapshot=known_good_snapshot,
         evidence_csv=evidence_csv,
         attribution_since_seconds=max(60, int(attribution_since_seconds)),
+        stdout_json=stdout_json,
     )
 
 

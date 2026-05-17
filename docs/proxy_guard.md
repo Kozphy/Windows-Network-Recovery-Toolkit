@@ -30,10 +30,22 @@ VPNs, interceptors, old dev tools, or malware may set a proxy to **loopback** on
 
 **`NO_PROXY`** is diagnosed by the toolkit but **not** cleared by the safe reset (breaking excludes lists can have surprising side effects). Clear it manually if your org documents a safe value.
 
+### Human-readable watch report (JSONL tail)
+
+Raw `reports/proxy_guard_watch.jsonl` lines are machine-oriented. For operator-friendly output:
+
+```powershell
+python -m src proxy-watch-report --tail 5
+python -m proxy_guard watch-report --tail 5
+scripts\proxy_guard\read_watch_report.bat 5
+```
+
+`python -m src proxy-guard` prints the same readable block on each change by default; pass **`--json`** for the legacy structured stdout blob.
+
 ### Recommended workflow (native scripts)
 
 1. **`scripts/proxy_guard/diagnose_proxy.bat`** — Read-only report → `reports/proxy_guard_report.txt`.
-2. **`scripts/proxy_guard/monitor_proxy.ps1`** — Optional: detect **who** is flipping keys while you work (masked server strings; recent process **names** only in `reports/proxy_guard_watch.jsonl`).
+2. **`scripts/proxy_guard/monitor_proxy.ps1`** — Optional: detect **who** is flipping keys while you work (masked server strings; recent process **names** only in `reports/proxy_guard_watch.jsonl`). Prints a short colored summary on each change.
 3. **`scripts/proxy_guard/reset_proxy_safe.bat`** — Only if needed; type **`YES`**, then optionally **`CLEAR`** for user env vars, or **`ADVANCED`** for rare machine-scope env clears (may require elevation).
 4. **`scripts/proxy_guard/start_cursor_safe.bat`** — Diagnose → prompt if loopback-style proxy → optional reset → start **Cursor.exe** from common install paths.
 

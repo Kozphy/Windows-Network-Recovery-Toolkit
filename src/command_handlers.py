@@ -687,8 +687,41 @@ def cmd_proxy_guard(args: argparse.Namespace) -> int:
         known_good_snapshot=known_snap,
         evidence_csv=csv_trim,
         attribution_since_seconds=win_sec,
+        stdout_json=bool(getattr(args, "emit_json", False)),
     )
     run_proxy_guard_service(cfg)
+    return 0
+
+
+def cmd_proxy_watch_report(args: argparse.Namespace) -> int:
+    """Print human-readable summary of ``reports/proxy_guard_watch.jsonl`` tail rows."""
+
+    from .proxy_guard.audit import default_audit_paths
+    from .proxy_guard.human_report import format_watch_report, load_watch_jsonl
+
+    repo = _repo_root(getattr(args, "repo_root", None))
+    watch_path = default_audit_paths(repo)["watch"]
+    tail_n = max(1, int(getattr(args, "proxy_watch_tail", 10)))
+    all_rows = load_watch_jsonl(watch_path, tail_n=10**9)
+    tail = all_rows[-tail_n:] if tail_n else all_rows
+
+    if getattr(args, "emit_json", False):
+        print(
+            json.dumps(
+                {
+                    "path": str(watch_path),
+                    "rows_total": len(all_rows),
+                    "rows_shown": len(tail),
+                    "events": tail,
+                },
+                indent=2,
+                ensure_ascii=False,
+                default=str,
+            )
+        )
+        return 0
+
+    print(format_watch_report(tail, path=watch_path, total_rows=len(all_rows)))
     return 0
 
 

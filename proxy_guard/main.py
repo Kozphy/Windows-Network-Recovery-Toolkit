@@ -178,6 +178,14 @@ def main(argv: list[str] | None = None) -> int:
     ee.add_argument("--audit-path", default=None, help="Optional proxy writer audit JSONL path.")
     ee.set_defaults(func="explain_event")
 
+    wr2 = sub.add_parser(
+        "watch-report",
+        help="Human-readable report for reports/proxy_guard_watch.jsonl.",
+    )
+    wr2.add_argument("--tail", type=int, default=10, help="Last N events (default 10).")
+    wr2.add_argument("--json", dest="emit_json", action="store_true", help="Print raw JSON.")
+    wr2.set_defaults(func="watch_report")
+
     args = parser.parse_args(argv)
     if args.func in {"scan", "report"}:
         payload = _scan_once(append_audit=True)
@@ -211,6 +219,26 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.func == "explain_event":
         print(explain_event(args.event_id, audit_path=Path(args.audit_path) if args.audit_path else None))
+        return 0
+    if args.func == "watch_report":
+        repo = Path(__file__).resolve().parent.parent
+        from src.proxy_guard.audit import default_audit_paths
+        from src.proxy_guard.human_report import format_watch_report, load_watch_jsonl
+
+        watch_path = default_audit_paths(repo)["watch"]
+        tail_n = max(1, int(getattr(args, "tail", 10)))
+        all_rows = load_watch_jsonl(watch_path, tail_n=10**9)
+        tail = all_rows[-tail_n:]
+        if getattr(args, "emit_json", False):
+            print(
+                json.dumps(
+                    {"path": str(watch_path), "rows_total": len(all_rows), "events": tail},
+                    indent=2,
+                    ensure_ascii=False,
+                )
+            )
+        else:
+            print(format_watch_report(tail, path=watch_path, total_rows=len(all_rows)))
         return 0
     return 2
 

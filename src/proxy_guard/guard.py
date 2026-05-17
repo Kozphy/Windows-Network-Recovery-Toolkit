@@ -41,6 +41,7 @@ from .models import (
 from .owner import attribution_payload
 from .parser import parse_proxy_server
 from .planning import listen_port_for_attribution, normalize_registry_view, registry_views_equal
+from .human_report import format_proxy_guard_change
 from .pipeline import policy_payload_for_audit, rollback_payload_for_audit, summarize_stdout_event
 from .process_attribution import resolve_attribution
 from .probes import read_proxy_registry_with_retries
@@ -545,7 +546,10 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
         stdout_blob["legacy_decision_code"] = gd.decision
         stdout_blob["action"] = action
         stdout_blob["rollback_suppressed_reason"] = suppressed_reason
-        print(json.dumps(stdout_blob, indent=2, ensure_ascii=False))
+        if getattr(cfg, "stdout_json", False):
+            print(json.dumps(stdout_blob, indent=2, ensure_ascii=False))
+        else:
+            print(format_proxy_guard_change(audit_row.to_jsonable()))
         prior_connectivity = post_connectivity
 
         if cfg.exit_after_registry_change_events is not None:

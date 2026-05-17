@@ -58,6 +58,7 @@ while ($true) {
     $changed = ($cur.Enable -ne $prev.Enable) -or ($cur.Server -ne $prev.Server)
     if (-not $changed) { continue }
 
+    $recentNames = @(Get-RecentProcessNames)
     $row = [ordered]@{
         schema_version  = 1
         timestamp_utc     = [datetime]::UtcNow.ToString('o')
@@ -66,10 +67,29 @@ while ($true) {
         new_enable        = $cur.Enable
         old_server_masked = (Mask-Val ([string]$prev.Server))
         new_server_masked = (Mask-Val ([string]$cur.Server))
-        recent_processes  = @(Get-RecentProcessNames)
+        recent_processes  = $recentNames
     } | ConvertTo-Json -Compress -Depth 4
     Add-Content -LiteralPath $WatchFile -Value $row -Encoding utf8
-    Write-Host ("[{0}] change logged" -f [datetime]::UtcNow.ToString('T'))
+    $oldOn = if ($prev.Enable -eq 1) { 'ON' } elseif ($prev.Enable -eq 0) { 'OFF' } else { '?' }
+    $newOn = if ($cur.Enable -eq 1) { 'ON' } elseif ($cur.Enable -eq 0) { 'OFF' } else { '?' }
+    Write-Host ""
+    Write-Host "========== PROXY REGISTRY CHANGE ==========" -ForegroundColor Yellow
+    Write-Host ("Time (UTC): {0}" -f [datetime]::UtcNow.ToString('o'))
+    Write-Host ("ProxyEnable: {0} -> {1}" -f $oldOn, $newOn)
+    Write-Host ("ProxyServer: {0} -> {1}" -f (Mask-Val ([string]$prev.Server)), (Mask-Val ([string]$cur.Server)))
+    if ($cur.Enable -eq 1) {
+        Write-Host "Impact: Proxy ON - browsers may fail until reset." -ForegroundColor Red
+    } else {
+        Write-Host "Impact: Proxy OFF - direct access if nothing re-enables it." -ForegroundColor Green
+    }
+    if ($recentNames) {
+        Write-Host "Recent process names (not proof of writer):"
+        $recentNames | ForEach-Object { Write-Host "  - $_" }
+    }
+    Write-Host ("Logged: {0}" -f $WatchFile) -ForegroundColor DarkGray
+    Write-Host "Readable report: python -m src proxy-watch-report --tail 5"
+    Write-Host "===========================================" -ForegroundColor Yellow
+    Write-Host ""
     if ($AutoReset) {
         Write-Warning 'Change detected; running safe reset pipeline (netsh + HKCU) in 2s...'
         Start-Sleep 2

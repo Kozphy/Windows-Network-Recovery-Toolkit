@@ -65,6 +65,7 @@ from .command_handlers import (
     cmd_proxy_monitor,
     cmd_proxy_owner,
     cmd_proxy_report,
+    cmd_proxy_watch_report,
     cmd_proxy_rollback,
     cmd_proxy_watch,
     cmd_proxy_snapshot_diff,
@@ -1126,6 +1127,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_pxrep.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON summary + rows.")
     p_pxrep.set_defaults(func=cmd_proxy_report)
 
+    p_pxw = sub.add_parser(
+        "proxy-watch-report",
+        help="Human-readable report for reports/proxy_guard_watch.jsonl (Windows).",
+    )
+    p_pxw.add_argument("--tail", type=int, default=10, dest="proxy_watch_tail", help="Last N events (default 10).")
+    p_pxw.add_argument("--json", dest="emit_json", action="store_true", help="Emit raw JSON instead of text.")
+    p_pxw.set_defaults(func=cmd_proxy_watch_report)
+
     p_pg = sub.add_parser(
         "proxy-guard",
         help="Policy-aware proxy monitor with optional WinINET/WinHTTP rollback (Windows).",
@@ -1187,6 +1196,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="proxy_guard_dry_run",
         help="Prevent live HKCU / WinHTTP restore even when auto-rollback is enabled (audit + dry commands only).",
+    )
+    p_pg.add_argument(
+        "--json",
+        dest="emit_json",
+        action="store_true",
+        help="Print machine JSON on each change instead of human-readable text.",
     )
     p_pg.add_argument(
         "--trust-current",
