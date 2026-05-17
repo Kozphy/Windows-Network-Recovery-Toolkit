@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from src.proxy_guard.human_report import (
     format_proxy_guard_change,
+    format_proxy_state_change_v1,
     format_watch_report,
     load_watch_jsonl,
 )
@@ -42,6 +43,22 @@ def test_format_proxy_guard_change_mentions_reenable() -> None:
 
 def test_format_watch_report_empty() -> None:
     assert "No proxy watch events" in format_watch_report([])
+
+
+def test_v1_format_chatgpt_hint() -> None:
+    text = format_proxy_state_change_v1(
+        {
+            "timestamp_utc": "2026-05-17T07:50:05Z",
+            "old_enable": 0,
+            "new_enable": 1,
+            "old_server_masked": "[IP]:56186",
+            "new_server_masked": "[IP]:56186",
+            "recent_processes": ["ChatGPT", "msedge"],
+        }
+    )
+    assert "ChatGPT" in text
+    assert "Proxy turned ON" in text
+    assert "proxy-guard" in text
 
 
 def test_load_watch_jsonl_tail(tmp_path) -> None:

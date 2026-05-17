@@ -43,9 +43,9 @@ def _headline_for_transition(before: dict[str, Any], after: dict[str, Any]) -> s
     bs = before.get("proxy_server")
     asrv = after.get("proxy_server")
     if be == 0 and ae == 1:
-        return "Proxy turned ON — browser and app traffic may be redirected"
+        return "Proxy turned ON -- browser and app traffic may be redirected"
     if be == 1 and ae == 0:
-        return "Proxy turned OFF — direct access restored (if nothing re-enables it)"
+        return "Proxy turned OFF -- direct access restored (if nothing re-enables it)"
     if bs != asrv:
         return "Proxy server address changed"
     return "Proxy settings changed"
@@ -95,7 +95,7 @@ def format_proxy_guard_change(record: dict[str, Any]) -> str:
 
     lines = [
         "=" * 72,
-        "PROXY GUARD — CHANGE EVENT",
+        "PROXY GUARD - CHANGE EVENT (schema v2)",
         "=" * 72,
         f"Time (UTC):  {ts}",
         f"Event:       {event}",
@@ -162,26 +162,88 @@ def format_proxy_guard_change(record: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _v1_summary(old_en: Any, new_en: Any) -> str:
+    try:
+        o, n = int(old_en), int(new_en)
+    except (TypeError, ValueError):
+        return "Proxy settings changed"
+    if o == 0 and n == 1:
+        return "Proxy turned ON -- browsers and ChatGPT/Cursor may fail until reset"
+    if o == 1 and n == 0:
+        return "Proxy turned OFF -- direct access restored if nothing re-enables it"
+    return "Proxy settings changed"
+
+
+def _v1_app_hints(procs: list[Any] | None) -> list[str]:
+    """Actionable hints when known desktop apps appear in the CPU snapshot."""
+    if not procs:
+        return []
+    names = {str(p).lower() for p in procs}
+    hints: list[str] = []
+    if "chatgpt" in names:
+        hints.append(
+            "ChatGPT was active when proxy changed. Quit ChatGPT completely (tray icon too), "
+            "then run scripts\\reset_proxy.bat. It often sets localhost system proxy while running."
+        )
+    if "cursor" in names or any("cursor" in n for n in names):
+        hints.append(
+            "Cursor-related activity detected. Use scripts\\proxy_guard\\start_cursor_safe.bat "
+            "to diagnose, optionally reset, then launch Cursor."
+        )
+    if "genspark speakly" in names or any("genspark" in n for n in names):
+        hints.append("Genspark Speakly was active -- quit it if you did not intend to use a local proxy.")
+    return hints
+
+
 def format_proxy_state_change_v1(record: dict[str, Any]) -> str:
     """Format legacy monitor_proxy.ps1 ``proxy_state_change`` rows (schema v1)."""
 
     ts = record.get("timestamp_utc") or record.get("timestamp") or "unknown"
     old_en = record.get("old_enable")
     new_en = record.get("new_enable")
+    old_srv = record.get("old_server_masked") or "?"
+    new_srv = record.get("new_server_masked") or "?"
     lines = [
         "=" * 72,
-        "PROXY MONITOR — REGISTRY CHANGE",
+        "PROXY MONITOR - REGISTRY CHANGE (schema v1)",
         "=" * 72,
         f"Time (UTC):     {ts}",
+        f"Summary:        {_v1_summary(old_en, new_en)}",
         f"ProxyEnable:    {_proxy_on_label(old_en)}  ->  {_proxy_on_label(new_en)}",
-        f"ProxyServer:    {record.get('old_server_masked') or '?'}  ->  {record.get('new_server_masked') or '?'}",
+        f"ProxyServer:    {old_srv}  ->  {new_srv}",
+        "Note:           [IP] means localhost was masked in the log (usually 127.0.0.1:<port>).",
     ]
+    try:
+        if int(new_en) == 1:
+            lines.append("Impact:         HIGH - system proxy is ON; Edge/ChatGPT may show network errors.")
+        elif int(old_en) == 1 and int(new_en) == 0:
+            lines.append("Impact:         Proxy disabled; watch for OFF -> ON flips in the next few minutes.")
+    except (TypeError, ValueError):
+        pass
+
     procs = record.get("recent_processes")
     if procs:
         lines.append("")
-        lines.append("Recent process names (snapshot at change time, not proof of writer):")
+        lines.append("Recent process names (CPU snapshot at change time, not proof of registry writer):")
+        seen: set[str] = set()
         for name in procs:
+            key = str(name).lower()
+            if key in seen:
+                continue
+            seen.add(key)
             lines.append(f"  - {name}")
+
+    hints = _v1_app_hints(procs if isinstance(procs, list) else None)
+    if hints:
+        lines.append("")
+        lines.append("APP HINTS")
+        for hint in hints:
+            lines.append(f"  - {hint}")
+
+    lines.append("")
+    lines.append("UPGRADE TO RICH FORMAT (PID + node listener)")
+    lines.append("  - Stop using monitor-only logs; run: python -m src proxy-guard --interval 5")
+    lines.append("  - Then: python -m src proxy-watch-report --tail 5")
     lines.append("=" * 72)
     return "\n".join(lines)
 
@@ -216,6 +278,16 @@ def format_watch_report(
         header.append(f"Showing last {len(records)} of {total_rows} event(s)")
     else:
         header.append(f"Showing last {len(records)} event(s)")
+    v1_count = sum(
+        1
+        for r in records
+        if r.get("event") == "proxy_state_change" or r.get("schema_version") == 1
+    )
+    if v1_count == len(records) and len(records) > 0:
+        header.append(
+            "Format: schema v1 (monitor_proxy.ps1). For PID/process attribution use: "
+            "python -m src proxy-guard --interval 5"
+        )
     header.append("")
 
     blocks = ["\n".join(header)]
