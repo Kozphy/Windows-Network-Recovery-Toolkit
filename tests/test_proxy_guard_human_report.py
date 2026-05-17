@@ -45,7 +45,7 @@ def test_format_watch_report_empty() -> None:
     assert "No proxy watch events" in format_watch_report([])
 
 
-def test_v1_format_chatgpt_hint() -> None:
+def test_v1_format_cpu_snapshot_not_causality() -> None:
     text = format_proxy_state_change_v1(
         {
             "timestamp_utc": "2026-05-17T07:50:05Z",
@@ -57,8 +57,9 @@ def test_v1_format_chatgpt_hint() -> None:
         }
     )
     assert "ChatGPT" in text
-    assert "Proxy turned ON" in text
-    assert "proxy-guard" in text
+    assert "correlated" in text
+    assert "not proven" in text
+    assert "sets localhost system proxy" not in text
 
 
 def test_load_watch_jsonl_tail(tmp_path) -> None:

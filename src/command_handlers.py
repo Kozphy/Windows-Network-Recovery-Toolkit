@@ -721,16 +721,25 @@ def cmd_proxy_watch_report(args: argparse.Namespace) -> int:
         )
         return 0
 
-    print(format_watch_report(tail, path=watch_path, total_rows=len(all_rows)))
+    print(
+        format_watch_report(
+            tail,
+            path=watch_path,
+            total_rows=len(all_rows),
+            all_records_for_flip_flop=all_rows,
+        )
+    )
     return 0
 
 
-def _reg_fields_for_proxy_disable(*, clear_server: bool) -> tuple[str, ...]:
+def _reg_fields_for_proxy_disable(*, clear_server: bool, clear_autoconfig: bool) -> tuple[str, ...]:
     """Return the WinINET registry values the proxy-disable command proposes to mutate."""
 
     fields = ["ProxyEnable"]
     if clear_server:
         fields.append("ProxyServer")
+    if clear_autoconfig:
+        fields.append("AutoConfigURL")
     return tuple(fields)
 
 
@@ -834,8 +843,11 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
     if not emit_json:
         print("Current WinINET (HKCU) view:")
         print(json.dumps(merged_before_preview, indent=2, ensure_ascii=False))
+    clear_server = bool(getattr(args, "clear_server", True))
+    clear_autoconfig = bool(getattr(args, "clear_autoconfig", True))
     mutations, human_lines = build_user_proxy_disable_mutations(
-        clear_proxy_server_value=bool(getattr(args, "clear_server", False)),
+        clear_proxy_server_value=clear_server,
+        clear_autoconfig_url=clear_autoconfig,
     )
     text = "\n".join(human_lines)
     if not emit_json:
@@ -861,8 +873,10 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
     dry = bool(getattr(args, "dry_run", True))
     action_id = str(getattr(args, "action_id", "disable_wininet_proxy") or "disable_wininet_proxy")
     confirmation = str(getattr(args, "confirm_phrase", "") or getattr(args, "confirm", "") or "")
-    clear_server = bool(getattr(args, "clear_server", False))
-    requested_fields = _reg_fields_for_proxy_disable(clear_server=clear_server)
+    requested_fields = _reg_fields_for_proxy_disable(
+        clear_server=clear_server,
+        clear_autoconfig=clear_autoconfig,
+    )
     decision, reason, action_model = validate_action_confirmation(
         action_id=action_id,
         dry_run=dry,
@@ -874,6 +888,7 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         "human": list(human_lines),
         "mutation_argv": [list(m.argv) for m in mutations],
         "clear_server": clear_server,
+        "clear_autoconfig": clear_autoconfig,
         "requested_registry_fields": list(requested_fields),
     }
     preview_row = _proxy_disable_audit_row(
@@ -1099,6 +1114,32 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         )
         return 1
     print("Verification: ProxyEnable reported disabled.")
+
+    soak_minutes = float(getattr(args, "soak_minutes", 0) or 0)
+    if soak_minutes > 0:
+        from .proxy_guard.soak import run_remediation_soak
+
+        print(f"\nSoak: monitoring ProxyEnable for {soak_minutes:g} minute(s) (no auto-reset loop)...")
+        soak_result = run_remediation_soak(
+            soak_minutes=soak_minutes,
+            poll_seconds=float(getattr(args, "soak_poll_seconds", 5.0) or 5.0),
+            run=run,
+        )
+        append_jsonl_core(
+            repo / "logs" / "repair_audit.jsonl",
+            {
+                "type": "repair",
+                "subtype": "proxy_disable_soak",
+                "timestamp": utc_now_iso(),
+                "soak": soak_result.to_dict(),
+            },
+        )
+        if soak_result.status == "REMEDIATION_NOT_STICKY":
+            print(f"\nSOAK RESULT: {soak_result.status}")
+            print(soak_result.detail)
+            print("Do not run reset_proxy in a loop. Identify the active reverter first.")
+            return 1
+        print(f"\nSOAK RESULT: {soak_result.status} — {soak_result.detail}")
     return 0
 
 

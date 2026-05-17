@@ -57,7 +57,7 @@ _ALLOWLIST: dict[str, AllowlistedRemediationAction] = {
         description="Disable the current user's WinINET proxy by setting HKCU ProxyEnable to 0.",
         risk_level="medium",
         required_confirmation=CONFIRMATION_PHRASE,
-        allowed_registry_fields=("ProxyEnable",),
+        allowed_registry_fields=("ProxyEnable", "ProxyServer", "AutoConfigURL"),
         reversible=True,
     ),
     "restore_wininet_proxy_from_lkg": AllowlistedRemediationAction(
@@ -167,10 +167,14 @@ def validate_action_confirmation(
     return "ALLOW", "confirmed_allowlisted_action", action
 
 
-def build_user_proxy_disable_mutations(*, clear_proxy_server_value: bool) -> tuple[tuple[ProxyDisableMutation, ...], tuple[str, ...]]:
-    """Preview WinINET HKCU disables: ``ProxyEnable=0`` plus optional ``ProxyServer`` deletion.
+def build_user_proxy_disable_mutations(
+    *,
+    clear_proxy_server_value: bool,
+    clear_autoconfig_url: bool = True,
+) -> tuple[tuple[ProxyDisableMutation, ...], tuple[str, ...]]:
+    """Preview WinINET HKCU clears aligned with ``scripts/reset_proxy.bat`` (HKCU scope).
 
-    WinHTTP remains untouched deliberately.
+    WinHTTP remains untouched deliberately (use ``reset_proxy.bat`` for WinHTTP).
     """
     lines: list[str] = []
     mutations: list[ProxyDisableMutation] = []
@@ -207,6 +211,21 @@ def build_user_proxy_disable_mutations(*, clear_proxy_server_value: bool) -> tup
         )
         mutations.append(m2)
         lines.append(m2.human)
+
+    if clear_autoconfig_url:
+        m3 = ProxyDisableMutation(
+            argv=(
+                "reg",
+                "delete",
+                _INTERNET_SETTINGS_KEY,
+                "/v",
+                "AutoConfigURL",
+                "/f",
+            ),
+            human=f'reg delete "{_INTERNET_SETTINGS_KEY}" /v AutoConfigURL /f',
+        )
+        mutations.append(m3)
+        lines.append(m3.human)
 
     warnings = (
         "This modifies only HKCU WinINET proxy values; WinHTTP is unchanged.",

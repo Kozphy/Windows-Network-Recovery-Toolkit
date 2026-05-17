@@ -87,8 +87,9 @@ which process wrote registry values without stronger registry-write telemetry.
   "failure_type": "browser_layer_proxy_drift",
   "observed_signals": ["winhttp=direct", "wininet_proxy_enable=1"],
   "hypotheses": ["WinINET proxy drift can break browser traffic while WinHTTP remains direct."],
-  "confidence_score": 0.86,
+  "confidence_rank": "high",
   "evidence_level": "inference",
+  "confidence_note": "Ordinal ranking weight — not a calibrated probability",
   "recommended_next_test": "Compare WinINET proxy settings with direct curl and browser behavior.",
   "repair_preview": [
     "Preview only: Compare WinINET and WinHTTP proxy states before any changes.",

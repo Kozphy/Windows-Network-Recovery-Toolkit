@@ -6,9 +6,20 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .causality_labels import (
+    LISTENER_CORRELATION,
+    REGISTRY_WRITER_PROOF,
+    attribution_mode_label,
+    format_cpu_process_snapshot,
+    format_listener_correlation,
+    process_candidate_wording,
+)
+from .flip_flop import ActiveReverterResult, detect_active_reverter, normalize_watch_record
+from .operator_language import display_policy_decision, policy_decision_note
+
 
 def load_watch_jsonl(path: Path, *, tail_n: int = 10) -> list[dict[str, Any]]:
-    """Load the last *tail_n* JSON objects from a watch JSONL file."""
+    """Load JSON objects from watch JSONL; normalize legacy v1 rows on read."""
 
     if not path.is_file():
         return []
@@ -22,10 +33,30 @@ def load_watch_jsonl(path: Path, *, tail_n: int = 10) -> list[dict[str, Any]]:
         except json.JSONDecodeError:
             continue
         if isinstance(obj, dict):
-            rows.append(obj)
+            rows.append(normalize_watch_record(obj))
     if tail_n < 1:
         return rows
     return rows[-tail_n:]
+
+
+def format_active_reverter_incident(incident: ActiveReverterResult) -> str:
+    """Incident block for repeated ProxyEnable toggles."""
+
+    d = incident.to_dict()
+    lines = [
+        "!" * 72,
+        f"INCIDENT: {incident.incident_class}",
+        "!" * 72,
+        d["summary"],
+        f"Toggles in last {incident.window_minutes}m: {incident.toggle_count}",
+        f"Window: {incident.first_seen_utc} -> {incident.last_seen_utc}",
+        "",
+        "RECOMMENDED (do not loop reset_proxy):",
+    ]
+    for step in d["recommended_actions"]:
+        lines.append(f"  - {step}")
+    lines.append("!" * 72)
+    return "\n".join(lines)
 
 
 def _proxy_on_label(value: Any) -> str:
@@ -43,9 +74,9 @@ def _headline_for_transition(before: dict[str, Any], after: dict[str, Any]) -> s
     bs = before.get("proxy_server")
     asrv = after.get("proxy_server")
     if be == 0 and ae == 1:
-        return "Proxy turned ON -- browser and app traffic may be redirected"
+        return "Proxy turned ON -- browser/app traffic may be redirected (not judged safe)"
     if be == 1 and ae == 0:
-        return "Proxy turned OFF -- direct access restored (if nothing re-enables it)"
+        return "Proxy turned OFF -- direct access if nothing re-enables it"
     if bs != asrv:
         return "Proxy server address changed"
     return "Proxy settings changed"
@@ -62,20 +93,24 @@ def _recommended_steps(record: dict[str, Any]) -> list[str]:
     pid = proc.get("pid")
 
     if ae == 1:
-        steps.append("Run scripts\\reset_proxy.bat as Administrator (clears ProxyEnable and removes ProxyServer).")
+        steps.append(
+            "Run scripts\\reset_proxy.bat as Administrator OR "
+            "python -m src proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY "
+            "(clears ProxyEnable, ProxyServer, AutoConfigURL by default)."
+        )
         if pname and pid is not None:
             steps.append(
-                f"Stop the correlated process: {pname} (PID {pid}) — listener correlation is not registry-writer proof."
+                f"Investigate {process_candidate_wording(str(pname))} PID {pid} — stop process tree before repeating resets."
             )
         if server and "127.0.0.1" in str(server).lower():
-            steps.append("Localhost proxy detected: close dev tools (Node, IDE, VPN) that set system proxy.")
+            steps.append("Localhost proxy observed — close dev/desktop apps that may re-enable system proxy.")
         steps.append("Verify: python -m src proxy-status")
     elif ae == 0:
-        steps.append("If browsing works, keep proxy-guard or monitor running to catch re-enable (0 -> 1).")
+        steps.append("If browsing works, run soak: proxy-disable ... --soak-minutes 15")
         if after.get("proxy_server"):
-            steps.append("ProxyServer is still set in registry — run scripts\\reset_proxy.bat to delete it.")
+            steps.append("LATENT_MISCONFIG: ProxyServer still set — full clear required.")
     else:
-        steps.append("Review before/after snapshots in reports\\proxy_guard_watch.jsonl.")
+        steps.append("Review reports\\proxy_guard_watch.jsonl (canonical) for correlated events.")
 
     steps.append("Human-readable tail: python -m src proxy-watch-report --tail 5")
     return steps
@@ -84,6 +119,7 @@ def _recommended_steps(record: dict[str, Any]) -> list[str]:
 def format_proxy_guard_change(record: dict[str, Any]) -> str:
     """Format one schema v2 ``proxy_guard_change`` (or compatible) audit row."""
 
+    record = normalize_watch_record(record)
     event = str(record.get("event") or "proxy_guard_change")
     ts = record.get("timestamp") or record.get("timestamp_utc") or "unknown"
     before = record.get("before_snapshot") or {}
@@ -92,6 +128,8 @@ def format_proxy_guard_change(record: dict[str, Any]) -> str:
     policy = record.get("policy_decision") or {}
     rollback = record.get("rollback_result") or {}
     proc = attrib.get("process") or {}
+    raw_decision = policy.get("decision")
+    op_decision = display_policy_decision(raw_decision)
 
     lines = [
         "=" * 72,
@@ -110,37 +148,33 @@ def format_proxy_guard_change(record: dict[str, Any]) -> str:
     if pac_b or pac_a:
         lines.append(f"  AutoConfigURL:  {pac_b or '(none)'}  ->  {pac_a or '(none)'}")
 
-    lines.extend(
-        [
-            "",
-            "PROCESS (heuristic — does not prove who wrote the registry)",
-            f"  Mode:         {attrib.get('mode') or 'unknown'}",
-            f"  Confidence:   {attrib.get('confidence') or 'unknown'}",
-        ]
-    )
-    if proc:
-        lines.extend(
-            [
-                f"  Name:         {proc.get('name') or 'unknown'}",
-                f"  PID:          {proc.get('pid') if proc.get('pid') is not None else 'unknown'}",
-                f"  Parent PID:   {proc.get('ppid') if proc.get('ppid') is not None else 'unknown'}",
-                f"  Path:         {proc.get('exe') or '(unavailable)'}",
-                f"  Command line: {proc.get('cmdline') or '(unavailable)'}",
-            ]
-        )
+    kind = attribution_mode_label(attrib.get("mode"))
+    lines.append("")
+    if kind == REGISTRY_WRITER_PROOF:
+        lines.append(f"Evidence kind: {REGISTRY_WRITER_PROOF}")
+        lines.append("Registry writer telemetry correlated (see limitations).")
     else:
-        lines.append("  (no process correlated)")
+        lines.extend(
+            format_listener_correlation(
+                process_name=proc.get("name"),
+                pid=proc.get("pid"),
+                ppid=proc.get("ppid"),
+                exe=proc.get("exe"),
+            )
+        )
 
     lines.extend(
         [
             "",
-            "POLICY",
-            f"  Decision:     {policy.get('decision') or 'unknown'}",
-            f"  Reason:       {policy.get('reason') or 'unknown'}",
+            "CONTAINMENT POLICY (operator view)",
+            f"  Stored decision:     {raw_decision}",
+            f"  Operator decision:   {op_decision}",
+            f"  Note:                {policy_decision_note(op_decision)}",
+            f"  Reason:              {policy.get('reason') or 'unknown'}",
         ]
     )
     if policy.get("matched_rule"):
-        lines.append(f"  Matched rule: {policy.get('matched_rule')}")
+        lines.append(f"  Matched rule:        {policy.get('matched_rule')}")
 
     rb_status = rollback.get("status")
     if rb_status:
@@ -162,88 +196,40 @@ def format_proxy_guard_change(record: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _v1_summary(old_en: Any, new_en: Any) -> str:
-    try:
-        o, n = int(old_en), int(new_en)
-    except (TypeError, ValueError):
-        return "Proxy settings changed"
-    if o == 0 and n == 1:
-        return "Proxy turned ON -- browsers and ChatGPT/Cursor may fail until reset"
-    if o == 1 and n == 0:
-        return "Proxy turned OFF -- direct access restored if nothing re-enables it"
-    return "Proxy settings changed"
-
-
-def _v1_app_hints(procs: list[Any] | None) -> list[str]:
-    """Actionable hints when known desktop apps appear in the CPU snapshot."""
-    if not procs:
-        return []
-    names = {str(p).lower() for p in procs}
-    hints: list[str] = []
-    if "chatgpt" in names:
-        hints.append(
-            "ChatGPT was active when proxy changed. Quit ChatGPT completely (tray icon too), "
-            "then run scripts\\reset_proxy.bat. It often sets localhost system proxy while running."
-        )
-    if "cursor" in names or any("cursor" in n for n in names):
-        hints.append(
-            "Cursor-related activity detected. Use scripts\\proxy_guard\\start_cursor_safe.bat "
-            "to diagnose, optionally reset, then launch Cursor."
-        )
-    if "genspark speakly" in names or any("genspark" in n for n in names):
-        hints.append("Genspark Speakly was active -- quit it if you did not intend to use a local proxy.")
-    return hints
-
-
 def format_proxy_state_change_v1(record: dict[str, Any]) -> str:
     """Format legacy monitor_proxy.ps1 ``proxy_state_change`` rows (schema v1)."""
 
+    record = normalize_watch_record(record)
     ts = record.get("timestamp_utc") or record.get("timestamp") or "unknown"
-    old_en = record.get("old_enable")
-    new_en = record.get("new_enable")
-    old_srv = record.get("old_server_masked") or "?"
-    new_srv = record.get("new_server_masked") or "?"
+    old_en = record.get("old_enable") if "old_enable" in record else (record.get("before_snapshot") or {}).get("proxy_enable")
+    new_en = record.get("new_enable") if "new_enable" in record else (record.get("after_snapshot") or {}).get("proxy_enable")
+    old_srv = record.get("old_server_masked") or (record.get("before_snapshot") or {}).get("proxy_server") or "?"
+    new_srv = record.get("new_server_masked") or (record.get("after_snapshot") or {}).get("proxy_server") or "?"
     lines = [
         "=" * 72,
-        "PROXY MONITOR - REGISTRY CHANGE (schema v1)",
+        "PROXY MONITOR - REGISTRY CHANGE (schema v1, normalized on read)",
         "=" * 72,
         f"Time (UTC):     {ts}",
-        f"Summary:        {_v1_summary(old_en, new_en)}",
+        f"Summary:        {_headline_for_transition({'proxy_enable': old_en, 'proxy_server': old_srv}, {'proxy_enable': new_en, 'proxy_server': new_srv})}",
         f"ProxyEnable:    {_proxy_on_label(old_en)}  ->  {_proxy_on_label(new_en)}",
         f"ProxyServer:    {old_srv}  ->  {new_srv}",
         "Note:           [IP] means localhost was masked in the log (usually 127.0.0.1:<port>).",
     ]
     try:
         if int(new_en) == 1:
-            lines.append("Impact:         HIGH - system proxy is ON; Edge/ChatGPT may show network errors.")
+            lines.append("Impact:         HIGH - system proxy ON; not an approval to keep proxy enabled.")
         elif int(old_en) == 1 and int(new_en) == 0:
-            lines.append("Impact:         Proxy disabled; watch for OFF -> ON flips in the next few minutes.")
+            lines.append("Impact:         Proxy disabled; watch for OFF -> ON (ACTIVE_REVERTER).")
     except (TypeError, ValueError):
         pass
 
     procs = record.get("recent_processes")
     if procs:
         lines.append("")
-        lines.append("Recent process names (CPU snapshot at change time, not proof of registry writer):")
-        seen: set[str] = set()
-        for name in procs:
-            key = str(name).lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            lines.append(f"  - {name}")
-
-    hints = _v1_app_hints(procs if isinstance(procs, list) else None)
-    if hints:
-        lines.append("")
-        lines.append("APP HINTS")
-        for hint in hints:
-            lines.append(f"  - {hint}")
+        lines.extend(format_cpu_process_snapshot([str(p) for p in procs if p]))
 
     lines.append("")
-    lines.append("UPGRADE TO RICH FORMAT (PID + node listener)")
-    lines.append("  - Stop using monitor-only logs; run: python -m src proxy-guard --interval 5")
-    lines.append("  - Then: python -m src proxy-watch-report --tail 5")
+    lines.append("UPGRADE: python -m src proxy-guard --interval 5  (schema v2 + ListenerCorrelation)")
     lines.append("=" * 72)
     return "\n".join(lines)
 
@@ -251,9 +237,12 @@ def format_proxy_state_change_v1(record: dict[str, Any]) -> str:
 def format_watch_record(record: dict[str, Any]) -> str:
     """Dispatch formatter by schema_version / event type."""
 
-    if record.get("event") == "proxy_state_change" or record.get("schema_version") == 1:
-        return format_proxy_state_change_v1(record)
-    return format_proxy_guard_change(record)
+    rec = normalize_watch_record(record)
+    if rec.get("event") == "proxy_state_change":
+        return format_proxy_state_change_v1(rec)
+    if rec.get("schema_version") == 1:
+        return format_proxy_state_change_v1(rec)
+    return format_proxy_guard_change(rec)
 
 
 def format_watch_report(
@@ -261,6 +250,7 @@ def format_watch_report(
     *,
     path: Path | None = None,
     total_rows: int | None = None,
+    all_records_for_flip_flop: list[dict[str, Any]] | None = None,
 ) -> str:
     """Format multiple watch rows for terminal output."""
 
@@ -271,6 +261,8 @@ def format_watch_report(
     header = [
         "PROXY GUARD WATCH REPORT",
         "-" * 72,
+        "Canonical audit: reports/proxy_guard_watch.jsonl",
+        "Legacy mirrors: logs/proxy_guard_audit.jsonl, logs/proxy_hijack_audit.jsonl (scan-only)",
     ]
     if path:
         header.append(f"Source: {path}")
@@ -278,6 +270,13 @@ def format_watch_report(
         header.append(f"Showing last {len(records)} of {total_rows} event(s)")
     else:
         header.append(f"Showing last {len(records)} event(s)")
+
+    analysis_source = all_records_for_flip_flop if all_records_for_flip_flop is not None else records
+    incident = detect_active_reverter(analysis_source)
+    if incident:
+        header.append("")
+        header.append(format_active_reverter_incident(incident))
+
     v1_count = sum(
         1
         for r in records
@@ -285,8 +284,7 @@ def format_watch_report(
     )
     if v1_count == len(records) and len(records) > 0:
         header.append(
-            "Format: schema v1 (monitor_proxy.ps1). For PID/process attribution use: "
-            "python -m src proxy-guard --interval 5"
+            "Format: schema v1 rows normalized on read. Prefer python -m src proxy-guard for v2."
         )
     header.append("")
 

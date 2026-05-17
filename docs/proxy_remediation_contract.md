@@ -18,7 +18,8 @@ Out of scope (always blocked from this contract): firewall reset, adapter disabl
 | `disable-preview` / `proxy disable` | Preview only — dry-run (`mutated=false`). |
 | `proxy disable --dry-run false` (no confirmation) | `BLOCK` with reason `missing_confirmation`. |
 | `proxy disable --dry-run false --confirm <wrong>` | `BLOCK` with reason `confirmation_mismatch`. |
-| `proxy disable --dry-run false --confirm DISABLE_WININET_PROXY` | May mutate `ProxyEnable` (and optionally `ProxyServer` via `--clear-server`) only after capturing an LKG snapshot. |
+| `proxy disable --dry-run false --confirm DISABLE_WININET_PROXY` | May mutate `ProxyEnable`, delete `ProxyServer` and `AutoConfigURL` by default (aligned with `reset_proxy.bat` HKCU scope) after LKG snapshot. Use `--no-clear-server` / `--no-clear-autoconfig` to opt out. |
+| `proxy disable ... --soak-minutes 15` | After apply, poll `ProxyEnable`; `STABLE` vs `REMEDIATION_NOT_STICKY` (no reset loop). See `docs/proxy_green_definition.md`. |
 | `proxy restore-lkg` | Preview only by default; live restore requires `RESTORE_WININET_PROXY_FROM_LKG` and an existing LKG row. |
 | `proxy config-check`, `proxy registry-writer-proof` | Read-only always; emit audit rows in `logs/safety_audit.jsonl`. |
 

@@ -1369,11 +1369,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_pd.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
     p_pd.add_argument(
-        "--clear-server",
-        action="store_true",
-        help='Also ``reg delete`` the ProxyServer value after ProxyEnable=0.',
+        "--no-clear-server",
+        action="store_false",
+        dest="clear_server",
+        help="Only set ProxyEnable=0; leave ProxyServer (not recommended).",
     )
-    p_pd.set_defaults(func=cmd_proxy_disable)
+    p_pd.add_argument(
+        "--no-clear-autoconfig",
+        action="store_false",
+        dest="clear_autoconfig",
+        help="Do not delete AutoConfigURL.",
+    )
+    p_pd.add_argument(
+        "--soak-minutes",
+        type=float,
+        default=0.0,
+        help="After apply, poll ProxyEnable for N minutes; 0 skips. Use 15 for sticky check.",
+    )
+    p_pd.add_argument(
+        "--soak-poll-seconds",
+        type=float,
+        default=5.0,
+        help="Soak poll interval (default 5).",
+    )
+    p_pd.set_defaults(func=cmd_proxy_disable, clear_server=True, clear_autoconfig=True)
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)
@@ -1398,12 +1417,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Live apply requires exact phrase DISABLE_WININET_PROXY.",
     )
     p_proxy_disable.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
-    p_proxy_disable.add_argument(
-        "--clear-server",
-        action="store_true",
-        help="Preview the older ProxyServer delete path; live apply is blocked by the allowlist.",
-    )
-    p_proxy_disable.set_defaults(func=cmd_proxy_disable)
+    p_proxy_disable.add_argument("--no-clear-server", action="store_false", dest="clear_server")
+    p_proxy_disable.add_argument("--no-clear-autoconfig", action="store_false", dest="clear_autoconfig")
+    p_proxy_disable.add_argument("--soak-minutes", type=float, default=0.0)
+    p_proxy_disable.add_argument("--soak-poll-seconds", type=float, default=5.0)
+    p_proxy_disable.set_defaults(func=cmd_proxy_disable, clear_server=True, clear_autoconfig=True)
 
     p_proxy_restore_lkg = p_proxy_sub.add_parser(
         "restore-lkg",

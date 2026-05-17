@@ -30,6 +30,18 @@ VPNs, interceptors, old dev tools, or malware may set a proxy to **loopback** on
 
 **`NO_PROXY`** is diagnosed by the toolkit but **not** cleared by the safe reset (breaking excludes lists can have surprising side effects). Clear it manually if your org documents a safe value.
 
+### Audit paths (canonical vs legacy)
+
+| Path | Role |
+|------|------|
+| `reports/proxy_guard_watch.jsonl` | **Canonical** watch stream (v1 monitor + v2 proxy-guard rows). |
+| `logs/proxy_guard_pipeline_audit.jsonl` | Unified v1 pipeline detect→attribute→decide (secondary). |
+| `logs/proxy_guard_audit.jsonl` | Legacy mirror of v2 rows (compatibility). |
+| `logs/proxy_hijack_audit.jsonl` | `python -m proxy_guard scan` risk engine (separate concern). |
+| `logs/proxy_guard.jsonl` | `proxy-watch` / attribution tooling (legacy). |
+
+v1 `proxy_state_change` rows are **normalized on read** by `proxy-watch-report`.
+
 ### Human-readable watch report (JSONL tail)
 
 Raw `reports/proxy_guard_watch.jsonl` lines are machine-oriented. For operator-friendly output:
