@@ -73,6 +73,7 @@ from .command_handlers import (
     cmd_proxy_snapshot_restore,
     cmd_proxy_snapshot_save,
     cmd_proxy_snapshot_show,
+    cmd_proxy_path_status,
     cmd_proxy_status,
     cmd_repair_apply,
     cmd_repair_preview,
@@ -1086,6 +1087,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_ps = sub.add_parser("proxy-status", help="Show HKCU WinINET proxy keys with parsed mode.")
     p_ps.add_argument("--json", dest="emit_json", action="store_true", help="Print merged JSON mapping.")
     p_ps.set_defaults(func=cmd_proxy_status)
+
+    p_ppath = sub.add_parser(
+        "proxy-path-status",
+        help="Registry vs operational proxy path (listener + optional HTTPS proxied/bypass contrast).",
+    )
+    p_ppath.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_ppath.add_argument(
+        "--no-https-contrast",
+        action="store_true",
+        help="Skip curl proxied/bypass contrast (listener + registry only).",
+    )
+    p_ppath.add_argument(
+        "--test-url",
+        type=str,
+        default="https://www.google.com",
+        help="HTTPS URL for contrast probes (default https://www.google.com).",
+    )
+    p_ppath.set_defaults(func=cmd_proxy_path_status)
 
     p_po = sub.add_parser("proxy-owner", help="Resolve netstat listener owners for localhost proxy port.")
     p_po.add_argument("--port", type=int, default=None, help="Override port (defaults to parsed ProxyServer).")

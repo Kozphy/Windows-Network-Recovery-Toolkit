@@ -46,6 +46,7 @@ from .pipeline import policy_payload_for_audit, rollback_payload_for_audit, summ
 from .process_attribution import resolve_attribution
 from .probes import read_proxy_registry_with_retries
 from .port_listen_probe import localhost_port_listen_state
+from .proxy_path_operational import assess_proxy_path_operational
 from .rollback import execute_known_good_proxy_restore, execute_lkg_snapshot_rollback
 from .rollback_limits import RollbackLimiter
 from .snapshot_capture import capture_proxy_snapshot, load_lkg_snapshot, save_lkg_snapshot
@@ -272,6 +273,17 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
 
         port_listen = localhost_port_listen_state(port, run=cfg.run)
 
+        path_assessment = assess_proxy_path_operational(
+            proxy_enable=curr_snap_guard.proxy_enable,
+            proxy_server=curr_snap_guard.proxy_server,
+            auto_config_url=curr_snap_guard.auto_config_url,
+            parsed=parsed_after,
+            port_listen=port_listen,
+            run=cfg.run,
+            include_https_contrast=True,
+            timeout_seconds=cfg.probe.timeout_seconds,
+        )
+
         gd = evaluate_proxy_transition(
             prior_snap=prev_snap_guard,
             curr_snap=curr_snap_guard,
@@ -280,6 +292,7 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
             attribution=attrib,
             policy=cfg.policy,
             port_listen=port_listen,
+            path_assessment=path_assessment,
         )
         post_connectivity = capture_connectivity_snapshot(
             run=cfg.run,
@@ -498,6 +511,9 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
         )
 
         now_iso = full_snap_curr.captured_at
+        policy_payload = gd.to_jsonable()
+        policy_payload["proxy_path_operational"] = path_assessment.to_jsonable()
+
         audit_row = ProxyGuardAuditRecord(
             schema_version=2,
             timestamp=now_iso,
@@ -505,7 +521,7 @@ def run_proxy_guard_guard_loop(cfg: ProxyGuardServiceConfig) -> None:
             before_snapshot=prev_snap_guard.to_jsonable(),
             after_snapshot=curr_snap_guard.to_jsonable(),
             attribution=attrib.to_jsonable(),
-            policy_decision=gd.to_jsonable(),
+            policy_decision=policy_payload,
             rollback_plan=rb_plan_obj.to_jsonable(),
             rollback_result=rb_res.to_jsonable(),
             safety_notes=(

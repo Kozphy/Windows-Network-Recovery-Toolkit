@@ -31,6 +31,7 @@ from .models import AttributionResult, ProxyGuardPolicyDecision, ProxySnapshot
 from .parser import ParsedProxy
 from .pipeline import disabling_transition_allowed
 from .policy import ProxyGuardPolicy, PolicyDecision
+from .proxy_path_operational import ProxyPathOperationalAssessment
 
 
 def hkcu_proxy_core_tuple(snapshot: ProxySnapshot) -> tuple[Any, ...]:
@@ -125,6 +126,7 @@ def evaluate_proxy_transition(
     attribution: AttributionResult,
     policy: ProxyGuardPolicy,
     port_listen: bool | None,
+    path_assessment: ProxyPathOperationalAssessment | None = None,
 ) -> ProxyGuardPolicyDecision:
     """Classify a WinINET-facing transition with guarded defaults.
 
@@ -137,6 +139,9 @@ def evaluate_proxy_transition(
         policy: Loaded Proxy Guard policy defining allow/block substrings + paths.
         port_listen:
             Tri-state loopback probe: ``True`` listener present, ``False`` absent, ``None`` unknown.
+        path_assessment:
+            Optional operational path assessment (listener + HTTPS contrast). When present,
+            loopback branches prefer path operability over ``ProxyEnable`` alone.
 
     Returns:
         :class:`~src.proxy_guard.models.ProxyGuardPolicyDecision` including rollback hints.
@@ -198,6 +203,24 @@ def evaluate_proxy_transition(
             )
 
     if parsed_after.is_localhost_proxy:
+        if path_assessment is not None:
+            if path_assessment.composite_state == "LOOPBACK_BROKEN":
+                return ProxyGuardPolicyDecision(
+                    decision="blocked",
+                    reason="loopback_proxy_path_non_operational",
+                    matched_rule="proxy_path_operational",
+                    rollback_allowed=True,
+                    rollback_required=False,
+                )
+            if path_assessment.composite_state == "LOOPBACK_OPERATIONAL":
+                return ProxyGuardPolicyDecision(
+                    decision="allowed",
+                    reason="loopback_path_operational_observe",
+                    matched_rule="proxy_path_operational",
+                    rollback_allowed=False,
+                    rollback_required=False,
+                )
+
         base_rows = attribution_to_owner_rows(attribution)
         pd_name: PolicyDecision = policy.evaluate(base_rows)
         trusted_path = attribution.process is not None and exe_path_trusted(

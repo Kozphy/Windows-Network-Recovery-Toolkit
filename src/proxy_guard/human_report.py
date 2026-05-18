@@ -129,7 +129,8 @@ def format_proxy_guard_change(record: dict[str, Any]) -> str:
     rollback = record.get("rollback_result") or {}
     proc = attrib.get("process") or {}
     raw_decision = policy.get("decision")
-    op_decision = display_policy_decision(raw_decision)
+    op_decision = display_policy_decision(raw_decision, reason=str(policy.get("reason") or ""))
+    path_ops = policy.get("proxy_path_operational") or {}
 
     lines = [
         "=" * 72,
@@ -175,6 +176,31 @@ def format_proxy_guard_change(record: dict[str, Any]) -> str:
     )
     if policy.get("matched_rule"):
         lines.append(f"  Matched rule:        {policy.get('matched_rule')}")
+
+    if path_ops:
+        lines.extend(
+            [
+                "",
+                "PROXY PATH OPERATIONAL (registry vs browser path)",
+                f"  Composite state:     {path_ops.get('composite_state') or 'unknown'}",
+                f"  Evidence tier:       {path_ops.get('evidence_tier') or 'unknown'}",
+                f"  Policy hint:         {path_ops.get('policy_recommendation') or 'unknown'}",
+                f"  Summary:             {path_ops.get('human_summary') or ''}",
+            ]
+        )
+        operational = path_ops.get("operational") or {}
+        if operational:
+            lines.append(
+                "  Signals:             "
+                f"listener_up={operational.get('listener_up')}; "
+                f"proxied_https_ok={operational.get('proxied_https_ok')}; "
+                f"bypass_https_ok={operational.get('bypass_https_ok')}; "
+                f"browser_path_healthy={operational.get('browser_path_healthy')}"
+            )
+        lines.append(
+            "  Note:                ProxyEnable=1 alone does not prove browser failure; "
+            "contrast checks separate operational from broken loopback paths."
+        )
 
     rb_status = rollback.get("status")
     if rb_status:

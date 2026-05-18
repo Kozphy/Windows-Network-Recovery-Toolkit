@@ -412,6 +412,57 @@ def cmd_proxy_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_proxy_path_status(args: argparse.Namespace) -> int:
+    """Assess registry posture vs operational proxy path (listener + HTTPS contrast)."""
+    if (code := exit_code_if_not_windows("proxy-path-status")) is not None:
+        return code
+    from .proxy_guard.planning import listen_port_for_attribution
+    from .proxy_guard.port_listen_probe import localhost_port_listen_state
+    from .proxy_guard.proxy_path_operational import assess_proxy_path_operational
+
+    reg = read_proxy_registry()
+    parsed = parse_proxy_server(reg.proxy_server)
+    port = listen_port_for_attribution(parsed)
+    port_listen = localhost_port_listen_state(port)
+    include_contrast = not bool(getattr(args, "no_https_contrast", False))
+    assessment = assess_proxy_path_operational(
+        proxy_enable=reg.proxy_enable,
+        proxy_server=reg.proxy_server,
+        auto_config_url=reg.auto_config_url,
+        parsed=parsed,
+        port_listen=port_listen,
+        include_https_contrast=include_contrast,
+        test_url=str(getattr(args, "test_url", None) or "https://www.google.com"),
+    )
+    if getattr(args, "emit_json", False):
+        print(json.dumps(assessment.to_jsonable(), indent=2, ensure_ascii=False))
+        return 0
+    op = assessment.operational
+    lines = [
+        "PROXY PATH OPERATIONAL ASSESSMENT",
+        f"Composite state:   {assessment.composite_state}",
+        f"Evidence tier:     {assessment.evidence_tier}",
+        f"Policy hint:       {assessment.policy_recommendation}",
+        "",
+        assessment.human_summary,
+        "",
+        "Registry posture",
+        f"  ProxyEnable:     {reg.proxy_enable}",
+        f"  ProxyServer:     {reg.proxy_server or '(empty)'}",
+        f"  AutoConfigURL:   {reg.auto_config_url or '(empty)'}",
+        "",
+        "Operational signals",
+        f"  listener_up:           {op.get('listener_up')}",
+        f"  proxied_https_ok:      {op.get('proxied_https_ok')}",
+        f"  bypass_https_ok:       {op.get('bypass_https_ok')}",
+        f"  browser_path_healthy:  {op.get('browser_path_healthy')}",
+        "",
+        "Note: ProxyEnable=1 does not by itself imply browser failure; see composite state.",
+    ]
+    print("\n".join(lines))
+    return 0
+
+
 def cmd_proxy_owner(args: argparse.Namespace) -> int:
     """Resolve TCP listener owners for a localhost proxy port via netstat/tasklist/CIM.
 
