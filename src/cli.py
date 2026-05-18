@@ -356,6 +356,15 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         Review ``logs/decision_audit.jsonl`` for the authoritative append-only
         trail; ``reports/last_diagnosis.json`` is overwritten each run.
     """
+    app_target = (getattr(args, "app", None) or "").strip().lower()
+    if app_target:
+        if getattr(args, "live_engine", False) or getattr(args, "proof_engine", False) or getattr(args, "fixture", None):
+            print("diagnose --app is incompatible with --live, --proof, and --fixture.", file=sys.stderr)
+            return 2
+        from .network_recovery.cli_handlers import cmd_diagnose_app
+
+        return cmd_diagnose_app(args)
+
     use_live = bool(getattr(args, "live_engine", False) or getattr(args, "proof_engine", False))
     if use_live:
         if getattr(args, "fixture", None):
@@ -497,8 +506,26 @@ def cmd_replay(args: argparse.Namespace) -> int:
     return cmd_replay_live_run(ns)
 
 
+def cmd_remediate(args: argparse.Namespace) -> int:
+    """App-path scenario remediation preview (dry-run default)."""
+    from .network_recovery.cli_handlers import cmd_remediate_scenario
+
+    return cmd_remediate_scenario(args)
+
+
 def cmd_preview(args: argparse.Namespace) -> int:
     """Repair tier preview CLI entry (`preview` ≡ `repair-preview`)."""
+    if getattr(args, "scenario", None):
+        from .network_recovery.cli_handlers import cmd_preview_scenario
+
+        ns = argparse.Namespace(
+            repo_root=args.repo_root,
+            scenario=args.scenario,
+            emit_json=bool(getattr(args, "emit_json_preview", False)),
+            recovery_feedback=getattr(args, "recovery_feedback", None),
+        )
+        return cmd_preview_scenario(ns)
+
     ej = bool(getattr(args, "emit_json_preview", False))
     eb = bool(getattr(args, "emit_both_preview", False))
     if ej and eb:
@@ -1033,6 +1060,21 @@ def build_parser() -> argparse.ArgumentParser:
         dest="both_formats",
         action="store_true",
         help="With --live/--proof only: explainable prose, then JSON block (exclusive with --json).",
+    )
+    p_diag.add_argument(
+        "--app",
+        type=str,
+        default=None,
+        metavar="APP",
+        help="App-path scenario diagnosis (e.g. chatgpt). Incompatible with --live/--proof.",
+    )
+    p_diag.add_argument(
+        "--recovery-feedback",
+        type=str,
+        default=None,
+        dest="recovery_feedback",
+        metavar="HINT",
+        help="Post-recovery hint for verification, e.g. firewall_reset_helped.",
     )
     p_diag.set_defaults(func=cmd_diagnose, live_engine=False, proof_engine=False, both_formats=False)
 
@@ -1624,7 +1666,57 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Tier list for humans, then JSON_PAYLOAD markers with the `--json` object.",
     )
+    p_pv.add_argument(
+        "--scenario",
+        type=str,
+        default=None,
+        help="App-path scenario preview (e.g. chatgpt_app_firewall).",
+    )
+    p_pv.add_argument(
+        "--recovery-feedback",
+        type=str,
+        default=None,
+        dest="recovery_feedback",
+        metavar="HINT",
+        help="Recovery verification hint, e.g. firewall_reset_helped.",
+    )
     p_pv.set_defaults(func=cmd_preview, emit_json_preview=False, emit_both_preview=False)
+
+    p_rem = sub.add_parser(
+        "remediate",
+        help="Preview-gated remediation for app-path scenarios (dry-run default).",
+    )
+    p_rem.add_argument(
+        "--scenario",
+        type=str,
+        required=True,
+        help="Scenario id (e.g. chatgpt_app_firewall).",
+    )
+    p_rem.add_argument(
+        "--dry-run",
+        nargs="?",
+        const=True,
+        default=True,
+        type=lambda v: str(v).lower() not in {"false", "0", "no"},
+        help="Preview only (default). Use --dry-run false with --confirm for allowlisted LOW actions.",
+    )
+    p_rem.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Typed confirmation for allowlisted LOW actions when --dry-run false.",
+    )
+    p_rem.add_argument(
+        "--recovery-feedback",
+        type=str,
+        default=None,
+        dest="recovery_feedback",
+        metavar="HINT",
+    )
+    p_rem.add_argument("--json", dest="emit_json", action="store_true")
+    p_rem.set_defaults(func=cmd_remediate)
 
     p_rp = sub.add_parser(
         "repair-preview",

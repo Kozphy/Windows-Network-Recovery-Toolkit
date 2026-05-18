@@ -30,7 +30,6 @@ Engineering Notes:
 
 
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -249,10 +248,14 @@ def monitor(req: MonitorRequest, user: AuthUser = Depends(get_current_user)) -> 
     project_id = project["project_id"]
     recent_metrics = get_recent_metrics(project_id=project_id, limit=10)
     anomaly = detect_anomaly(req.time_wait, req.established, recent_metrics)
-    metric_id = insert_metric(project_id=project_id, time_wait=req.time_wait, established=req.established)
+    metric_id, created_at = insert_metric(
+        project_id=project_id,
+        time_wait=req.time_wait,
+        established=req.established,
+    )
     return {
         "id": metric_id,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": created_at,
         "stored": True,
         "anomaly": anomaly,
     }

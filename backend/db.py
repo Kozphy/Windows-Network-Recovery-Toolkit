@@ -52,6 +52,16 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def utc_now_iso_z() -> str:
+    """Return UTC now as RFC 3339 with Zulu ``Z`` suffix (API-stable).
+
+    Uses a timezone-aware clock; unlike naive ``utcnow().isoformat() + "Z"``, the
+    instant is correct. ``Z`` replaces ``+00:00`` for clients that expect the legacy
+    monitor response shape.
+    """
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def get_connection() -> sqlite3.Connection:
     """Open the demo SQLite database at :data:`DB_PATH` with row dict access.
 
@@ -368,7 +378,7 @@ def insert_diagnosis(*, project_id: str, input_data: dict[str, Any], result: dic
         return int(cur.lastrowid)
 
 
-def insert_metric(*, project_id: str, time_wait: int, established: int) -> int:
+def insert_metric(*, project_id: str, time_wait: int, established: int) -> tuple[int, str]:
     """Record coarse TCP connection metrics for a project.
 
     Args:
@@ -377,7 +387,7 @@ def insert_metric(*, project_id: str, time_wait: int, established: int) -> int:
         established: Count or gauge stored as integer.
 
     Returns:
-        SQLite ``lastrowid`` for ``connection_metrics``.
+        ``(lastrowid, created_at)`` where ``created_at`` is RFC 3339 UTC with ``Z`` suffix.
 
     Raises:
         sqlite3.Error: On insert failure.
@@ -385,7 +395,7 @@ def insert_metric(*, project_id: str, time_wait: int, established: int) -> int:
     Side effects:
         Commits one insert.
     """
-    created = datetime.now(timezone.utc).isoformat()
+    created = utc_now_iso_z()
     with get_connection() as conn:
         cur = conn.execute(
             """
@@ -395,7 +405,7 @@ def insert_metric(*, project_id: str, time_wait: int, established: int) -> int:
             (project_id, time_wait, established, created),
         )
         conn.commit()
-        return int(cur.lastrowid)
+        return int(cur.lastrowid), created
 
 
 def get_recent_metrics(project_id: str, limit: int) -> list[dict[str, Any]]:
