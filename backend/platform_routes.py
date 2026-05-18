@@ -78,6 +78,7 @@ if str(_REPO_ROOT) not in sys.path:
 from evidence.attribution_engine import build_attribution, parse_sysmon_sequence
 from evidence.procmon_importer import ProcmonRegistryWrite, iter_procmon_registry_writes_from_csv
 
+from platform_core.agent_planner import plan_next_step
 from platform_core.audit import write_audit
 from platform_core.incidents import incident_summaries
 from platform_core.metrics import compute_platform_metrics
@@ -1049,8 +1050,6 @@ def agent_next_step(
     principal: DemoPrincipal = Depends(get_demo_principal),
 ) -> dict[str, Any]:
     """Return a bounded agentic next step. The agent may suggest and explain, but never repair."""
-
-    from platform_core.agent_planner import plan_next_step
 
     diag = get_diagnosis(body.run_id) if body.run_id else latest_diagnosis()
     goal_in = str(getattr(body, "goal", "suggest_next_probe") or "suggest_next_probe")

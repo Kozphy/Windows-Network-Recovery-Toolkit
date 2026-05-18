@@ -81,3 +81,27 @@ def test_verifier_regression_fails() -> None:
     )
     result = verify_after_repair(before, lambda: after)
     assert result.passed is False
+
+
+def test_verifier_already_healthy_baseline_passes() -> None:
+    """All-good before and after passes (endpoint verified healthy; repair may be no-op)."""
+    healthy = DiagnosticEvidence.from_dict(
+        {
+            "ping_ok": True,
+            "dns_ok": True,
+            "tcp_443_ok": True,
+            "https_ok": True,
+            "winhttp_proxy_summary": "",
+            "user_proxy_enabled": False,
+            "user_proxy_server": None,
+            "tls_cert_issue_detected": False,
+            "firewall_blocking_suspected": False,
+            "time_wait_count": 0,
+            "established_count": 0,
+            "recent_processes": [],
+            "notes": "",
+        },
+    )
+    result = verify_after_repair(healthy, lambda: healthy)
+    assert result.passed is True
+    assert "post_repair_healthy_baseline_unchanged" in result.summary

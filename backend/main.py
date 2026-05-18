@@ -31,7 +31,7 @@ Engineering Notes:
 
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -56,6 +56,66 @@ from .db import (
 from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 from .live_observability import router as toolkit_obs_router
 from .platform_routes import router as platform_router
+
+_SUBSCRIPTION_EVENT_TYPES = frozenset(
+    {
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+        "subscription_created",
+        "subscription_updated",
+        "subscription_canceled",
+    }
+)
+
+
+def process_stripe_subscription_event(event_type: str, data_object: dict[str, Any]) -> dict[str, Any] | None:
+    """Apply subscription sync for recognized Stripe billing events.
+
+    Returns:
+        Summary dict when the event was handled; ``None`` when the event type is ignored.
+
+    Raises:
+        ValueError: When a subscription event arrives without ``metadata.org_id``.
+    """
+    if event_type not in _SUBSCRIPTION_EVENT_TYPES:
+        return None
+
+    metadata = data_object.get("metadata") or {}
+    org_id = metadata.get("org_id")
+    if not org_id:
+        raise ValueError(
+            f"Stripe subscription event {event_type!r} missing metadata.org_id; "
+            "cannot sync subscription state."
+        )
+
+    status = data_object.get("status", "active")
+    stripe_customer_id = data_object.get("customer")
+    stripe_subscription_id = data_object.get("id")
+    price_info = ((data_object.get("items") or {}).get("data") or [{}])[0]
+    price_id = ((price_info.get("price") or {}).get("id")) or ""
+    if "team" in price_id:
+        plan = "team"
+    elif "pro" in price_id:
+        plan = "pro"
+    else:
+        plan = "free"
+    if event_type in {"customer.subscription.deleted", "subscription_canceled"}:
+        status = "canceled"
+        plan = "free"
+    update_subscription(
+        org_id=str(org_id),
+        plan=plan,
+        status=status,
+        stripe_customer_id=stripe_customer_id,
+        stripe_subscription_id=stripe_subscription_id,
+    )
+    return {
+        "processed": True,
+        "org_id": str(org_id),
+        "plan": plan,
+        "status": status,
+    }
 
 
 _REPO_ROOT_MAIN = Path(__file__).resolve().parent.parent
@@ -345,37 +405,15 @@ async def webhook(request: Request) -> dict:
 
     event_type = event.get("type", "")
     data_object = (event.get("data") or {}).get("object") or {}
-    metadata = data_object.get("metadata") or {}
-    org_id = metadata.get("org_id")
 
-    if org_id and event_type in {
-        "customer.subscription.created",
-        "customer.subscription.updated",
-        "customer.subscription.deleted",
-        "subscription_created",
-        "subscription_updated",
-        "subscription_canceled",
-    }:
-        status = data_object.get("status", "active")
-        stripe_customer_id = data_object.get("customer")
-        stripe_subscription_id = data_object.get("id")
-        price_info = ((data_object.get("items") or {}).get("data") or [{}])[0]
-        price_id = ((price_info.get("price") or {}).get("id")) or ""
-        if "team" in price_id:
-            plan = "team"
-        elif "pro" in price_id:
-            plan = "pro"
-        else:
-            plan = "free"
-        if event_type in {"customer.subscription.deleted", "subscription_canceled"}:
-            status = "canceled"
-            plan = "free"
-        update_subscription(
-            org_id=org_id,
-            plan=plan,
-            status=status,
-            stripe_customer_id=stripe_customer_id,
-            stripe_subscription_id=stripe_subscription_id,
-        )
+    try:
+        sync_result = process_stripe_subscription_event(event_type, data_object)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    return {"received": True, "type": event_type}
+    response: dict[str, Any] = {"received": True, "type": event_type}
+    if sync_result is not None:
+        response.update(sync_result)
+    else:
+        response["processed"] = False
+    return response
