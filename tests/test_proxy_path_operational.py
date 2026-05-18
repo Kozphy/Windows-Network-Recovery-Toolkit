@@ -20,15 +20,13 @@ from src.proxy_guard.proxy_path_operational import _run_https_contrast
 
 def _parsed_localhost(port: int = 56186) -> ParsedProxy:
     return ParsedProxy(
-        raw="127.0.0.1:56186",
+        raw=f"127.0.0.1:{port}",
         proxy_mode="manual_localhost",
         is_missing=False,
         is_malformed=False,
         is_localhost_proxy=True,
         localhost_host="127.0.0.1",
         localhost_port=port,
-        primary_host="127.0.0.1",
-        primary_port=port,
         http_localhost_port=None,
         https_localhost_port=None,
         socks_port=None,
@@ -42,12 +40,18 @@ def _snap(enable: int, server: str | None) -> ProxySnapshot:
         proxy_server=server,
         proxy_override=None,
         auto_config_url=None,
-        auto_detect=None,
+        auto_detect=0,
+        winhttp_proxy="",
+        winhttp_direct_access=True,
+        winhttp_proxy_server_literal=None,
         git_http_proxy=None,
         git_https_proxy=None,
         npm_proxy=None,
         npm_https_proxy=None,
-        winhttp_proxy=None,
+        user_http_proxy=None,
+        user_https_proxy=None,
+        user_all_proxy=None,
+        user_no_proxy=None,
     )
 
 
@@ -116,18 +120,20 @@ def test_guard_blocks_non_operational_path() -> None:
         human_summary="broken",
     )
     policy = ProxyGuardPolicy(
-        allowed_process_substrings=("node.exe",),
-        allowed_autoconfig_url_substrings=(),
+        source_path=__file__,
+        allowed_process_name_substrings=("node.exe",),
+        allowed_process_names_exact=(),
+        allow_when_attribution_empty=False,
         trusted_exe_paths=(),
+        allowed_autoconfig_url_substrings=(),
         observe_only_when_unknown_attribution=False,
-        source_path="test",
     )
     gd = evaluate_proxy_transition(
         prior_snap=_snap(0, None),
         curr_snap=_snap(1, "127.0.0.1:56186"),
         parsed_prior=_parsed_localhost(),
         parsed_after=_parsed_localhost(),
-        attribution=AttributionResult(mode="unknown", process=None, confidence="low", limitations=()),
+        attribution=AttributionResult(mode="unknown", confidence="low", process=None, limitations=()),
         policy=policy,
         port_listen=True,
         path_assessment=assessment,
@@ -148,18 +154,20 @@ def test_guard_allows_operational_path_despite_unknown_attribution() -> None:
         human_summary="ok",
     )
     policy = ProxyGuardPolicy(
-        allowed_process_substrings=(),
-        allowed_autoconfig_url_substrings=(),
+        source_path=__file__,
+        allowed_process_name_substrings=(),
+        allowed_process_names_exact=(),
+        allow_when_attribution_empty=False,
         trusted_exe_paths=(),
+        allowed_autoconfig_url_substrings=(),
         observe_only_when_unknown_attribution=True,
-        source_path="test",
     )
     gd = evaluate_proxy_transition(
         prior_snap=_snap(0, None),
         curr_snap=_snap(1, "127.0.0.1:56186"),
         parsed_prior=_parsed_localhost(),
         parsed_after=_parsed_localhost(),
-        attribution=AttributionResult(mode="unknown", process=None, confidence="low", limitations=()),
+        attribution=AttributionResult(mode="unknown", confidence="low", process=None, limitations=()),
         policy=policy,
         port_listen=True,
         path_assessment=assessment,
