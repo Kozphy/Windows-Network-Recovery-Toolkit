@@ -1,4 +1,14 @@
-"""Backward-compatible bridge from legacy proxy_guard scan payloads."""
+"""Backward-compatible bridge from legacy proxy_guard scan payloads.
+
+Module responsibility:
+    Attach a ``proxy_reasoning`` block to an existing scan dict and optionally append audit JSONL.
+
+Side effects:
+    When ``audit=True``, appends one line via ``append_proxy_reasoning_run``.
+
+Note:
+    Not wired into the default ``python -m src`` hot path — callers opt in explicitly.
+"""
 
 from __future__ import annotations
 

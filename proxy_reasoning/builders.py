@@ -1,4 +1,15 @@
-"""Build ProxyEntity and signals from collector payloads (backward compatible)."""
+"""Build ProxyEntity and signals from collector payloads (backward compatible).
+
+Module responsibility:
+    Translate ``proxy_guard``/CLI-shaped dicts into canonical ``ProxySignal`` and ``ProxyEntity``
+    models, applying classification helpers.
+
+Input assumptions:
+    Payload keys mirror live snapshot collectors (``proxy_enable``, ``proxy_server``, probes).
+
+Side effects:
+    None.
+"""
 
 from __future__ import annotations
 

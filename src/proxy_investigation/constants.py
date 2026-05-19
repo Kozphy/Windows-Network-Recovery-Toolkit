@@ -1,4 +1,23 @@
-"""Investigation vocabulary and audit paths."""
+"""Investigation vocabulary, audit paths, and epistemic guardrails.
+
+Module responsibility:
+    Centralize stable string constants so investigation, audit, and report renderers
+    share the same limitation text and schema version tokens.
+
+System placement:
+    Imported by ``hypotheses``, ``workflow``, ``report``, and ``audit`` under
+    ``src.proxy_investigation``. Not invoked by ``src.proxy_guard`` execution paths.
+
+Key invariants:
+    * ``MALWARE_FORBIDDEN`` and ``ATTRIBUTION_LISTENER_ONLY`` must appear in operator-facing output.
+    * ``SCHEMA_VERSION`` changes require coordinated JSONL consumer updates.
+
+Side effects:
+    None.
+
+Audit Notes:
+    * Do not weaken ``MALWARE_FORBIDDEN`` without security review — reports inherit it verbatim.
+"""
 
 from __future__ import annotations
 

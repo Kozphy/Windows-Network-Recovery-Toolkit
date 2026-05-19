@@ -1,4 +1,9 @@
-"""Stable identifiers and vocabulary for proxy attribute reasoning."""
+"""Stable identifiers and vocabulary for proxy attribute reasoning.
+
+Module responsibility:
+    Export scenario ids, schema version, policy/evidence literals, and limitation strings
+    shared across classification, scenarios, policy, and audit serializers.
+"""
 
 from __future__ import annotations
 

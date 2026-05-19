@@ -1,4 +1,11 @@
-"""Conservative trust/risk classification for proxy entities."""
+"""Conservative trust/risk classification for proxy entities.
+
+Module responsibility:
+    Derive ``TrustRiskAttributes`` from entity fields without malware overclaims.
+
+Audit Notes:
+    * Localhost listeners map to dev-proxy candidates, not confirmed threats.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,21 @@
-"""Conservative policy engine for proxy remediation actions."""
+"""Conservative policy engine for proxy remediation actions.
+
+Module responsibility:
+    Map ``requested_action`` tokens plus entity risk/verification state to ``ALLOW``,
+    ``PREVIEW``, or ``BLOCK`` outcomes.
+
+Decision intent:
+    Permit read-only diagnostics always; allow low-risk restore/disable only with acceptable
+    verification; preview WinHTTP/firewall-adjacent actions; block destructive tokens.
+
+Constraints:
+    Action strings outside allow/preview/block catalogs default to ``PREVIEW`` or ``BLOCK``
+    per implementation — treat unknown actions as untrusted.
+
+Audit Notes:
+    * A ``BLOCK`` decision should still be logged when operators attempt disallowed actions.
+    * ``restore_proxy`` allowance depends on verification status — review ``verification_results``.
+"""
 
 from __future__ import annotations
 

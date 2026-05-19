@@ -1,4 +1,14 @@
-"""Read-only verification checks — operational behavior, not intent."""
+"""Read-only verification checks (operational behavior, not intent).
+
+Module responsibility:
+    Emit ``VerificationResult`` rows that describe what was checked and whether signals support it.
+
+Constraints:
+    Checks validate reachability/configuration consistency — not registry-writer identity.
+
+Audit Notes:
+    * ``CONFIRMED`` means check passed, not malicious/benign intent.
+"""
 
 from __future__ import annotations
 

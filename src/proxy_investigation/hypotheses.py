@@ -1,4 +1,24 @@
-"""Rank hypotheses for localhost proxy drift — inference only."""
+"""Rank hypotheses for localhost proxy drift (inference only).
+
+Module responsibility:
+    Convert collected evidence into ranked ``Hypothesis`` rows and flat ``Observation`` lists
+    using cautious language and shared limitation strings.
+
+System placement:
+    Called by ``workflow`` after collectors and validation complete.
+
+Key invariants:
+    * Primary hypothesis is ``hypotheses[0]`` when the list is non-empty.
+    * Every hypothesis carries ``ATTRIBUTION_LISTENER_ONLY`` and ``MALWARE_FORBIDDEN`` limits.
+
+Decision intent:
+    Prefer dev-proxy operational stories when loopback listener + path assessment agree;
+    escalate risk when proxy enabled but path is broken or HTTPS fails.
+
+Audit Notes:
+    * Hypothesis confidence is ordinal, not calibrated probability.
+    * Competing ids are deprioritized scenarios, not falsified claims.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +35,22 @@ def build_hypotheses(
     path_assessment: dict | None,
     before: dict | None,
 ) -> tuple[list[Hypothesis], list[str], str]:
-    """Return ranked hypotheses, competing ids, primary id."""
+    """Rank investigation hypotheses from collected evidence.
+
+    Args:
+        proxy: Output of ``collect_proxy_state``.
+        listener: Output of ``collect_listener_evidence``.
+        dev: Output of ``collect_dev_process_correlation``.
+        validation: Probe summary from ``run_validation``.
+        path_assessment: Serialized path assessment or None.
+        before: Optional LKG snapshot for drift context.
+
+    Returns:
+        Tuple of (ranked hypotheses, competing hypothesis ids, primary hypothesis id).
+
+    Side effects:
+        None.
+    """
     lim = (ATTRIBUTION_LISTENER_ONLY, MALWARE_FORBIDDEN)
     enable = proxy.get("proxy_enable")
     server = str(proxy.get("proxy_server") or "")

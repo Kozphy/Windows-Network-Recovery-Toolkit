@@ -1,4 +1,14 @@
-"""Conservative user-facing diagnosis from structured evidence only."""
+"""Conservative user-facing diagnosis from structured evidence only.
+
+Module responsibility:
+    Render short operator text from a ``ProxyReasoningRun`` without banned overclaim terms.
+
+Output guarantees:
+    Omits malware/hijack vocabulary unless proof-tier evidence is modeled upstream.
+
+Side effects:
+    None.
+"""
 
 from __future__ import annotations
 

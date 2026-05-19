@@ -1,4 +1,21 @@
-"""Structured incident report (markdown) from investigation result."""
+"""Structured incident report (markdown) from investigation result.
+
+Module responsibility:
+    Render operator-facing markdown separating observations, evidence, hypotheses,
+    validation, remediation previews, and explicit limitations.
+
+System placement:
+    Invoked by ``workflow`` after ``ProxyInvestigationResult`` is assembled.
+
+Output guarantees:
+    Plain-text markdown string; no file I/O (caller may write to ``reports/proxy_investigations``).
+
+Side effects:
+    None.
+
+Audit Notes:
+    * Report repeats ``MALWARE_FORBIDDEN`` and ``ATTRIBUTION_LISTENER_ONLY`` in limitations section.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +24,17 @@ from .models import ProxyInvestigationResult
 
 
 def render_incident_report(result: ProxyInvestigationResult) -> str:
-    """Generate operator-facing incident report with evidence boundaries."""
+    """Generate operator-facing incident report with evidence boundaries.
+
+    Args:
+        result: Completed investigation run with observations and hypotheses populated.
+
+    Returns:
+        Markdown string suitable for console output or ``reports/proxy_investigations/*.md``.
+
+    Side effects:
+        None.
+    """
     lines = [
         "PROXY DRIFT INVESTIGATION REPORT",
         "=" * 72,

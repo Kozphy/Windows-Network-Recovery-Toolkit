@@ -1,4 +1,22 @@
-"""Preview-only remediation catalog — no auto-execution."""
+"""Preview-only remediation catalog (no auto-execution).
+
+Module responsibility:
+    Supply allowlisted remediation preview rows for incident reports. Policies ``BLOCK``
+    dangerous actions (kill, cert deletion) from this workflow.
+
+System placement:
+    Called by ``workflow`` when assembling ``ProxyInvestigationResult.remediation_previews``.
+
+Output guarantees:
+    Static catalog; does not inspect live machine state.
+
+Side effects:
+    None.
+
+Audit Notes:
+    * ``PREVIEW`` rows require operator confirmation via existing ``python -m src proxy`` CLIs.
+    * ``BLOCK`` rows document actions intentionally unavailable from investigation runs.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +24,14 @@ from .models import PolicyOutcome, RemediationPreview
 
 
 def remediation_previews() -> list[RemediationPreview]:
+    """Return the static remediation preview catalog for investigation reports.
+
+    Returns:
+        List of ``RemediationPreview`` rows with policy ``ALLOW``, ``PREVIEW``, or ``BLOCK``.
+
+    Side effects:
+        None.
+    """
     return [
         RemediationPreview(
             action_id="disable_wininet_proxy",

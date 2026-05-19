@@ -1,4 +1,32 @@
-"""Read-only evidence collectors for localhost proxy drift investigations."""
+"""Read-only evidence collectors for localhost proxy drift investigations.
+
+Module responsibility:
+    Gather WinINET/WinHTTP proxy surfaces, localhost listener attribution, and dev-process
+    correlation rows without mutating system state.
+
+System placement:
+    Called by ``workflow.run_proxy_investigation`` before ``hypotheses`` and ``validation``.
+    Delegates registry/netstat work to ``src.proxy_guard`` primitives.
+
+Input assumptions:
+    Windows host with ``reg``/PowerShell/CIM available unless ``run`` is injected for tests.
+
+Output guarantees:
+    JSON-serializable dict blobs suitable for ``ProxyInvestigationResult`` fields.
+
+Side effects:
+    Subprocess and registry reads only; no writes.
+
+Idempotency:
+    Repeated calls reflect live machine state at call time (not idempotent across time).
+
+Failure modes:
+    Partial registry reads propagate as empty fields; malformed JSONL LKG files are skipped.
+
+Audit Notes:
+    * ``collect_dev_process_correlation`` may list command lines — treat output as sensitive.
+    * Listener owners are correlation, not registry-writer proof (see ``ATTRIBUTION_LISTENER_ONLY``).
+"""
 
 from __future__ import annotations
 
@@ -16,7 +44,20 @@ from ..proxy_guard.snapshot_capture import capture_proxy_snapshot
 
 
 def load_optional_before_snapshot(repo_root: Path) -> dict[str, Any] | None:
-    """Load youngest LKG proxy snapshot if present (for drift context only)."""
+    """Load youngest known-good proxy snapshot if present (drift context only).
+
+    Args:
+        repo_root: Repository root containing ``reports/`` and ``logs/`` artifacts.
+
+    Returns:
+        Parsed snapshot dict, or ``None`` when no readable LKG file exists.
+
+    Side effects:
+        Reads ``reports/proxy_guard_lkg.json`` or tails ``logs/proxy_known_good_snapshots.jsonl``.
+
+    Failure modes:
+        Skips unreadable lines/files; does not raise on corrupt JSONL.
+    """
     for candidate in (
         repo_root / "reports" / "proxy_guard_lkg.json",
         repo_root / "logs" / "proxy_known_good_snapshots.jsonl",
@@ -48,7 +89,17 @@ def load_optional_before_snapshot(repo_root: Path) -> dict[str, Any] | None:
 
 
 def collect_proxy_state(*, run: Callable[..., Any] = subprocess.run) -> dict[str, Any]:
-    """HKCU WinINET, WinHTTP, env, git/npm proxy surfaces."""
+    """Capture HKCU WinINET, WinHTTP, environment, and git/npm proxy surfaces.
+
+    Args:
+        run: Injectable subprocess runner for tests.
+
+    Returns:
+        Dict with ``proxy_enable``, ``proxy_server``, ``winhttp``, ``environment``, etc.
+
+    Side effects:
+        Invokes registry reads and ``capture_proxy_snapshot``.
+    """
     reg = read_proxy_registry(run=run)
     snap = capture_proxy_snapshot(registry_snapshot=reg, run=run)
     return {
@@ -77,7 +128,17 @@ def collect_proxy_state(*, run: Callable[..., Any] = subprocess.run) -> dict[str
 
 
 def collect_listener_evidence(*, run: Callable[..., Any] = subprocess.run) -> dict[str, Any]:
-    """netstat/CIM listener correlation for localhost proxy port."""
+    """Collect netstat/CIM listener correlation for the configured localhost proxy port.
+
+    Args:
+        run: Injectable subprocess runner for tests.
+
+    Returns:
+        Dict with ``localhost_attribution``, ``process_inventory``, and ``netstat_note``.
+
+    Side effects:
+        Subprocess/netstat-style probes via ``proxy_guard`` helpers.
+    """
     reg = read_proxy_registry(run=run)
     merged = registry_with_parsed(reg)
     from ..proxy_guard.parser import parse_proxy_server
@@ -94,7 +155,20 @@ def collect_listener_evidence(*, run: Callable[..., Any] = subprocess.run) -> di
 
 
 def collect_dev_process_correlation(*, run: Callable[..., Any] = subprocess.run) -> dict[str, Any]:
-    """Correlate node/electron/IDE tooling — association only."""
+    """Correlate Node/Electron/IDE processes with listener inventory (association only).
+
+    Args:
+        run: Injectable subprocess runner for tests.
+
+    Returns:
+        Dict with ``dev_process_rows``, ``heuristic_candidates``, ``listening_pids``, ``limitations``.
+
+    Side effects:
+        Process inventory capture; no termination or registry writes.
+
+    Audit Notes:
+        Output includes ``limitations`` reminding operators that correlation ≠ writer proof.
+    """
     reg = read_proxy_registry(run=run)
     merged = registry_with_parsed(reg)
     parsed_raw = merged.get("parsed_proxy") or {}

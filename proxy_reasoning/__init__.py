@@ -1,4 +1,24 @@
-"""Proxy Attribute & Evidence Reasoning — Observation ≠ Inference ≠ Proof."""
+"""Proxy attribute and evidence reasoning (Observation ≠ Inference ≠ Proof).
+
+Package responsibility:
+    Model proxy-specific signals, rank canonical scenarios, run verification checks,
+    evaluate conservative policy for requested actions, and emit replayable audit rows.
+
+System placement:
+    Standalone Python package at repo root; complements ``src.proxy_guard`` collectors and
+    ``platform_core`` fleet reasoning without replacing either.
+
+Public API:
+    ``run_proxy_reasoning``, ``append_proxy_reasoning_run``, ``replay_proxy_reasoning_record``,
+    builders ``build_proxy_entity`` / ``signals_from_dict``, and scenario constants.
+
+Safety:
+    Policy blocks kill/cert/firewall-reset tokens; localhost dev proxies are not labeled malicious
+    without proof-tier evidence.
+
+See:
+    ``docs/proxy_reasoning.md`` for pipeline vocabulary and audit sink paths.
+"""
 
 from proxy_reasoning.audit import (
     append_proxy_reasoning_run,

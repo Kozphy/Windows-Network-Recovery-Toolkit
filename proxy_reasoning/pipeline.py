@@ -1,4 +1,25 @@
-"""Proxy attribute reasoning pipeline: Signal → … → Audit-ready run."""
+"""Proxy attribute reasoning pipeline: Signal → Event → Hypothesis → Verification → Policy.
+
+Module responsibility:
+    Orchestrate ranking, verification, confidence boundary, and policy evaluation into a
+    ``ProxyReasoningRun`` suitable for audit append or replay.
+
+System placement:
+    Primary entry for programmatic proxy reasoning; called by ``audit.replay_proxy_reasoning_record``.
+
+Input assumptions:
+    ``payload`` dict is collector-shaped (WinINET/WinHTTP/listener fields) unless replaying audit.
+
+Output guarantees:
+    ``ProxyReasoningRun`` includes ``policy_decision``, ``limitations``, and ``user_visible_summary``.
+
+Side effects:
+    None in this module (callers append audit separately).
+
+Audit Notes:
+    * Replay path reuses stored signals — does not re-probe the network.
+    * Policy outcome is independent of diagnosis text; verify both before executing remediation.
+"""
 
 from __future__ import annotations
 
@@ -125,7 +146,23 @@ def run_proxy_reasoning(
 ) -> ProxyReasoningRun:
     """Execute the full proxy reasoning pipeline without host mutation.
 
-    Provide either ``entity`` + ``signals``, or a collector ``payload`` dict.
+    Args:
+        entity: Pre-built ``ProxyEntity`` (optional if ``payload`` supplied).
+        signals: Signal list aligned with ``entity`` (optional if ``payload`` supplied).
+        payload: Collector-shaped dict from ``proxy_guard`` or CLI snapshots.
+        requested_action: Action token evaluated by ``policy`` (e.g. ``diagnose``, ``restore_proxy``).
+        explicit_confirmation: Operator confirmed destructive/previewed actions.
+        proof_hints: Optional evidence attribute overrides for tests or replay.
+        run_id: Optional stable id; generated when omitted.
+
+    Returns:
+        ``ProxyReasoningRun`` with hypotheses, verification, policy, and summary text.
+
+    Raises:
+        ValueError: When neither ``payload`` nor both ``entity`` and ``signals`` are provided.
+
+    Side effects:
+        None (audit append is caller responsibility).
     """
     from proxy_reasoning.builders import build_proxy_entity, signals_from_dict
     from proxy_reasoning.diagnosis_text import render_proxy_diagnosis

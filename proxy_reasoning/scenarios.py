@@ -1,4 +1,14 @@
-"""Canonical proxy failure scenarios and pattern matchers."""
+"""Canonical proxy failure scenarios and pattern matchers.
+
+Module responsibility:
+    Rank ``ProxyHypothesis`` rows for the four CASE_* scenarios using signal patterns.
+
+Decision intent:
+    Prefer the highest-scoring scenario with explicit rejection reasons for alternates.
+
+Engineering Notes:
+    Scenario matchers are intentionally conservative — ambiguous inputs yield lower confidence.
+"""
 
 from __future__ import annotations
 

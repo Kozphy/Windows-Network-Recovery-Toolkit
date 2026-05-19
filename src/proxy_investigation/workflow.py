@@ -1,4 +1,37 @@
-"""Diagnose-first investigation orchestration."""
+"""Diagnose-first proxy drift investigation orchestration.
+
+Module responsibility:
+    Run the read-only investigation pipeline: collect evidence, rank hypotheses,
+    render a markdown incident report, and optionally append JSONL audit plus report file.
+
+System placement:
+    Entry point for ``src.proxy_investigation`` (exported from ``__init__``). Composes
+    ``collectors``, ``validation``, ``hypotheses``, ``remediation``, ``report``, and ``audit``.
+
+Input assumptions:
+    Windows endpoint with proxy guard collectors functional; ``repo_root`` points at toolkit root.
+
+Output guarantees:
+    Returns ``ProxyInvestigationResult`` with ``human_report`` populated; when
+    ``write_audit=True``, appends one JSONL row under ``logs/proxy_investigation.jsonl``.
+
+Side effects:
+    When ``write_report_file=True``, creates ``reports/proxy_investigations/<run_id>.md``.
+    Does not disable proxies or kill processes.
+
+Idempotency:
+    Each call generates a new ``run_id`` and new audit/report files (not idempotent).
+
+Failure modes:
+    Propagates exceptions from collectors/validation if subprocess/registry fails hard.
+
+Safe recovery:
+    Re-run investigation after remediation; compare JSONL rows by ``run_id`` and timestamps.
+
+Audit Notes:
+    * Review ``limitations`` and ``attribution_status`` before external sharing.
+    * Remediation previews are informational — operator must run ``python -m src proxy disable`` separately.
+"""
 
 from __future__ import annotations
 
@@ -54,7 +87,23 @@ def run_proxy_investigation(
     write_audit: bool = True,
     write_report_file: bool = True,
 ) -> ProxyInvestigationResult:
-    """Execute full read-only investigation workflow."""
+    """Execute the full read-only proxy drift investigation workflow.
+
+    Args:
+        repo_root: Toolkit repository root for logs/reports paths.
+        run: Injectable subprocess runner for tests.
+        write_audit: When True, append JSONL audit via ``append_investigation``.
+        write_report_file: When True, write markdown under ``reports/proxy_investigations/``.
+
+    Returns:
+        Populated ``ProxyInvestigationResult`` including rendered ``human_report``.
+
+    Side effects:
+        Optional append-only audit and markdown file write (see module docstring).
+
+    Raises:
+        Exceptions from underlying ``proxy_guard`` collectors or validation are propagated.
+    """
     before = load_optional_before_snapshot(repo_root)
     proxy = collect_proxy_state(run=run)
     listener = collect_listener_evidence(run=run)

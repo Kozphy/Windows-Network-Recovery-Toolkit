@@ -1,4 +1,19 @@
-"""Append-only JSONL audit and replay for proxy reasoning runs."""
+"""Append-only JSONL audit and replay for proxy reasoning runs.
+
+Module responsibility:
+    Serialize ``ProxyReasoningRun`` rows, append to ``logs/proxy_reasoning_audit.jsonl``,
+    iterate records, and replay decisions without re-probing.
+
+Side effects:
+    ``append_proxy_reasoning_run`` creates ``logs/`` parents and appends one JSON line.
+
+Idempotency:
+    Append is not idempotent; replay reads historical lines only.
+
+Audit Notes:
+    * ``proof_hints`` field mirrors entity evidence attributes for reviewers — validate against raw signals.
+    * Corrupt JSONL lines are skipped by iterators; tail gaps imply manual log repair.
+"""
 
 from __future__ import annotations
 
