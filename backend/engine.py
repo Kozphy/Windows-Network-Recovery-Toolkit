@@ -12,6 +12,19 @@ Key invariants:
 
 from dataclasses import dataclass
 
+# Five consecutive strict increases require six chronological samples (five adjacent pairs).
+_CONTINUOUS_GROWTH_STEPS = 5
+_CONTINUOUS_GROWTH_MIN_SAMPLES = _CONTINUOUS_GROWTH_STEPS + 1
+
+
+def _is_strictly_increasing(series: list[int], *, steps: int = _CONTINUOUS_GROWTH_STEPS) -> bool:
+    """Return True when the last ``steps + 1`` samples each rise vs the prior sample."""
+    need = steps + 1
+    if len(series) < need:
+        return False
+    tail = series[-need:]
+    return all(tail[i] < tail[i + 1] for i in range(steps))
+
 
 @dataclass
 class DiagnoseInput:
@@ -102,14 +115,15 @@ def detect_anomaly(
         or (current_established - prev_est) > 1000
     )
 
-    # recent_metrics comes newest-first from DB.
-    tw_series = [m["time_wait"] for m in recent_metrics[:4]][::-1] + [current_time_wait]
-    est_series = [m["established"] for m in recent_metrics[:4]][::-1] + [current_established]
-    continuous_growth = False
-    if len(tw_series) >= 5:
-        tw_increasing = all(tw_series[i] > tw_series[i - 1] for i in range(1, len(tw_series)))
-        est_increasing = all(est_series[i] > est_series[i - 1] for i in range(1, len(est_series)))
-        continuous_growth = tw_increasing or est_increasing
+    # recent_metrics is newest-first; build chronological oldest→newest including current sample.
+    history_for_trend = _CONTINUOUS_GROWTH_MIN_SAMPLES - 1
+    tw_series = [int(m["time_wait"]) for m in recent_metrics[:history_for_trend]][::-1] + [
+        current_time_wait,
+    ]
+    est_series = [int(m["established"]) for m in recent_metrics[:history_for_trend]][::-1] + [
+        current_established,
+    ]
+    continuous_growth = _is_strictly_increasing(tw_series) or _is_strictly_increasing(est_series)
 
     anomaly = rapid_growth or sudden_spike or continuous_growth
     if anomaly:
