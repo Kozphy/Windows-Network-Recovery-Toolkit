@@ -217,6 +217,7 @@ class PolicyDecision(BaseModel):
     requires_confirmation: bool = False
     confirmation_phrase: str | None = None
     reason_codes: list[str] = Field(default_factory=list)
+    blocked_actions: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     recommended_next_steps: list[str] = Field(default_factory=list)
     audit_metadata: AuditMetadata = Field(default_factory=AuditMetadata)

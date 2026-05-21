@@ -95,6 +95,11 @@ from .command_handlers_safety import (
     cmd_proxy_registry_writer_proof,
     cmd_proxy_restore_lkg,
 )
+from .network_recovery.cli_handlers import (
+    cmd_diagnose_app,
+    cmd_preview_scenario,
+    cmd_remediate_scenario,
+)
 from .logging.audit import append_jsonl
 from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
 from .proof.proxy_https import run_localhost_proxy_https_proof
@@ -361,8 +366,6 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         if getattr(args, "live_engine", False) or getattr(args, "proof_engine", False) or getattr(args, "fixture", None):
             print("diagnose --app is incompatible with --live, --proof, and --fixture.", file=sys.stderr)
             return 2
-        from .network_recovery.cli_handlers import cmd_diagnose_app
-
         return cmd_diagnose_app(args)
 
     use_live = bool(getattr(args, "live_engine", False) or getattr(args, "proof_engine", False))
@@ -508,16 +511,12 @@ def cmd_replay(args: argparse.Namespace) -> int:
 
 def cmd_remediate(args: argparse.Namespace) -> int:
     """App-path scenario remediation preview (dry-run default)."""
-    from .network_recovery.cli_handlers import cmd_remediate_scenario
-
     return cmd_remediate_scenario(args)
 
 
 def cmd_preview(args: argparse.Namespace) -> int:
     """Repair tier preview CLI entry (`preview` ≡ `repair-preview`)."""
     if getattr(args, "scenario", None):
-        from .network_recovery.cli_handlers import cmd_preview_scenario
-
         ns = argparse.Namespace(
             repo_root=args.repo_root,
             scenario=args.scenario,

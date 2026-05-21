@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "name": "my-baseline",
-  "saved_at": "2026-05-05T12:37:30.277716+00:00",
-  "risk_summary": "low",
+  "saved_at": "2026-05-20T05:08:22.009795+00:00",
+  "risk_summary": "high",
   "snapshot": {
-    "proxy_enable": 0,
-    "proxy_server": "127.0.0.1:56397",
+    "proxy_enable": 1,
+    "proxy_server": "127.0.0.1:56186",
     "proxy_override": null,
     "auto_config_url": null,
     "auto_detect": null,
@@ -20,6 +20,6 @@
     "user_https_proxy": null,
     "user_all_proxy": null,
     "user_no_proxy": null,
-    "captured_at": "2026-05-05T12:37:30.277507+00:00"
+    "captured_at": "2026-05-20T05:08:22.009482+00:00"
   }
 }

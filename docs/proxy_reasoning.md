@@ -62,3 +62,24 @@ Example record: `examples/proxy_reasoning_audit_record.json`
 | **ALLOW** | `diagnose`, `snapshot`, `remediation_preview`, confirmed low-risk `restore_proxy` |
 | **PREVIEW** | `clear_winhttp_proxy`, firewall rule cleanup preview, unverified mutations |
 | **BLOCK** | `kill`, `delete_cert`, `reset_firewall`, arbitrary shell, unlisted actions |
+
+## Failure modes
+
+| Symptom | Likely cause | Safe recovery |
+| --- | --- | --- |
+| Policy `BLOCK` for `restore_proxy` | Verification not `CONFIRMED` | Re-run probes; use `diagnose-live` proofs before retry |
+| Replay differs from live run | Signals frozen in audit row | Expected — replay does not re-probe; compare `signals` block |
+| Empty hypothesis list | Payload missing proxy/listener fields | Validate collector dict matches `build_proxy_entity` expectations |
+| Iterator skips lines | Corrupt JSONL tail | Repair or truncate bad line; re-append from known good offset |
+
+## Audit notes for reviewers
+
+- Default sink: `logs/proxy_reasoning_audit.jsonl` (append-only).
+- `proof_hints` duplicates entity evidence attributes — verify against raw `signals`, not summary text alone.
+- `CONFIRMED` on a verification check means the check passed, **not** benign/malicious intent.
+- Policy outcome is independent of `user_visible_summary` — log both when demonstrating compliance.
+- Destructive tokens (`kill`, `delete_cert`, `reset_firewall`) must remain `BLOCK` without explicit product approval.
+
+## Related workflow
+
+For markdown incident reports (read-only, no policy engine), see [`proxy_investigation_workflow.md`](proxy_investigation_workflow.md).

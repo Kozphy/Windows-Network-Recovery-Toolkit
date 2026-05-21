@@ -80,6 +80,21 @@ python -m src export-report --live
 python -m src feedback --diagnosis-id <id> --recommended-action <what> --user-feedback-fixed <true|false|unknown>
 ```
 
+## Proxy drift investigation (module API)
+
+Read-only workflow — **no** `python -m src` subcommand yet. See [`proxy_investigation_workflow.md`](proxy_investigation_workflow.md).
+
+```powershell
+python -c "from pathlib import Path; from src.proxy_investigation import run_proxy_investigation; r = run_proxy_investigation(repo_root=Path('.')); print(r.run_id, r.primary_hypothesis_id)"
+```
+
+| Output | Path |
+| --- | --- |
+| JSONL audit | `logs/proxy_investigation.jsonl` |
+| Markdown report | `reports/proxy_investigations/<run_id>.md` |
+
+**Safety:** does not disable proxies or kill processes; remediation previews reference existing `proxy disable` CLIs below.
+
 ## Proxy observability and WinINET
 
 ```powershell

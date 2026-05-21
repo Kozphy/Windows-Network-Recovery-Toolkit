@@ -189,7 +189,18 @@ def observations_from_evidence(
     validation: dict,
     before: dict | None,
 ) -> list[Observation]:
-    """Flatten collectors into labeled observations."""
+    """Flatten collector outputs into labeled observation rows.
+
+    Args:
+        proxy: Registry/snapshot dict from ``collect_proxy_state``.
+        listener: Listener attribution dict.
+        dev: Dev-process correlation dict.
+        validation: Probe summary dict.
+        before: Optional LKG snapshot for drift observations.
+
+    Returns:
+        List of ``Observation`` instances for reports and JSONL audit.
+    """
     obs: list[Observation] = []
     obs.append(
         Observation(

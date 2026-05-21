@@ -55,6 +55,7 @@ def test_proof_proxy_detected_and_causal_yields_allow_for_proxy_hypothesis() -> 
     )
     assert rows[0]["proof_status"] == "CONFIRMED"
     assert rows[0]["decision"] == PolicyDecision.ALLOW.value
+    assert "CONFIRMED_SAFE_TIER_WITH_CONFIRMATION" in rows[0].get("reason_codes", [])
     assert any("safe-tier" in w.lower() for w in rows[0]["why"])
 
 
@@ -100,6 +101,7 @@ def test_proof_inconclusive_both_paths_fail_high_conf_preview_only() -> None:
     )
     assert rows[0]["proof_status"] == "INCONCLUSIVE"
     assert rows[0]["decision"] == PolicyDecision.PREVIEW.value
+    assert "HIGH_CONFIDENCE_UNPROVEN" in rows[0].get("reason_codes", [])
 
 
 def test_conflicting_signals_dns_high_unproven_preview_not_allow() -> None:

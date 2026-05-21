@@ -22,7 +22,9 @@
 5. **[`demo_script.md`](demo_script.md)** — safe short demo paths (fleet + dashboard when enabled).
 6. ``docs/architecture.md`` + ``failure_block_contract.md`` — Failure Knowledge System signal → FailureBlock flow (read-only remediation from FKS APIs).
 7. ``docs/proxy_guard.md`` + ``docs/proxy_attribution.md`` — HKCU drift, honest attribution boundaries, tooling entry points.
-8. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, ingest aliases, remediation rules.
+8. ``docs/proxy_investigation_workflow.md`` + ``docs/proxy_reasoning.md`` — localhost drift incident reports vs policy-gated reasoning audit.
+9. ``docs/case_studies/`` — evidence-calibrated incident walkthroughs (portfolio / interviews).
+10. ``docs/rbac_and_remediation.md`` + ``platform_api_contract.md`` — header RBAC-lite, ingest aliases, remediation rules.
 
 Run ``pytest -q`` before changing critical paths — suites stay offline and avoid destructive Windows repair.
 
@@ -118,6 +120,8 @@ Automated suites live under **`tests/`** (see **`docs/test_strategy.md`** for de
 | Path | Purpose |
 | --- | --- |
 | `proxy_attribution/` | Read-only classifier/diagnostic CLI layering on Windows proxy artefacts. |
+| `src/proxy_investigation/` | Read-only localhost proxy drift investigation → JSONL + markdown report. |
+| `proxy_reasoning/` | Proxy scenario ranking, verification, policy, replay audit (root package). |
 | `network_agent/` + `hybrid_frontend/` | Alternate demo stacks documented in-repo; not required for `python -m src` flows. |
 
 

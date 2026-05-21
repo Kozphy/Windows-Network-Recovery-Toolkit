@@ -11,7 +11,7 @@ from typing import Any
 
 from .audit import append_network_recovery_audit
 from .engine import run_scenario_diagnosis
-from .models import SCENARIO_CHATGPT_APP_FIREWALL
+from .models import SCENARIO_CHATGPT_APP_FIREWALL, SignalBundle
 
 
 def _repo_root(explicit: Path | None) -> Path:
@@ -100,8 +100,6 @@ def cmd_preview_scenario(args: argparse.Namespace) -> int:
     if platform.system() == "Windows":
         result = run_scenario_diagnosis(scenario, recovery_firewall_reset_helped=recovery, dry_run=True)
     else:
-        from .models import SignalBundle
-
         signals = SignalBundle(
             browser_https_ok=True,
             chatgpt_https_ok=False,
@@ -176,8 +174,6 @@ def cmd_remediate_scenario(args: argparse.Namespace) -> int:
     if platform.system() == "Windows":
         result = run_scenario_diagnosis(scenario, **kwargs)
     else:
-        from .models import SignalBundle
-
         signals = SignalBundle(
             browser_https_ok=True,
             chatgpt_https_ok=False,

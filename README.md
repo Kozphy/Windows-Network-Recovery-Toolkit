@@ -4,6 +4,48 @@
 
 This repo keeps **beginner batch workflows** intact while layering **structured diagnostics**, **append-only evidence**, and an optional **FastAPI + Next.js** stack so you can show **what broke**, **what policy allows**, and **what was audited**—before any repair runs.
 
+### Understand it in 60 seconds
+
+| Audience | One sentence |
+| --- | --- |
+| **Recruiter / manager** | Local-first Windows tool that explains network/proxy failures, previews fixes, and logs every decision—nothing repairs itself. |
+| **SRE / platform engineer** | Observe → hypothesize → optional proof → **ALLOW / PREVIEW / BLOCK** policy → append-only JSONL replay without re-probing. |
+| **Security reviewer** | Listener correlation is **candidate evidence only**; registry-writer proof requires telemetry; destructive actions stay blocked. |
+
+**Try read-only (no network mutation):**
+
+```powershell
+pip install -r requirements.txt
+python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json
+pytest -q tests/test_policy_v2_regression.py tests/test_safety_regression.py
+```
+
+**Optional dashboard demo:** [docs/demo_script.md](docs/demo_script.md) · **Safety:** [docs/safety_model.md](docs/safety_model.md) · **Policy codes:** [docs/policy_engine.md](docs/policy_engine.md)
+
+### Fintech / exchange / low-latency backend angle
+
+This repo is framed as an **event-driven endpoint reliability platform** with trading-infra patterns:
+
+- **Event sourcing** — append-only `logs/events.jsonl`, `logs/decisions.jsonl`, `logs/order_flow_audit.jsonl`
+- **State machines** — proxy path composites + `order_flow_simulator` order lifecycle
+- **Deterministic replay** — `python -m src replay <run_id>` without re-probing the host
+- **Policy gates** — ALLOW / PREVIEW / BLOCK with explicit `reason_codes` (no silent kill/firewall/adapter changes)
+- **Latency signals** — order simulator records per-event `latency_ms`; invalid transition counters
+
+```text
+Observations → Events → State transitions → Hypotheses → Proof (optional)
+      → Policy → Preview → Append-only audit → Replay / dashboard
+```
+
+```powershell
+python -m order_flow_simulator run --scenario happy_path
+python -m order_flow_simulator run --scenario invalid_cancel
+python -m src diagnose --live
+python -m src replay <run_id>
+```
+
+Architecture: [docs/architecture.md](docs/architecture.md)
+
 ---
 
 ## Problem

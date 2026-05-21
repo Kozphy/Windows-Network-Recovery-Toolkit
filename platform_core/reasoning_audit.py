@@ -73,9 +73,13 @@ def replay_reasoning_record(record: dict[str, Any]) -> ReasoningRun:
     proof = ProofResult(**proof_blob) if isinstance(proof_blob, dict) else ProofResult()
     policy_blob = record.get("policy_decision") or run_blob.get("policy_decision") or {}
     requested_action = policy_blob.get("requested_action") if isinstance(policy_blob, dict) else None
+    codes = policy_blob.get("reason_codes") or [] if isinstance(policy_blob, dict) else []
     explicit_confirmation = bool(
         isinstance(policy_blob, dict)
-        and "confirmed_proof_safe_action_confirmation_present" in (policy_blob.get("reason_codes") or [])
+        and (
+            "CONFIRMED_SAFE_TIER_WITH_CONFIRMATION" in codes
+            or "confirmed_proof_safe_action_confirmation_present" in codes
+        )
     )
     return run_reasoning(
         observations,

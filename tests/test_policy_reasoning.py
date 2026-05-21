@@ -23,8 +23,9 @@ def test_unproven_high_confidence_remains_preview() -> None:
     assert run.hypothesis_ranking[0]["confidence"] >= 0.80
     assert run.proof_result.status == "NOT_RUN"
     assert run.policy_decision.outcome == "PREVIEW"
-    assert "unproven_high_confidence_is_not_execute_authority" in run.policy_decision.reason_codes
-    assert "high_impact_requires_confirmed_proof_before_execute" in run.policy_decision.reason_codes
+    assert "HIGH_CONFIDENCE_UNPROVEN" in run.policy_decision.reason_codes
+    assert "HIGH_IMPACT_UNPROVEN" in run.policy_decision.reason_codes
+    assert "process_kill" in run.policy_decision.blocked_actions
 
 
 def test_confirmed_proof_still_requires_confirmation_boundary() -> None:
@@ -56,13 +57,14 @@ def test_conflicting_signals_downgrade_policy() -> None:
         explicit_confirmation=True,
     )
     assert run.policy_decision.outcome == "PREVIEW"
-    assert "conflicting_signals_downgrade_to_preview" in run.policy_decision.reason_codes
+    assert "CONFLICTING_SIGNALS" in run.policy_decision.reason_codes
 
 
 def test_high_risk_actions_remain_blocked() -> None:
     run = run_reasoning(_high_confidence_proxy_observations(), requested_action="firewall_reset")
     assert run.policy_decision.outcome == "BLOCK"
-    assert "destructive_or_manual_only_action_blocked" in run.policy_decision.reason_codes
+    assert "DESTRUCTIVE_ACTION_BLOCKED" in run.policy_decision.reason_codes
+    assert "firewall_reset" in run.policy_decision.blocked_actions
 
 
 def _confirmed_proof() -> ProofResult:
@@ -99,8 +101,8 @@ def test_high_impact_unconfirmed_proof_forces_preview_defense_in_depth() -> None
         conflicting_signals=False,
     )
     assert decision.outcome == "PREVIEW"
-    assert "high_impact_requires_confirmed_proof_before_execute" in decision.reason_codes
-    assert "unproven_high_confidence_is_not_execute_authority" in decision.reason_codes
+    assert "HIGH_IMPACT_UNPROVEN" in decision.reason_codes
+    assert "HIGH_CONFIDENCE_UNPROVEN" in decision.reason_codes
 
 
 def test_critical_impact_low_trust_forces_preview_defense_in_depth() -> None:
@@ -116,8 +118,8 @@ def test_critical_impact_low_trust_forces_preview_defense_in_depth() -> None:
         conflicting_signals=False,
     )
     assert decision.outcome == "PREVIEW"
-    assert "critical_impact_requires_high_trust_for_execute_authority" in decision.reason_codes
-    assert "high_impact_requires_confirmed_proof_before_execute" in decision.reason_codes
+    assert "CRITICAL_IMPACT_LOW_TRUST" in decision.reason_codes
+    assert "HIGH_IMPACT_UNPROVEN" in decision.reason_codes
 
 
 def test_critical_impact_with_confirmed_proof_and_confirmation_can_allow() -> None:
@@ -133,6 +135,6 @@ def test_critical_impact_with_confirmed_proof_and_confirmation_can_allow() -> No
         conflicting_signals=False,
     )
     assert decision.outcome == "ALLOW"
-    assert "high_impact_requires_confirmed_proof_before_execute" not in decision.reason_codes
-    assert "critical_impact_requires_high_trust_for_execute_authority" not in decision.reason_codes
-    assert "unproven_high_confidence_is_not_execute_authority" not in decision.reason_codes
+    assert "HIGH_IMPACT_UNPROVEN" not in decision.reason_codes
+    assert "CRITICAL_IMPACT_LOW_TRUST" not in decision.reason_codes
+    assert "HIGH_CONFIDENCE_UNPROVEN" not in decision.reason_codes

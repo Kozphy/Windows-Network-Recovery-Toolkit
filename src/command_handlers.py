@@ -137,6 +137,8 @@ from .proxy_guard.proxy_snapshot_commands import (
 from .repair.executor import apply_mutations, apply_reg_argv_sequences
 from .repair.policy import assert_no_firewall_reset_in_preview
 from .repair.preview import summarize_mutations_plaintext
+from platform_core.event_store import record_live_diagnosis_run
+
 from .version import SCRIPT_VERSION
 
 
@@ -1406,27 +1408,32 @@ def cmd_diagnose_live(args: argparse.Namespace) -> int:
             "safety_tier": "diagnose",
         },
     )
-    append_jsonl_core(
-        repo / "logs" / "decision_runs.jsonl",
-        {
-            "schema_version": "live_run_audit_v1",
-            "type": "live_run_audit",
-            "run_id": diagnosis_id,
-            "timestamp_utc": live_payload["generated_at_utc"],
-            "script_version": SCRIPT_VERSION,
-            "machine": live_payload["machine"],
-            "observations": snapshot.to_dict(),
-            "hypotheses_ranked": live_payload["hypotheses_ranked"],
-            "hypothesis_decisions": hypothesis_decisions,
-            "proof_engine": proof_engine_blob,
-            "proof_engine_error": proof_engine_error,
-            "proofs_requested": proofs_enabled,
-            "uncertainty": live_payload["uncertainty"],
-            "commands_executed": list(cmds),
-            "live_snapshot_ref": str(snap_path),
-            "primary_hypothesis": top.hypothesis,
-            "primary_confidence": top.confidence,
-        },
+    live_run_record = {
+        "schema_version": "live_run_audit_v1",
+        "type": "live_run_audit",
+        "run_id": diagnosis_id,
+        "timestamp_utc": live_payload["generated_at_utc"],
+        "script_version": SCRIPT_VERSION,
+        "machine": live_payload["machine"],
+        "observations": snapshot.to_dict(),
+        "hypotheses_ranked": live_payload["hypotheses_ranked"],
+        "hypothesis_decisions": hypothesis_decisions,
+        "proof_engine": proof_engine_blob,
+        "proof_engine_error": proof_engine_error,
+        "proofs_requested": proofs_enabled,
+        "uncertainty": live_payload["uncertainty"],
+        "commands_executed": list(cmds),
+        "live_snapshot_ref": str(snap_path),
+        "primary_hypothesis": top.hypothesis,
+        "primary_confidence": top.confidence,
+    }
+    append_jsonl_core(repo / "logs" / "decision_runs.jsonl", live_run_record)
+    record_live_diagnosis_run(
+        repo,
+        run_id=diagnosis_id,
+        observations=snapshot.to_dict(),
+        hypothesis_decisions=hypothesis_decisions,
+        primary_decision=primary_decision,
     )
 
     if getattr(args, "emit_json", False):

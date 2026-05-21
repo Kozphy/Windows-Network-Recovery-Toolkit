@@ -1,49 +1,143 @@
-# Architecture: Failure Knowledge System
+# Architecture: Endpoint Reliability Platform
 
-This document describes how the **Windows Network Recovery Toolkit** implements a **knowledge plane** on top of imperative Windows repair scripts. It complements the script-oriented `docs/system_architecture.md` with the end-to-end **Failure Knowledge System** data path.
+Local-first, **event-driven** diagnostics inspired by trading infrastructure: append-only audit, deterministic state transitions, policy gates, and replay without re-probing.
 
-## End-to-end flow
+> **Observation ≠ Inference ≠ Proof** — policy is orthogonal. See [epistemic_model.md](epistemic_model.md).
+
+For the Failure Knowledge System (FailureBlocks), see [architecture_failure_knowledge.md](architecture_failure_knowledge.md).
+
+---
+
+## System map (modules)
+
+| Path | Layer | Role |
+| --- | --- | --- |
+| `scripts/` | Control (beginner) | Batch diagnose/repair with prompts — preserved |
+| `src/` | Observation + CLI | `python -m src` collectors, proxy guard, live scoring |
+| `platform_core/reasoning/` | Inference + policy API | Re-exports event-state models; epistemic caps |
+| `platform_core/reasoning_engine.py` | Inference + policy | Pure `run_reasoning()` — no host I/O |
+| `platform_core/reasoning_audit.py` | Replay | Recompute from stored observations |
+| `platform_core/event_store.py` | Audit | `logs/events.jsonl`, `logs/decisions.jsonl`, `logs/remediation_previews.jsonl` |
+| `platform_core/policy/` + `policy_v2.py` | Policy | ALLOW / PREVIEW / BLOCK + `reason_codes` |
+| `proxy_guard/`, `src/proxy_guard/` | Observation | WinINET drift, listener correlation |
+| `failure_system/` | Knowledge plane | FailureBlocks (read-only probes) |
+| `backend/` | API | `/platform/health`, `/metrics`, `/replay/{run_id}` |
+| `frontend/` | Dashboard | Incident views (extend timeline from JSONL) |
+| `endpoint_agent/` | Observation | Observe-only cycles — no auto-repair |
+| `order_flow_simulator/` | Demo / portfolio | Order lifecycle FSM — event sourcing teaching artifact |
+
+---
+
+## Layered pipeline (network reliability)
 
 ```text
-Windows Signals
-    → Read-only Collectors
-    → FeatureVector  (python -m src)  /  DiagnosticSnapshot  (failure_system)
-    → RuleEngine  +  hypothesis scoring
-    → Hypothesis Ranking
-    → FailureBlock
-    → JSONL Knowledge Store  (data/failure_blocks/ + logs/*.jsonl)
-    → CLI / FastAPI / Search / Recommend
-    → Human-confirmed Repair  (batch, repair-safe, hybrid API with confirm)
+┌─────────────┐   ┌──────────────┐   ┌─────────────┐   ┌─────────────┐
+│ Observation │ → │ Event + State│ → │ Hypothesis  │ → │ Proof (opt) │
+│  collectors │   │  transitions │   │  + impact   │   │  contrast   │
+└─────────────┘   └──────────────┘   └─────────────┘   └─────────────┘
+       │                  │                  │                  │
+       v                  v                  v                  v
+ append-only        evidence tree      ordinal confidence   CONFIRMED/
+ JSONL events       rejected alts      (not probability)    INCONCLUSIVE
+       │                  │                  │                  │
+       └──────────────────┴──────────────────┴──────────────────┘
+                                    v
+                          ┌─────────────────┐
+                          │ PolicyDecision  │
+                          │ ALLOW/PREVIEW/  │
+                          │ BLOCK + codes   │
+                          └─────────────────┘
+                                    v
+                          ┌─────────────────┐
+                          │ Remediation     │
+                          │ preview only    │
+                          │ (dry-run def.)  │
+                          └─────────────────┘
 ```
 
-Repairs are **not** on the same automatic edge as collection or scoring. The final step is always a **control layer**: operator runs a script, types a confirmation phrase, or sends an API flag—per the component’s design.
+### Layer contracts
 
-## Layer reference
-
-| Layer | Responsibility | Primary locations |
+| Layer | May claim | Must not claim |
 | --- | --- | --- |
-| **Signal** | Raw Windows evidence: subprocess output, registry/proxy views, routing, ports. | `src/diagnostics/`, `network_agent/collectors/`, `failure_system/collector.py`, `scripts/*.bat` |
-| **Feature** | Normalized booleans and counts (e.g. `FeatureVector`, `DiagnosticSnapshot`) for deterministic logic. | `src/diagnostics/features.py`, `failure_system/models.py` |
-| **Decision** | Deterministic rules + confidence-like scores; ranked hypotheses with explanations. | `src/hypothesis/` (compat shims in `src/decision_engine/`), `failure_system/rules.py`, `network_agent/engine/` |
-| **Knowledge** | Typed **FailureBlock** records and append-only JSONL for audit and search. | `failure_system/generator.py`, `failure_system/storage.py`, `data/failure_blocks/` |
-| **Interface** | Operator access: `python -m src`, `python -m failure_system`, FastAPI apps, batch wrappers, optional UIs. | `src/cli.py`, `failure_system/api.py`, `scripts/`, `network_agent/api.py`, `backend/`, `frontend/` |
-| **Control** | Safety boundary: no auto-repair from FKS, typed confirmations, policy-gated repair preview/execute. | `failure_system/safety.py`, `src/repair/`, `network_agent/safety/`, batch prompts |
-| **Output contract** | Decision/evidence/markdown/debug output layers for operator UX + automation stability. | `failure_system/formatters.py`, `docs/failure_system_output_contract.md` |
-| **Security observability** | Local-first proxy hijack/MITM risk diagnostics: WinINET proxy posture, port attribution, persistence/cert indicators, explainable risk output. | `proxy_guard/` (`python -m proxy_guard ...`) |
+| **Observation** | Registry value at T, probe OK/FAIL | Root cause, writer PID proof |
+| **Inference** | Ranked hypothesis, state label | Certainty, malware |
+| **Proof** | Narrow check CONFIRMED/REJECTED | Whole-system security |
+| **Policy** | ALLOW safe-tier with confirmation | Auto-execute destructive work |
 
-## Why deterministic rules (not opaque ML) for local recommendations
+---
 
-- **Auditability** — Operators and reviewers can answer *why* a hypothesis ranked high (explicit evidence strings and rule ids).
-- **Predictability** — Same inputs yield the same ranking; useful for reproducing incidents and writing tests (`tests/fixtures/`).
-- **Safety alignment** — Opaque models can recommend destructive steps without a clear rollback story; this project keeps stack resets and firewall changes **out of automatic paths** and labels narrative risk tiers for **human** action.
+## Event-state models (`platform_core/reasoning_models.py`)
 
-Machine learning is **not** claimed for core diagnosis paths in this repository; scoring is **deterministic** unless you add separate tooling yourself.
+| Model | Purpose |
+| --- | --- |
+| `Observation` | Measured fact |
+| `EndpointEvent` | Normalized event from observations |
+| `StateTransition` | `from_state` → `to_state` + rule_id |
+| `EvidenceNode` / `EvidenceTree` | Accepted + rejected alternatives |
+| `ProofResult` | Targeted check outcome |
+| `ReliabilityImpact` | Ordinal impact ranking |
+| `PolicyDecision` | Tri-state + `reason_codes` + `blocked_actions` |
+| `ReasoningRun` | Full replayable bundle |
 
-## Related documents
+Public import surface: `platform_core.reasoning` (thin package).
 
-- [`failure_block_contract.md`](failure_block_contract.md) — FailureBlock field contract.
-- [`safety_model.md`](safety_model.md) — Diagnose-first / repair-after-confirmation rules.
-- [`system_architecture.md`](system_architecture.md) — Script-centric layered network model.
-- [`decision_engine_v2.md`](decision_engine_v2.md) — Live hypothesis scoring contract.
-- [`proxy_attribution.md`](proxy_attribution.md) — HKCU drift polling (`proxy-watch`), risk diff, probabilistic attribution, and ``logs/proxy_guard.jsonl`` audit schema (orthogonal to FailureBlock JSONL stores).
-- [`cli_reference.md`](cli_reference.md) — command surfaces including `python -m proxy_guard`.
+---
+
+## Append-only audit (dual write, backward compatible)
+
+| File | Content | Legacy mirror |
+| --- | --- | --- |
+| `logs/events.jsonl` | Observation/event timeline rows | — |
+| `logs/decisions.jsonl` | Policy + hypothesis decisions | `logs/decision_runs.jsonl` (`live_run_audit_v1`) |
+| `logs/remediation_previews.jsonl` | Preview catalog rows | `logs/repair_audit.jsonl` (mutations) |
+| `platform_data/reasoning_runs.jsonl` | Platform API reasoning | — |
+
+Readers that only know `decision_runs.jsonl` continue to work. New tooling may prefer unified `decisions.jsonl`.
+
+---
+
+## Replay (no live probes)
+
+| Entry | Behavior |
+| --- | --- |
+| `python -m src replay <run_id>` | Re-score `live_run_audit_v1` observations |
+| `platform_core.reasoning_audit.replay_reasoning_record` | Platform reasoning rows |
+| `GET /platform/replay/{run_id}` | Stored diagnosis replay |
+| `platform_core.event_store.replay_timeline` | Merge events + decisions for one `run_id` |
+
+---
+
+## Order-flow simulator (trading-infra pattern)
+
+Not a trading system — a **reliability demo** for:
+
+- event sourcing
+- invalid transition detection
+- latency measurement
+- append-only audit
+
+```powershell
+python -m order_flow_simulator run --scenario happy_path
+python -m order_flow_simulator run --scenario invalid_cancel
+```
+
+Audit: `logs/order_flow_audit.jsonl`
+
+---
+
+## Safety invariants (architecture-level)
+
+- No destructive auto-repair from API or agent.
+- Dry-run default on execute paths.
+- Allowlist-only remediation registry.
+- Listener correlation ≠ registry writer proof.
+- High confidence + unproven proof → **PREVIEW**, not ALLOW.
+
+---
+
+## Related docs
+
+- [event_state_reasoning_platform.md](event_state_reasoning_platform.md)
+- [policy_engine.md](policy_engine.md)
+- [replay_model.md](replay_model.md) *(if present)*
+- [demo_script.md](demo_script.md)

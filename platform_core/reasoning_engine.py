@@ -66,6 +66,7 @@ from platform_core.failure_scenarios import (
     normalize_signals,
 )
 from platform_core.impact_score import calculate_reliability_impact
+from platform_core import policy_v2 as pv2
 from platform_core.reasoning_models import (
     EndpointEvent,
     EvidenceTree,
@@ -297,7 +298,8 @@ def evaluate_reasoning_policy(
             confidence=confidence,
             trust_level=trust_level,  # type: ignore[arg-type]
             impact_level=impact_level,  # type: ignore[arg-type]
-            reason_codes=["destructive_or_manual_only_action_blocked"],
+            reason_codes=[pv2.DESTRUCTIVE_ACTION_BLOCKED],
+            blocked_actions=pv2.blocked_actions_for_request(outcome="BLOCK", requested_action=action),
             limitations=["Firewall reset, adapter disable, process kill, and arbitrary shell remain blocked."],
             recommended_next_steps=["Use manual incident response after preserving evidence."],
         )
@@ -313,7 +315,8 @@ def evaluate_reasoning_policy(
             confidence=confidence,
             trust_level=trust_level,  # type: ignore[arg-type]
             impact_level=impact_level,  # type: ignore[arg-type]
-            reason_codes=["diagnostic_only_no_remediation_requested"],
+            reason_codes=[pv2.DIAGNOSTIC_ONLY],
+            blocked_actions=pv2.blocked_actions_for_request(outcome="PREVIEW", requested_action=None),
             recommended_next_steps=["Run preview with a safe remediation action if repair is needed."],
         )
 
@@ -328,20 +331,23 @@ def evaluate_reasoning_policy(
             confidence=confidence,
             trust_level=trust_level,  # type: ignore[arg-type]
             impact_level=impact_level,  # type: ignore[arg-type]
-            reason_codes=["unknown_or_unallowlisted_action"],
+            reason_codes=[pv2.UNKNOWN_ACTION],
+            blocked_actions=pv2.blocked_actions_for_request(outcome="BLOCK", requested_action=action),
             limitations=["Only allowlisted remediation action keys can pass policy."],
             recommended_next_steps=["Choose an allowlisted preview action or continue diagnostics."],
         )
 
     if conflicting_signals:
-        reason_codes.append("conflicting_signals_downgrade_to_preview")
+        reason_codes.append(pv2.CONFLICTING_SIGNALS)
         limitations.append("Conflicting observations reduce trust; live execution is not allowed.")
         outcome = "PREVIEW"
     elif proof_result.status == "CONFIRMED" and explicit_confirmation:
-        reason_codes.append("confirmed_proof_safe_action_confirmation_present")
+        reason_codes.append(pv2.CONFIRMED_SAFE_TIER_WITH_CONFIRMATION)
+        reason_codes.append(pv2.SAFE_TIER_ACTION)
         outcome = "ALLOW"
     else:
-        reason_codes.append("preview_required_until_proof_and_confirmation")
+        reason_codes.append(pv2.REQUIRES_OPERATOR_CONFIRMATION)
+        reason_codes.append(pv2.PREVIEW_UNTIL_PROOF)
         outcome = "PREVIEW"
 
     # Defense-in-depth: each impact/trust guardrail below MUST also enforce a
@@ -351,14 +357,14 @@ def evaluate_reasoning_policy(
     # the downgrade here so any future widening of the ALLOW gate cannot
     # silently bypass the impact policy.
     if impact_level in ("high", "critical") and proof_result.status != "CONFIRMED":
-        reason_codes.append("high_impact_requires_confirmed_proof_before_execute")
+        reason_codes.append(pv2.HIGH_IMPACT_UNPROVEN)
         if outcome == "ALLOW":
             limitations.append(
                 "High or critical reliability impact requires CONFIRMED proof before live execute."
             )
         outcome = "PREVIEW"
     if impact_level == "critical" and trust_level != "high":
-        reason_codes.append("critical_impact_requires_high_trust_for_execute_authority")
+        reason_codes.append(pv2.CRITICAL_IMPACT_LOW_TRUST)
         if outcome == "ALLOW":
             limitations.append(
                 "Critical reliability impact requires high trust (CONFIRMED proof, no conflicting signals)."
@@ -366,14 +372,14 @@ def evaluate_reasoning_policy(
         outcome = "PREVIEW"
 
     if proof_result.status != "CONFIRMED":
-        reason_codes.append("unproven_high_confidence_is_not_execute_authority")
+        reason_codes.append(pv2.HIGH_CONFIDENCE_UNPROVEN)
         if outcome == "ALLOW":
             limitations.append(
                 "Unproven hypothesis cannot grant execute authority even with high confidence."
             )
         outcome = "PREVIEW"
     if action in SAFE_REGISTRY_ACTIONS:
-        reason_codes.append("registry_change_requires_typed_confirmation")
+        reason_codes.append(pv2.REQUIRES_TYPED_CONFIRMATION)
 
     return PolicyDecision(
         outcome=outcome,  # type: ignore[arg-type]
@@ -388,6 +394,10 @@ def evaluate_reasoning_policy(
         requires_confirmation=action in SAFE_REGISTRY_ACTIONS,
         confirmation_phrase="RESTORE_PROXY" if action in SAFE_REGISTRY_ACTIONS else None,
         reason_codes=list(dict.fromkeys(reason_codes)),
+        blocked_actions=pv2.blocked_actions_for_request(
+            outcome=outcome,  # type: ignore[arg-type]
+            requested_action=action,
+        ),
         limitations=limitations,
         recommended_next_steps=["Show remediation preview and require typed operator confirmation."],
     )

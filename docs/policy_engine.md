@@ -1,5 +1,31 @@
 # Policy gate engine
 
+## Policy v2 reason codes (`platform_core/policy_v2.py`)
+
+Canonical uppercase codes for reasoning runs, hypothesis rows, and dashboards:
+
+| Code | Meaning |
+| --- | --- |
+| `HIGH_CONFIDENCE_UNPROVEN` | Heuristic confidence is high but proof is not CONFIRMED — stays PREVIEW |
+| `CONFIRMED_SAFE_TIER_WITH_CONFIRMATION` | CONFIRMED proof + operator confirmation — may ALLOW safe-tier registry actions |
+| `DESTRUCTIVE_ACTION_BLOCKED` | Firewall reset, adapter disable, kill, arbitrary shell |
+| `REQUIRES_OPERATOR_CONFIRMATION` | Preview/dry-run until explicit confirmation |
+| `CONFLICTING_SIGNALS` | Observations contradict — downgrade to PREVIEW |
+
+Every `PolicyDecision` from `evaluate_reasoning_policy` includes `blocked_actions` (defaults to `ALWAYS_BLOCKED_ACTIONS`).
+
+Example envelope:
+
+```json
+{
+  "decision": "PREVIEW",
+  "reason_codes": ["HIGH_CONFIDENCE_UNPROVEN", "REQUIRES_OPERATOR_CONFIRMATION"],
+  "blocked_actions": ["firewall_reset", "process_kill", "adapter_disable"]
+}
+```
+
+## Classic + structured gate (unchanged behavior)
+
 Two layers coexist intentionally:
 
 ## Classic (`policy/classic.py`)

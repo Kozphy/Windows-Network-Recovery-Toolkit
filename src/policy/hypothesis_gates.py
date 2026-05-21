@@ -44,6 +44,8 @@ from typing import Any, Final
 from ..hypothesis.keys import HypothesisKey
 from ..hypothesis.risk import hypothesis_risk_score
 from ..observation.trust import TrustAssessment
+from platform_core import policy_v2 as pv2
+
 from ..proof.contracts import ProofResult, ProofStatus
 
 # Confidence bands for *unproven* / inconclusive hypotheses (proof not CONFIRMED).
@@ -116,25 +118,44 @@ def decide_policy(
     proof_status: str,
 ) -> PolicyDecision:
     """Map confidence + proof outcome to ALLOW / PREVIEW / BLOCK."""
-    if proof_status == ProofStatus.CONFIRMED.name:
-        return PolicyDecision.ALLOW
-    if proof_status == ProofStatus.REJECTED.name:
-        return PolicyDecision.BLOCK
+    return hypothesis_policy_detail(confidence=confidence, proof_status=proof_status)[0]
 
-    # UNPROVEN, INCONCLUSIVE, or name mismatch safety
+
+def hypothesis_policy_detail(
+    *,
+    confidence: float,
+    proof_status: str,
+) -> tuple[PolicyDecision, list[str], list[str]]:
+    """Map confidence + proof to tri-state decision, v2 reason codes, and blocked actions."""
+    reason_codes: list[str] = []
+    blocked = list(pv2.ALWAYS_BLOCKED_ACTIONS)
+
+    if proof_status == ProofStatus.CONFIRMED.name:
+        reason_codes.extend([pv2.CONFIRMED_SAFE_TIER_WITH_CONFIRMATION, pv2.SAFE_TIER_ACTION])
+        return PolicyDecision.ALLOW, reason_codes, blocked
+
+    if proof_status == ProofStatus.REJECTED.name:
+        reason_codes.append(pv2.PROOF_REJECTED_FOR_HYPOTHESIS)
+        return PolicyDecision.BLOCK, reason_codes, blocked
+
     if proof_status == ProofStatus.INCONCLUSIVE.name:
         if confidence >= _HIGH_CONF_PREVIEW:
-            return PolicyDecision.PREVIEW
+            reason_codes.extend([pv2.HIGH_CONFIDENCE_UNPROVEN, pv2.REQUIRES_OPERATOR_CONFIRMATION])
+            return PolicyDecision.PREVIEW, reason_codes, blocked
         if confidence < _LOW_CONF_BLOCK:
-            return PolicyDecision.BLOCK
-        return PolicyDecision.PREVIEW
+            reason_codes.append(pv2.LOW_CONFIDENCE_BLOCK)
+            return PolicyDecision.BLOCK, reason_codes, blocked
+        reason_codes.append(pv2.REQUIRES_OPERATOR_CONFIRMATION)
+        return PolicyDecision.PREVIEW, reason_codes, blocked
 
-    # UNPROVEN
     if confidence >= _HIGH_CONF_PREVIEW:
-        return PolicyDecision.PREVIEW
+        reason_codes.extend([pv2.HIGH_CONFIDENCE_UNPROVEN, pv2.REQUIRES_OPERATOR_CONFIRMATION])
+        return PolicyDecision.PREVIEW, reason_codes, blocked
     if confidence < _LOW_CONF_BLOCK:
-        return PolicyDecision.BLOCK
-    return PolicyDecision.PREVIEW
+        reason_codes.append(pv2.LOW_CONFIDENCE_BLOCK)
+        return PolicyDecision.BLOCK, reason_codes, blocked
+    reason_codes.append(pv2.REQUIRES_OPERATOR_CONFIRMATION)
+    return PolicyDecision.PREVIEW, reason_codes, blocked
 
 
 def build_why(
@@ -189,9 +210,12 @@ class HypothesisDecisionRow:
     decision: PolicyDecision
     risk_score: float = 0.0
 
+    reason_codes: tuple[str, ...] = ()
+    blocked_actions: tuple[str, ...] = ()
+
     def to_dict(self) -> dict[str, Any]:
         """Keys: hypothesis, confidence, proof_status, why, decision (consumer contract)."""
-        return {
+        row = {
             "hypothesis": self.hypothesis,
             "confidence": round(self.confidence, 2),
             "proof_status": self.proof_status,
@@ -199,6 +223,11 @@ class HypothesisDecisionRow:
             "decision": self.decision.value,
             "risk_score": round(self.risk_score, 4),
         }
+        if self.reason_codes:
+            row["reason_codes"] = list(self.reason_codes)
+        if self.blocked_actions:
+            row["blocked_actions"] = list(self.blocked_actions)
+        return row
 
 
 def build_hypothesis_decisions(
@@ -227,11 +256,15 @@ def build_hypothesis_decisions(
             localhost_proxy_proof=localhost_proxy_proof,
             proofs_enabled=proofs_enabled,
         )
-        dec = decide_policy(confidence=float(conf), proof_status=pstat)
+        dec, reason_codes, blocked_actions = hypothesis_policy_detail(
+            confidence=float(conf),
+            proof_status=pstat,
+        )
         rscore = hypothesis_risk_score(float(conf), key)
         degraded_notes: list[str] = []
         if cap_allow and dec == PolicyDecision.ALLOW:
             dec = PolicyDecision.PREVIEW
+            reason_codes = list(reason_codes) + [pv2.TRUST_DEGRADED_CAP_TO_PREVIEW]
             degraded_notes.append(
                 "Degraded uncertainty: causal ALLOW capped to PREVIEW "
                 "(low trust aggregate, conflicting signals, or proof-layer degradation)."
@@ -254,6 +287,8 @@ def build_hypothesis_decisions(
                 why=tuple(why_list),
                 decision=dec,
                 risk_score=rscore,
+                reason_codes=tuple(reason_codes),
+                blocked_actions=tuple(blocked_actions),
             ).to_dict(),
         )
 
