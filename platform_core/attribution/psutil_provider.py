@@ -1,4 +1,31 @@
-"""Optional psutil-backed snapshot (import guarded)."""
+"""Optional ``psutil`` process-name snapshot for platform attribution heuristics.
+
+Module responsibility:
+    When ``psutil`` is importable, enumerate up to ``psutil_limit`` process names and
+    delegate lexical scoring to :class:`~platform_core.attribution.polling.PollingHeuristicProvider`.
+
+System placement:
+    Pluggable :class:`~platform_core.attribution.base.AttributionProvider` for platform
+    demos; does **not** prove registry-writer identity.
+
+Key invariants:
+    * Missing ``psutil`` returns ``method=psutil_unavailable`` without raising.
+    * Enumeration errors collapse to ``method=psutil_error`` with exception class name only.
+
+Input assumptions:
+    ``context`` may include ``psutil_limit`` (default 200, capped at 500).
+
+Output guarantees:
+    :class:`~platform_core.events.ActorAttribution` with ``confidence`` capped at
+    heuristic tiers — never ``sysmon_confirmed``.
+
+Side effects:
+    Read-only process queries when ``psutil`` present; none when import fails.
+
+Audit Notes:
+    Install ``psutil`` locally for richer PID metadata in proxy-guard paths; this
+    provider remains name-list-only by design.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,35 @@
-"""Proxy Guard control loop — LKG rollback, attribution, consolidated audit sinks."""
+"""Proxy Guard polling loop: detect HKCU drift, attribute, decide, optional rollback.
+
+Module responsibility:
+    Poll WinINET registry, diff snapshots, merge layered attribution, evaluate policy,
+    emit human-readable stderr banners, and append unified audit JSONL rows.
+
+System placement:
+    Entry via :mod:`service` / ``python -m src proxy-guard``; complements read-only
+    :mod:`watcher` and remediation flows in :mod:`remediation`.
+
+Key invariants:
+    * Default posture is observe/preview — live rollback requires explicit policy +
+      confirmation paths documented in :mod:`rollback`.
+    * Listener correlation is never labeled registry-writer proof.
+
+Input assumptions:
+    Windows host with readable HKCU Internet Settings; ``subprocess.run`` injectable
+    for tests.
+
+Side effects:
+    Appends audit files under ``logs/`` and ``reports/``; may invoke rollback
+    primitives when policy + CLI flags allow (HKCU WinINET only).
+
+Failure modes:
+    Transient ``reg`` read failures are retried via :mod:`probes`; attribution
+    degrades to ``unknown`` when optional telemetry is absent.
+
+Audit Notes:
+    Correlate ``registry_change_detected`` rows with ``repair_audit.jsonl`` when
+    operators also run ``proxy-disable``; flip-flop banners originate in
+    :mod:`flip_flop`.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,33 @@
-"""Layered merge of Sysmon / Procmon / listener / heuristic evidence for HKCU proxy transitions."""
+"""Layered merge of Sysmon / Procmon / listener / heuristic evidence for HKCU proxy transitions.
+
+Module responsibility:
+    Collect registry diff excerpts, optional Sysmon EID 13 rows, Procmon imports,
+    localhost listener owners, and process-inventory heuristics; rank a single
+    ``candidate_actor`` without claiming registry-writer proof.
+
+System placement:
+    Invoked from :mod:`guard` on substantive WinINET changes; complements read-only
+    :mod:`evidence_import` CSV boosts on ``proxy-watch``.
+
+Key invariants:
+    * Baseline limitation strings always include ``registry polling cannot prove exact writer``.
+    * Sysmon wins over listener correlation when high-confidence EID 13 rows match proxy keys.
+
+Input assumptions:
+    ``before`` / ``after`` dicts mirror :class:`~models.ProxySnapshot` fields; Windows
+    for live Sysmon queries.
+
+Output guarantees:
+    :class:`~attribution_model.LayeredAttributionResult` with evidence list suitable for
+    JSONL audit append.
+
+Failure modes:
+    Missing telemetry yields zero-score evidence rows — not exceptions.
+
+Audit Notes:
+    Label operator banners ``ListenerCorrelation (not RegistryWriterProof)`` unless
+    Sysmon path sets ``attribution_method=sysmon_event_13``.
+"""
 
 from __future__ import annotations
 

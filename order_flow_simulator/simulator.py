@@ -1,4 +1,32 @@
-"""Run scripted order scenarios with latency metrics and JSONL audit."""
+"""Run scripted order scenarios with latency metrics and append-only JSONL audit.
+
+Module responsibility:
+    Drive in-memory order FSM scenarios (``happy_path``, ``invalid_cancel``, etc.),
+    append one audit row per event to ``logs/order_flow_audit.jsonl``, and expose replay
+    helpers for tests.
+
+System placement:
+    Portfolio/demo module (`python -m order_flow_simulator run`); does not touch Windows
+    network state or live exchange APIs.
+
+Key invariants:
+    * Invalid transitions increment ``invalid_transition_count`` but still append audit rows.
+    * Timestamps use :func:`platform_core.models.utc_now_iso` (UTC, ISO-8601).
+
+Side effects:
+    Appends UTF-8 JSON lines under ``logs/order_flow_audit.jsonl`` relative to
+    ``repo_root``.
+
+Idempotency:
+    Each ``run_scenario`` call appends new rows; replay reads without mutation.
+
+Failure modes:
+    Unknown scenario name raises ``ValueError`` before any writes.
+
+Audit Notes:
+    ``valid=false`` rows are first-class — use ``invalid_transition_count`` in
+    :func:`platform_core.toolkit_metrics.compute_toolkit_metrics` for KPI dashboards.
+"""
 
 from __future__ import annotations
 

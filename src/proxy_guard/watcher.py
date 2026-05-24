@@ -1,4 +1,27 @@
-"""Poll HKCU proxy registry deltas without mutating system state."""
+"""Read-only HKCU proxy registry polling for lightweight monitor tooling.
+
+Module responsibility:
+    Poll Internet Settings, normalize registry views, print diffs, and optionally
+    append JSONL events — no attribution merge or rollback.
+
+System placement:
+    Used by legacy monitor paths and tests; superseded for rich attribution by
+    ``proxy-watch`` / :mod:`guard` in most operator flows.
+
+Key invariants:
+    * **Never** writes registry keys or invokes rollback helpers.
+    * ``port_owner_fn`` is optional enrichment when localhost ports parse.
+
+Side effects:
+    Optional append to caller-supplied ``jsonl_path``; stdout/stderr prints only.
+
+Idempotency:
+    Each poll is independent; prior snapshot held in memory for diff only.
+
+Audit Notes:
+    Rows may use schema v1 ``proxy_state_change`` — normalize on read via
+    :mod:`flip_flop` before incident analysis.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,25 @@
-"""Compatibility entrypoints for Proxy Guard orchestration."""
+"""Proxy Guard service entrypoints and legacy keyword adapter.
+
+Module responsibility:
+    Build :class:`~config.ProxyGuardServiceConfig` from historical kwargs and start
+    the guard loop in :mod:`guard`.
+
+System placement:
+    Called by CLI ``proxy-guard`` handlers and :mod:`control` shim; bridges pytest
+    fixtures that still pass flat keyword arguments.
+
+Key invariants:
+    * ``run_proxy_guard_service`` is the canonical loop starter.
+    * ``legacy_control_kwargs_to_config`` preserves defaults documented in
+      ``docs/proxy_guard.md``.
+
+Side effects:
+    Delegates to :mod:`guard` — registry polling, audit append, optional rollback.
+
+Audit Notes:
+    Policy object and ``jsonl_path`` passed here determine which audit sink receives
+    drift rows; verify ``reports/proxy_guard_watch.jsonl`` when using watch tooling.
+"""
 
 from __future__ import annotations
 

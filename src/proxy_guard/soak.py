@@ -1,4 +1,36 @@
-"""Post-remediation soak: detect ProxyEnable re-enable without reset loops."""
+"""Post-remediation soak monitor for WinINET ``ProxyEnable`` stickiness.
+
+Module responsibility:
+    After confirmed ``proxy-disable``, poll HKCU ``ProxyEnable`` for a configured
+    window and classify **STABLE** vs **REMEDIATION_NOT_STICKY**.
+
+System placement:
+    Invoked from :mod:`remediation` / ``python -m src proxy-disable --soak-minutes``.
+
+Key invariants:
+    * Soak performs **read-only** registry polls — never auto-resets proxy in a loop.
+    * ``soak_minutes <= 0`` skips monitoring and returns ``STABLE`` with
+      ``detail=soak_skipped``.
+
+Input assumptions:
+    Caller already applied disable mutations; ``read_proxy_registry`` reflects HKCU.
+
+Output guarantees:
+    :class:`SoakResult` with ``status`` in ``{STABLE, REMEDIATION_NOT_STICKY}``,
+    sample count, and last observed enable flag.
+
+Idempotency:
+    Repeated soak runs are independent; each run only reads registry state.
+
+Failure modes:
+    If an active reverter sets ``ProxyEnable=1`` during the window, status is
+    ``REMEDIATION_NOT_STICKY`` — operators must stop the reverter before retrying.
+
+Audit Notes:
+    Soak outcomes append to ``logs/repair_audit.jsonl`` (subtype
+    ``proxy_disable_soak``). Pair with :mod:`flip_flop` when toggles exceed policy
+    thresholds.
+"""
 
 from __future__ import annotations
 
@@ -39,7 +71,26 @@ def run_remediation_soak(
     sleep_fn: Callable[[float], None] = time.sleep,
     monotonic_fn: Callable[[], float] = time.monotonic,
 ) -> SoakResult:
-    """Poll WinINET ``ProxyEnable``; report sticky only if no OFF->ON re-enable."""
+    """Poll WinINET ``ProxyEnable`` until deadline or re-enable detected.
+
+    Args:
+        soak_minutes: Window length in minutes; ``<= 0`` skips polling and returns
+            ``STABLE`` with ``detail=soak_skipped``.
+        poll_seconds: Sleep interval between registry reads (default 5).
+        run: Subprocess runner forwarded to :func:`registry.read_proxy_registry`.
+        sleep_fn: Injectable sleep for tests.
+        monotonic_fn: Injectable monotonic clock for tests.
+
+    Returns:
+        :class:`SoakResult` with ``status`` ``STABLE`` or ``REMEDIATION_NOT_STICKY``.
+
+    Side effects:
+        Read-only HKCU registry queries only.
+
+    Audit Notes:
+        ``REMEDIATION_NOT_STICKY`` indicates an active reverter — stop the suspected
+        process tree before repeating ``proxy-disable`` (see ``docs/proxy_green_definition.md``).
+    """
 
     if soak_minutes <= 0:
         return SoakResult(

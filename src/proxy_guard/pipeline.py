@@ -1,4 +1,29 @@
-"""Stdout + unified audit payloads for Proxy Guard detection → attribution → decide → rollback."""
+"""Serialize Proxy Guard pipeline outcomes for stdout and append-only audit sinks.
+
+Module responsibility:
+    Map internal policy decisions, risk buckets, and rollback hints into stable JSON
+    payloads consumed by :mod:`audit`, :mod:`human_report`, and legacy JSONL mirrors.
+
+System placement:
+    Called from :mod:`guard` after registry diff, attribution merge, and policy
+    evaluation — never performs registry writes itself.
+
+Key invariants:
+    * ``public_decision_label`` preserves operator-facing vocabulary (``observe`` →
+      ``observe_only``).
+    * Risk inference is deterministic from snapshots and policy rows only.
+
+Output guarantees:
+    JSON-serializable dicts with bounded string fields suitable for NDJSON append.
+
+Side effects:
+    None — pure formatting helpers.
+
+Audit Notes:
+    Downstream auditors should correlate ``policy_payload_for_audit`` rows with
+    ``logs/proxy_guard_pipeline_audit.jsonl`` and stderr banners from
+    :func:`human_report.format_proxy_guard_change`.
+"""
 
 from __future__ import annotations
 

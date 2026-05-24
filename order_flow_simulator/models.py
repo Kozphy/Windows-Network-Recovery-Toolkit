@@ -1,4 +1,23 @@
-"""Order-flow event and state models."""
+"""Order-flow event and state models for the portfolio state-machine simulator.
+
+Module responsibility:
+    Define :class:`OrderState`, :class:`OrderEventType`, and :class:`OrderEvent` JSON
+    shapes appended to ``logs/order_flow_audit.jsonl``.
+
+System placement:
+    Used by :mod:`order_flow_simulator.state_machine` and :mod:`simulator`; independent
+    of Windows proxy/network remediation.
+
+Data shape:
+    Audit rows include ``schema_version=order_flow.v1``, ``record_type=order_flow_event``,
+    ``latency_ms``, ``valid``, and stringified state transitions.
+
+Timezone:
+    ``OrderEvent.timestamp`` defaults to UTC ISO-8601 via :func:`platform_core.models.utc_now_iso`.
+
+Output guarantees:
+    :meth:`OrderEvent.to_jsonable` returns JSON-serializable dicts with rounded latency.
+"""
 
 from __future__ import annotations
 

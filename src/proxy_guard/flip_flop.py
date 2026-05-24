@@ -1,4 +1,34 @@
-"""Detect repeated WinINET ProxyEnable toggles (active reverter suspicion)."""
+"""Detect repeated WinINET ``ProxyEnable`` toggles (ACTIVE_REVERTER suspicion).
+
+Module responsibility:
+    Scan normalized proxy-guard watch JSONL rows within a rolling time window and
+    count enable/disable transitions for operator incident banners.
+
+System placement:
+    Consumed by :mod:`human_report` when formatting ``proxy-watch-report`` tails;
+    read path only — never mutates registry.
+
+Key invariants:
+    * ``normalize_watch_record`` upgrades legacy v1 monitor rows without rewriting
+      on-disk files.
+    * Timestamps without timezone are treated as UTC.
+
+Input assumptions:
+    Records include ``before_snapshot`` / ``after_snapshot`` or legacy v1 enable
+    fields; malformed timestamps are skipped silently.
+
+Output guarantees:
+    Incident summary dict with toggle count, window bounds, and recovery guidance
+    strings suitable for stderr banners.
+
+Failure modes:
+    Empty or corrupt JSONL yields zero toggles — callers must not infer stability
+    from absence alone.
+
+Audit Notes:
+    When toggle count exceeds threshold, recommend stopping suspected process trees
+    before repeating ``proxy-disable`` — see ``docs/proxy_green_definition.md``.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,27 @@
-"""JSON-lines structured logging for Proxy Guard (machine-parseable, consistent schema)."""
+"""JSON-lines structured logging for Proxy Guard (machine-parseable, consistent schema).
+
+Module responsibility:
+    Emit single-line JSON log records to stderr and/or append-only files with stable
+    ``schema_version=1`` keys for probe timing and guard lifecycle events.
+
+System placement:
+    Used by :mod:`guard`, :mod:`probes`, and watch tooling; distinct from human stderr
+    banners in :mod:`human_report`.
+
+Key invariants:
+    * Timestamps are UTC ISO-8601 via :mod:`core.time_utils`.
+    * ``extra`` fields merge at top level — callers must avoid clobbering reserved keys.
+
+Side effects:
+    Appends UTF-8 lines when ``file_path`` set; writes to ``stream`` when provided.
+
+Idempotency:
+    Each emit is independent; no deduplication.
+
+Audit Notes:
+    Pair ``registry_probe_complete`` rows with ``registry_change_detected`` in the same
+    JSONL tail when reconstructing incident timelines.
+"""
 
 from __future__ import annotations
 

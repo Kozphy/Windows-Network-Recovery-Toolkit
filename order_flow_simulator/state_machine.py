@@ -1,4 +1,23 @@
-"""Valid order state transitions and event application."""
+"""Valid order state transitions and audit row materialization.
+
+Module responsibility:
+    Encode allowed FSM edges for exchange-style order events and return transition
+    validity without persisting state (callers hold state maps).
+
+System placement:
+    Pure logic layer consumed by :mod:`order_flow_simulator.simulator`.
+
+Key invariants:
+    * Unknown ``OrderEventType`` values yield ``valid=False`` with stable detail strings.
+    * Invalid transitions leave ``current`` state unchanged.
+
+Output guarantees:
+    :func:`apply_event` returns ``(new_state, valid, detail)``; ``build_audit_event``
+    wraps results into :class:`~order_flow_simulator.models.OrderEvent`.
+
+Failure modes:
+    No exceptions for bad transitions — invalidity is expressed via ``valid=False``.
+"""
 
 from __future__ import annotations
 

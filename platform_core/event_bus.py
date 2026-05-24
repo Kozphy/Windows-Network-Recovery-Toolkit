@@ -1,4 +1,32 @@
-"""Append-only JSONL event bus with schema checks and tolerant readers."""
+"""Append-only JSONL event bus with schema-version validation and tolerant readers.
+
+Module responsibility:
+    Append normalized platform events to ``platform_data/normalized_events.jsonl`` (or
+    caller path) with optional :class:`~platform_core.events.NormalizedEvent` validation.
+
+System placement:
+    Optional platform prototype layer; distinct from toolkit ``logs/events.jsonl`` in
+    :mod:`platform_core.event_store`.
+
+Key invariants:
+    * ``validate_schema_version`` rejects unknown ``schema_version`` values listed in
+      :mod:`platform_core.events`.
+    * Readers skip malformed JSON lines without raising.
+
+Side effects:
+    Creates parent directories; appends one UTF-8 JSON line per call.
+
+Idempotency:
+    Duplicate appends are intentional (event sourcing); consumers dedupe by event id
+    if required.
+
+Failure modes:
+    Missing ``schema_version`` fails validation on append when enforced by caller.
+
+Audit Notes:
+    Pair bus rows with ``platform_data/audit.jsonl`` for remediation execute paths;
+    schema mismatches surface as ``unsupported_schema_version`` in validation tuples.
+"""
 
 from __future__ import annotations
 

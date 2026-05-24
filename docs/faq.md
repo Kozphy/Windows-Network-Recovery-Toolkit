@@ -49,6 +49,10 @@ Try:
 
 If only one browser fails, Windows networking may already be working.
 
+For **one site timing out** while others work (e.g. LinkedIn `ERR_TIMED_OUT`), see
+[troubleshooting_site_specific.md](troubleshooting_site_specific.md) and run
+`python -m src proxy-status` plus `python -m src proxy-path-status` while the site fails.
+
 ## Are logs uploaded anywhere?
 
 No. Logs are written locally to the `logs` folder and are ignored by Git.

@@ -1,4 +1,32 @@
-"""Append-only audit and replay helpers for reasoning runs."""
+"""Append-only audit and deterministic replay helpers for reasoning runs.
+
+Module responsibility:
+    Serialize :class:`~platform_core.reasoning_models.ReasoningRun` rows to JSONL and
+    recompute decisions offline via :func:`replay_reasoning_record` without host probes.
+
+System placement:
+    Consumed by platform demos, tests, and ``python -m src replay`` bridges; stores
+    under ``platform_data/reasoning_runs.jsonl`` by default.
+
+Key invariants:
+    * Replay uses stored observations + proof blob only — no live subprocess probes.
+    * ``explicit_confirmation`` is inferred from canonical reason codes in the audit row.
+
+Output guarantees:
+    Each append is one JSON object per line; malformed lines skipped by readers in
+    :mod:`platform_core.storage`.
+
+Idempotency:
+    Appends are append-only; replay does not mutate the audit file.
+
+Failure modes:
+    Missing or partial audit rows may raise on ``Observation`` / ``ProofResult`` parse;
+    callers should validate schema before replay in production tooling.
+
+Audit Notes:
+    Compare replay output to original ``policy_decision`` when investigating policy
+    regressions; mismatches indicate engine version drift, not network state change.
+"""
 
 from __future__ import annotations
 

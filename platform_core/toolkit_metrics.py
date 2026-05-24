@@ -1,4 +1,31 @@
-"""Reliability KPIs from toolkit ``logs/`` JSONL (local repo root)."""
+"""Aggregate reliability KPI counters from local toolkit ``logs/`` JSONL shards.
+
+Module responsibility:
+    Scan ``logs/events.jsonl``, ``logs/decisions.jsonl``,
+    ``logs/remediation_previews.jsonl``, and ``logs/order_flow_audit.jsonl`` under a
+    repo root and return portfolio-friendly counters.
+
+System placement:
+    Used by tests and optional dashboard merges; read-only — never mutates log files.
+
+Input assumptions:
+    JSONL lines are UTF-8; malformed lines skipped via :func:`platform_core.storage.iter_jsonl`.
+
+Output guarantees:
+    Dict with integer counters and optional ``order_flow_event_latency_ms_avg``; missing
+    files contribute zero counts (not errors).
+
+Timezone:
+    Not applicable — counts rows only, does not parse event timestamps for windows.
+
+Failure modes:
+    Partially written last lines may be skipped by tolerant readers; metrics may lag
+    live writers by one append.
+
+Audit Notes:
+    ``proof_inconclusive_count`` tracks ``HIGH_CONFIDENCE_UNPROVEN`` in decision rows;
+    use alongside policy regression tests in ``tests/test_policy_v2_regression.py``.
+"""
 
 from __future__ import annotations
 
