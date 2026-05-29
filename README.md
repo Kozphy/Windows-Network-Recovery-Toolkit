@@ -6,11 +6,13 @@ This repo keeps **beginner batch workflows** intact while layering **structured 
 
 ### Understand it in 60 seconds
 
-| Audience | One sentence |
-| --- | --- |
-| **Recruiter / manager** | Local-first Windows tool that explains network/proxy failures, previews fixes, and logs every decision—nothing repairs itself. |
-| **SRE / platform engineer** | Observe → hypothesize → optional proof → **ALLOW / PREVIEW / BLOCK** policy → append-only JSONL replay without re-probing. |
-| **Security reviewer** | Listener correlation is **candidate evidence only**; registry-writer proof requires telemetry; destructive actions stay blocked. |
+
+| Audience                    | One sentence                                                                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Recruiter / manager**     | Local-first Windows tool that explains network/proxy failures, previews fixes, and logs every decision—nothing repairs itself.   |
+| **SRE / platform engineer** | Observe → hypothesize → optional proof → **ALLOW / PREVIEW / BLOCK** policy → append-only JSONL replay without re-probing.       |
+| **Security reviewer**       | Listener correlation is **candidate evidence only**; registry-writer proof requires telemetry; destructive actions stay blocked. |
+
 
 **Try read-only (no network mutation):**
 
