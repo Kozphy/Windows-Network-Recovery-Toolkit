@@ -50,6 +50,25 @@ Architecture: [docs/architecture.md](docs/architecture.md)
 
 ---
 
+## AI Edge / Embedded Compute Reliability Layer
+
+A simulated reliability layer for **AI-at-the-edge / embedded compute** (x86 embedded processors, NPUs, inference runtimes) that reuses the same reasoning contract as the network engine — **no real FPGA/NPU/hardware dependencies**. It models device signals, runs the deterministic reasoning chain, and gates remediation through the same ALLOW / PREVIEW / BLOCK policy.
+
+- **Simulated device signals** — `cpu_load`, `memory_pressure`, `temperature_celsius`, `npu_available`, `inference_latency_ms`, `inference_error_rate`, `driver_status`, `sensor_input_status`, `network_uplink_status`.
+- **Cataloged failure hypotheses (closed set, no fabricated causes)** — `edge_inference_latency_regression`, `npu_fallback_to_cpu`, `thermal_throttling_risk`, `driver_runtime_mismatch`, `sensor_input_degraded`, `uplink_degraded_but_local_inference_ok`.
+- **Same chain** — observation → event → state transition → ranked hypotheses → evidence tree → optional (simulated) proof → impact → policy → append-only audit (`logs/edge_runs.jsonl`), replayable without re-simulating.
+- **Same safety posture** — destructive actions (firmware flash, factory reset, thermal-protection disable, overclock, sensor disable) are always BLOCKED; high confidence without `CONFIRMED` proof stays PREVIEW; only allowlisted low-risk actions (`switch_to_cpu_fallback`, `reduce_inference_load`, `restart_inference_runtime`, `clear_inference_cache`) can reach ALLOW, and only with confirmed proof + typed confirmation.
+
+```powershell
+python -m src edge-diagnose --fixture tests/fixtures/edge/thermal_throttle.json
+python -m src edge-diagnose --live-simulated --profile npu_fallback
+python -m src edge-replay <run_id>
+```
+
+The `--json` contract separates `observed_signals`, `inferred_hypotheses`, `supporting_evidence`, `contradicting_evidence`, `missing_evidence`, `proof_status`, `policy_decision`, `safe_next_action`, and `blocked_actions`. Implementation lives under `edge_device/` (`signals`, `scenarios`, `policy`, `reasoning`, `simulator`, `audit`); fixtures under `tests/fixtures/edge/`.
+
+---
+
 ## Problem
 
 Windows often looks “online” while **browser or dev-tool traffic fails**—typically around **DNS**, **WinINET/WinHTTP proxy drift**, **TLS path**, or **browser-only** behavior. Flat repair scripts can change network state without enough context. Here, **diagnosis, hypotheses, policy evaluation, preview, and audit** come first; remediation is **explicit**, **allowlisted**, and **logged** where implemented.

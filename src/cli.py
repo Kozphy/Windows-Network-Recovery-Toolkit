@@ -89,6 +89,7 @@ from .network_state.cli_handlers import (
     cmd_network_state_snapshot_set_default,
     cmd_network_state_snapshot_show,
 )
+from edge_device.cli_handlers import cmd_edge_diagnose, cmd_edge_replay
 from .command_handlers_safety import (
     cmd_agent_next_step,
     cmd_proxy_config_check,
@@ -1792,6 +1793,53 @@ def build_parser() -> argparse.ArgumentParser:
     p_ns_ev_imp = ev_sub.add_parser("import", help="Append normalized rows to logs/network_state_evidence.jsonl.")
     p_ns_ev_imp.add_argument("--file", required=True, dest="evidence_file", metavar="PATH")
     p_ns_ev_imp.set_defaults(func=cmd_network_state_evidence_import)
+
+    p_edge = sub.add_parser(
+        "edge-diagnose",
+        help="Simulated AI-edge/embedded-compute reliability reasoning (no hardware).",
+        description=(
+            "Deterministic edge reasoning: observation -> event -> state transition -> ranked "
+            "hypotheses -> evidence tree -> optional simulated proof -> impact -> policy -> "
+            "append-only audit (logs/edge_runs.jsonl). Use --fixture PATH or --live-simulated."
+        ),
+    )
+    edge_src = p_edge.add_mutually_exclusive_group(required=True)
+    edge_src.add_argument("--fixture", type=str, default=None, help="Load edge observations JSON fixture.")
+    edge_src.add_argument(
+        "--live-simulated",
+        dest="live_simulated",
+        action="store_true",
+        help="Generate deterministic simulated device telemetry (no hardware access).",
+    )
+    p_edge.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help="Simulation profile for --live-simulated (e.g. thermal, npu_fallback, latency, driver, sensor, uplink).",
+    )
+    p_edge.add_argument(
+        "--action",
+        dest="requested_action",
+        type=str,
+        default=None,
+        metavar="ACTION",
+        help="Optional remediation action key to evaluate (preview-gated; destructive keys are blocked).",
+    )
+    p_edge.add_argument(
+        "--confirm",
+        dest="confirm",
+        action="store_true",
+        help="Treat operator confirmation as present (ALLOW still requires CONFIRMED proof + low risk).",
+    )
+    p_edge.add_argument("--json", dest="emit_json", action="store_true", help="Emit full machine-readable contract.")
+    p_edge.set_defaults(func=cmd_edge_diagnose, live_simulated=False, confirm=False, emit_json=False)
+
+    p_edge_replay = sub.add_parser(
+        "edge-replay",
+        help="Replay a stored edge run by id from logs/edge_runs.jsonl (read-only, no re-simulation).",
+    )
+    p_edge_replay.add_argument("run_id", metavar="RUN_ID", help="Edge run id from a prior edge-diagnose.")
+    p_edge_replay.set_defaults(func=cmd_edge_replay)
 
     return parser
 
