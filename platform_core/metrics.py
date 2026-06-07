@@ -181,6 +181,9 @@ def compute_platform_metrics(*, platform_root: Path | None = None) -> dict[str, 
         "affected_endpoint_count": len(affected_eps),
     }
     merged["signals_file"] = str(root / "platform_signals.jsonl")
+    from platform_core.reliability_metrics import reliability_metrics_dict
+
+    merged["reliability_metrics"] = reliability_metrics_dict(data_root=root)
     return merged
 
 
