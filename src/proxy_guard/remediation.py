@@ -14,6 +14,8 @@ _INTERNET_SETTINGS_KEY = INTERNET_SETTINGS_KEY
 
 CONFIRMATION_PHRASE = "DISABLE_WININET_PROXY"
 RESTORE_WININET_PROXY_FROM_LKG_PHRASE = "RESTORE_WININET_PROXY_FROM_LKG"
+STOP_PROXY_LISTENER_PHRASE = "STOP_PROXY_LISTENER"
+STOP_PROXY_REVERTER_PHRASE = "STOP_PROXY_REVERTER"
 
 RiskLevel = Literal["low", "medium", "high", "blocked"]
 Decision = Literal["ALLOW", "PREVIEW", "BLOCK"]
@@ -67,6 +69,28 @@ _ALLOWLIST: dict[str, AllowlistedRemediationAction] = {
         required_confirmation=RESTORE_WININET_PROXY_FROM_LKG_PHRASE,
         allowed_registry_fields=("ProxyEnable", "ProxyServer", "AutoConfigURL", "ProxyOverride", "AutoDetect"),
         reversible=True,
+    ),
+    "stop_proxy_listener": AllowlistedRemediationAction(
+        action_id="stop_proxy_listener",
+        description=(
+            "Terminate the process tree listening on the attributed localhost WinINET proxy port "
+            "(operator-confirmed; Administrator required)."
+        ),
+        risk_level="high",
+        required_confirmation=STOP_PROXY_LISTENER_PHRASE,
+        allowed_registry_fields=(),
+        reversible=False,
+    ),
+    "stop_proxy_reverter": AllowlistedRemediationAction(
+        action_id="stop_proxy_reverter",
+        description=(
+            "Terminate the attributed parent powershell.exe process tree that respawns the "
+            "localhost proxy listener (operator-confirmed; Administrator required; manual only)."
+        ),
+        risk_level="high",
+        required_confirmation=STOP_PROXY_REVERTER_PHRASE,
+        allowed_registry_fields=(),
+        reversible=False,
     ),
     "reset_firewall": AllowlistedRemediationAction(
         action_id="reset_firewall",

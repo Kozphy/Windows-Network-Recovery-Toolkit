@@ -24,17 +24,21 @@ collect_proxy_state → collect_listener_evidence → collect_dev_process_correl
         → optional append_investigation + reports/proxy_investigations/<run_id>.md
 ```
 
-Entry point (Windows, from repo root):
+Entry points (Windows, from repo root):
 
 ```powershell
+# CLI bundle (OBSERVED / CORRELATED / NOT PROVEN)
+python -m src proxy-investigate
+python -m src proxy-investigate --json
+python -m src proxy-investigate --audit
+
+# Full markdown incident workflow
 python -c "from pathlib import Path; from src.proxy_investigation import run_proxy_investigation; r = run_proxy_investigation(repo_root=Path('.')); print(r.primary_hypothesis_id); print(r.human_report[:500])"
 ```
 
-There is **no** dedicated `python -m src` subcommand yet — use the module API above or wire your own wrapper.
+See `docs/PROXY_INVESTIGATION.md` for CLI details.
 
 ## Outputs
-
-| Artifact | Path |
 | --- | --- |
 | JSONL audit row | `logs/proxy_investigation.jsonl` |
 | Markdown report | `reports/proxy_investigations/<run_id>.md` |

@@ -108,8 +108,18 @@ from .proxy_guard.snapshot_capture import load_lkg_snapshot
 from .proxy_guard.service import run_proxy_guard_service
 from .proxy_guard.remediation import (
     CONFIRMATION_PHRASE,
+    STOP_PROXY_LISTENER_PHRASE,
+    STOP_PROXY_REVERTER_PHRASE,
     build_user_proxy_disable_mutations,
     validate_action_confirmation,
+)
+from .proxy_guard.stop_listener import (
+    LISTENER_ATTRIBUTION_LIMITATION,
+    run_stop_listener_workflow,
+)
+from .proxy_guard.stop_reverter import (
+    REVERTER_ATTRIBUTION_LIMITATION,
+    run_stop_reverter_workflow,
 )
 from .proxy_guard.watcher import monitor_proxy_registry
 from .network_state.event_log import (
@@ -240,6 +250,38 @@ def cmd_proxy_diagnose(args: argparse.Namespace) -> int:
         )
     lines.extend(["", "Use --json for machine-readable output."])
     print("\n".join(lines))
+    return 0
+
+
+def cmd_proxy_investigate(args: argparse.Namespace) -> int:
+    """Read-only unified proxy investigation bundle (no mutations)."""
+
+    if (code := exit_code_if_not_windows("proxy-investigate")) is not None:
+        return code
+
+    from .proxy_guard.investigation_bundle import (
+        build_proxy_investigation_bundle,
+        format_investigation_human,
+        investigation_audit_row,
+    )
+
+    repo = _repo_root(getattr(args, "repo_root", None))
+    run = subprocess.run
+    bundle = build_proxy_investigation_bundle(repo_root=repo, run=run)
+
+    write_audit = bool(getattr(args, "investigate_audit", False))
+    if write_audit and not bool(getattr(args, "investigate_no_audit", False)):
+        logs_dir = repo / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        append_jsonl_core(repo / "logs" / "repair_audit.jsonl", investigation_audit_row(bundle))
+
+    if bool(getattr(args, "emit_json", False)):
+        print(json.dumps(bundle.to_jsonable(), indent=2, ensure_ascii=False))
+        return 0
+
+    print(format_investigation_human(bundle))
+    if write_audit:
+        print(f"\nAudit row appended: logs/repair_audit.jsonl (event_id={bundle.event_id})")
     return 0
 
 
@@ -845,6 +887,313 @@ def _append_proxy_disable_audit(repo: Path, row: dict[str, Any]) -> str:
     return str(row["audit_event_id"])
 
 
+def _append_stop_reverter_audit(repo: Path, row: dict[str, Any]) -> str:
+    """Append a stop-reverter audit row and return its id."""
+
+    append_jsonl_core(repo / "logs" / "repair_audit.jsonl", row)
+    return str(row["audit_event_id"])
+
+
+def _print_stop_reverter_result(result: Any, *, emit_json: bool) -> None:
+    """Render stop-reverter workflow output for operators."""
+
+    if emit_json:
+        print(
+            json.dumps(
+                {
+                    "action_id": result.action_id,
+                    "decision": result.decision,
+                    "dry_run": result.dry_run,
+                    "mutated": result.mutated,
+                    "reason": result.reason,
+                    "target": result.target.to_dict() if result.target else None,
+                    "parent_pid": result.parent_pid,
+                    "planned_argv": list(result.planned_argv),
+                    "taskkill_result": result.taskkill_result,
+                    "notes": list(result.notes),
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if result.target:
+        t = result.target
+        print(f"Local proxy port: {t.port}")
+        print(f"Listener PID: {t.pid}")
+        print(f"Process: {t.process_name or 'unknown'}")
+        print(f"Parent: {t.parent_name or 'unknown'} (PID {result.parent_pid or 'unknown'})")
+    else:
+        print("No listener row resolved for stop-reverter.")
+    print(f"Decision: {result.decision} ({result.reason})")
+    if result.planned_argv:
+        print(f"Planned parent taskkill: {' '.join(result.planned_argv)}")
+    print(f"Limitation: {REVERTER_ATTRIBUTION_LIMITATION}")
+    for note in result.notes:
+        if note not in (REVERTER_ATTRIBUTION_LIMITATION, LISTENER_ATTRIBUTION_LIMITATION):
+            print(f"Note: {note}")
+    if result.taskkill_result:
+        tk = result.taskkill_result
+        print(f"taskkill exit code: {tk.get('returncode')}")
+        if tk.get("stderr"):
+            print(str(tk.get("stderr")).strip())
+
+
+def _run_stop_reverter_step(
+    args: argparse.Namespace,
+    repo: Path,
+    *,
+    run: Any,
+    emit_json: bool,
+) -> int:
+    """Execute or preview stop-reverter; return CLI exit code."""
+
+    logs_dir = repo / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    dry = bool(getattr(args, "dry_run", True))
+    confirmation = str(
+        getattr(args, "stop_reverter_confirm_phrase", "")
+        or getattr(args, "stop_reverter_confirm", "")
+        or "",
+    )
+    port = getattr(args, "port", None)
+    if port is not None:
+        port = int(port)
+
+    result = run_stop_reverter_workflow(
+        dry_run=dry,
+        confirmation=confirmation,
+        port=port,
+        run=run,
+    )
+    event_kind = "preview_requested" if dry else "execute_requested"
+    if result.decision == "BLOCK":
+        event_kind = "blocked_confirmation_or_policy"
+    elif result.mutated:
+        event_kind = "successful_mutation"
+
+    audit_id = _append_stop_reverter_audit(
+        repo,
+        result.to_audit_row(event_kind=event_kind),
+    )
+
+    if not emit_json:
+        print("\n--- Stop proxy reverter ---")
+    _print_stop_reverter_result(result, emit_json=emit_json)
+
+    if dry:
+        if emit_json:
+            payload = {
+                "audit_event_id": audit_id,
+                "decision": result.decision,
+                "dry_run": True,
+                "mutated": False,
+                "reason": result.reason,
+            }
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        elif result.decision == "PREVIEW":
+            print("\n[dry-run] No taskkill executed. Audit row appended.")
+        return 0
+
+    if result.decision != "ALLOW" or not result.mutated:
+        if not emit_json:
+            if result.reason == "administrator_elevation_required":
+                print(
+                    "Blocked: Administrator elevation required. "
+                    "Re-run from an elevated PowerShell session.",
+                )
+            elif result.reason == "missing_confirmation":
+                print(
+                    f"Blocked: missing confirmation. Provide --confirm {STOP_PROXY_REVERTER_PHRASE}.",
+                )
+            elif result.reason == "confirmation_mismatch":
+                print(
+                    f"Blocked: confirmation mismatch. Expected exact phrase {STOP_PROXY_REVERTER_PHRASE}.",
+                )
+            elif result.reason == "no_eligible_parent_pid":
+                print("Blocked: no eligible parent powershell PID resolved (see proxy-owner).")
+            elif result.reason == "no_listener_pid":
+                print("Blocked: no listener PID resolved (see proxy-owner).")
+            else:
+                print(f"Blocked: {result.reason}.")
+        return 1
+
+    if not emit_json:
+        print("Parent reverter process tree termination reported success.")
+    return 0
+
+
+def cmd_proxy_stop_reverter(args: argparse.Namespace) -> int:
+    """Preview or apply scoped ``taskkill`` for the attributed proxy reverter parent."""
+
+    if (code := exit_code_if_not_windows("proxy-stop-reverter")) is not None:
+        return code
+    repo = _repo_root(getattr(args, "repo_root", None))
+    return _run_stop_reverter_step(
+        args,
+        repo,
+        run=subprocess.run,
+        emit_json=bool(getattr(args, "emit_json", False)),
+    )
+
+
+def _append_stop_listener_audit(repo: Path, row: dict[str, Any]) -> str:
+    """Append a stop-listener audit row and return its id."""
+
+    append_jsonl_core(repo / "logs" / "repair_audit.jsonl", row)
+    return str(row["audit_event_id"])
+
+
+def _print_stop_listener_result(result: Any, *, emit_json: bool) -> None:
+    """Render stop-listener workflow output for operators."""
+
+    if emit_json:
+        print(
+            json.dumps(
+                {
+                    "action_id": result.action_id,
+                    "decision": result.decision,
+                    "dry_run": result.dry_run,
+                    "mutated": result.mutated,
+                    "reason": result.reason,
+                    "target": result.target.to_dict() if result.target else None,
+                    "planned_argv": list(result.planned_argv),
+                    "taskkill_result": result.taskkill_result,
+                    "notes": list(result.notes),
+                },
+                indent=2,
+                ensure_ascii=False,
+            ),
+        )
+        return
+
+    if result.target:
+        t = result.target
+        print(f"Local proxy port: {t.port}")
+        print(f"Target PID: {t.pid}")
+        print(f"Process: {t.process_name or 'unknown'}")
+        print(f"Parent: {t.parent_name or 'unknown'}")
+    else:
+        print("No listener PID resolved for stop-listener.")
+    print(f"Decision: {result.decision} ({result.reason})")
+    if result.planned_argv:
+        print(f"Planned: {' '.join(result.planned_argv)}")
+    print(f"Limitation: {LISTENER_ATTRIBUTION_LIMITATION}")
+    for note in result.notes:
+        if note != LISTENER_ATTRIBUTION_LIMITATION:
+            print(f"Note: {note}")
+    if result.taskkill_result:
+        tk = result.taskkill_result
+        print(f"taskkill exit code: {tk.get('returncode')}")
+        if tk.get("stderr"):
+            print(str(tk.get("stderr")).strip())
+
+
+def _run_stop_listener_step(
+    args: argparse.Namespace,
+    repo: Path,
+    *,
+    run: Any,
+    emit_json: bool,
+) -> int:
+    """Execute or preview stop-listener; return CLI exit code."""
+
+    logs_dir = repo / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    dry = bool(getattr(args, "dry_run", True))
+    confirmation = str(
+        getattr(args, "stop_listener_confirm_phrase", "")
+        or getattr(args, "stop_listener_confirm", "")
+        or "",
+    )
+    port = getattr(args, "port", None)
+    if port is not None:
+        port = int(port)
+    stop_parent = bool(getattr(args, "stop_parent_tree", False))
+    reverter_confirmation = str(
+        getattr(args, "stop_reverter_confirm_phrase", "")
+        or getattr(args, "reverter_confirm_phrase", "")
+        or "",
+    )
+
+    result = run_stop_listener_workflow(
+        dry_run=dry,
+        confirmation=confirmation,
+        stop_parent_tree=stop_parent,
+        reverter_confirmation=reverter_confirmation,
+        port=port,
+        run=run,
+    )
+    event_kind = "preview_requested" if dry else "execute_requested"
+    if result.decision == "BLOCK":
+        event_kind = "blocked_confirmation_or_policy"
+    elif result.mutated:
+        event_kind = "successful_mutation"
+
+    audit_id = _append_stop_listener_audit(
+        repo,
+        result.to_audit_row(event_kind=event_kind),
+    )
+
+    if not emit_json:
+        print("\n--- Stop proxy listener ---")
+    _print_stop_listener_result(result, emit_json=emit_json)
+
+    if dry:
+        if emit_json:
+            payload = {
+                "audit_event_id": audit_id,
+                "decision": result.decision,
+                "dry_run": True,
+                "mutated": False,
+                "reason": result.reason,
+            }
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        elif result.decision == "PREVIEW":
+            print("\n[dry-run] No taskkill executed. Audit row appended.")
+        return 0
+
+    if result.decision != "ALLOW" or not result.mutated:
+        if not emit_json:
+            if result.reason == "administrator_elevation_required":
+                print(
+                    "Blocked: Administrator elevation required. "
+                    "Re-run from an elevated PowerShell session.",
+                )
+            elif result.reason == "missing_confirmation":
+                print(
+                    f"Blocked: missing confirmation. Provide --stop-listener-confirm {STOP_PROXY_LISTENER_PHRASE}.",
+                )
+            elif result.reason == "confirmation_mismatch":
+                print(
+                    f"Blocked: confirmation mismatch. Expected exact phrase {STOP_PROXY_LISTENER_PHRASE}.",
+                )
+            elif result.reason == "no_listener_pid":
+                print("Blocked: no listener PID resolved (see proxy-owner).")
+            else:
+                print(f"Blocked: {result.reason}.")
+        return 1
+
+    if not emit_json:
+        print("Listener process tree termination reported success.")
+    return 0
+
+
+def cmd_proxy_stop_listener(args: argparse.Namespace) -> int:
+    """Preview or apply scoped ``taskkill`` for the attributed localhost proxy listener."""
+
+    if (code := exit_code_if_not_windows("proxy-stop-listener")) is not None:
+        return code
+    repo = _repo_root(getattr(args, "repo_root", None))
+    return _run_stop_listener_step(
+        args,
+        repo,
+        run=subprocess.run,
+        emit_json=bool(getattr(args, "emit_json", False)),
+    )
+
+
 def cmd_proxy_disable(args: argparse.Namespace) -> int:
     """Preview or apply HKCU WinINET proxy disable mutations (structured ``reg`` argv only).
 
@@ -973,6 +1322,10 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
             print(json.dumps(payload, indent=2, ensure_ascii=False))
         else:
             print("\n[dry-run] No registry writes or rollback snapshot persisted. Audit row appended.")
+        if bool(getattr(args, "stop_reverter_first", False)):
+            _run_stop_reverter_step(args, repo, run=run, emit_json=emit_json)
+        if bool(getattr(args, "stop_listener_first", False)):
+            _run_stop_listener_step(args, repo, run=run, emit_json=emit_json)
         return 0
 
     if decision != "ALLOW":
@@ -1004,6 +1357,16 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         else:
             print(f"Blocked: {reason}. Provide --dry-run false --confirm {CONFIRMATION_PHRASE}.")
         return 1
+
+    if bool(getattr(args, "stop_reverter_first", False)):
+        rev_rc = _run_stop_reverter_step(args, repo, run=run, emit_json=emit_json)
+        if rev_rc != 0:
+            return rev_rc
+
+    if bool(getattr(args, "stop_listener_first", False)):
+        stop_rc = _run_stop_listener_step(args, repo, run=run, emit_json=emit_json)
+        if stop_rc != 0:
+            return stop_rc
 
     capture_pre = capture_wininet_snapshot(run=run)
     rollback_plan = build_rollback_plan(capture_pre)

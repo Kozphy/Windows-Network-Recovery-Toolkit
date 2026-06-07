@@ -178,6 +178,32 @@ which process wrote registry values without stronger registry-write telemetry.
 4. Follow `recommended_next_test` for confidence improvement.
 5. Use repair preview guidance first; execute mutations only through explicit confirmation paths.
 
+When proxy soak reports `REMEDIATION_NOT_STICKY`, a surviving parent `powershell.exe` may respawn `node.exe` on a new port after listener-only stop. Use the Administrator recovery script or stop the reverter parent first:
+
+```powershell
+# One-shot Administrator recovery (re-launches elevated if needed):
+.\scripts\run_proxy_recovery_admin.ps1
+
+# Manual steps:
+python -m src proxy-owner
+python -m src proxy-stop-reverter --dry-run
+python -m src proxy-stop-reverter --dry-run false --confirm STOP_PROXY_REVERTER
+python -m src proxy-stop-listener --dry-run false --confirm STOP_PROXY_LISTENER
+python -m src proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY --stop-reverter-first --stop-reverter-confirm STOP_PROXY_REVERTER --stop-listener-first --stop-listener-confirm STOP_PROXY_LISTENER --soak-minutes 15
+```
+
+---
+
+## Current best demo
+
+Local-first Windows network recovery toolkit that explains proxy failures, previews safe fixes, and logs every decision.
+
+1. Read-only investigation: `python -m src proxy-investigate`
+2. Watch proxy drift: `python -m src proxy-watch --interval 5`
+3. Preview disable: `python -m src proxy-disable` (default dry-run)
+4. Confirmed fix + soak: `python -m src proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY --soak-minutes 15`
+5. Administrator recovery (reverter + listener + soak): `.\scripts\run_proxy_recovery_admin.ps1`
+
 ---
 
 ## Proxy Hijack & MITM Risk Detection Engine

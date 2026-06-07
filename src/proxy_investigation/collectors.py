@@ -38,6 +38,7 @@ from typing import Any
 
 from ..core.models import registry_with_parsed
 from ..proxy_guard.localhost_attribution import build_localhost_proxy_attribution
+from ..proxy_guard.parser import parse_proxy_server
 from ..proxy_guard.process_inventory import capture_process_inventory, heuristic_proxy_actor_candidates
 from ..proxy_guard.registry import read_proxy_registry
 from ..proxy_guard.snapshot_capture import capture_proxy_snapshot
@@ -101,6 +102,7 @@ def collect_proxy_state(*, run: Callable[..., Any] = subprocess.run) -> dict[str
         Invokes registry reads and ``capture_proxy_snapshot``.
     """
     reg = read_proxy_registry(run=run)
+    parsed = parse_proxy_server(reg.proxy_server)
     snap = capture_proxy_snapshot(registry_snapshot=reg, run=run)
     return {
         "registry_path": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings",
@@ -123,7 +125,8 @@ def collect_proxy_state(*, run: Callable[..., Any] = subprocess.run) -> dict[str
         "git": {"http.proxy": snap.git_http_proxy, "https.proxy": snap.git_https_proxy},
         "npm": {"proxy": snap.npm_proxy, "https-proxy": snap.npm_https_proxy},
         "captured_at": snap.captured_at,
-        "parsed_proxy": registry_with_parsed(reg).get("parsed_proxy"),
+        "parsed_proxy": parsed.to_dict(),
+        "registry_merge": registry_with_parsed(reg, parsed),
     }
 
 
@@ -140,11 +143,8 @@ def collect_listener_evidence(*, run: Callable[..., Any] = subprocess.run) -> di
         Subprocess/netstat-style probes via ``proxy_guard`` helpers.
     """
     reg = read_proxy_registry(run=run)
-    merged = registry_with_parsed(reg)
-    from ..proxy_guard.parser import parse_proxy_server
-
-    p = parse_proxy_server(reg.proxy_server)
-    block = build_localhost_proxy_attribution(reg, p, run=run)
+    parsed = parse_proxy_server(reg.proxy_server)
+    block = build_localhost_proxy_attribution(reg, parsed, run=run)
     port = block.get("localhost_port")
     inventory = capture_process_inventory(proxy_localhost_port=port, run=run)
     return {
@@ -170,9 +170,8 @@ def collect_dev_process_correlation(*, run: Callable[..., Any] = subprocess.run)
         Output includes ``limitations`` reminding operators that correlation ≠ writer proof.
     """
     reg = read_proxy_registry(run=run)
-    merged = registry_with_parsed(reg)
-    parsed_raw = merged.get("parsed_proxy") or {}
-    port = parsed_raw.get("localhost_port") if isinstance(parsed_raw, dict) else None
+    parsed = parse_proxy_server(reg.proxy_server)
+    port = parsed.localhost_port
     inv = capture_process_inventory(proxy_localhost_port=port, run=run)
     rows = inv.get("process_rows") or []
     dev_rows: list[dict[str, Any]] = []

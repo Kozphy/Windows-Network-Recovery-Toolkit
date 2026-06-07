@@ -60,10 +60,13 @@ from .command_handlers import (
     cmd_replay_live_run,
     cmd_proxy_attribution,
     cmd_proxy_diagnose,
+    cmd_proxy_investigate,
     cmd_proxy_disable,
     cmd_proxy_guard,
     cmd_proxy_monitor,
     cmd_proxy_owner,
+    cmd_proxy_stop_listener,
+    cmd_proxy_stop_reverter,
     cmd_proxy_report,
     cmd_proxy_watch_report,
     cmd_proxy_rollback,
@@ -138,6 +141,99 @@ def _parse_bool_arg(value: str | bool | None) -> bool:
     if normalized in {"0", "false", "no", "n", "off"}:
         return False
     raise argparse.ArgumentTypeError("expected true or false")
+
+
+def _add_proxy_stop_listener_arguments(parser: argparse.ArgumentParser, *, include_chained: bool = False) -> None:
+    """Register shared flags for ``proxy-stop-listener`` and chained ``proxy-disable`` flows."""
+
+    parser.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        help="Preview only by default. Use --dry-run false with --confirm STOP_PROXY_LISTENER to apply.",
+    )
+    parser.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="stop_listener_confirm_phrase",
+        metavar="PHRASE",
+        help="Live apply requires exact phrase STOP_PROXY_LISTENER.",
+    )
+    parser.add_argument("--port", type=int, default=None, help="Override port (defaults to parsed ProxyServer).")
+    parser.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    parser.add_argument(
+        "--stop-parent",
+        action="store_true",
+        dest="stop_parent_tree",
+        help=(
+            "Also terminate attributed parent powershell tree first (live apply requires "
+            "--reverter-confirm STOP_PROXY_REVERTER in addition to STOP_PROXY_LISTENER)."
+        ),
+    )
+    parser.add_argument(
+        "--reverter-confirm",
+        type=str,
+        default="",
+        dest="stop_reverter_confirm_phrase",
+        metavar="PHRASE",
+        help="Typed phrase STOP_PROXY_REVERTER when using --stop-parent on live apply.",
+    )
+    if include_chained:
+        parser.add_argument(
+            "--stop-listener-first",
+            action="store_true",
+            help="Before disable apply, run stop-listener (requires --stop-listener-confirm STOP_PROXY_LISTENER).",
+        )
+        parser.add_argument(
+            "--stop-listener-confirm",
+            type=str,
+            default="",
+            dest="stop_listener_confirm_phrase",
+            metavar="PHRASE",
+            help="Typed phrase STOP_PROXY_LISTENER when using --stop-listener-first on live apply.",
+        )
+
+
+def _add_proxy_stop_reverter_arguments(parser: argparse.ArgumentParser, *, include_chained: bool = False) -> None:
+    """Register shared flags for ``proxy-stop-reverter`` and chained ``proxy-disable`` flows."""
+
+    if include_chained:
+        parser.add_argument(
+            "--stop-reverter-first",
+            action="store_true",
+            help="Before disable apply, run stop-reverter (requires --stop-reverter-confirm STOP_PROXY_REVERTER).",
+        )
+        parser.add_argument(
+            "--stop-reverter-confirm",
+            type=str,
+            default="",
+            dest="stop_reverter_confirm_phrase",
+            metavar="PHRASE",
+            help="Typed phrase STOP_PROXY_REVERTER when using --stop-reverter-first on live apply.",
+        )
+        return
+
+    parser.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        help="Preview only by default. Use --dry-run false with --confirm STOP_PROXY_REVERTER to apply.",
+    )
+    parser.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="stop_reverter_confirm_phrase",
+        metavar="PHRASE",
+        help="Live apply requires exact phrase STOP_PROXY_REVERTER.",
+    )
+    parser.add_argument("--port", type=int, default=None, help="Override port (defaults to parsed ProxyServer).")
+    parser.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
 
 
 def _fingerprint() -> dict[str, str]:
@@ -1153,6 +1249,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_po.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON attribution block.")
     p_po.set_defaults(func=cmd_proxy_owner)
 
+    p_psl = sub.add_parser(
+        "proxy-stop-listener",
+        help="Preview/apply scoped taskkill for attributed localhost proxy listener (typed confirm, Admin).",
+    )
+    _add_proxy_stop_listener_arguments(p_psl)
+    p_psl.set_defaults(func=cmd_proxy_stop_listener, stop_listener_first=False, stop_reverter_first=False)
+
+    p_psr = sub.add_parser(
+        "proxy-stop-reverter",
+        help="Preview/apply scoped taskkill for attributed proxy reverter parent (typed confirm, Admin).",
+    )
+    _add_proxy_stop_reverter_arguments(p_psr)
+    p_psr.set_defaults(func=cmd_proxy_stop_reverter, stop_reverter_first=False)
+
     p_pm = sub.add_parser("proxy-monitor", help="Poll HKCU proxy registry for changes (read-only).")
     p_pm.add_argument("--interval", type=float, default=5.0, help="Seconds between polls (default 5).")
     p_pm.add_argument("--once", action="store_true", help="Single poll then exit.")
@@ -1379,6 +1489,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_pxdiag.set_defaults(func=cmd_proxy_diagnose)
 
+    p_pxin = sub.add_parser(
+        "proxy-investigate",
+        help="Read-only unified proxy investigation (OBSERVED/CORRELATED/NOT PROVEN; no mutations).",
+    )
+    p_pxin.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_pxin.add_argument(
+        "--audit",
+        dest="investigate_audit",
+        action="store_true",
+        help="Append one read-only investigation row to logs/repair_audit.jsonl.",
+    )
+    p_pxin.add_argument(
+        "--no-audit",
+        dest="investigate_no_audit",
+        action="store_true",
+        help="Do not write audit rows (default unless --audit).",
+    )
+    p_pxin.set_defaults(func=cmd_proxy_investigate, investigate_audit=False, investigate_no_audit=False)
+
     p_pxattr = sub.add_parser(
         "proxy-attribution",
         help="Structured localhost proxy listener attribution (netstat + tasklist + CIM).",
@@ -1453,7 +1582,28 @@ def build_parser() -> argparse.ArgumentParser:
         default=5.0,
         help="Soak poll interval (default 5).",
     )
-    p_pd.set_defaults(func=cmd_proxy_disable, clear_server=True, clear_autoconfig=True)
+    p_pd.add_argument(
+        "--stop-listener-first",
+        action="store_true",
+        help="Before disable apply, run stop-listener (requires --stop-listener-confirm STOP_PROXY_LISTENER).",
+    )
+    p_pd.add_argument(
+        "--stop-listener-confirm",
+        type=str,
+        default="",
+        dest="stop_listener_confirm_phrase",
+        metavar="PHRASE",
+        help="Typed phrase STOP_PROXY_LISTENER when using --stop-listener-first on live apply.",
+    )
+    _add_proxy_stop_reverter_arguments(p_pd, include_chained=True)
+    p_pd.set_defaults(
+        func=cmd_proxy_disable,
+        clear_server=True,
+        clear_autoconfig=True,
+        stop_listener_first=False,
+        stop_reverter_first=False,
+        stop_parent_tree=False,
+    )
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)
@@ -1482,7 +1632,28 @@ def build_parser() -> argparse.ArgumentParser:
     p_proxy_disable.add_argument("--no-clear-autoconfig", action="store_false", dest="clear_autoconfig")
     p_proxy_disable.add_argument("--soak-minutes", type=float, default=0.0)
     p_proxy_disable.add_argument("--soak-poll-seconds", type=float, default=5.0)
-    p_proxy_disable.set_defaults(func=cmd_proxy_disable, clear_server=True, clear_autoconfig=True)
+    p_proxy_disable.add_argument(
+        "--stop-listener-first",
+        action="store_true",
+        help="Before disable apply, run stop-listener (requires --stop-listener-confirm STOP_PROXY_LISTENER).",
+    )
+    p_proxy_disable.add_argument(
+        "--stop-listener-confirm",
+        type=str,
+        default="",
+        dest="stop_listener_confirm_phrase",
+        metavar="PHRASE",
+        help="Typed phrase STOP_PROXY_LISTENER when using --stop-listener-first on live apply.",
+    )
+    _add_proxy_stop_reverter_arguments(p_proxy_disable, include_chained=True)
+    p_proxy_disable.set_defaults(
+        func=cmd_proxy_disable,
+        clear_server=True,
+        clear_autoconfig=True,
+        stop_listener_first=False,
+        stop_reverter_first=False,
+        stop_parent_tree=False,
+    )
 
     p_proxy_restore_lkg = p_proxy_sub.add_parser(
         "restore-lkg",

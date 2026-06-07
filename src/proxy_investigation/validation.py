@@ -59,7 +59,7 @@ def run_validation(
     parsed = parse_proxy_server(reg.proxy_server)
     conn = capture_connectivity_snapshot(
         run=run,
-        snapshot=None,
+        snapshot=reg,
         timeout_seconds=timeout_seconds,
     )
     path = assess_proxy_path_operational(

@@ -75,7 +75,7 @@ def render_incident_report(result: ProxyInvestigationResult) -> str:
 
     dev_rows = result.dev_process_evidence.get("dev_process_rows") or []
     if dev_rows:
-        lines.append("", "### Developer-tooling processes (association only)")
+        lines.extend(["", "### Developer-tooling processes (association only)"])
         for row in dev_rows[:8]:
             if isinstance(row, dict):
                 lines.append(

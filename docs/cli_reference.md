@@ -44,7 +44,7 @@ Implementation reference: `**exit_code_if_not_windows**` / `**platform.system()*
 | **export-report**                                                                                                                                    | Any                                                                       | `**last_diagnosis.json`**, or `**--live**` + `**last_diagnosis_live.json**`.                                                              |
 | **diagnose-live**                                                                                                                                    | **Windows**                                                               | Live snapshot + v2 hypotheses; writes `**reports/last_diagnosis_live.json`**.                                                             |
 | **snapshot**                                                                                                                                         | **Windows**                                                               | Full `**LiveNetworkSnapshot`** under `**reports/snapshots/**`.                                                                            |
-| **proxy-status**, **proxy-owner**, **proxy-monitor**, **proxy-watch**, **proxy-guard**, **proxy-diagnose**, **proxy-attribution**, **proxy-disable** | **Windows**                                                               | HKCU WinINET / `reg` / netstat-style probes. (`**proxy-guard`** is guarded before `**--show-lkg**` too.)                                  |
+| **proxy-status**, **proxy-owner**, **proxy-investigate**, **proxy-monitor**, **proxy-watch**, **proxy-guard**, **proxy-diagnose**, **proxy-attribution**, **proxy-disable** | **Windows**                                                               | HKCU WinINET / `reg` / netstat-style probes. (`**proxy-guard`** is guarded before `**--show-lkg**` too.)                                  |
 | **proxy-report**                                                                                                                                     | Any                                                                       | Reads `**logs/proxy_guard.jsonl`** under repo root.                                                                                       |
 | **proxy-rollback**                                                                                                                                   | **Windows**                                                               | `**--snapshot-id`** or `**--from-snapshot**` per help; typed confirm for destructive paths.                                               |
 | **proxy-snapshot save**, **diff**, **restore**                                                                                                       | **Windows**                                                               | Live capture/compare/restore of allowlisted surfaces.                                                                                     |
@@ -99,6 +99,9 @@ python -c "from pathlib import Path; from src.proxy_investigation import run_pro
 
 ```powershell
 python -m src proxy-status
+python -m src proxy-investigate
+python -m src proxy-investigate --json
+python -m src proxy-investigate --audit
 python -m src proxy-diagnose
 python -m src proxy-diagnose --json
 python -m src proxy-attribution

@@ -190,6 +190,32 @@ _REMEDIATION_REGISTRY: dict[str, RemediationActionDef] = {
         manual_only=False,
         rollback_plan="Reconfigure WinHTTP/user proxy per policy documentation.",
     ),
+    "stop_proxy_listener": RemediationActionDef(
+        action_name="stop_proxy_listener",
+        script_path=None,
+        risk_level="high",
+        allowed_surfaces=("cli",),
+        api_execute_allowed=False,
+        requires_confirmation=True,
+        confirmation_phrase="STOP_PROXY_LISTENER",
+        dry_run_allowed=True,
+        manual_only=True,
+        rollback_plan="Process termination is not reversible; restart dev tooling manually if needed.",
+    ),
+    "stop_proxy_reverter": RemediationActionDef(
+        action_name="stop_proxy_reverter",
+        script_path=None,
+        risk_level="high",
+        allowed_surfaces=("cli",),
+        api_execute_allowed=False,
+        requires_confirmation=True,
+        confirmation_phrase="STOP_PROXY_REVERTER",
+        dry_run_allowed=True,
+        manual_only=True,
+        rollback_plan=(
+            "Parent powershell termination is not reversible; restart dev proxy scripts manually if needed."
+        ),
+    ),
     "winsock_reset": RemediationActionDef(
         action_name="winsock_reset",
         script_path=None,

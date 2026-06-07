@@ -72,9 +72,18 @@ After operator runs proof workflow **and** types confirmation, safe-tier `restor
 ## Remediation preview (no auto-execute)
 
 1. `python -m src proxy disable` (preview)  
-2. `python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY --soak-minutes 15` (confirmed)  
-3. Manually stop dev proxy process tree if proxy re-enables  
-4. `python -m src proxy-status` and `python -m src proxy-path-status` for validation  
+2. When soak reports `REMEDIATION_NOT_STICKY`, preview reverter + listener stop:  
+   `python -m src proxy-stop-reverter --dry-run`  
+   `python -m src proxy-stop-listener --dry-run`  
+3. Confirmed stop (Administrator PowerShell):  
+   `python -m src proxy-stop-reverter --dry-run false --confirm STOP_PROXY_REVERTER`  
+   `python -m src proxy-stop-listener --dry-run false --confirm STOP_PROXY_LISTENER`  
+4. Confirmed disable + optional chained reverter/listener:  
+   `python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY --stop-reverter-first --stop-reverter-confirm STOP_PROXY_REVERTER --stop-listener-first --stop-listener-confirm STOP_PROXY_LISTENER --soak-minutes 15`  
+   Or run `.\scripts\run_proxy_recovery_admin.ps1` (re-launches elevated if needed).  
+5. `python -m src proxy-status` and `python -m src proxy-path-status` for validation  
+
+Reverter stop targets the attributed parent `powershell.exe` tree only — not registry-writer proof. Listener stop uses port attribution only.
 
 ## Final validation
 
