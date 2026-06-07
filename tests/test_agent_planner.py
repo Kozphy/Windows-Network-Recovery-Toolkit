@@ -29,7 +29,7 @@ def _diag(observations: list[dict[str, Any]], *, confidence: float = 0.7, proof:
 def test_planner_returns_recommendation_only_response_with_blocked_actions() -> None:
     diag = _diag(
         [
-            {"name": "wininet_proxy_state", "status": "ok", "observed_value": {"proxy_server": "127.0.0.1:57863", "proxy_enable": 1}},
+            {"name": "wininet_proxy_state", "status": "ok", "observed_value": {"proxy_server": "127.0.0.1:54321", "proxy_enable": 1}},
             {"name": "https_probe", "status": "failed"},
         ]
     )

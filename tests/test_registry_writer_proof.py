@@ -37,7 +37,7 @@ def test_mock_sysmon_event_is_parsed_into_proof_candidate(monkeypatch: pytest.Mo
         target_object=r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyServer",
         value_name="ProxyServer",
         previous_value=None,
-        current_value="127.0.0.1:57863",
+        current_value="127.0.0.1:54321",
         event_source="sysmon_event_13",
         source_event_id="13",
         confidence=0.94,

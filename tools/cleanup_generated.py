@@ -7,7 +7,15 @@ import argparse
 import shutil
 from pathlib import Path
 
-DEFAULT_TARGETS = ("logs", "reports", "platform_data", ".pytest_cache", "htmlcov")
+DEFAULT_TARGETS = (
+    "logs",
+    "reports",
+    "platform_data",
+    "platform_data_fleet_demo",
+    "data/failure_blocks",
+    ".pytest_cache",
+    "htmlcov",
+)
 
 
 def _clean(path: Path, *, apply: bool) -> list[str]:
@@ -31,7 +39,9 @@ def _clean(path: Path, *, apply: bool) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Clean generated runtime directories.")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument("--apply", action="store_true", help="Actually delete (default is dry-run preview).")
+    parser.add_argument(
+        "--apply", action="store_true", help="Actually delete (default is dry-run preview)."
+    )
     parser.add_argument("--targets", nargs="*", default=list(DEFAULT_TARGETS))
     args = parser.parse_args(argv)
 

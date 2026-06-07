@@ -9,6 +9,13 @@
 
 **Safety-first:** No silent process kill · no silent firewall reset · no silent adapter disable · no registry mutation without typed confirmation · listener correlation is candidate evidence only, not proof.
 
+### Privacy and public release
+
+- **Local-first by design** — no default cloud upload; optional agent POST is explicit opt-in.
+- **Synthetic fixtures only in git** — real `logs/`, `reports/`, and `platform_data/` are gitignored; use `examples/` and `tests/fixtures/`.
+- **Before publishing** — run `python tools/public_release_audit.py --tracked-only` and follow [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md).
+- **Epistemic limits** — observation ≠ inference ≠ proof; confidence is ordinal ranking, not probability; registry-writer proof requires Sysmon/Procmon-class telemetry.
+
 | Quick link | Doc |
 |------------|-----|
 | **3-minute demo** | [docs/demo_3_minute.md](docs/demo_3_minute.md) |
@@ -16,6 +23,7 @@
 | **Interview case study** | [docs/interview_case_study_tier1.md](docs/interview_case_study_tier1.md) |
 | **Production checklist** | [docs/production_readiness.md](docs/production_readiness.md) |
 | **API contract** | [docs/api_contract_platform.md](docs/api_contract_platform.md) |
+| **Public release** | [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md) · [SECURITY.md](SECURITY.md) |
 
 ### Core system story
 

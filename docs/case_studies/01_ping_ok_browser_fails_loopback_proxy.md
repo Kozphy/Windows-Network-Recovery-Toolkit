@@ -15,9 +15,9 @@ Windows 11 laptop. User reports Edge shows timeouts or proxy errors while `ping 
 | `tcp443_ok` | true (transport probe) |
 | `browser_https_failed` / app HTTPS | false |
 | `wininet_proxy_enable` | 1 |
-| `wininet_proxy_server` | `127.0.0.1:56186` |
+| `wininet_proxy_server` | `127.0.0.1:54321` |
 | `winhttp_direct_access` | true (WinHTTP often still direct) |
-| `listener_up` | true on port 56186 |
+| `listener_up` | true on port 54321 |
 | `proxied_https_ok` | false |
 | `bypass_https_ok` | true |
 | Sysmon registry SetValue (proxy keys) | not found in search window |

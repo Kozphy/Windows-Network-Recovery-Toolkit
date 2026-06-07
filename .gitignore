@@ -3,27 +3,52 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyc
 *.egg-info/
 .pytest_cache/
 .coverage
+coverage/
 htmlcov/
 
-# Node / build (if you reintroduce a frontend)
-node_modules/
-.next/
+# Virtual environments
 .venv/
 venv/
+
+# Node / frontend build
+node_modules/
+.next/
 dist/
 build/
 .cache/
 
-# Runtime (local only)
+# Environment secrets (keep examples)
+.env
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example
+
+# Runtime output (local only — never commit real machine data)
 *.log
-logs/*
+*.tmp
+logs/
 !logs/.gitignore
-reports/*
+reports/
 !reports/.gitignore
-platform_data*/
+platform_data/
+platform_data_fleet_demo/
+data/failure_blocks/
+!data/failure_blocks/.gitignore
+!platform_data/.gitkeep
+
+# Operator-generated snapshots (use *.example.json in repo)
+config/last_known_good_proxy.json
+
+# JSONL audit/runtime exports — allow synthetic demo fixtures only
+*.jsonl
+!tests/fixtures/**/*.jsonl
+!examples/**/*.jsonl
+!demo_data/**/*.jsonl
 
 # OS / editor
 .DS_Store
@@ -31,11 +56,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Large / generated artifacts
+# Large / binary artifacts
 *.sqlite
-*.jsonl
 *.zip
 *.exe
 *.msi
 
-# Tests are source artifacts; keep test files visible while __pycache__/ remains ignored above.
+# Tests and committed synthetic fixtures remain visible (see negated *.jsonl above).

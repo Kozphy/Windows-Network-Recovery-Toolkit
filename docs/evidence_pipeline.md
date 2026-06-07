@@ -90,7 +90,7 @@ and audits can reason about availability without parsing per-source bundles:
         "user": "...",
         "target_object": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyServer",
         "value_name": "ProxyServer",
-        "details": "127.0.0.1:57863",
+        "details": "127.0.0.1:54321",
         "event_source": "sysmon_event_13",
         "source_event_id": "13",
         "confidence": 0.94

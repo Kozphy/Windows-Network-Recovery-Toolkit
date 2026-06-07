@@ -21,6 +21,15 @@ Placeholders: `logs/.gitignore`, `reports/.gitignore` keep directories without c
 ## Tools
 
 ```powershell
+# Privacy scan before public push (tracked git files only)
+python tools/public_release_audit.py --tracked-only
+
+# Full local tree scan (includes untracked runtime artifacts)
+python tools/public_release_audit.py --include-untracked
+
+# Same audit via scripts/ entry point
+python scripts/public_release_audit.py --tracked-only
+
 # Preview largest files (excludes common generated dirs)
 python tools/repo_size_audit.py
 

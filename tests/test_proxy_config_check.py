@@ -101,7 +101,7 @@ def test_classify_findings_detects_wininet_winhttp_mismatch_and_localhost_drift(
             "available": True,
             "values": {
                 "ProxyEnable": 1,
-                "ProxyServer": "127.0.0.1:57863",
+                "ProxyServer": "127.0.0.1:54321",
                 "AutoConfigURL": None,
                 "ProxyOverride": None,
             },

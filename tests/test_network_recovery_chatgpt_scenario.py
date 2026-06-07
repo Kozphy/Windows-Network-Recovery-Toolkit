@@ -48,8 +48,8 @@ def test_browser_healthy_app_degraded_event() -> None:
 def test_proxy_drift_raises_proxy_hypothesis() -> None:
     signals = _degraded_browser_healthy_signals(
         wininet_proxy_enable=1,
-        wininet_proxy_server="127.0.0.1:56186",
-        localhost_listener_ports=(56186,),
+        wininet_proxy_server="127.0.0.1:54321",
+        localhost_listener_ports=(54321,),
     )
     analysis = analyze_chatgpt_app_firewall(signals)
     hypos = [h.hypothesis_id for h in analysis["hypotheses"]]  # type: ignore[index]

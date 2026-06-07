@@ -18,7 +18,7 @@ from src.proxy_guard.proxy_path_operational import (
 from src.proxy_guard.proxy_path_operational import _run_https_contrast
 
 
-def _parsed_localhost(port: int = 56186) -> ParsedProxy:
+def _parsed_localhost(port: int = 54321) -> ParsedProxy:
     return ParsedProxy(
         raw=f"127.0.0.1:{port}",
         proxy_mode="manual_localhost",
@@ -72,9 +72,9 @@ def test_case_a_broken_loopback_dead_listener() -> None:
 def test_case_b_operational_listener_and_https() -> None:
     state = classify_composite_state(
         proxy_enable=1,
-        proxy_server="127.0.0.1:56186",
+        proxy_server="127.0.0.1:54321",
         auto_config_url=None,
-        parsed=_parsed_localhost(56186),
+        parsed=_parsed_localhost(54321),
         listener_up=True,
         proxied_https_ok=True,
         bypass_https_ok=True,
@@ -86,9 +86,9 @@ def test_case_b_operational_listener_and_https() -> None:
 def test_latent_misconfig_proxy_server_only() -> None:
     state = classify_composite_state(
         proxy_enable=0,
-        proxy_server="127.0.0.1:56186",
+        proxy_server="127.0.0.1:54321",
         auto_config_url=None,
-        parsed=_parsed_localhost(56186),
+        parsed=_parsed_localhost(54321),
         listener_up=True,
         proxied_https_ok=None,
         bypass_https_ok=True,
@@ -130,7 +130,7 @@ def test_guard_blocks_non_operational_path() -> None:
     )
     gd = evaluate_proxy_transition(
         prior_snap=_snap(0, None),
-        curr_snap=_snap(1, "127.0.0.1:56186"),
+        curr_snap=_snap(1, "127.0.0.1:54321"),
         parsed_prior=_parsed_localhost(),
         parsed_after=_parsed_localhost(),
         attribution=AttributionResult(mode="unknown", confidence="low", process=None, limitations=()),
@@ -164,7 +164,7 @@ def test_guard_allows_operational_path_despite_unknown_attribution() -> None:
     )
     gd = evaluate_proxy_transition(
         prior_snap=_snap(0, None),
-        curr_snap=_snap(1, "127.0.0.1:56186"),
+        curr_snap=_snap(1, "127.0.0.1:54321"),
         parsed_prior=_parsed_localhost(),
         parsed_after=_parsed_localhost(),
         attribution=AttributionResult(mode="unknown", confidence="low", process=None, limitations=()),
@@ -201,7 +201,7 @@ def test_assess_with_mocked_curl_contrast() -> None:
 
     assessment = assess_proxy_path_operational(
         proxy_enable=1,
-        proxy_server="127.0.0.1:56186",
+        proxy_server="127.0.0.1:54321",
         auto_config_url=None,
         parsed=_parsed_localhost(),
         port_listen=False,

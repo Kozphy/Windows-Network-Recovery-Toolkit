@@ -51,8 +51,8 @@ def test_v1_format_cpu_snapshot_not_causality() -> None:
             "timestamp_utc": "2026-05-17T07:50:05Z",
             "old_enable": 0,
             "new_enable": 1,
-            "old_server_masked": "[IP]:56186",
-            "new_server_masked": "[IP]:56186",
+            "old_server_masked": "[IP]:54321",
+            "new_server_masked": "[IP]:54321",
             "recent_processes": ["ChatGPT", "msedge"],
         }
     )

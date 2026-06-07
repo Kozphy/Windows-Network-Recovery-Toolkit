@@ -36,7 +36,7 @@ def _fixture_probes(endpoint_id: str, *, include_live: bool = True) -> list[Prob
         ProbeResult(
             name="wininet_proxy_state",
             status="ok",
-            observed_value={"proxy_enable": 1, "proxy_server": "127.0.0.1:57863"},
+            observed_value={"proxy_enable": 1, "proxy_server": "127.0.0.1:54321"},
         ),
         ProbeResult(
             name="localhost_proxy_listener",

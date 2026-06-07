@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "name": "demo-baseline",
+  "saved_at": "2026-01-15T12:00:00+00:00",
+  "risk_summary": "low",
+  "snapshot": {
+    "proxy_enable": 0,
+    "proxy_server": "",
+    "proxy_override": "<local>",
+    "auto_config_url": null,
+    "auto_detect": 1,
+    "winhttp_proxy": "Direct access (no proxy server).",
+    "winhttp_direct_access": true,
+    "winhttp_proxy_server_literal": null,
+    "git_http_proxy": null,
+    "git_https_proxy": null,
+    "npm_proxy": null,
+    "npm_https_proxy": null,
+    "user_http_proxy": null,
+    "user_https_proxy": null,
+    "user_all_proxy": null,
+    "user_no_proxy": null,
+    "captured_at": "2026-01-15T12:00:00+00:00",
+    "note": "Synthetic demo snapshot — not captured from a real machine."
+  }
+}

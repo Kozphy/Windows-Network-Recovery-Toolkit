@@ -19,7 +19,7 @@ Payloads intentionally avoid machine identifiers beyond what already appears ins
 | Path | Role |
 |------|------|
 | `logs/proxy_known_good_snapshots.jsonl` | Append-only stream; each line is `{ schema_version, name, saved_at, risk_summary, snapshot }`. Latest row per `--name` wins for `show`, `diff`, `restore`. |
-| `config/last_known_good_proxy.json` | Optional single-file pointer written with `--as-default` (same inner `snapshot` object — useful for humans and tooling). |
+| `config/last_known_good_proxy.example.json` | Committed synthetic template; copy locally to `config/last_known_good_proxy.json` (gitignored). |
 
 ## Operator workflow
 
