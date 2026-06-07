@@ -227,10 +227,26 @@ def agent_heartbeat(
         last_seen_at=utc_now_iso(),
     )
     upsert_endpoint(ident.model_dump())
+    from platform_core.fleet_store import append_heartbeat
+
+    fleet_record = append_heartbeat(
+        {
+            "endpoint_id": body.endpoint_id,
+            "hostname": body.endpoint_id[:12],
+            "os_name": body.os_family or body.os_version,
+            "agent_version": body.agent_version,
+            "last_seen": ident.last_seen_at,
+            "risk_state": "healthy",
+        }
+    )
     write_audit(
         actor="agent", action="heartbeat", target_type="endpoint", target_id=body.endpoint_id
     )
-    return {"stored": True, "endpoint_id": body.endpoint_id}
+    return {
+        "stored": True,
+        "endpoint_id": body.endpoint_id,
+        "fleet": fleet_record.to_summary_row(),
+    }
 
 
 @router.post("/ingest/heartbeat")
@@ -919,14 +935,80 @@ def list_incidents(
     limit: int = 50,
     principal: DemoPrincipal = Depends(get_demo_principal),
 ) -> dict[str, Any]:
-    """Clusters recent :class:`~platform_core.incidents.IncidentCluster` rows deterministically."""
+    """Return lifecycle incidents and deterministic failure-event clusters."""
 
     assert_can_read_incidents(principal)
+    from platform_core.incident_store import list_incident_rows
+
+    lifecycle = list_incident_rows()
     events_path = _path("failure_events.jsonl")
     rows = list(iter_jsonl(events_path))
     clusters = incident_summaries(rows)
-    capped = clusters[-max(1, min(limit, 100)) :] if clusters else []
-    return {"items": capped, "total_candidates": len(clusters)}
+    capped_lifecycle = lifecycle[-max(1, min(limit, 100)) :] if lifecycle else []
+    capped_clusters = clusters[-max(1, min(limit, 100)) :] if clusters else []
+    return {
+        "items": capped_lifecycle,
+        "clusters": capped_clusters,
+        "total_lifecycle": len(lifecycle),
+        "total_candidates": len(clusters),
+    }
+
+
+@router.get("/incidents/{incident_id}")
+def get_incident_route(
+    incident_id: str,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    assert_can_read_incidents(principal)
+    from platform_core.incident_store import get_incident
+
+    row = get_incident(incident_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="incident not found")
+    return row
+
+
+class IncidentTransitionIn(BaseModel):
+    note: str = ""
+
+
+@router.post("/incidents/{incident_id}/ack")
+def ack_incident(
+    incident_id: str,
+    body: IncidentTransitionIn | None = None,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    assert_can_write_platform_payload(principal)
+    from platform_core.incident_engine import apply_transition
+
+    record = apply_transition(incident_id, new_state="ACKNOWLEDGED", actor=principal.operator_id)
+    return record.model_dump(mode="json")
+
+
+@router.post("/incidents/{incident_id}/resolve")
+def resolve_incident(
+    incident_id: str,
+    body: IncidentTransitionIn | None = None,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    assert_can_write_platform_payload(principal)
+    from platform_core.incident_engine import apply_transition
+
+    record = apply_transition(incident_id, new_state="RESOLVED", actor=principal.operator_id)
+    return record.model_dump(mode="json")
+
+
+@router.post("/incidents/{incident_id}/false-positive")
+def false_positive_incident(
+    incident_id: str,
+    body: IncidentTransitionIn | None = None,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    assert_can_write_platform_payload(principal)
+    from platform_core.incident_engine import apply_transition
+
+    record = apply_transition(incident_id, new_state="FALSE_POSITIVE", actor=principal.operator_id)
+    return record.model_dump(mode="json")
 
 
 @router.get("/attribution/{event_id}")

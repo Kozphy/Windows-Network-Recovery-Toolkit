@@ -693,7 +693,34 @@ def endpoint_summary(endpoint_id: str, row: dict[str, Any] | None = None) -> End
 
 
 def list_endpoint_summaries() -> list[EndpointSummary]:
-    """Return endpoint summaries, synthesizing local endpoint when no agent heartbeat exists."""
+    """Return endpoint summaries from fleet store when available, else legacy JSONL merge."""
+
+    from platform_core.fleet_store import apply_stale_policy, list_endpoints
+
+    fleet = apply_stale_policy(list_endpoints())
+    if fleet:
+        out: list[EndpointSummary] = []
+        for record in fleet:
+            status: EndpointStatus = "unknown"
+            if record.risk_state == "healthy":
+                status = "healthy"
+            elif record.risk_state in ("degraded", "incident_open"):
+                status = "degraded"
+            elif record.risk_state == "unknown":
+                status = "unknown"
+            out.append(
+                EndpointSummary(
+                    endpoint_id=record.endpoint_id,
+                    hostname_hash=record.hostname[:16] if record.hostname else record.endpoint_id[:16],
+                    safe_display_name=record.endpoint_id[:12],
+                    os=record.os_name,
+                    status=status,
+                    last_seen_at=record.last_seen,
+                    last_known_good_available=latest_lkg_snapshot(record.endpoint_id) is not None,
+                    latest_diagnosis_id=record.latest_diagnosis_id,
+                )
+            )
+        return out
 
     seen: dict[str, dict[str, Any]] = {}
     for row in iter_jsonl(_path("endpoints.jsonl")):
