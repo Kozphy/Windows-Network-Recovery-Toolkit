@@ -1,18 +1,52 @@
-# Threat model (local prototype scope)
+# Threat model
 
-This repository targets **portfolio / lab** workloads. Treat the following as design constraints:
+Local-first Endpoint Reliability Platform — design constraints for portfolio and lab use.
 
-| Asset | Risk | Mitigation |
-| --- | --- | --- |
-| Operator consoles | Cross-site scripting / confused deputy | localhost-only demos, RBAC simulation headers (`X-Operator-*`) |
-| JSONL disks | Tampering between preview/execute | Correlate previews + executions + audits; rerun replay |
-| Process attribution | False accusations | Confidence ladder capped at heuristic unless Sysmon/EventLog wired |
-| API abuse | Replay attacks on execute | Confirmation phrases + SAFE_MODE gates + registry allowlisting |
-| Sensitive telemetry | Disclosure of identities | Stable hashes (`endpoint_id_hash`), redaction helpers in `privacy.py` |
+## Assets
 
-Explicit **non-controls**:
+| Asset | Description |
+|-------|-------------|
+| Endpoint state | Registry/proxy snapshots, diagnoses, fleet heartbeats |
+| Audit JSONL | Append-only decision and remediation history |
+| Operator trust | Policy/confirmation UX |
+| Privacy | Hostnames, paths, proxy ports (redact before sharing) |
 
-- Headers are unsigned—assume attacker with local access can forge them.
-- No HSM-backed audit chain in this demo.
+## Attacker model
 
-High-risk actions (`firewall_reset`, `adapter_disable`, arbitrary shell) remain **manual-only or forbidden** in the registry.
+| Actor | Capability | Goal |
+|-------|------------|------|
+| Malicious local process | Mutate HKCU proxy keys, bind localhost port | Redirect traffic |
+| Compromised browser path | Fail HTTPS while network probes pass | Hide exfil path |
+| Malicious listener | Own port without writing registry | Mislead attribution |
+| Abused API caller | POST execute with crafted action | Force destructive repair |
+| Confused operator | Skip preview | Apply wrong fix |
+| Stale telemetry | Supply outdated Sysmon export | False writer match |
+
+## Threats and mitigations
+
+| Threat | Mitigation |
+|--------|------------|
+| Silent destructive repair | Dry-run default; policy BLOCK; typed confirmation |
+| False accusation from listener correlation | Evidence ladder; ADR-004; fusion limitations |
+| JSONL tampering | Hash-chain helpers; replay from stored observations |
+| Credential leakage in logs | Redaction helpers; public-release audit script |
+| Unsigned RBAC headers | Documented demo-only; not production auth |
+| Critical incident from weak evidence | `incident_engine` caps severity |
+
+## Non-goals
+
+- Not antivirus or EDR
+- Not autonomous containment
+- Not proof of compromise without Sysmon/Procmon-class telemetry
+- Not multi-tenant SaaS security in this repository
+
+## Controls summary
+
+- Typed confirmation on mutation paths
+- Registry allowlist
+- No arbitrary shell from API
+- Evidence levels (`NO_WRITER_EVIDENCE` … `WRITER_AND_LISTENER_MATCH`)
+- Append-only audit
+- Local-first storage (no default cloud upload)
+
+See [security_boundaries.md](security_boundaries.md), [operator_safety.md](operator_safety.md), [abuse_cases.md](abuse_cases.md).
