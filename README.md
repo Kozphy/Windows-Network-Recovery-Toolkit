@@ -24,6 +24,23 @@
 | **Production checklist** | [docs/production_readiness.md](docs/production_readiness.md) |
 | **API contract** | [docs/api_contract_platform.md](docs/api_contract_platform.md) |
 | **Public release** | [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md) · [SECURITY.md](SECURITY.md) |
+| **Registry writer telemetry** | [docs/telemetry_registry_writer_proof.md](docs/telemetry_registry_writer_proof.md) |
+
+### Registry Writer Telemetry Proof Layer
+
+Optional **Sysmon / Event Log / ETW fixture ingestion** fuses registry-write telemetry with listener attribution to produce evidence summaries — not autonomous containment.
+
+- Sysmon **Event ID 13** can identify registry value-set events when configured.
+- Fusion outputs `registry_writer_evidence` with levels such as `REGISTRY_WRITER_OBSERVED` or `WRITER_AND_LISTENER_MATCH`.
+- **No registry mutation, no process kill, no firewall reset** — telemetry is evidence-only and policy gates remain unchanged.
+
+```powershell
+python -m telemetry.cli fuse-registry-writer-evidence `
+  --events tests/fixtures/telemetry/sysmon_event13_proxy_server_node.json `
+  --proxy-change-time 2026-01-15T12:00:10Z `
+  --listener tests/fixtures/telemetry/listener_node.json `
+  --pretty
+```
 
 ### Core system story
 

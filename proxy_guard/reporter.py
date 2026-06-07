@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from telemetry.registry_writer_fusion import build_report_registry_writer_section
+
 
 def _now_iso() -> str:
     """Return timezone-aware UTC timestamp string."""
@@ -37,6 +39,9 @@ def build_report_payload(
     persistence: dict[str, Any],
     certificates: dict[str, Any],
     risk: dict[str, Any],
+    registry_writer_evidence: dict[str, Any] | None = None,
+    telemetry_events: list[Any] | None = None,
+    proxy_change_time: Any | None = None,
 ) -> dict[str, Any]:
     """Build canonical report payload for CLI and JSONL sinks.
 
@@ -46,10 +51,20 @@ def build_report_payload(
         persistence: Startup/task/run-key preview outputs.
         certificates: Root-certificate indicator outputs.
         risk: Inference payload from risk scoring layer.
+        registry_writer_evidence: Optional pre-built telemetry fusion section.
+        telemetry_events: Optional parsed :class:`telemetry.models.RegistryWriteEvent` rows.
+        proxy_change_time: Optional drift timestamp for telemetry fusion window.
 
     Returns:
         dict[str, Any]: Canonical report envelope with stable top-level keys.
     """
+    writer_section = registry_writer_evidence
+    if writer_section is None:
+        writer_section = build_report_registry_writer_section(
+            attribution=attribution,
+            telemetry_events=telemetry_events,
+            proxy_change_time=proxy_change_time,
+        )
     return {
         "timestamp": _now_iso(),
         "raw_signals": raw_signals,
@@ -63,6 +78,7 @@ def build_report_payload(
         "limitations": risk.get("limitations", []),
         "recommended_next_steps": risk.get("recommended_actions", []),
         "inference": risk,
+        "registry_writer_evidence": writer_section,
     }
 
 
@@ -116,9 +132,10 @@ def append_audit_event(payload: dict[str, Any], *, audit_path: Path | None = Non
     Idempotency:
         Not idempotent by design; each call writes a new event row.
     """
-    path = audit_path or (Path(__file__).resolve().parent.parent / "logs" / "proxy_hijack_audit.jsonl")
+    path = audit_path or (
+        Path(__file__).resolve().parent.parent / "logs" / "proxy_hijack_audit.jsonl"
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
     return path
-
