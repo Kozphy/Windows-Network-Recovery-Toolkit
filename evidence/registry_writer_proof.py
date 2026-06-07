@@ -13,8 +13,9 @@ with a stable ``limitation`` field rather than a stack trace.
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from evidence.registry_writer import (
     WRITER_PROOF_UNAVAILABLE,
@@ -45,7 +46,9 @@ def _evidence_event_dict(evidence: RegistryWriterEvidence) -> dict[str, Any]:
     }
 
 
-def _unavailable_payload(reason: str, *, sysmon_status: dict[str, Any] | None = None) -> dict[str, Any]:
+def _unavailable_payload(
+    reason: str, *, sysmon_status: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Build the canonical unavailable response."""
 
     return {
@@ -60,7 +63,9 @@ def _unavailable_payload(reason: str, *, sysmon_status: dict[str, Any] | None = 
     }
 
 
-def _found_payload(events: list[dict[str, Any]], *, sysmon_status: dict[str, Any] | None = None) -> dict[str, Any]:
+def _found_payload(
+    events: list[dict[str, Any]], *, sysmon_status: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Build the canonical found response."""
 
     return {

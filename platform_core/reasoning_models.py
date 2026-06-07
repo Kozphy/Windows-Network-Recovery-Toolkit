@@ -21,7 +21,9 @@ EventStatus = Literal["observed", "inferred", "rejected"]
 ProofStatus = Literal["NOT_RUN", "CONFIRMED", "REJECTED", "INCONCLUSIVE"]
 PolicyOutcome = Literal["ALLOW", "PREVIEW", "BLOCK"]
 ImpactSeverity = Literal["low", "medium", "high", "critical"]
-ImpactScope = Literal["browser_only", "dev_tools", "browser_and_dev_tools", "system_wide", "multi_endpoint"]
+ImpactScope = Literal[
+    "browser_only", "dev_tools", "browser_and_dev_tools", "system_wide", "multi_endpoint"
+]
 ImpactDuration = Literal["short", "medium", "long", "unknown"]
 
 
@@ -141,7 +143,7 @@ class EvidenceNode(BaseModel):
     confidence: ConfidenceScore = Field(default=0.0, ge=0.0, le=1.0)
     observation_ids: list[str] = Field(default_factory=list)
     event_ids: list[str] = Field(default_factory=list)
-    children: list["EvidenceNode"] = Field(default_factory=list)
+    children: list[EvidenceNode] = Field(default_factory=list)
     details: dict[str, Any] = Field(default_factory=dict)
     limitations: list[str] = Field(default_factory=list)
     recommended_next_steps: list[str] = Field(default_factory=list)

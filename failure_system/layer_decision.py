@@ -24,8 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 from typing import Any
 
 from failure_system.audit_log import append_layer_audit, write_markdown_report
@@ -34,7 +33,7 @@ from failure_system.layer_probe import collect_layer_signals
 
 def _now_iso() -> str:
     """Return timezone-aware UTC timestamp string for diagnosis payloads."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _base_result() -> dict[str, Any]:
@@ -102,7 +101,9 @@ def _repair_preview(layer: str, signals: dict[str, Any]) -> list[str]:
             "Preview only: Restore previous proxy fields (ProxyEnable/ProxyServer/AutoConfigURL/ProxyOverride) with confirmation.",
         ]
         if signals.get("is_localhost_proxy"):
-            out.append("Preview only: Confirm localhost proxy listener owner and health before disabling proxy.")
+            out.append(
+                "Preview only: Confirm localhost proxy listener owner and health before disabling proxy."
+            )
         return out
     if layer == "INFRA":
         return [
@@ -140,7 +141,11 @@ def decide_layer(signals: dict[str, Any]) -> dict[str, Any]:
     hyp = result["hypotheses"]
     notes = result["attribution_notes"]
 
-    if signals.get("media_disconnected") or signals.get("adapter_down") or not signals.get("gateway_present"):
+    if (
+        signals.get("media_disconnected")
+        or signals.get("adapter_down")
+        or not signals.get("gateway_present")
+    ):
         result["layer"] = "L1_L2"
         result["failure_type"] = "link_or_adapter_failure"
         result["confidence_score"] = 0.9
@@ -181,7 +186,9 @@ def decide_layer(signals: dict[str, Any]) -> dict[str, Any]:
         result["evidence_level"] = "inference"
         obs.extend(["ping_8_8_8_8=ok", "nslookup_google=fail"])
         hyp.append("DNS-only failure while IP reachability remains healthy.")
-    elif signals.get("tcp_443_ok") and (not signals.get("curl_google_ok") or not signals.get("curl_ms_ok")):
+    elif signals.get("tcp_443_ok") and (
+        not signals.get("curl_google_ok") or not signals.get("curl_ms_ok")
+    ):
         result["layer"] = "L7"
         result["failure_type"] = "https_or_browser_path_failure"
         result["confidence_score"] = 0.8
@@ -198,7 +205,9 @@ def decide_layer(signals: dict[str, Any]) -> dict[str, Any]:
     if signals.get("is_localhost_proxy"):
         obs.append(f"wininet_proxy_server={signals.get('wininet_proxy_server')}")
         hyp.append("Local proxy interception hypothesis (localhost proxy endpoint configured).")
-        notes.append("Localhost proxy attribution is heuristic unless direct registry-write telemetry exists.")
+        notes.append(
+            "Localhost proxy attribution is heuristic unless direct registry-write telemetry exists."
+        )
         if signals.get("localhost_listener_found") is True:
             obs.append("localhost_listener_found=true")
             result["confidence_score"] = min(1.0, float(result["confidence_score"]) + 0.05)
@@ -210,16 +219,24 @@ def decide_layer(signals: dict[str, Any]) -> dict[str, Any]:
                 result["failure_type"] = "proxy_endpoint_unreachable"
                 result["evidence_level"] = "inference"
     # Conflict handling intentionally reduces confidence and avoids strong causal claims.
-    if signals.get("ping_ip_ok") and not signals.get("tcp_443_ok") and not signals.get("nslookup_ok"):
+    if (
+        signals.get("ping_ip_ok")
+        and not signals.get("tcp_443_ok")
+        and not signals.get("nslookup_ok")
+    ):
         result["confidence_score"] = max(0.3, float(result["confidence_score"]) - 0.2)
         result["failure_type"] = "conflicting_signals"
         result["evidence_level"] = "observation"
-        hyp.append("Conflicting transport/DNS signals reduce confidence; additional tests required.")
+        hyp.append(
+            "Conflicting transport/DNS signals reduce confidence; additional tests required."
+        )
     if signals.get("intermittent_snapshot"):
         result["confidence_score"] = max(0.25, float(result["confidence_score"]) - 0.15)
         hyp.append("Intermittent snapshot flag lowers confidence for single-pass diagnosis.")
 
-    result["recommended_next_test"] = str(signals.get("recommended_next_test_hint") or result["recommended_next_test"])
+    result["recommended_next_test"] = str(
+        signals.get("recommended_next_test_hint") or result["recommended_next_test"]
+    )
     result["repair_preview"] = _repair_preview(str(result["layer"]), signals)
     return result
 
@@ -270,4 +287,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

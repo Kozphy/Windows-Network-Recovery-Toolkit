@@ -218,7 +218,9 @@ def _list_metrics_shim(platform_root: Path) -> dict[str, Any]:
         s = str(e.get("severity") or "low")
         by_sev[s] = by_sev.get(s, 0) + 1
 
-    endpoint_ids = {e.get("endpoint_id") for e in iter_jsonl(endpoints_path) if e.get("endpoint_id")}
+    endpoint_ids = {
+        e.get("endpoint_id") for e in iter_jsonl(endpoints_path) if e.get("endpoint_id")
+    }
     blocked = sum(1 for a in iter_jsonl(audit_path) if a.get("decision") == "blocked")
     clusters = _cluster(events, window_seconds=7200)
     affected_eps: set[str] = set()

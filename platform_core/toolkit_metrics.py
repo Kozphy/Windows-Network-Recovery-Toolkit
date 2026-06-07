@@ -53,7 +53,7 @@ def compute_toolkit_metrics(repo_root: Path) -> dict[str, Any]:
     latency_samples: list[float] = []
 
     if events_path.is_file():
-        for row in iter_jsonl(events_path):
+        for _row in iter_jsonl(events_path):
             event_count += 1
 
     if decisions_path.is_file():

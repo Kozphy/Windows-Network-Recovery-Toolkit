@@ -19,7 +19,7 @@ Audit Notes:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -63,7 +63,7 @@ def write_markdown_report(payload: dict[str, Any]) -> Path:
     Side effects:
         Creates ``reports/`` when missing and writes one new markdown file.
     """
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     path = _repo_root() / "reports" / f"network_layer_diagnosis_{ts}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -87,7 +87,17 @@ def write_markdown_report(payload: dict[str, Any]) -> Path:
     lines.extend(["", "## Hypotheses", ""])
     for x in payload.get("hypotheses", []):
         lines.append(f"- {x}")
-    lines.extend(["", "## Recommended Next Test", "", str(payload.get("recommended_next_test", "")), "", "## Repair Preview", ""])
+    lines.extend(
+        [
+            "",
+            "## Recommended Next Test",
+            "",
+            str(payload.get("recommended_next_test", "")),
+            "",
+            "## Repair Preview",
+            "",
+        ]
+    )
     for x in payload.get("repair_preview", []):
         lines.append(f"- {x}")
     lines.extend(["", "## Attribution Notes", ""])
@@ -95,4 +105,3 @@ def write_markdown_report(payload: dict[str, Any]) -> Path:
         lines.append(f"- {x}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
-

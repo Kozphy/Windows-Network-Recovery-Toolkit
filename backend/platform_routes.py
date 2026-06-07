@@ -77,9 +77,10 @@ if str(_REPO_ROOT) not in sys.path:
 
 from evidence.attribution_engine import build_attribution, parse_sysmon_sequence
 from evidence.procmon_importer import ProcmonRegistryWrite, iter_procmon_registry_writes_from_csv
-
 from platform_core.agent_planner import plan_next_step
 from platform_core.audit import write_audit
+from platform_core.event_bus import default_normalized_events_path, read_events
+from platform_core.fleet import linked_failure_block_payload
 from platform_core.incidents import incident_summaries
 from platform_core.metrics import compute_platform_metrics
 from platform_core.models import (
@@ -90,11 +91,21 @@ from platform_core.models import (
     RemediationPreview,
     utc_now_iso,
 )
+from platform_core.policy import (
+    ACTION_REGISTRY,
+    PolicyDecision,
+    build_preview,
+    evaluate_action,
+    is_shell_injection,
+    validate_confirmation_phrase,
+)
+from platform_core.privacy import redact_text, stable_endpoint_hash
 from platform_core.product_contract import (
     AgentNextStepRequest,
     AgentNextStepResponse,
     DiagnosisRunRequest,
     LkgSnapshotRequest,
+    PlatformAuditEvent,
     RollbackPreviewRequest,
     append_contract_audit,
     audit_tail,
@@ -106,15 +117,6 @@ from platform_core.product_contract import (
     list_endpoint_summaries,
     replay_diagnosis,
     store_lkg_snapshot,
-    PlatformAuditEvent,
-)
-from platform_core.policy import (
-    ACTION_REGISTRY,
-    PolicyDecision,
-    build_preview,
-    evaluate_action,
-    is_shell_injection,
-    validate_confirmation_phrase,
 )
 from platform_core.rbac import (
     DemoPrincipal,
@@ -128,13 +130,11 @@ from platform_core.rbac import (
     assert_can_write_platform_payload,
     parse_demo_principal,
 )
-from platform_core.remediation_registry import get_remediation_action
-from platform_core.fleet import linked_failure_block_payload
-from platform_core.privacy import redact_text, stable_endpoint_hash
 from platform_core.remediation import allowlisted_script
-from platform_core.event_bus import default_normalized_events_path, read_events
+from platform_core.remediation_registry import get_remediation_action
 from platform_core.replay.runner import ReplaySummary, summarize_inline
 from platform_core.storage import (
+    _path,
     append_attribution_record,
     append_failure_event,
     append_remediation_execution,
@@ -146,7 +146,6 @@ from platform_core.storage import (
     platform_data_dir,
     read_recent_jsonl,
     upsert_endpoint,
-    _path,
 )
 
 router = APIRouter(prefix="/platform", tags=["platform"])
@@ -228,7 +227,9 @@ def agent_heartbeat(
         last_seen_at=utc_now_iso(),
     )
     upsert_endpoint(ident.model_dump())
-    write_audit(actor="agent", action="heartbeat", target_type="endpoint", target_id=body.endpoint_id)
+    write_audit(
+        actor="agent", action="heartbeat", target_type="endpoint", target_id=body.endpoint_id
+    )
     return {"stored": True, "endpoint_id": body.endpoint_id}
 
 
@@ -251,7 +252,9 @@ def post_snapshot(
 
     assert_can_write_platform_payload(principal)
     append_snapshot(snapshot.model_dump())
-    write_audit(actor="agent", action="snapshot", target_type="endpoint", target_id=snapshot.endpoint_id)
+    write_audit(
+        actor="agent", action="snapshot", target_type="endpoint", target_id=snapshot.endpoint_id
+    )
     return {"stored": True}
 
 
@@ -345,7 +348,9 @@ def ingest_failure_event(
     """
     assert_can_write_platform_payload(principal)
     append_failure_event(body.model_dump())
-    write_audit(actor="agent", action="failure_event_ingest", target_type="event", target_id=body.event_id)
+    write_audit(
+        actor="agent", action="failure_event_ingest", target_type="event", target_id=body.event_id
+    )
     return {"stored": True, "event_id": body.event_id}
 
 
@@ -452,7 +457,9 @@ def remediation_preview(
             "allowed": preview.allowed_by_policy,
             "decision": contract_decision,
             "reason": preview.policy_reason,
-            "required_confirmation": preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+            "required_confirmation": preview.confirmation_phrase
+            if preview.requires_typed_confirmation
+            else "",
             "audit_event_id": audit_event_id,
             "dry_run": True,
         }
@@ -588,7 +595,9 @@ def remediation_execute(
             reason=pd.reason,
             allowed=False,
             audit_event_id=audit_event_id,
-            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+            required_confirmation=preview.confirmation_phrase
+            if preview.requires_typed_confirmation
+            else "",
         )
 
     if preview.requires_typed_confirmation:
@@ -642,7 +651,9 @@ def remediation_execute(
             reason="manual_only_or_api_execute_disabled",
             allowed=False,
             audit_event_id=audit_event_id,
-            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+            required_confirmation=preview.confirmation_phrase
+            if preview.requires_typed_confirmation
+            else "",
         )
 
     script = defn.script_path
@@ -675,7 +686,9 @@ def remediation_execute(
             reason="[dry-run] no subprocess",
             allowed=True,
             audit_event_id=audit_event_id,
-            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+            required_confirmation=preview.confirmation_phrase
+            if preview.requires_typed_confirmation
+            else "",
         )
 
     if sys.platform != "win32":
@@ -707,7 +720,9 @@ def remediation_execute(
             reason="execution_only_supported_on_windows",
             allowed=False,
             audit_event_id=audit_event_id,
-            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+            required_confirmation=preview.confirmation_phrase
+            if preview.requires_typed_confirmation
+            else "",
         )
 
     path = allowlisted_script(str(script), _REPO_ROOT)
@@ -769,7 +784,9 @@ def remediation_execute(
             PlatformAuditEvent(
                 endpoint_id=preview.endpoint_id,
                 event_kind="remediation_execute_attempt",
-                summary="allowlisted subprocess completed" if ok else "allowlisted subprocess failed",
+                summary="allowlisted subprocess completed"
+                if ok
+                else "allowlisted subprocess failed",
                 confidence=1.0,
                 evidence_level="observation",
                 policy_decision="allow" if ok else "preview_only",
@@ -783,7 +800,9 @@ def remediation_execute(
             reason="success" if ok else "failure",
             allowed=ok,
             audit_event_id=audit_event_id,
-            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+            required_confirmation=preview.confirmation_phrase
+            if preview.requires_typed_confirmation
+            else "",
         )
     except subprocess.TimeoutExpired:
         ex = RemediationExecution(
@@ -814,7 +833,9 @@ def remediation_execute(
             reason="timeout",
             allowed=False,
             audit_event_id=audit_event_id,
-            required_confirmation=preview.confirmation_phrase if preview.requires_typed_confirmation else "",
+            required_confirmation=preview.confirmation_phrase
+            if preview.requires_typed_confirmation
+            else "",
         )
 
 
@@ -928,7 +949,9 @@ def platform_attribution(
     ctx = find_attribution_context(event_id) or {}
     reg = ctx.get("registry_context") if isinstance(ctx.get("registry_context"), dict) else {}
     listeners = ctx.get("listeners") if isinstance(ctx.get("listeners"), list) else []
-    inventory = ctx.get("process_inventory") if isinstance(ctx.get("process_inventory"), dict) else {}
+    inventory = (
+        ctx.get("process_inventory") if isinstance(ctx.get("process_inventory"), dict) else {}
+    )
     parent = ctx.get("parent_process") if isinstance(ctx.get("parent_process"), dict) else {}
     sysmon_dicts = ctx.get("sysmon") if isinstance(ctx.get("sysmon"), list) else []
     etw_ev = ctx.get("etw_events") if isinstance(ctx.get("etw_events"), list) else []
@@ -1053,7 +1076,9 @@ def agent_next_step(
 
     diag = get_diagnosis(body.run_id) if body.run_id else latest_diagnosis()
     goal_in = str(getattr(body, "goal", "suggest_next_probe") or "suggest_next_probe")
-    goal_alias = "recommend_preview_action" if goal_in == "generate_remediation_preview" else goal_in
+    goal_alias = (
+        "recommend_preview_action" if goal_in == "generate_remediation_preview" else goal_in
+    )
     if goal_alias not in {
         "suggest_next_probe",
         "rank_hypotheses",
@@ -1076,7 +1101,9 @@ def agent_next_step(
         PlatformAuditEvent(
             endpoint_id=body.endpoint_id or (diag.endpoint_id if diag else ""),
             event_kind="agent_next_step",
-            observations=[{"evidence_used": plan.evidence_used, "blocked_actions": list(plan.blocked_actions)}],
+            observations=[
+                {"evidence_used": plan.evidence_used, "blocked_actions": list(plan.blocked_actions)}
+            ],
             summary=plan.reason,
             hypothesis=diag.inferred_hypotheses if diag else [],
             confidence=plan.confidence,

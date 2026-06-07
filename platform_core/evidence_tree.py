@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from platform_core.reasoning_models import EndpointEvent, EvidenceNode, EvidenceTree, ProofResult, StateTransition
+from platform_core.reasoning_models import (
+    EndpointEvent,
+    EvidenceNode,
+    EvidenceTree,
+    ProofResult,
+    StateTransition,
+)
 
 
 def build_evidence_tree(
@@ -76,12 +82,29 @@ def build_evidence_tree(
     root = EvidenceNode(
         label=accepted_hypothesis,
         evidence_level="inferred",
-        confidence=max([node.confidence for node in observed_children + inferred_children] or [0.0]),
+        confidence=max(
+            [node.confidence for node in observed_children + inferred_children] or [0.0]
+        ),
         children=[
-            EvidenceNode(label="observed", evidence_level="observed", confidence=1.0, children=observed_children),
-            EvidenceNode(label="state_transitions", evidence_level="inferred", confidence=1.0, children=inferred_children),
+            EvidenceNode(
+                label="observed",
+                evidence_level="observed",
+                confidence=1.0,
+                children=observed_children,
+            ),
+            EvidenceNode(
+                label="state_transitions",
+                evidence_level="inferred",
+                confidence=1.0,
+                children=inferred_children,
+            ),
             proof_node,
-            EvidenceNode(label="rejected_alternatives", evidence_level="rejected", confidence=1.0, children=rejected_children),
+            EvidenceNode(
+                label="rejected_alternatives",
+                evidence_level="rejected",
+                confidence=1.0,
+                children=rejected_children,
+            ),
         ],
         limitations=limitations,
         recommended_next_steps=recommended_next_steps,

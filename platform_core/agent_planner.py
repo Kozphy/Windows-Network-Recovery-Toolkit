@@ -47,8 +47,9 @@ Audit Notes:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Literal
+from typing import Any, Literal
 
 AgentGoal = Literal[
     "suggest_next_probe",
@@ -121,7 +122,7 @@ def _coerce_observations(diagnosis: Any) -> list[dict[str, Any]]:
     if diagnosis is None:
         return []
     if hasattr(diagnosis, "observations"):
-        observations = getattr(diagnosis, "observations") or []
+        observations = diagnosis.observations or []
         out: list[dict[str, Any]] = []
         for probe in observations:
             if isinstance(probe, dict):
@@ -278,7 +279,8 @@ def plan_next_step(diagnosis: Any, *, goal: AgentGoal = "suggest_next_probe") ->
                 "WinINET points to a localhost proxy and registry writer proof is not yet conclusive; "
                 "run the read-only Sysmon registry-writer adapter before any remediation."
             ),
-            evidence_used=evidence_used + ["localhost_proxy_detected", f"proof_status={proof_status}"],
+            evidence_used=evidence_used
+            + ["localhost_proxy_detected", f"proof_status={proof_status}"],
             confidence=max(confidence, 0.7),
         )
 

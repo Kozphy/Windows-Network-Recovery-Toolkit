@@ -80,9 +80,13 @@ def policy_envelope(
     blocked_actions: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build a JSON-serializable policy decision block for APIs and audit rows."""
-    ba = blocked_actions if blocked_actions is not None else blocked_actions_for_request(
-        outcome=decision,
-        requested_action=requested_action,
+    ba = (
+        blocked_actions
+        if blocked_actions is not None
+        else blocked_actions_for_request(
+            outcome=decision,
+            requested_action=requested_action,
+        )
     )
     return {
         "decision": decision,

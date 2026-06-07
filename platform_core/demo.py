@@ -12,9 +12,9 @@ from platform_core.policy import build_preview, evaluate_action
 from platform_core.storage import (
     append_failure_event,
     append_snapshot,
+    list_metrics,
     record_audit,
     upsert_endpoint,
-    list_metrics,
 )
 
 
@@ -52,7 +52,11 @@ def run_demo() -> dict:
             append_failure_event(fe.model_dump())
 
             dns_preview = build_preview(fe, "reset_dns", requested_surface="api")
-            fw_preview = build_preview(fe.model_copy(update={"severity": "high"}), "reset_firewall", requested_surface="api")
+            fw_preview = build_preview(
+                fe.model_copy(update={"severity": "high"}),
+                "reset_firewall",
+                requested_surface="api",
+            )
             arb = evaluate_action("arbitrary_command", "api")
 
             record_audit(

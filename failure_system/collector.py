@@ -149,9 +149,7 @@ def collect_diagnostics(intermittent_reported: bool = False) -> DiagnosticSnapsh
         ok=_nslookup_ok(out, code),
     )
 
-    code, out = run_command(
-        ["curl", "-sS", "-m", "25", "-L", "https://example.com"]
-    )
+    code, out = run_command(["curl", "-sS", "-m", "25", "-L", "https://example.com"])
     raw["curl_example_com"] = DiagnosticCommandResult(
         command=["curl", "-sS", "-m", "25", "-L", "https://example.com"],
         exit_code=code,

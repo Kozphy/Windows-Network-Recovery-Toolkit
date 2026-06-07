@@ -37,7 +37,9 @@ def _sentence_signals(signals: dict[str, Any]) -> str:
         ]
         extra: list[str] = []
         if wd is not None:
-            extra.append(f"WinHTTP appears {'direct' if str(wd).lower() in ('yes', 'true', '1') else 'non-direct'}")
+            extra.append(
+                f"WinHTTP appears {'direct' if str(wd).lower() in ('yes', 'true', '1') else 'non-direct'}"
+            )
         if pl is not None:
             extra.append(
                 f"a configured proxy line is {'present' if str(pl).lower() in ('yes', 'true', '1') else 'absent'}"
@@ -64,8 +66,7 @@ def _sentence_attribution(attribution: dict[str, Any]) -> str:
     cls = str(attribution.get("classification") or "").strip()
     if proc and cls:
         return (
-            f"Attribution suggests process {proc!r} with classification "
-            f"{_humanize_label(cls)!r}."
+            f"Attribution suggests process {proc!r} with classification {_humanize_label(cls)!r}."
         )
     if proc:
         return f"Attribution points to process {proc!r}."
@@ -98,9 +99,7 @@ def _sentence_decision(decision: dict[str, Any]) -> str:
     if fix:
         fix_part = f" Recommended direction (confirm before changing anything): {fix}"
 
-    return (
-        f"The primary hypothesis is {cause_h} (confidence {conf:.2f}).{risk_part}{fix_part}"
-    )
+    return f"The primary hypothesis is {cause_h} (confidence {conf:.2f}).{risk_part}{fix_part}"
 
 
 def generate_explanation_text(diag_result: dict[str, Any]) -> str:

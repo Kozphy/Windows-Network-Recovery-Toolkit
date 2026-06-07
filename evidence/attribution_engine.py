@@ -38,7 +38,8 @@ Examples:
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from evidence.models import AttributionLevel, AttributionResult, EvidenceItem
 from evidence.procmon_importer import ProcmonRegistryWrite, procmon_concerns_proxy
@@ -74,7 +75,9 @@ def _parent_hint(parent_process: Mapping[str, Any] | None) -> str:
     return ""
 
 
-def _listener_match(listeners: Sequence[Mapping[str, Any]] | None, proxy_server: str | None) -> bool:
+def _listener_match(
+    listeners: Sequence[Mapping[str, Any]] | None, proxy_server: str | None
+) -> bool:
     """Return True when listener rows align with embedded ``proxy_server`` port tokens.
 
     Args:
@@ -157,7 +160,9 @@ def build_attribution(
 
     parent = _parent_hint(parent_process if isinstance(parent_process, dict) else None)
     if parent:
-        evidence.append(EvidenceItem(source="parent_process", detail=f"parent={parent}", weight_hint=0.1))
+        evidence.append(
+            EvidenceItem(source="parent_process", detail=f"parent={parent}", weight_hint=0.1)
+        )
 
     proxy_server = hint.proxy_server_after or hint.proxy_server_before
     if _listener_match(listeners, proxy_server):
@@ -232,7 +237,9 @@ def build_attribution(
     if confirmed_image:
         candidate = confirmed_image.split("\\")[-1] if "\\" in confirmed_image else confirmed_image
         score += 0.28
-        if sysmon_events and any(registry_event_concerns_internet_settings(s) for s in sysmon_events):
+        if sysmon_events and any(
+            registry_event_concerns_internet_settings(s) for s in sysmon_events
+        ):
             level = "sysmon_confirmed"
             score += 0.12
             notes.append(

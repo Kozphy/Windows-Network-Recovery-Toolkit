@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from platform_core.events import PolicyDecisionPayload
 from platform_core.event_bus import iter_event_lines, validate_schema_version
+from platform_core.events import PolicyDecisionPayload
 from platform_core.policy.engine import OperatorContext, evaluate
 
 
@@ -52,7 +52,9 @@ def _telemetry_only(signals: dict[str, Any]) -> dict[str, Any]:
     return tele
 
 
-def accumulate_replay_counters(records: Iterable[dict[str, Any]], *, parse_errors: int = 0) -> ReplaySummary:
+def accumulate_replay_counters(
+    records: Iterable[dict[str, Any]], *, parse_errors: int = 0
+) -> ReplaySummary:
     """Compare embedded ``policy_decision`` vs recomputed gates for streamed records."""
 
     total = 0
@@ -75,7 +77,9 @@ def accumulate_replay_counters(records: Iterable[dict[str, Any]], *, parse_error
         if not action:
             continue
 
-        role_any = signals.get("simulated_operator_role") or signals.get("operator_role") or "operator"
+        role_any = (
+            signals.get("simulated_operator_role") or signals.get("operator_role") or "operator"
+        )
         surface_any = signals.get("simulated_surface") or "api"
         if role_any not in ("viewer", "operator", "admin", "security_auditor"):
             role_any = "operator"
@@ -142,8 +146,12 @@ def summarize_inline(events: list[dict[str, Any]]) -> ReplaySummary:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry used by ``python -m platform_core.replay``."""
 
-    parser = argparse.ArgumentParser(description="Replay normalized events against policy gates (read-only).")
-    parser.add_argument("--input", type=Path, required=True, help="Path to normalized_events JSONL.")
+    parser = argparse.ArgumentParser(
+        description="Replay normalized events against policy gates (read-only)."
+    )
+    parser.add_argument(
+        "--input", type=Path, required=True, help="Path to normalized_events JSONL."
+    )
     parser.add_argument("--json", action="store_true", help="Emit structured JSON summary.")
     args = parser.parse_args(argv)
 

@@ -26,8 +26,9 @@ Audit Notes:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol, Sequence
+from typing import Any, Protocol
 
 
 class ETWProviderConfig:

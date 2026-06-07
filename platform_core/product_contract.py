@@ -14,8 +14,7 @@ import socket
 import ssl
 import subprocess
 import uuid
-from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -149,7 +148,15 @@ class LkgSnapshotRequest(BaseModel):
 class RollbackPreviewRequest(BaseModel):
     endpoint_id: str
     target_snapshot_id: str | None = None
-    fields: list[str] = Field(default_factory=lambda: ["ProxyEnable", "ProxyServer", "AutoConfigURL", "ProxyOverride", "AutoDetect"])
+    fields: list[str] = Field(
+        default_factory=lambda: [
+            "ProxyEnable",
+            "ProxyServer",
+            "AutoConfigURL",
+            "ProxyOverride",
+            "AutoDetect",
+        ]
+    )
 
 
 class AgentNextStepRequest(BaseModel):
@@ -205,7 +212,9 @@ def probe_dns() -> ProbeResult:
             source="socket.getaddrinfo",
         )
     except OSError as exc:
-        return ProbeResult(name="dns_probe", status="failed", error=str(exc), source="socket.getaddrinfo")
+        return ProbeResult(
+            name="dns_probe", status="failed", error=str(exc), source="socket.getaddrinfo"
+        )
 
 
 def probe_tcp_443() -> ProbeResult:
@@ -213,9 +222,16 @@ def probe_tcp_443() -> ProbeResult:
 
     try:
         with socket.create_connection(("www.microsoft.com", 443), timeout=5):
-            return ProbeResult(name="tcp_443_probe", status="ok", observed_value="connected", source="socket.create_connection")
+            return ProbeResult(
+                name="tcp_443_probe",
+                status="ok",
+                observed_value="connected",
+                source="socket.create_connection",
+            )
     except OSError as exc:
-        return ProbeResult(name="tcp_443_probe", status="failed", error=str(exc), source="socket.create_connection")
+        return ProbeResult(
+            name="tcp_443_probe", status="failed", error=str(exc), source="socket.create_connection"
+        )
 
 
 def probe_https() -> ProbeResult:
@@ -228,13 +244,20 @@ def probe_https() -> ProbeResult:
                 return ProbeResult(
                     name="https_probe",
                     status="ok",
-                    observed_value={"tls_version": tls.version(), "cipher": tls.cipher()[0] if tls.cipher() else None},
+                    observed_value={
+                        "tls_version": tls.version(),
+                        "cipher": tls.cipher()[0] if tls.cipher() else None,
+                    },
                     source="ssl.wrap_socket",
                 )
     except OSError as exc:
-        return ProbeResult(name="https_probe", status="failed", error=str(exc), source="ssl.wrap_socket")
+        return ProbeResult(
+            name="https_probe", status="failed", error=str(exc), source="ssl.wrap_socket"
+        )
     except ssl.SSLError as exc:
-        return ProbeResult(name="https_probe", status="failed", error=str(exc), source="ssl.wrap_socket")
+        return ProbeResult(
+            name="https_probe", status="failed", error=str(exc), source="ssl.wrap_socket"
+        )
 
 
 def probe_wininet_proxy() -> ProbeResult:
@@ -261,7 +284,12 @@ def probe_wininet_proxy() -> ProbeResult:
             error="; ".join(str(x) for x in signals.get("limitations") or []) or None,
         )
     except Exception as exc:  # collector must never bring down diagnosis contract
-        return ProbeResult(name="wininet_proxy_state", status="unknown", error=str(exc), source="proxy_guard.proxy_signal_collector")
+        return ProbeResult(
+            name="wininet_proxy_state",
+            status="unknown",
+            error=str(exc),
+            source="proxy_guard.proxy_signal_collector",
+        )
 
 
 def probe_winhttp_proxy() -> ProbeResult:
@@ -269,8 +297,18 @@ def probe_winhttp_proxy() -> ProbeResult:
 
     code, out, err = _run(["netsh", "winhttp", "show", "proxy"])
     if code == 0:
-        return ProbeResult(name="winhttp_proxy_state", status="ok", observed_value=out.strip()[:2000], source="netsh winhttp show proxy")
-    return ProbeResult(name="winhttp_proxy_state", status="unknown", error=(err or out)[:1000], source="netsh winhttp show proxy")
+        return ProbeResult(
+            name="winhttp_proxy_state",
+            status="ok",
+            observed_value=out.strip()[:2000],
+            source="netsh winhttp show proxy",
+        )
+    return ProbeResult(
+        name="winhttp_proxy_state",
+        status="unknown",
+        error=(err or out)[:1000],
+        source="netsh winhttp show proxy",
+    )
 
 
 def probe_localhost_listener(wininet: ProbeResult | None = None) -> ProbeResult:
@@ -304,17 +342,27 @@ def probe_localhost_listener(wininet: ProbeResult | None = None) -> ProbeResult:
         return ProbeResult(
             name="localhost_proxy_listener",
             status="ok" if attr.get("pid") else "warning",
-            observed_value={"candidate_actor": attr, "proof_boundary": "listener_correlation_not_registry_writer"},
+            observed_value={
+                "candidate_actor": attr,
+                "proof_boundary": "listener_correlation_not_registry_writer",
+            },
             source="proxy_guard.port_process_attribution",
         )
     except Exception as exc:
-        return ProbeResult(name="localhost_proxy_listener", status="unknown", error=str(exc), source="proxy_guard.port_process_attribution")
+        return ProbeResult(
+            name="localhost_proxy_listener",
+            status="unknown",
+            error=str(exc),
+            source="proxy_guard.port_process_attribution",
+        )
 
 
 def probe_git_npm_proxy() -> ProbeResult:
     """Check common developer proxy configuration surfaces via read-only commands."""
 
-    git_code, git_out, git_err = _run(["git", "config", "--global", "--get-regexp", "proxy"], timeout_seconds=5.0)
+    git_code, git_out, git_err = _run(
+        ["git", "config", "--global", "--get-regexp", "proxy"], timeout_seconds=5.0
+    )
     npm_code, npm_out, npm_err = _run(["npm", "config", "get", "proxy"], timeout_seconds=5.0)
     observed = {
         "git_proxy_config": git_out.strip() if git_code == 0 else "",
@@ -348,7 +396,10 @@ def probe_lkg_available(endpoint_id: str) -> ProbeResult:
     return ProbeResult(
         name="lkg_snapshot_available",
         status="ok" if row else "warning",
-        observed_value={"available": bool(row), "snapshot_id": row.get("snapshot_id") if row else None},
+        observed_value={
+            "available": bool(row),
+            "snapshot_id": row.get("snapshot_id") if row else None,
+        },
         source="platform_data/lkg_snapshots.jsonl",
     )
 
@@ -371,14 +422,18 @@ def collect_probe_results(endpoint_id: str, *, include_live: bool = True) -> lis
     ]
 
 
-def classify_diagnosis(observations: list[ProbeResult]) -> tuple[list[str], float, float, EvidenceLevelName, str, PolicyResult]:
+def classify_diagnosis(
+    observations: list[ProbeResult],
+) -> tuple[list[str], float, float, EvidenceLevelName, str, PolicyResult]:
     """Derive hypotheses and policy from observations without claiming proof."""
 
     hypotheses: list[str] = []
     risk = 0.0
     confidence = 0.35
     next_test = "Collect another snapshot or run targeted proof probe."
-    policy = PolicyResult(decision="allow", reason="read_only_diagnosis_only", allowed=True, dry_run=True)
+    policy = PolicyResult(
+        decision="allow", reason="read_only_diagnosis_only", allowed=True, dry_run=True
+    )
 
     by_name = {p.name: p for p in observations}
     wininet = by_name.get("wininet_proxy_state")
@@ -409,7 +464,9 @@ def classify_diagnosis(observations: list[ProbeResult]) -> tuple[list[str], floa
             hypotheses.append("WinINET routes browser traffic through a localhost proxy.")
             risk += 0.45
             confidence += 0.2
-            next_test = "Enable Sysmon Event ID 13 or import Procmon trace to identify the registry writer."
+            next_test = (
+                "Enable Sysmon Event ID 13 or import Procmon trace to identify the registry writer."
+            )
             policy = PolicyResult(
                 decision="preview_only",
                 reason="localhost_proxy_drift_requires_writer_proof_before_remediation",
@@ -419,12 +476,18 @@ def classify_diagnosis(observations: list[ProbeResult]) -> tuple[list[str], floa
     if listener and isinstance(listener.observed_value, dict):
         candidate = listener.observed_value.get("candidate_actor")
         if isinstance(candidate, dict) and candidate.get("pid"):
-            hypotheses.append("A listener PID is time-correlated with the configured localhost proxy port.")
+            hypotheses.append(
+                "A listener PID is time-correlated with the configured localhost proxy port."
+            )
             confidence += 0.08
-            next_test = "Capture registry writer telemetry; listener ownership is candidate evidence only."
+            next_test = (
+                "Capture registry writer telemetry; listener ownership is candidate evidence only."
+            )
 
     if not hypotheses:
-        hypotheses.append("No high-confidence endpoint reliability issue was inferred from available observations.")
+        hypotheses.append(
+            "No high-confidence endpoint reliability issue was inferred from available observations."
+        )
         next_test = "Continue monitoring for drift or run a live diagnosis during failure."
 
     risk = max(0.0, min(1.0, risk))
@@ -462,7 +525,9 @@ def build_diagnosis_run(
 
     eid = endpoint_id or local_endpoint_id()
     observations = collect_probe_results(eid, include_live=include_live_probes)
-    hypotheses, confidence, risk, evidence_level, next_test, policy = classify_diagnosis(observations)
+    hypotheses, confidence, risk, evidence_level, next_test, policy = classify_diagnosis(
+        observations
+    )
     run_id = str(uuid.uuid4())
     audit_event = PlatformAuditEvent(
         endpoint_id=eid,
@@ -516,7 +581,9 @@ def replay_diagnosis(run_id: str) -> dict[str, Any] | None:
     diag = get_diagnosis(run_id)
     if diag is None:
         return None
-    hypotheses, confidence, risk, evidence_level, next_test, policy = classify_diagnosis(diag.observations)
+    hypotheses, confidence, risk, evidence_level, next_test, policy = classify_diagnosis(
+        diag.observations
+    )
     return {
         "run_id": run_id,
         "replay_mode": "stored_observations_only",
@@ -566,7 +633,11 @@ def build_rollback_preview(request: RollbackPreviewRequest) -> dict[str, Any]:
     allowed_fields = {"ProxyEnable", "ProxyServer", "AutoConfigURL", "ProxyOverride", "AutoDetect"}
     fields = [f for f in request.fields if f in allowed_fields]
     decision = "preview_only" if lkg and fields else "blocked"
-    reason = "targeted_reversible_wininet_restore_preview" if decision == "preview_only" else "no_lkg_or_no_safe_fields"
+    reason = (
+        "targeted_reversible_wininet_restore_preview"
+        if decision == "preview_only"
+        else "no_lkg_or_no_safe_fields"
+    )
     audit_id = append_contract_audit(
         PlatformAuditEvent(
             endpoint_id=request.endpoint_id,
@@ -611,7 +682,10 @@ def endpoint_summary(endpoint_id: str, row: dict[str, Any] | None = None) -> End
         safe_display_name=endpoint_id[:12],
         os=os_bits or platform.system(),
         status=status,
-        last_seen_at=str(base.get("last_seen_at") or (latest_for_endpoint.timestamp_utc if latest_for_endpoint else "")),
+        last_seen_at=str(
+            base.get("last_seen_at")
+            or (latest_for_endpoint.timestamp_utc if latest_for_endpoint else "")
+        ),
         last_known_good_available=latest_lkg_snapshot(endpoint_id) is not None,
         latest_risk_score=risk,
         latest_diagnosis_id=latest_for_endpoint.run_id if latest_for_endpoint else "",
@@ -632,7 +706,12 @@ def list_endpoint_summaries() -> list[EndpointSummary]:
             seen[eid] = {"endpoint_id": eid}
     if not seen:
         eid = local_endpoint_id()
-        seen[eid] = {"endpoint_id": eid, "os_family": platform.system(), "os_version": platform.release(), "last_seen_at": utc_now_iso()}
+        seen[eid] = {
+            "endpoint_id": eid,
+            "os_family": platform.system(),
+            "os_version": platform.release(),
+            "last_seen_at": utc_now_iso(),
+        }
     return [endpoint_summary(eid, row) for eid, row in seen.items()]
 
 
@@ -647,5 +726,7 @@ def hash_event_payload(payload: dict[str, Any], previous_hash: str = "") -> str:
 
     body = dict(payload)
     body.pop("hash", None)
-    encoded = json.dumps({"previous_hash": previous_hash, "event": body}, sort_keys=True, default=str).encode("utf-8")
+    encoded = json.dumps(
+        {"previous_hash": previous_hash, "event": body}, sort_keys=True, default=str
+    ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()

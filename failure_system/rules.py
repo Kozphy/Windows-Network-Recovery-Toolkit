@@ -82,11 +82,7 @@ class RuleEngine:
                 )
             )
 
-        if (
-            snapshot.ping_ip_ok
-            and snapshot.nslookup_ok
-            and not snapshot.curl_https_ok
-        ):
+        if snapshot.ping_ip_ok and snapshot.nslookup_ok and not snapshot.curl_https_ok:
             rules.append(
                 RuleOutcome(
                     rule_id="https_path_failure",

@@ -4,6 +4,11 @@ Re-exports :mod:`platform_core.reasoning_models` and :mod:`platform_core.reasoni
 so portfolio docs can reference ``platform_core.reasoning`` as the architecture layer.
 """
 
+from platform_core.reasoning.layers import (
+    EpistemicLayer,
+    cap_conclusion_strength,
+    evidence_level_for_layer,
+)
 from platform_core.reasoning_engine import (
     DESTRUCTIVE_ACTION_TOKENS,
     SAFE_REGISTRY_ACTIONS,
@@ -28,11 +33,6 @@ from platform_core.reasoning_models import (
     ReliabilityImpact,
     StateTransition,
     new_id,
-)
-from platform_core.reasoning.layers import (
-    EpistemicLayer,
-    cap_conclusion_strength,
-    evidence_level_for_layer,
 )
 
 # Alias: ranked hypothesis rows in ReasoningRun use this shape.

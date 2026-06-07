@@ -188,4 +188,3 @@ def collect_layer_signals() -> dict[str, Any]:
         base["layer_hint"] = "L7"
     base["recommended_next_test_hint"] = _recommended_next_test(base)
     return base
-

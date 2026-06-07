@@ -130,4 +130,3 @@ def policy_outcome_hint(
     if tier_ordinal(tier) >= tier_ordinal("TIER_3_CAUSAL_PROOF") and explicit_confirmation:
         return "ALLOW"
     return "PREVIEW"
-

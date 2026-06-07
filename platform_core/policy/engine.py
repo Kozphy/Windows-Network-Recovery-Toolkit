@@ -107,13 +107,17 @@ def evaluate(
 
     if not remediation_action:
         reason_codes.append("no_remediation_action")
-        return StructuredPolicyDecision(preview_allowed=False, execute_allowed=False, reason_codes=reason_codes)
+        return StructuredPolicyDecision(
+            preview_allowed=False, execute_allowed=False, reason_codes=reason_codes
+        )
 
     action_key = canonical_action_name(remediation_action.strip())
     defn = get_remediation_action(action_key)
     if defn is None:
         reason_codes.append("unknown_action")
-        return StructuredPolicyDecision(preview_allowed=False, execute_allowed=False, reason_codes=reason_codes)
+        return StructuredPolicyDecision(
+            preview_allowed=False, execute_allowed=False, reason_codes=reason_codes
+        )
 
     pd = evaluate_action(action_key, operator_context.surface, pol)
     risk = pd.effective_risk

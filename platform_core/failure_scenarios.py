@@ -6,7 +6,7 @@ from typing import Any
 
 from platform_core.reasoning_models import EndpointEvent, FailureScenario, Observation
 
-TRUE_VALUES = {True, "true", "yes", "ok", "success", "succeeded", "enabled", 1, "1"}
+TRUE_VALUES = {True, "true", "yes", "ok", "success", "succeeded", "enabled", "1"}
 
 
 def _is_true(value: Any) -> bool:
@@ -35,7 +35,9 @@ def normalize_signals(observations: list[Observation]) -> dict[str, Any]:
     """Normalize observations into a simple replayable signal dictionary."""
     out: dict[str, Any] = {}
     for obs in observations:
-        out[obs.signal_name] = obs.normalized_value if obs.normalized_value is not None else obs.value
+        out[obs.signal_name] = (
+            obs.normalized_value if obs.normalized_value is not None else obs.value
+        )
     return out
 
 
@@ -70,13 +72,23 @@ def browser_proxy_path_regression() -> FailureScenario:
         rules=[
             {
                 "id": "proxy_drift",
-                "requires_any": ["wininet_proxy_changed", "wininet_proxy_enabled", "localhost_proxy_detected"],
+                "requires_any": [
+                    "wininet_proxy_changed",
+                    "wininet_proxy_enabled",
+                    "localhost_proxy_detected",
+                ],
                 "from_state": "healthy_browser_path",
                 "to_state": "proxy_drift_detected",
             },
             {
                 "id": "browser_path_suspected",
-                "requires_all": ["ping_ok", "dns_ok", "tcp443_ok", "browser_https_failed", "wininet_proxy_enabled"],
+                "requires_all": [
+                    "ping_ok",
+                    "dns_ok",
+                    "tcp443_ok",
+                    "browser_https_failed",
+                    "wininet_proxy_enabled",
+                ],
                 "from_state": "proxy_drift_detected",
                 "to_state": "browser_path_failure_suspected",
             },
@@ -167,8 +179,16 @@ def detect_endpoint_events(observations: list[Observation]) -> list[EndpointEven
     for obs in observations:
         if not _is_true(obs.normalized_value if obs.normalized_value is not None else obs.value):
             continue
-        severity = "medium" if obs.signal_name in {"browser_https_failed", "proxied_path_failed"} else "info"
-        if obs.signal_name in {"wininet_proxy_changed", "localhost_proxy_detected", "wininet_proxy_enabled"}:
+        severity = (
+            "medium"
+            if obs.signal_name in {"browser_https_failed", "proxied_path_failed"}
+            else "info"
+        )
+        if obs.signal_name in {
+            "wininet_proxy_changed",
+            "localhost_proxy_detected",
+            "wininet_proxy_enabled",
+        }:
             severity = "low"
         events.append(
             EndpointEvent(

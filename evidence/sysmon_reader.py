@@ -71,10 +71,7 @@ def parse_sysmon_row(row: dict[str, Any]) -> SysmonRegistrySetEvent | None:
         return None
     img = str(row.get("Image") or row.get("ProcessPath") or row.get("image") or "").strip()
     obj = str(
-        row.get("TargetObject")
-        or row.get("target_object")
-        or row.get("RegistryPath")
-        or "",
+        row.get("TargetObject") or row.get("target_object") or row.get("RegistryPath") or "",
     ).strip()
     if not img and not obj:
         return None

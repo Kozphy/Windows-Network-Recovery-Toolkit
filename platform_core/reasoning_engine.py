@@ -58,6 +58,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from platform_core import policy_v2 as pv2
 from platform_core.evidence_tree import build_evidence_tree
 from platform_core.failure_scenarios import (
     default_failure_scenarios,
@@ -66,7 +67,6 @@ from platform_core.failure_scenarios import (
     normalize_signals,
 )
 from platform_core.impact_score import calculate_reliability_impact
-from platform_core import policy_v2 as pv2
 from platform_core.reasoning_models import (
     EndpointEvent,
     EvidenceTree,
@@ -78,15 +78,35 @@ from platform_core.reasoning_models import (
     new_id,
 )
 
-SAFE_REGISTRY_ACTIONS = {"restore_proxy", "disable_proxy", "reset_wininet_proxy", "restore_known_good_proxy"}
-DESTRUCTIVE_ACTION_TOKENS = ("firewall", "adapter_disable", "kill", "process_kill", "arbitrary_shell", "netsh_reset")
+SAFE_REGISTRY_ACTIONS = {
+    "restore_proxy",
+    "disable_proxy",
+    "reset_wininet_proxy",
+    "restore_known_good_proxy",
+}
+DESTRUCTIVE_ACTION_TOKENS = (
+    "firewall",
+    "adapter_disable",
+    "kill",
+    "process_kill",
+    "arbitrary_shell",
+    "netsh_reset",
+)
 
 
 def _has(signals: dict[str, Any], name: str) -> bool:
     """Return whether a normalized signal is true."""
     value = signals.get(name)
     if isinstance(value, str):
-        return value.strip().lower() in {"true", "yes", "ok", "success", "succeeded", "enabled", "1"}
+        return value.strip().lower() in {
+            "true",
+            "yes",
+            "ok",
+            "success",
+            "succeeded",
+            "enabled",
+            "1",
+        }
     return bool(value)
 
 
@@ -95,13 +115,19 @@ def _event_ids_for(required: set[str], events: list[EndpointEvent]) -> list[str]
     return [event.id for event in events if event.event_type in required]
 
 
-def infer_browser_proxy_transitions(events: list[EndpointEvent], signals: dict[str, Any]) -> list[StateTransition]:
+def infer_browser_proxy_transitions(
+    events: list[EndpointEvent], signals: dict[str, Any]
+) -> list[StateTransition]:
     """Infer state transitions for the browser proxy path scenario."""
     observed = event_types(events)
     transitions: list[StateTransition] = []
     current = "healthy_browser_path"
 
-    drift_events = {"wininet_proxy_changed", "wininet_proxy_enabled", "localhost_proxy_detected"} & observed
+    drift_events = {
+        "wininet_proxy_changed",
+        "wininet_proxy_enabled",
+        "localhost_proxy_detected",
+    } & observed
     if drift_events:
         transitions.append(
             StateTransition(
@@ -114,7 +140,13 @@ def infer_browser_proxy_transitions(events: list[EndpointEvent], signals: dict[s
         )
         current = "proxy_drift_detected"
 
-    suspect_required = {"ping_ok", "dns_ok", "tcp443_ok", "browser_https_failed", "wininet_proxy_enabled"}
+    suspect_required = {
+        "ping_ok",
+        "dns_ok",
+        "tcp443_ok",
+        "browser_https_failed",
+        "wininet_proxy_enabled",
+    }
     if suspect_required.issubset(observed):
         transitions.append(
             StateTransition(
@@ -159,15 +191,27 @@ def reject_alternatives(signals: dict[str, Any]) -> list[dict[str, str]]:
     """Return alternative hypotheses rejected by observed positive controls."""
     rejected: list[dict[str, str]] = []
     if _has(signals, "ping_ok") or _has(signals, "dns_ok") or _has(signals, "tcp443_ok"):
-        rejected.append({"hypothesis": "total_network_outage", "reason": "ping/dns/tcp checks succeeded"})
+        rejected.append(
+            {"hypothesis": "total_network_outage", "reason": "ping/dns/tcp checks succeeded"}
+        )
     if _has(signals, "dns_ok"):
         rejected.append({"hypothesis": "dns_only_failure", "reason": "dns resolution succeeded"})
     if _has(signals, "tcp443_ok"):
         rejected.append({"hypothesis": "tcp_blocked", "reason": "TCP 443 connectivity succeeded"})
     if _has(signals, "tcp443_ok") and _has(signals, "proxy_bypass_succeeded"):
-        rejected.append({"hypothesis": "upstream_isp_issue", "reason": "direct HTTPS path succeeded outside proxy"})
+        rejected.append(
+            {
+                "hypothesis": "upstream_isp_issue",
+                "reason": "direct HTTPS path succeeded outside proxy",
+            }
+        )
     if _has(signals, "proxy_bypass_succeeded") and not _has(signals, "tls_certificate_error"):
-        rejected.append({"hypothesis": "certificate_tls_issue", "reason": "proxy bypass succeeded without TLS error signal"})
+        rejected.append(
+            {
+                "hypothesis": "certificate_tls_issue",
+                "reason": "proxy bypass succeeded without TLS error signal",
+            }
+        )
     return rejected
 
 
@@ -284,8 +328,16 @@ def evaluate_reasoning_policy(
     reason_codes: list[str] = []
     limitations: list[str] = []
     state_transition = transitions[-1].to_state if transitions else "unknown"
-    evidence_level = "proof" if proof_result.status == "CONFIRMED" else ("validated" if transitions else "inferred")
-    trust_level = "low" if conflicting_signals else ("high" if proof_result.status == "CONFIRMED" else "medium")
+    evidence_level = (
+        "proof"
+        if proof_result.status == "CONFIRMED"
+        else ("validated" if transitions else "inferred")
+    )
+    trust_level = (
+        "low"
+        if conflicting_signals
+        else ("high" if proof_result.status == "CONFIRMED" else "medium")
+    )
 
     if action and any(token in action for token in DESTRUCTIVE_ACTION_TOKENS):
         return PolicyDecision(
@@ -299,8 +351,12 @@ def evaluate_reasoning_policy(
             trust_level=trust_level,  # type: ignore[arg-type]
             impact_level=impact_level,  # type: ignore[arg-type]
             reason_codes=[pv2.DESTRUCTIVE_ACTION_BLOCKED],
-            blocked_actions=pv2.blocked_actions_for_request(outcome="BLOCK", requested_action=action),
-            limitations=["Firewall reset, adapter disable, process kill, and arbitrary shell remain blocked."],
+            blocked_actions=pv2.blocked_actions_for_request(
+                outcome="BLOCK", requested_action=action
+            ),
+            limitations=[
+                "Firewall reset, adapter disable, process kill, and arbitrary shell remain blocked."
+            ],
             recommended_next_steps=["Use manual incident response after preserving evidence."],
         )
 
@@ -316,8 +372,12 @@ def evaluate_reasoning_policy(
             trust_level=trust_level,  # type: ignore[arg-type]
             impact_level=impact_level,  # type: ignore[arg-type]
             reason_codes=[pv2.DIAGNOSTIC_ONLY],
-            blocked_actions=pv2.blocked_actions_for_request(outcome="PREVIEW", requested_action=None),
-            recommended_next_steps=["Run preview with a safe remediation action if repair is needed."],
+            blocked_actions=pv2.blocked_actions_for_request(
+                outcome="PREVIEW", requested_action=None
+            ),
+            recommended_next_steps=[
+                "Run preview with a safe remediation action if repair is needed."
+            ],
         )
 
     if action not in SAFE_REGISTRY_ACTIONS:
@@ -332,9 +392,13 @@ def evaluate_reasoning_policy(
             trust_level=trust_level,  # type: ignore[arg-type]
             impact_level=impact_level,  # type: ignore[arg-type]
             reason_codes=[pv2.UNKNOWN_ACTION],
-            blocked_actions=pv2.blocked_actions_for_request(outcome="BLOCK", requested_action=action),
+            blocked_actions=pv2.blocked_actions_for_request(
+                outcome="BLOCK", requested_action=action
+            ),
             limitations=["Only allowlisted remediation action keys can pass policy."],
-            recommended_next_steps=["Choose an allowlisted preview action or continue diagnostics."],
+            recommended_next_steps=[
+                "Choose an allowlisted preview action or continue diagnostics."
+            ],
         )
 
     if conflicting_signals:
@@ -399,7 +463,9 @@ def evaluate_reasoning_policy(
             requested_action=action,
         ),
         limitations=limitations,
-        recommended_next_steps=["Show remediation preview and require typed operator confirmation."],
+        recommended_next_steps=[
+            "Show remediation preview and require typed operator confirmation."
+        ],
     )
 
 
@@ -505,7 +571,9 @@ def run_reasoning(
         }
     else:
         preview = {}
-    recommendations = list(dict.fromkeys(scenario.recommended_next_steps + policy.recommended_next_steps))
+    recommendations = list(
+        dict.fromkeys(scenario.recommended_next_steps + policy.recommended_next_steps)
+    )
     tree: EvidenceTree = build_evidence_tree(
         run_id=rid,
         accepted_hypothesis=accepted,
@@ -536,6 +604,10 @@ def run_reasoning(
     )
 
 
-def observation(name: str, value: Any = True, *, source: str = "fixture", confidence: float = 1.0) -> Observation:
+def observation(
+    name: str, value: Any = True, *, source: str = "fixture", confidence: float = 1.0
+) -> Observation:
     """Convenience constructor for tests and fixtures."""
-    return Observation(source=source, signal_name=name, value=value, normalized_value=value, confidence=confidence)
+    return Observation(
+        source=source, signal_name=name, value=value, normalized_value=value, confidence=confidence
+    )

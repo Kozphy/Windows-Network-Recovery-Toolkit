@@ -72,7 +72,9 @@ def _invoke_src_json(argv: list[str]) -> dict[str, Any]:
     try:
         return json.loads(blob)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=502, detail={"parse_error": str(exc), "stdout": blob}) from exc
+        raise HTTPException(
+            status_code=502, detail={"parse_error": str(exc), "stdout": blob}
+        ) from exc
 
 
 def _invoke_src_json_status(argv: list[str], *, allowed_returncodes: set[int]) -> dict[str, Any]:
@@ -96,11 +98,15 @@ def _invoke_src_json_status(argv: list[str], *, allowed_returncodes: set[int]) -
     try:
         payload = json.loads(blob) if blob else {}
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=502, detail={"parse_error": str(exc), "stdout": blob}) from exc
+        raise HTTPException(
+            status_code=502, detail={"parse_error": str(exc), "stdout": blob}
+        ) from exc
     if isinstance(payload, dict):
         payload.setdefault("returncode", proc.returncode)
         return payload
-    raise HTTPException(status_code=502, detail={"parse_error": "stdout JSON was not an object", "stdout": blob})
+    raise HTTPException(
+        status_code=502, detail={"parse_error": "stdout JSON was not an object", "stdout": blob}
+    )
 
 
 def _invoke_src_text(argv: list[str]) -> str:
@@ -195,7 +201,9 @@ def api_proxy_disable_preview(
 class DisableConfirm(BaseModel):
     dry_run: bool = True
     confirmation: str = ""
-    confirm: bool | None = Field(default=None, description="Legacy field; ignored unless confirmation_text is used.")
+    confirm: bool | None = Field(
+        default=None, description="Legacy field; ignored unless confirmation_text is used."
+    )
     confirmation_text: str = ""
     clear_server: bool = False
 
@@ -308,7 +316,13 @@ def api_proxy_registry_writer_proof(
 ) -> dict[str, Any]:
     """Read-only Sysmon / Security 4657 / Procmon CSV registry writer evidence."""
 
-    argv = ["proxy", "registry-writer-proof", "--json", "--since-seconds", str(int(body.since_seconds))]
+    argv = [
+        "proxy",
+        "registry-writer-proof",
+        "--json",
+        "--since-seconds",
+        str(int(body.since_seconds)),
+    ]
     if body.procmon_csv:
         argv.extend(["--procmon-csv", body.procmon_csv])
     return _invoke_src_json(argv)

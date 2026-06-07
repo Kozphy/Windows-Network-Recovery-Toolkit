@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from platform_core.reasoning_models import ImpactDuration, ImpactScope, ImpactSeverity, ReliabilityImpact
+from platform_core.reasoning_models import (
+    ImpactDuration,
+    ImpactScope,
+    ImpactSeverity,
+    ReliabilityImpact,
+)
 
 SEVERITY_WEIGHTS: dict[ImpactSeverity, float] = {
     "low": 0.25,
@@ -74,6 +79,10 @@ def calculate_reliability_impact(
             f"Impact uses severity={severity}, scope={scope}, confidence={bounded_confidence:.2f}, "
             f"duration={duration_factor}. The score is a ranking aid, not a financial loss model."
         ),
-        limitations=["Impact score is ordinal and explainable; it is not a calibrated outage probability."],
-        recommended_next_steps=["Validate user-visible workflow impact before executing remediation."],
+        limitations=[
+            "Impact score is ordinal and explainable; it is not a calibrated outage probability."
+        ],
+        recommended_next_steps=[
+            "Validate user-visible workflow impact before executing remediation."
+        ],
     )

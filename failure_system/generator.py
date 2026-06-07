@@ -18,7 +18,7 @@ Engineering Notes:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from failure_system.models import (
@@ -76,9 +76,7 @@ def _name_from_top(top: RuleOutcome | None) -> str:
 def _recommended_fix(top: RuleOutcome | None, snapshot: DiagnosticSnapshot) -> str:
     """Select conservative remediation guidance text for the primary rule."""
     if top is None:
-        return (
-            "Re-run diagnostics; consult toolkit scripts/README for targeted resets only after manual review."
-        )
+        return "Re-run diagnostics; consult toolkit scripts/README for targeted resets only after manual review."
     if top.rule_id == "dns_failure_likely":
         return (
             "Safe first step: run `scripts/reset_dns.bat` or equivalent DNS flush after backing up context; "
@@ -95,9 +93,7 @@ def _recommended_fix(top: RuleOutcome | None, snapshot: DiagnosticSnapshot) -> s
             "if misconfiguration is confirmed."
         )
     if top.rule_id == "ping_fail_path":
-        return (
-            "Physical/link troubleshooting first; avoid stack resets until link-layer causes are ruled out."
-        )
+        return "Physical/link troubleshooting first; avoid stack resets until link-layer causes are ruled out."
     if top.rule_id == "intermittent_instability":
         return (
             "Gather longitudinal snapshots; prefer driver/router fixes before broad stack resets."
@@ -108,17 +104,11 @@ def _recommended_fix(top: RuleOutcome | None, snapshot: DiagnosticSnapshot) -> s
 def _rollback(top: RuleOutcome | None) -> str:
     """Describe rollback expectations for the suggested guidance path."""
     if top and top.rule_id == "dns_failure_likely":
-        return (
-            "Note prior DNS server list; restore static DNS if changed; resolver cache repopulates automatically."
-        )
+        return "Note prior DNS server list; restore static DNS if changed; resolver cache repopulates automatically."
     if top and top.rule_id in ("https_path_failure", "proxy_misconfiguration"):
-        return (
-            "Export current WinINET/WinHTTP proxy keys before edits; restore exported `.reg` snippet if needed."
-        )
+        return "Export current WinINET/WinHTTP proxy keys before edits; restore exported `.reg` snippet if needed."
     if top and top.rule_id == "ping_fail_path":
-        return (
-            "Link-layer changes (cable swap, Wi-Fi reconnect) generally need no rollback; router reboot restores prior DHCP."
-        )
+        return "Link-layer changes (cable swap, Wi-Fi reconnect) generally need no rollback; router reboot restores prior DHCP."
     return "No automated state mutation was performed by this tool; rollback N/A for diagnostics-only run."
 
 
@@ -160,9 +150,7 @@ def build_failure_block(
     likely = [o.cause for o in outcomes[:5]]
     explanations = [o.explanation for o in outcomes[:3]]
 
-    diagnostic_commands = {
-        k: v.stdout for k, v in snapshot.raw.items()
-    }
+    diagnostic_commands = {k: v.stdout for k, v in snapshot.raw.items()}
 
     source_logs = [
         f"rules:{','.join(o.rule_id for o in outcomes[:6])}",
@@ -181,6 +169,6 @@ def build_failure_block(
         risk_level=risk,
         safety_boundary=DEFAULT_SAFETY_BOUNDARY,
         rollback_plan=_rollback(top),
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         source_logs=source_logs,
     )

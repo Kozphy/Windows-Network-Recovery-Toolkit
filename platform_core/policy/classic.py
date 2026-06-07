@@ -15,7 +15,10 @@ from platform_core.models import (
     RequestSurface,
     utc_now_iso,
 )
-from platform_core.remediation_registry import build_action_registry_legacy_dict, get_remediation_action
+from platform_core.remediation_registry import (
+    build_action_registry_legacy_dict,
+    get_remediation_action,
+)
 
 RiskName = Literal["read_only", "low", "medium", "high", "forbidden"]
 
@@ -55,18 +58,30 @@ def evaluate_action(
     if risk_level == "forbidden":
         return PolicyDecision(allowed=False, reason="forbidden_action", effective_risk="forbidden")
     if risk_level == "high":
-        return PolicyDecision(allowed=False, reason="high_risk_blocked_from_platform", effective_risk="high")
+        return PolicyDecision(
+            allowed=False, reason="high_risk_blocked_from_platform", effective_risk="high"
+        )
 
     if defn.allowed_surfaces and requested_surface not in defn.allowed_surfaces:
-        return PolicyDecision(allowed=False, reason="surface_not_allowed", effective_risk=risk_level)
+        return PolicyDecision(
+            allowed=False, reason="surface_not_allowed", effective_risk=risk_level
+        )
     if requested_surface == "api" and not pol.can_run_from_api:
-        return PolicyDecision(allowed=False, reason="api_disabled_by_policy", effective_risk=risk_level)
+        return PolicyDecision(
+            allowed=False, reason="api_disabled_by_policy", effective_risk=risk_level
+        )
     if requested_surface == "cli" and not pol.can_run_from_cli:
-        return PolicyDecision(allowed=False, reason="cli_disabled_by_policy", effective_risk=risk_level)
+        return PolicyDecision(
+            allowed=False, reason="cli_disabled_by_policy", effective_risk=risk_level
+        )
     if risk_level not in pol.allowed_risk_levels:
-        return PolicyDecision(allowed=False, reason="risk_level_not_allowed", effective_risk=risk_level)
+        return PolicyDecision(
+            allowed=False, reason="risk_level_not_allowed", effective_risk=risk_level
+        )
     if action_name in pol.forbidden_actions:
-        return PolicyDecision(allowed=False, reason="action_forbidden_by_policy", effective_risk=risk_level)
+        return PolicyDecision(
+            allowed=False, reason="action_forbidden_by_policy", effective_risk=risk_level
+        )
     return PolicyDecision(allowed=True, reason="ok", effective_risk=risk_level)
 
 
@@ -105,7 +120,9 @@ def build_preview(
     if defn.script_path:
         commands.append(f"scripts\\\\{defn.script_path}  (allowlisted)")
     if defn.manual_only and not defn.script_path:
-        commands.append("[manual] follow FailureBlock / operator runbook; no allowlisted .bat in prototype")
+        commands.append(
+            "[manual] follow FailureBlock / operator runbook; no allowlisted .bat in prototype"
+        )
 
     pd = evaluate_action(recommended_action, requested_surface, pol)
     needs_confirm = pol.requires_confirmation and risk in ("low", "medium")

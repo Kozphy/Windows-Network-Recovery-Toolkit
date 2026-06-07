@@ -12,9 +12,10 @@ import csv
 import json
 import platform
 import subprocess
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 INTERNET_SETTINGS_FRAGMENT = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings".lower()
 PROXY_VALUE_NAMES = frozenset(
@@ -33,7 +34,9 @@ PROXY_VALUE_DISPLAY = {
     "proxyoverride": "ProxyOverride",
     "autodetect": "AutoDetect",
 }
-WRITER_PROOF_UNAVAILABLE = "writer proof unavailable; enable Sysmon registry telemetry or import Procmon trace."
+WRITER_PROOF_UNAVAILABLE = (
+    "writer proof unavailable; enable Sysmon registry telemetry or import Procmon trace."
+)
 
 
 @dataclass(frozen=True)
@@ -192,7 +195,10 @@ def detect_sysmon_status(
             "running": False,
             "service_names": [],
             "log_available": False,
-            "limitations": ["sysmon_status_query_nonzero", (getattr(proc, "stderr", "") or "")[:300]],
+            "limitations": [
+                "sysmon_status_query_nonzero",
+                (getattr(proc, "stderr", "") or "")[:300],
+            ],
         }
 
     try:
@@ -221,7 +227,9 @@ def detect_sysmon_status(
     if not installed:
         limitations.append(WRITER_PROOF_UNAVAILABLE)
     elif not running:
-        limitations.append("Sysmon service is installed but not running; recent writer proof may be incomplete.")
+        limitations.append(
+            "Sysmon service is installed but not running; recent writer proof may be incomplete."
+        )
     if installed and not log_available:
         limitations.append("Sysmon service found but Operational event log was not readable.")
     return {
@@ -254,11 +262,21 @@ def _parse_sysmon_like_row(row: dict[str, Any]) -> RegistryWriterEvidence | None
     details = lower.get("details")
     raw_limited = dict(row)
     return RegistryWriterEvidence(
-        timestamp=str(lower.get("utctime") or lower.get("utc_time") or lower.get("timecreated") or lower.get("timestamp") or "")
+        timestamp=str(
+            lower.get("utctime")
+            or lower.get("utc_time")
+            or lower.get("timecreated")
+            or lower.get("timestamp")
+            or ""
+        )
         or None,
-        process_image=str(lower.get("image") or lower.get("process_image") or lower.get("processpath") or "").strip()
+        process_image=str(
+            lower.get("image") or lower.get("process_image") or lower.get("processpath") or ""
+        ).strip()
         or None,
-        process_id=_coerce_int(lower.get("processid") or lower.get("process_id") or lower.get("pid")),
+        process_id=_coerce_int(
+            lower.get("processid") or lower.get("process_id") or lower.get("pid")
+        ),
         user=str(lower.get("user") or "").strip() or None,
         target_object=target,
         value_name=value_name,
@@ -268,7 +286,9 @@ def _parse_sysmon_like_row(row: dict[str, Any]) -> RegistryWriterEvidence | None
         source_event_id="13",
         raw=raw_limited,
         confidence=0.94,
-        limitations=["Sysmon Event ID 13 supplies the set value detail; it does not always include previous value."],
+        limitations=[
+            "Sysmon Event ID 13 supplies the set value detail; it does not always include previous value."
+        ],
     )
 
 
@@ -324,9 +344,15 @@ def query_sysmon_registry_writes(
         ``limitations`` and ``sysmon_status``.
     """
 
-    status = detect_sysmon_status(run=run, platform_name=platform_name, powershell_exe=powershell_exe)
+    status = detect_sysmon_status(
+        run=run, platform_name=platform_name, powershell_exe=powershell_exe
+    )
     if not status.get("installed"):
-        return {"evidence": [], "limitations": list(status.get("limitations") or [WRITER_PROOF_UNAVAILABLE]), "sysmon_status": status}
+        return {
+            "evidence": [],
+            "limitations": list(status.get("limitations") or [WRITER_PROOF_UNAVAILABLE]),
+            "sysmon_status": status,
+        }
 
     script = _sysmon_query_script(since_seconds, max_events)
     try:
@@ -341,7 +367,10 @@ def query_sysmon_registry_writes(
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {
             "evidence": [],
-            "limitations": [f"sysmon_event_query_failed:{type(exc).__name__}", *list(status.get("limitations") or [])],
+            "limitations": [
+                f"sysmon_event_query_failed:{type(exc).__name__}",
+                *list(status.get("limitations") or []),
+            ],
             "sysmon_status": status,
         }
 
@@ -360,7 +389,11 @@ def query_sysmon_registry_writes(
     try:
         parsed = json.loads(text or "[]")
     except json.JSONDecodeError:
-        return {"evidence": [], "limitations": ["sysmon_event_json_parse_failed"], "sysmon_status": status}
+        return {
+            "evidence": [],
+            "limitations": ["sysmon_event_json_parse_failed"],
+            "sysmon_status": status,
+        }
 
     if isinstance(parsed, dict):
         rows = [parsed]
@@ -371,7 +404,9 @@ def query_sysmon_registry_writes(
     evidence = parse_sysmon_event_rows(rows)
     limitations = list(status.get("limitations") or [])
     if not evidence:
-        limitations.append("No Sysmon Event ID 13 proxy registry writes found in the requested time window.")
+        limitations.append(
+            "No Sysmon Event ID 13 proxy registry writes found in the requested time window."
+        )
     return {"evidence": evidence, "limitations": limitations, "sysmon_status": status}
 
 
@@ -412,17 +447,34 @@ def parse_security_4657_rows(rows: list[dict[str, Any]]) -> list[RegistryWriterE
             or fields.get("targetobject")
             or ""
         ).strip()
-        value_hint = str(fields.get("object_value_name") or fields.get("objectvaluename") or fields.get("value_name") or "")
+        value_hint = str(
+            fields.get("object_value_name")
+            or fields.get("objectvaluename")
+            or fields.get("value_name")
+            or ""
+        )
         value_name = normalize_registry_value_name(target, value_hint)
         if value_name is None:
             continue
-        process_image = str(fields.get("process_name") or fields.get("processname") or fields.get("image") or "").strip() or None
+        process_image = (
+            str(
+                fields.get("process_name") or fields.get("processname") or fields.get("image") or ""
+            ).strip()
+            or None
+        )
         out.append(
             RegistryWriterEvidence(
                 timestamp=str(fields.get("timecreated") or fields.get("timestamp") or "") or None,
                 process_image=process_image,
-                process_id=_coerce_int(fields.get("process_id") or fields.get("processid") or fields.get("pid")),
-                user=str(fields.get("subject_user_name") or fields.get("subjectusername") or fields.get("user") or "").strip()
+                process_id=_coerce_int(
+                    fields.get("process_id") or fields.get("processid") or fields.get("pid")
+                ),
+                user=str(
+                    fields.get("subject_user_name")
+                    or fields.get("subjectusername")
+                    or fields.get("user")
+                    or ""
+                ).strip()
                 or None,
                 target_object=target,
                 value_name=value_name,
@@ -432,7 +484,9 @@ def parse_security_4657_rows(rows: list[dict[str, Any]]) -> list[RegistryWriterE
                 source_event_id="4657",
                 raw=dict(row),
                 confidence=0.90,
-                limitations=["Security Event ID 4657 requires registry auditing/SACL coverage on the target key."],
+                limitations=[
+                    "Security Event ID 4657 requires registry auditing/SACL coverage on the target key."
+                ],
             )
         )
     return out
@@ -472,10 +526,21 @@ def query_security_registry_writes(
     """Query Windows Security Event ID 4657 for audited registry value writes."""
 
     if (platform_name or platform.system()).lower() != "windows":
-        return {"evidence": [], "limitations": ["Security 4657 registry audit log unavailable on non-Windows platform."]}
+        return {
+            "evidence": [],
+            "limitations": [
+                "Security 4657 registry audit log unavailable on non-Windows platform."
+            ],
+        }
     try:
         proc = run(
-            [powershell_exe, "-NoProfile", "-NonInteractive", "-Command", _security_4657_script(since_seconds, max_events)],
+            [
+                powershell_exe,
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                _security_4657_script(since_seconds, max_events),
+            ],
             capture_output=True,
             text=True,
             errors="replace",
@@ -487,7 +552,10 @@ def query_security_registry_writes(
     if int(getattr(proc, "returncode", 1)) != 0:
         return {
             "evidence": [],
-            "limitations": ["security_4657_query_nonzero", (getattr(proc, "stderr", "") or "")[:500]],
+            "limitations": [
+                "security_4657_query_nonzero",
+                (getattr(proc, "stderr", "") or "")[:500],
+            ],
         }
     try:
         parsed = json.loads((getattr(proc, "stdout", "") or "").strip() or "[]")
@@ -502,7 +570,9 @@ def query_security_registry_writes(
     evidence = parse_security_4657_rows(rows)
     limitations: list[str] = []
     if not evidence:
-        limitations.append("No Security Event ID 4657 proxy registry writes found; registry auditing may be disabled.")
+        limitations.append(
+            "No Security Event ID 4657 proxy registry writes found; registry auditing may be disabled."
+        )
     return {"evidence": evidence, "limitations": limitations}
 
 

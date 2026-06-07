@@ -28,10 +28,9 @@ Engineering Notes:
     loopback interfaces.
 """
 
-
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,7 +68,9 @@ _SUBSCRIPTION_EVENT_TYPES = frozenset(
 )
 
 
-def process_stripe_subscription_event(event_type: str, data_object: dict[str, Any]) -> dict[str, Any] | None:
+def process_stripe_subscription_event(
+    event_type: str, data_object: dict[str, Any]
+) -> dict[str, Any] | None:
     """Apply subscription sync for recognized Stripe billing events.
 
     Returns:
@@ -132,7 +133,7 @@ class DiagnoseRequest(BaseModel):
     proxy: bool
     time_wait: int = Field(ge=0)
     established: int = Field(ge=0)
-    project_id: Optional[str] = None
+    project_id: str | None = None
 
 
 class DiagnoseResponse(BaseModel):
@@ -142,7 +143,7 @@ class DiagnoseResponse(BaseModel):
     confidence: str
     recommendation: str
     risk: str
-    anomaly: Optional[dict] = None
+    anomaly: dict | None = None
 
 
 class MonitorRequest(BaseModel):
@@ -150,7 +151,7 @@ class MonitorRequest(BaseModel):
 
     time_wait: int = Field(ge=0)
     established: int = Field(ge=0)
-    project_id: Optional[str] = None
+    project_id: str | None = None
 
 
 class CheckoutRequest(BaseModel):
@@ -193,7 +194,7 @@ PLAN_LIMITS = {
 }
 
 
-def _resolve_project(user: AuthUser, requested_project_id: Optional[str]) -> dict:
+def _resolve_project(user: AuthUser, requested_project_id: str | None) -> dict:
     """Resolve an accessible project for the authenticated user.
 
     Args:
@@ -324,7 +325,7 @@ def monitor(req: MonitorRequest, user: AuthUser = Depends(get_current_user)) -> 
 @app.get("/history")
 def history(
     limit: int = 100,
-    project_id: Optional[str] = None,
+    project_id: str | None = None,
     user: AuthUser = Depends(get_current_user),
 ) -> dict:
     """Return bounded diagnosis/metrics history for current project scope."""
@@ -334,7 +335,7 @@ def history(
 
 
 @app.get("/usage")
-def usage(user: AuthUser = Depends(get_current_user), project_id: Optional[str] = None) -> dict:
+def usage(user: AuthUser = Depends(get_current_user), project_id: str | None = None) -> dict:
     """Return current month usage and remaining diagnosis quota."""
     project = _resolve_project(user, project_id)
     org_id = project["org_id"]
@@ -366,7 +367,9 @@ def create_checkout(
     """
     project = _resolve_project(user, None)
     if project["org_id"] != req.org_id:
-        raise HTTPException(status_code=403, detail="Cannot create checkout for another organization.")
+        raise HTTPException(
+            status_code=403, detail="Cannot create checkout for another organization."
+        )
 
     session = create_checkout_session(
         customer_email=user.email,

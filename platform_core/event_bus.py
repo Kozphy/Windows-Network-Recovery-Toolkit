@@ -36,7 +36,7 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
-from platform_core.events import NormalizedEvent, SUPPORTED_SCHEMA_VERSIONS
+from platform_core.events import SUPPORTED_SCHEMA_VERSIONS, NormalizedEvent
 from platform_core.storage import platform_data_dir
 
 DEFAULT_EVENTS_FILE = "normalized_events.jsonl"
@@ -139,7 +139,9 @@ def read_events(
     return good, errors
 
 
-def iter_event_lines(path: Path, *, on_error: Callable[[int, str], None] | None = None) -> Iterator[dict[str, Any]]:
+def iter_event_lines(
+    path: Path, *, on_error: Callable[[int, str], None] | None = None
+) -> Iterator[dict[str, Any]]:
     """Stream-parse JSONL without loading entire file (newest order not guaranteed)."""
 
     if not path.is_file():

@@ -26,7 +26,12 @@ Note:
 
 from evidence.attribution_engine import build_attribution
 from evidence.evidence_event import EvidenceEvent
-from evidence.models import AttributionLevel, AttributionResult, EvidenceItem, coerce_attribution_level
+from evidence.models import (
+    AttributionLevel,
+    AttributionResult,
+    EvidenceItem,
+    coerce_attribution_level,
+)
 
 __all__ = [
     "AttributionLevel",

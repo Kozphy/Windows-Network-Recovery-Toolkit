@@ -102,7 +102,11 @@ def generate_mermaid(diag_result: dict[str, Any]) -> str:
     proc_raw = str(attribution.get("owner_process") or "").strip()
     cls_raw = str(attribution.get("classification") or "").strip()
     proc_label = _short(f"Process: {proc_raw}") if proc_raw else "Process: Not captured"
-    cls_label = _short(f"Classification: {_humanize_snake(cls_raw)}") if cls_raw else "Classification: Not captured"
+    cls_label = (
+        _short(f"Classification: {_humanize_snake(cls_raw)}")
+        if cls_raw
+        else "Classification: Not captured"
+    )
 
     cause = decision.get("cause") if isinstance(decision, dict) else None
     if cause is None or str(cause).strip() == "":
@@ -127,7 +131,6 @@ def generate_mermaid(diag_result: dict[str, Any]) -> str:
         fix_txt = "Fix: Review operator runbooks"
 
     # Build node list in flow order
-    nodes: list[str] = ["User Request"]
     node_labels: list[str] = [_short("User / Network Request")]
 
     for lbl, val in signal_pairs:
@@ -142,7 +145,7 @@ def generate_mermaid(diag_result: dict[str, Any]) -> str:
     ids = _next_ids(len(node_labels))
     lines = ["flowchart TD"]
     for i, nid in enumerate(ids):
-        lines.append(f'{nid}[{_escape_bracket(node_labels[i])}]')
+        lines.append(f"{nid}[{_escape_bracket(node_labels[i])}]")
     for i in range(len(ids) - 1):
         lines.append(f"{ids[i]} --> {ids[i + 1]}")
 

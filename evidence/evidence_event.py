@@ -31,7 +31,9 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-EvidenceSubtype = Literal["procmon_csv", "sysmon_eid13", "etw_stub", "registry_poll", "listener_hint", "other"]
+EvidenceSubtype = Literal[
+    "procmon_csv", "sysmon_eid13", "etw_stub", "registry_poll", "listener_hint", "other"
+]
 
 
 @dataclass

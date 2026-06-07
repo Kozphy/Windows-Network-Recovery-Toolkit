@@ -26,9 +26,9 @@ Failure modes:
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
-from typing import Iterator
 from uuid import UUID
 
 from failure_system.models import FailureBlock

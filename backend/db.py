@@ -26,15 +26,14 @@ Audit Notes:
     module stores the transactional outcome rows.
 """
 
-
 from __future__ import annotations
 
 import json
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 DB_PATH = Path(__file__).with_name("toolkit.db")
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
@@ -49,7 +48,7 @@ def _utc_now_iso() -> str:
     Raises:
         None.
     """
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def utc_now_iso_z() -> str:
@@ -59,7 +58,7 @@ def utc_now_iso_z() -> str:
     instant is correct. ``Z`` replaces ``+00:00`` for clients that expect the legacy
     monitor response shape.
     """
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def get_connection() -> sqlite3.Connection:
@@ -115,7 +114,7 @@ def month_key(now: datetime | None = None) -> str:
     Raises:
         None.
     """
-    dt = now or datetime.now(timezone.utc)
+    dt = now or datetime.now(UTC)
     return dt.strftime("%Y-%m")
 
 
@@ -164,7 +163,7 @@ def ensure_user_org_project(user_id: str, email: str) -> None:
         conn.commit()
 
 
-def get_project_for_user(user_id: str, requested_project_id: Optional[str]) -> Optional[dict[str, Any]]:
+def get_project_for_user(user_id: str, requested_project_id: str | None) -> dict[str, Any] | None:
     """Resolve a project owned by ``user_id``, optionally pinned to a specific project id.
 
     Args:
@@ -239,8 +238,8 @@ def update_subscription(
     org_id: str,
     plan: str,
     status: str,
-    stripe_customer_id: Optional[str] = None,
-    stripe_subscription_id: Optional[str] = None,
+    stripe_customer_id: str | None = None,
+    stripe_subscription_id: str | None = None,
 ) -> None:
     """Upsert subscription fields for billing demos (Stripe ids optional).
 
@@ -300,11 +299,15 @@ def get_usage(org_id: str, month: str) -> dict[str, Any]:
             (org_id, month),
         ).fetchone()
     if row:
-        return {"org_id": row["org_id"], "month": row["month"], "diagnosis_count": int(row["diagnosis_count"])}
+        return {
+            "org_id": row["org_id"],
+            "month": row["month"],
+            "diagnosis_count": int(row["diagnosis_count"]),
+        }
     return {"org_id": org_id, "month": month, "diagnosis_count": 0}
 
 
-def try_increment_usage_with_limit(org_id: str, limit: int, month: str) -> Optional[int]:
+def try_increment_usage_with_limit(org_id: str, limit: int, month: str) -> int | None:
     """Atomically increment monthly diagnosis usage when under plan limit.
 
     Args:
@@ -365,7 +368,7 @@ def insert_diagnosis(*, project_id: str, input_data: dict[str, Any], result: dic
     Side effects:
         Commits one insert with UTC ``created_at``.
     """
-    created = datetime.now(timezone.utc).isoformat()
+    created = datetime.now(UTC).isoformat()
     with get_connection() as conn:
         cur = conn.execute(
             """
@@ -446,7 +449,7 @@ def get_recent_metrics(project_id: str, limit: int) -> list[dict[str, Any]]:
 
 def get_history(
     org_id: str,
-    project_id: Optional[str],
+    project_id: str | None,
     limit: int,
 ) -> dict[str, Any]:
     """Fetch recent diagnosis logs and connection metrics for an organization.

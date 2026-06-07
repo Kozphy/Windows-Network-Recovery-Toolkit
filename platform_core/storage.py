@@ -45,8 +45,9 @@ from __future__ import annotations
 import json
 import os
 import uuid
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from .models import utc_now_iso
 
@@ -315,7 +316,9 @@ def list_metrics() -> dict[str, Any]:
         s = str(e.get("severity") or "low")
         by_sev[s] = by_sev.get(s, 0) + 1
 
-    endpoint_ids = {e.get("endpoint_id") for e in iter_jsonl(endpoints_path) if e.get("endpoint_id")}
+    endpoint_ids = {
+        e.get("endpoint_id") for e in iter_jsonl(endpoints_path) if e.get("endpoint_id")
+    }
 
     blocked = sum(1 for a in iter_jsonl(audit_path) if a.get("decision") == "blocked")
 
@@ -334,9 +337,7 @@ def list_metrics() -> dict[str, Any]:
     )
 
     fp_count = sum(1 for e in events if e.get("status") == "false_positive")
-    false_positive_rate: float | None = (
-        round(fp_count / len(events), 4) if events else None
-    )
+    false_positive_rate: float | None = round(fp_count / len(events), 4) if events else None
 
     return {
         "endpoint_count": len(endpoint_ids),

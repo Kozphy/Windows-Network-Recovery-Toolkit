@@ -106,14 +106,10 @@ def detect_anomaly(
     prev_tw = int(prev["time_wait"])
     prev_est = int(prev["established"])
 
-    rapid_growth = (
-        (prev_tw > 0 and current_time_wait > prev_tw * 2)
-        or (prev_est > 0 and current_established > prev_est * 2)
+    rapid_growth = (prev_tw > 0 and current_time_wait > prev_tw * 2) or (
+        prev_est > 0 and current_established > prev_est * 2
     )
-    sudden_spike = (
-        (current_time_wait - prev_tw) > 1000
-        or (current_established - prev_est) > 1000
-    )
+    sudden_spike = (current_time_wait - prev_tw) > 1000 or (current_established - prev_est) > 1000
 
     # recent_metrics is newest-first; build chronological oldest→newest including current sample.
     history_for_trend = _CONTINUOUS_GROWTH_MIN_SAMPLES - 1

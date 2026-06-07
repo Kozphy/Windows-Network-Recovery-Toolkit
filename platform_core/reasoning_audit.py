@@ -30,8 +30,9 @@ Audit Notes:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from platform_core.reasoning_engine import run_reasoning
 from platform_core.reasoning_models import Observation, ProofResult, ReasoningRun
@@ -54,7 +55,9 @@ def to_audit_record(run: ReasoningRun) -> dict[str, Any]:
         "raw_observations": [obs.model_dump(mode="json") for obs in run.raw_observations],
         "normalized_signals": run.normalized_signals,
         "detected_events": [event.model_dump(mode="json") for event in run.detected_events],
-        "state_transitions": [transition.model_dump(mode="json") for transition in run.state_transitions],
+        "state_transitions": [
+            transition.model_dump(mode="json") for transition in run.state_transitions
+        ],
         "hypothesis_ranking": run.hypothesis_ranking,
         "evidence_tree": run.evidence_tree.model_dump(mode="json"),
         "proof_result": run.proof_result.model_dump(mode="json"),
@@ -100,7 +103,9 @@ def replay_reasoning_record(record: dict[str, Any]) -> ReasoningRun:
     proof_blob = record.get("proof_result") or run_blob.get("proof_result") or {}
     proof = ProofResult(**proof_blob) if isinstance(proof_blob, dict) else ProofResult()
     policy_blob = record.get("policy_decision") or run_blob.get("policy_decision") or {}
-    requested_action = policy_blob.get("requested_action") if isinstance(policy_blob, dict) else None
+    requested_action = (
+        policy_blob.get("requested_action") if isinstance(policy_blob, dict) else None
+    )
     codes = policy_blob.get("reason_codes") or [] if isinstance(policy_blob, dict) else []
     explicit_confirmation = bool(
         isinstance(policy_blob, dict)

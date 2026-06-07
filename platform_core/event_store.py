@@ -8,8 +8,9 @@ Module responsibility:
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from platform_core.models import utc_now_iso
 
@@ -142,7 +143,11 @@ def replay_timeline(repo_root: Path, run_id: str) -> dict[str, Any]:
     rid = run_id.strip()
     events = [r for r in _iter_jsonl(repo_root / EVENTS_JSONL) if str(r.get("run_id")) == rid]
     decision = find_decision_row(repo_root, rid)
-    previews = [r for r in _iter_jsonl(repo_root / REMEDIATION_PREVIEWS_JSONL) if str(r.get("run_id")) == rid]
+    previews = [
+        r
+        for r in _iter_jsonl(repo_root / REMEDIATION_PREVIEWS_JSONL)
+        if str(r.get("run_id")) == rid
+    ]
     return {
         "run_id": rid,
         "events": events,

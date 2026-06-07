@@ -60,6 +60,7 @@ def normalize_privacy_endpoint_hash(value: str) -> str:
         )
     return trimmed.lower()
 
+
 PrivacyClass = Literal[
     "internal_operational",
     "diagnostic_general",
@@ -106,10 +107,7 @@ def _reject_overclaimed_actor_proof(v: ActorAttribution | None) -> ActorAttribut
         return v
     if v.confidence == "proof":
         forbidden = {"eventlog_stub", "windows_eventlog_stub", "none", "unspecified", ""}
-        if (
-            not v.details.get("tamper_evident_source")
-            or v.provider.strip().lower() in forbidden
-        ):
+        if not v.details.get("tamper_evident_source") or v.provider.strip().lower() in forbidden:
             raise ValueError(
                 "actor_attribution.confidence proof requires tamper_evident_source in details "
                 "and a non-placeholder provider identifier",

@@ -28,8 +28,9 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Iterator
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -79,7 +80,9 @@ def iter_procmon_registry_writes_from_csv(text: str) -> Iterator[ProcmonRegistry
         path = str(raw.get("Path") or raw.get("path") or "")
         det = str(raw.get("Detail") or raw.get("detail") or "")
         if path or det:
-            yield ProcmonRegistryWrite(process_name=proc, operation=op or "RegSetValue", path=path, detail=det)
+            yield ProcmonRegistryWrite(
+                process_name=proc, operation=op or "RegSetValue", path=path, detail=det
+            )
 
 
 def procmon_concerns_proxy(row: ProcmonRegistryWrite) -> bool:

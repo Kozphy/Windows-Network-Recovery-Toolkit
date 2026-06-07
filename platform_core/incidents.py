@@ -33,7 +33,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -114,8 +114,8 @@ def _make_cluster(bucket: list[tuple[dict[str, Any], datetime, datetime]]) -> In
         pattern_key=pattern_display,
         event_ids=eids,
         endpoint_ids=eps,
-        first_seen_at=first_t.replace(tzinfo=timezone.utc).isoformat(),
-        last_seen_at=last_t.replace(tzinfo=timezone.utc).isoformat(),
+        first_seen_at=first_t.replace(tzinfo=UTC).isoformat(),
+        last_seen_at=last_t.replace(tzinfo=UTC).isoformat(),
         cluster_severity=sev,
         affected_endpoint_count=len(eps),
         event_count=len(evs),
@@ -155,7 +155,7 @@ def cluster_failure_events(
         fs = _parse_iso(ev.get("first_seen_at")) or _parse_iso(ev.get("last_seen_at"))
         ls = _parse_iso(ev.get("last_seen_at")) or fs
         if fs is None or ls is None:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             fs = ls = now
         cat = str(ev.get("category") or "unknown")
         fp = _pattern_fingerprint(ev)

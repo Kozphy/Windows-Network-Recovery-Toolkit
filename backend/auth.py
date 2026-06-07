@@ -11,7 +11,6 @@ Key invariants:
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 from fastapi import Header, HTTPException
 from jose import JWTError, jwt
@@ -55,7 +54,7 @@ def _decode_supabase_jwt(token: str) -> dict:
         raise HTTPException(status_code=401, detail=f"Invalid JWT: {exc}") from exc
 
 
-def get_current_user(authorization: Optional[str] = Header(default=None)) -> AuthUser:
+def get_current_user(authorization: str | None = Header(default=None)) -> AuthUser:
     """Resolve authenticated user from bearer token or local bypass.
 
     Side effects:

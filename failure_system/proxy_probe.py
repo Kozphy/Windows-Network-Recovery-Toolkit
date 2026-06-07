@@ -19,7 +19,6 @@ import re
 import subprocess
 from typing import Any
 
-
 _INTERNET_SETTINGS_KEY = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 
 
@@ -62,7 +61,9 @@ def _parse_proxy_server(server: str | None) -> tuple[bool, int | None]:
     # Supports host:port and http=host:port;https=host:port forms.
     pairs = re.findall(r"(?:^|;)\s*(?:[a-zA-Z]+=\s*)?([^;=]+)", text)
     for seg in pairs:
-        m = re.search(r"(?P<host>localhost|127(?:\.\d{1,3}){3}|::1)\s*:\s*(?P<port>\d{1,5})", seg, re.I)
+        m = re.search(
+            r"(?P<host>localhost|127(?:\.\d{1,3}){3}|::1)\s*:\s*(?P<port>\d{1,5})", seg, re.I
+        )
         if m:
             return True, int(m.group("port"))
     return False, None
@@ -124,4 +125,3 @@ def collect_proxy_signals() -> dict[str, Any]:
         "localhost_proxy_port": localhost_port,
         "localhost_listener_found": listener,
     }
-

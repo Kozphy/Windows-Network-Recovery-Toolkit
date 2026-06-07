@@ -32,7 +32,11 @@ from failure_system.diagram_generator import (
     snapshot_to_signal_dict,
 )
 from failure_system.explanation_text import generate_explanation_text
-from failure_system.formatters import format_human_summary, format_markdown_report, format_verbose_report
+from failure_system.formatters import (
+    format_human_summary,
+    format_markdown_report,
+    format_verbose_report,
+)
 from failure_system.generator import build_failure_block
 from failure_system.recommend import recommend_by_id, recommend_by_query
 from failure_system.rules import RuleEngine
@@ -189,7 +193,7 @@ def cmd_recommend(args: argparse.Namespace) -> int:
     elif args.query:
         rec = recommend_by_query(args.query, data_dir=data_dir)
     else:
-        print("Provide --id <uuid> or --query \"text\"", file=sys.stderr)
+        print('Provide --id <uuid> or --query "text"', file=sys.stderr)
         return 2
     if rec is None:
         print("No recommendation found.", file=sys.stderr)
@@ -214,7 +218,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    d = sub.add_parser("diagnose", help="Run safe probes, emit FailureBlock JSON, append JSONL shard.")
+    d = sub.add_parser(
+        "diagnose", help="Run safe probes, emit FailureBlock JSON, append JSONL shard."
+    )
     d.add_argument(
         "--intermittent",
         action="store_true",
@@ -253,8 +259,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     d.set_defaults(func=cmd_diagnose)
 
-    s = sub.add_parser("search", help="Search persisted FailureBlocks by symptom/cause/output/fix text.")
-    s.add_argument("query", help='Free-text query (token AND match).')
+    s = sub.add_parser(
+        "search", help="Search persisted FailureBlocks by symptom/cause/output/fix text."
+    )
+    s.add_argument("query", help="Free-text query (token AND match).")
     s.add_argument("--limit", type=int, default=25, help="Max results (default 25).")
     s.set_defaults(func=cmd_search)
 

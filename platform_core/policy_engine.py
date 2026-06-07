@@ -53,9 +53,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from platform_core.policy import OperatorContext, SignalSnapshot, evaluate as evaluate_structured
+from platform_core.policy import OperatorContext, SignalSnapshot
+from platform_core.policy import evaluate as evaluate_structured
 
 PlatformDecisionVerb = Literal["allow", "alert", "block", "preview_only", "require_confirmation"]
+
 
 @dataclass(frozen=True)
 class PlatformPolicyHints:
@@ -109,7 +111,9 @@ def load_policy_hints(path: str | Path | None) -> PlatformPolicyHints:
     if not p.is_file():
         return DEFAULT_HINTS
     raw = json.loads(p.read_text(encoding="utf-8"))
-    ports = raw.get("developer_proxy_allowlist_ports") or raw.get("allow_developer_proxy_ports") or []
+    ports = (
+        raw.get("developer_proxy_allowlist_ports") or raw.get("allow_developer_proxy_ports") or []
+    )
     return PlatformPolicyHints(
         allow_developer_proxy_ports=[int(x) for x in ports],
         localhost_proxy_requires_alert=bool(raw.get("localhost_proxy_requires_alert", True)),
@@ -118,7 +122,9 @@ def load_policy_hints(path: str | Path | None) -> PlatformPolicyHints:
     )
 
 
-def _verb_from_structured(exec_allowed: bool, preview_allowed: bool, reason_codes: list[str]) -> PlatformDecisionVerb:
+def _verb_from_structured(
+    exec_allowed: bool, preview_allowed: bool, reason_codes: list[str]
+) -> PlatformDecisionVerb:
     if any("forbidden" in r or "arbitrary" in r for r in reason_codes):
         return "block"
     if exec_allowed:
@@ -191,7 +197,10 @@ def evaluate_route_decision(
 
     verb = _verb_from_structured(sd.execute_allowed, sd.preview_allowed, sd.reason_codes)
 
-    if sd.risk_tier in {"high", "forbidden"} or "execute_blocked_high_or_forbidden_tier" in sd.reason_codes:
+    if (
+        sd.risk_tier in {"high", "forbidden"}
+        or "execute_blocked_high_or_forbidden_tier" in sd.reason_codes
+    ):
         applied_rules.append("high_risk_blocked")
         if verb != "block":
             verb = "block"

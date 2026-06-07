@@ -94,14 +94,18 @@ def assert_can_preview(principal: DemoPrincipal) -> None:
     if principal.role == "security_auditor":
         raise HTTPException(status_code=403, detail="security role may view audit/attribution only")
     if principal.role not in ("operator", "admin"):
-        raise HTTPException(status_code=403, detail="remediation preview requires operator or admin")
+        raise HTTPException(
+            status_code=403, detail="remediation preview requires operator or admin"
+        )
 
 
 def assert_can_execute(principal: DemoPrincipal, *, dry_run: bool) -> None:
     """Authorize remediation execution paths discriminating ``dry_run`` vs live."""
 
     if principal.role not in ("operator", "admin"):
-        raise HTTPException(status_code=403, detail="remediation execute requires operator or admin")
+        raise HTTPException(
+            status_code=403, detail="remediation execute requires operator or admin"
+        )
     if principal.role == "operator" and not dry_run:
         raise HTTPException(
             status_code=403,
@@ -159,6 +163,8 @@ def assert_can_write_platform_payload(principal: DemoPrincipal) -> None:
     if principal.role == "viewer":
         raise HTTPException(status_code=403, detail="viewer is read-only")
     if principal.role == "security_auditor":
-        raise HTTPException(status_code=403, detail="security role is read-only except audit/attribution views")
+        raise HTTPException(
+            status_code=403, detail="security role is read-only except audit/attribution views"
+        )
     if principal.role not in ("operator", "admin"):
         raise HTTPException(status_code=403, detail="ingestion requires operator or admin")

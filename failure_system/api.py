@@ -20,9 +20,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import Body, FastAPI, HTTPException, Query
+
 from failure_system import __version__
 from failure_system.collector import collect_diagnostics
 from failure_system.diagram_generator import diagnosis_from_failure_run, snapshot_to_signal_dict
@@ -130,7 +130,9 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/failure-blocks", response_model=list[FailureBlockSummary])
-    def list_failure_blocks(limit: int = Query(default=100, ge=1, le=500)) -> list[FailureBlockSummary]:
+    def list_failure_blocks(
+        limit: int = Query(default=100, ge=1, le=500),
+    ) -> list[FailureBlockSummary]:
         """List newest FailureBlock summaries (metadata only) up to ``limit``."""
         data_dir = resolve_data_dir()
         blocks = list(iter_failure_blocks(data_dir))

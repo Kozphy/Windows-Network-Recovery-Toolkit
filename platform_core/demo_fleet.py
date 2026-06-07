@@ -37,7 +37,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import uuid
 from pathlib import Path
 
@@ -235,14 +234,18 @@ def main(argv: list[str] | None = None) -> int:
         Sets ``PLATFORM_DATA_DIR`` env var and writes JSONL under chosen directory.
     """
 
-    p = argparse.ArgumentParser(description="Seed fake fleet JSONL for dashboards (read-only demo data).")
+    p = argparse.ArgumentParser(
+        description="Seed fake fleet JSONL for dashboards (read-only demo data)."
+    )
     p.add_argument(
         "--data-dir",
         type=Path,
         default=None,
         help="Defaults to repo ./platform_data_fleet_demo relative to cwd when unset.",
     )
-    p.add_argument("--reset", action="store_true", help="Delete known demo JSONL shards before appending.")
+    p.add_argument(
+        "--reset", action="store_true", help="Delete known demo JSONL shards before appending."
+    )
     ns = p.parse_args(argv)
 
     root = ns.data_dir or (Path.cwd() / "platform_data_fleet_demo")
@@ -250,7 +253,15 @@ def main(argv: list[str] | None = None) -> int:
     populate_fleet(root, reset=bool(ns.reset))
 
     metrics = compute_platform_metrics(platform_root=root.resolve())
-    print(json.dumps({"data_dir": str(root), "metrics_excerpt": {k: metrics[k] for k in sorted(metrics) if k != "signals_file"}}, indent=2))
+    print(
+        json.dumps(
+            {
+                "data_dir": str(root),
+                "metrics_excerpt": {k: metrics[k] for k in sorted(metrics) if k != "signals_file"},
+            },
+            indent=2,
+        )
+    )
     return 0
 
 

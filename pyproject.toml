@@ -1,0 +1,118 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "windows-network-recovery-toolkit"
+version = "0.2.0"
+description = "Local-first Windows endpoint reliability and policy-gated remediation toolkit"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+    "fastapi>=0.110",
+    "python-jose[cryptography]>=3.3.0",
+    "httpx>=0.27",
+    "stripe>=9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8.0",
+    "black>=24.0",
+    "mypy>=1.13",
+    "pre-commit>=4.0",
+    "types-python-jose",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "platform_core*",
+    "backend*",
+    "evidence*",
+    "failure_system*",
+    "src*",
+    "edge_device*",
+    "endpoint_agent*",
+]
+exclude = ["tests*", "frontend*", "scripts*", "docs*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning:backend.main",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+extend-exclude = '''
+/(
+    \.git
+  | \.pytest_cache
+  | node_modules
+  | frontend
+  | hybrid_frontend
+  | platform_data
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    "frontend",
+    "hybrid_frontend",
+    "node_modules",
+    "platform_data",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line length handled by black
+    "B008",  # FastAPI Depends in defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["B011"]
+"src/cli.py" = ["E402"]
+"backend/platform_routes.py" = ["E402"]
+"failure_system/models.py" = ["UP042"]
+"platform_core/reasoning/layers.py" = ["UP042"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+show_error_codes = true
+pretty = true
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
+files = [
+    "platform_core",
+    "backend",
+    "evidence",
+    "failure_system",
+    "tests/policy",
+    "tests/api",
+    "tests/replay",
+]
+
+[[tool.mypy.overrides]]
+module = [
+    "stripe.*",
+    "jose.*",
+]
+ignore_missing_imports = true

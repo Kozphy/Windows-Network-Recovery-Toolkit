@@ -16,7 +16,11 @@ def render_reasoning_summary(run: ReasoningRun) -> dict[str, str | list[str]]:
         present in ``run``.
     """
     accepted = run.accepted_hypothesis or "unknown"
-    state_path = " -> ".join(run.evidence_tree.state_path) if run.evidence_tree.state_path else "no state transition"
+    state_path = (
+        " -> ".join(run.evidence_tree.state_path)
+        if run.evidence_tree.state_path
+        else "no state transition"
+    )
     proof_status = run.proof_result.status
     policy = run.policy_decision.outcome
     observed = ", ".join(run.evidence_tree.accepted_because[:8]) or "no accepted observations"
