@@ -1,71 +1,56 @@
 # Endpoint Reliability Platform (Windows Network Recovery Toolkit)
 
-> A **local-first Windows diagnostics and remediation-preview platform** that turns proxy, DNS, browser, and network failures into explainable events, policy-gated actions, and auditable dashboard insights.
+![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)
+![Policy gated](https://img.shields.io/badge/remediation-policy--gated-green)
+![Local first](https://img.shields.io/badge/telemetry-local--first-lightgrey)
+![CI pytest](https://img.shields.io/badge/CI-pytest%20offline-brightgreen)
 
-This repo keeps **beginner batch workflows** intact while layering **structured diagnostics**, **append-only evidence**, and an optional **FastAPI + Next.js** stack so you can show **what broke**, **what policy allows**, and **what was audited**—before any repair runs.
+**One-liner:** A local-first Windows endpoint reliability platform that diagnoses browser/proxy/network failures, separates observation from proof, gates remediation through explicit policy, and records every decision in replayable append-only audit logs.
+
+**Safety-first:** No silent process kill · no silent firewall reset · no silent adapter disable · no registry mutation without typed confirmation · listener correlation is candidate evidence only, not proof.
+
+| Quick link | Doc |
+|------------|-----|
+| **3-minute demo** | [docs/demo_3_minute.md](docs/demo_3_minute.md) |
+| **Architecture** | [docs/architecture_platform.md](docs/architecture_platform.md) · [docs/event_state_reasoning_platform.md](docs/event_state_reasoning_platform.md) |
+| **Interview case study** | [docs/interview_case_study_tier1.md](docs/interview_case_study_tier1.md) |
+| **Production checklist** | [docs/production_readiness.md](docs/production_readiness.md) |
+| **API contract** | [docs/api_contract_platform.md](docs/api_contract_platform.md) |
+
+### Core system story
+
+```text
+Observation → Event → State transition → Hypothesis → Optional proof
+  → Policy (ALLOW / PREVIEW / BLOCK) → Preview → Audit → Replay → Dashboard
+```
+
+### Try it in 60 seconds (read-only, no admin)
+
+```powershell
+pip install -e ".[dev]"
+$env:PYTHONPATH = (Get-Location).Path
+python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json
+pytest -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py
+```
+
+**Full demo path:** [docs/demo_3_minute.md](docs/demo_3_minute.md) · **Safety model:** [docs/safety_model.md](docs/safety_model.md) · **ADRs:** [docs/adr/](docs/adr/)
 
 ### Understand it in 60 seconds
 
+| Audience | One sentence |
+|----------|--------------|
+| **Recruiter / manager** | Local-first Windows prototype that explains network/proxy failures, previews fixes under policy, and logs every decision — nothing repairs itself by default. |
+| **SRE / platform engineer** | Event-sourced JSONL, deterministic replay, ALLOW/PREVIEW/BLOCK gates, FastAPI `/platform/*` with dry-run execute defaults. |
+| **Security reviewer** | Heuristic attribution ≠ proof; registry writer claims require Sysmon/Procmon-class telemetry; destructive actions registry-blocked. |
 
-| Audience                    | One sentence                                                                                                                     |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Recruiter / manager**     | Local-first Windows tool that explains network/proxy failures, previews fixes, and logs every decision—nothing repairs itself.   |
-| **SRE / platform engineer** | Observe → hypothesize → optional proof → **ALLOW / PREVIEW / BLOCK** policy → append-only JSONL replay without re-probing.       |
-| **Security reviewer**       | Listener correlation is **candidate evidence only**; registry-writer proof requires telemetry; destructive actions stay blocked. |
+### Why this is not just a script
 
-
-**Try read-only (no network mutation):**
-
-```powershell
-pip install -r requirements.txt
-python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json
-pytest -q tests/test_policy_v2_regression.py tests/test_safety_regression.py
-```
-
-**Optional dashboard demo:** [docs/demo_script.md](docs/demo_script.md) · **Safety:** [docs/safety_model.md](docs/safety_model.md) · **Policy codes:** [docs/policy_engine.md](docs/policy_engine.md)
-
-### Fintech / exchange / low-latency backend angle
-
-This repo is framed as an **event-driven endpoint reliability platform** with trading-infra patterns:
-
-- **Event sourcing** — append-only `logs/events.jsonl`, `logs/decisions.jsonl`, `logs/order_flow_audit.jsonl`
-- **State machines** — proxy path composites + `order_flow_simulator` order lifecycle
-- **Deterministic replay** — `python -m src replay <run_id>` without re-probing the host
-- **Policy gates** — ALLOW / PREVIEW / BLOCK with explicit `reason_codes` (no silent kill/firewall/adapter changes)
-- **Latency signals** — order simulator records per-event `latency_ms`; invalid transition counters
-
-```text
-Observations → Events → State transitions → Hypotheses → Proof (optional)
-      → Policy → Preview → Append-only audit → Replay / dashboard
-```
-
-```powershell
-python -m order_flow_simulator run --scenario happy_path
-python -m order_flow_simulator run --scenario invalid_cancel
-python -m src diagnose --live
-python -m src replay <run_id>
-```
-
-Architecture: [docs/architecture.md](docs/architecture.md)
-
----
-
-## AI Edge / Embedded Compute Reliability Layer
-
-A simulated reliability layer for **AI-at-the-edge / embedded compute** (x86 embedded processors, NPUs, inference runtimes) that reuses the same reasoning contract as the network engine — **no real FPGA/NPU/hardware dependencies**. It models device signals, runs the deterministic reasoning chain, and gates remediation through the same ALLOW / PREVIEW / BLOCK policy.
-
-- **Simulated device signals** — `cpu_load`, `memory_pressure`, `temperature_celsius`, `npu_available`, `inference_latency_ms`, `inference_error_rate`, `driver_status`, `sensor_input_status`, `network_uplink_status`.
-- **Cataloged failure hypotheses (closed set, no fabricated causes)** — `edge_inference_latency_regression`, `npu_fallback_to_cpu`, `thermal_throttling_risk`, `driver_runtime_mismatch`, `sensor_input_degraded`, `uplink_degraded_but_local_inference_ok`.
-- **Same chain** — observation → event → state transition → ranked hypotheses → evidence tree → optional (simulated) proof → impact → policy → append-only audit (`logs/edge_runs.jsonl`), replayable without re-simulating.
-- **Same safety posture** — destructive actions (firmware flash, factory reset, thermal-protection disable, overclock, sensor disable) are always BLOCKED; high confidence without `CONFIRMED` proof stays PREVIEW; only allowlisted low-risk actions (`switch_to_cpu_fallback`, `reduce_inference_load`, `restart_inference_runtime`, `clear_inference_cache`) can reach ALLOW, and only with confirmed proof + typed confirmation.
-
-```powershell
-python -m src edge-diagnose --fixture tests/fixtures/edge/thermal_throttle.json
-python -m src edge-diagnose --live-simulated --profile npu_fallback
-python -m src edge-replay <run_id>
-```
-
-The `--json` contract separates `observed_signals`, `inferred_hypotheses`, `supporting_evidence`, `contradicting_evidence`, `missing_evidence`, `proof_status`, `policy_decision`, `safe_next_action`, and `blocked_actions`. Implementation lives under `edge_device/` (`signals`, `scenarios`, `policy`, `reasoning`, `simulator`, `audit`); fixtures under `tests/fixtures/edge/`.
+- **Event-sourced audit trail** — append-only JSONL for decisions, previews, and platform operations.
+- **Deterministic replay** — re-evaluate policy from stored observations without re-probing the host.
+- **Policy-gated remediation** — registry allowlist, risk tiers, typed confirmation, operator vs admin RBAC.
+- **Explicit epistemic boundaries** — observation, inference, and proof are labeled separately in JSON outputs.
+- **Local-first design** — no default cloud upload; optional agent ingest is opt-in.
+- **API / dashboard separation** — `python -m src` and `.bat` workflows remain; `/platform/*` and Next.js are optional demos.
 
 ---
 
@@ -694,7 +679,7 @@ Routes below are defined in `[backend/platform_routes.py](backend/platform_route
 | POST   | `/platform/agent/next-step`           | Suggest/explain only; no repair                   |
 
 
-Contract and headers: `[docs/platform_api_contract.md](docs/platform_api_contract.md)`.
+Contract and headers: [docs/api_contract_platform.md](docs/api_contract_platform.md) (primary), [docs/platform_api_contract.md](docs/platform_api_contract.md).
 Frontend product contract mapping: `[docs/backend_contract.md](docs/backend_contract.md)`, `[docs/productization_map.md](docs/productization_map.md)`.
 
 ### `/api/*` (JWT toolkit bridges)
@@ -703,7 +688,27 @@ Frontend product contract mapping: `[docs/backend_contract.md](docs/backend_cont
 
 ---
 
+## Optional architecture extensions
+
+These reuse the same observation → policy → audit chain but are **not** the primary product story.
+
+### Fintech / event-sourcing lab (`order_flow_simulator`)
+
+Event sourcing, state machines, and latency signals for interview depth — see [docs/architecture.md](docs/architecture.md).
+
+### AI Edge / embedded compute simulation (`edge_device/`)
+
+Simulated NPU/thermal/driver scenarios with the same ALLOW/PREVIEW/BLOCK policy — fixtures under `tests/fixtures/edge/`.
+
+```powershell
+python -m src edge-diagnose --fixture tests/fixtures/edge/healthy.json
+```
+
+---
+
 ## Interview pitch
+
+**Tier-1 case study:** [docs/interview_case_study_tier1.md](docs/interview_case_study_tier1.md) · [docs/interview_case_study.md](docs/interview_case_study.md)
 
 **One-liner:** *“I built a local-first Windows endpoint-reliability prototype: append-only JSONL, policy-gated remediation previews with dry-run defaults, honest attribution tiers, and a Next dashboard—without throwing away beginner `.bat` workflows.”*
 
@@ -717,14 +722,16 @@ Frontend product contract mapping: `[docs/backend_contract.md](docs/backend_cont
 
 ---
 
-## aTests & CI
+## Tests & CI
 
 ```powershell
 $env:PYTHONPATH = (Get-Location).Path
+pip install -e ".[dev]"
+pytest -q tests/test_policy_safety_contract.py tests/test_replay_determinism.py tests/test_audit_contract.py tests/test_api_dry_run_default.py
 pytest -q
 ```
 
-`[.github/workflows/ci.yml](.github/workflows/ci.yml)` runs `**pytest` only**—not Windows repair scripts.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs ruff, black, mypy (scoped), safety regression suite, and full pytest on Ubuntu — **no Windows admin, no destructive `.bat` scripts**.
 
 Strategy: `[docs/test_strategy.md](docs/test_strategy.md)`.
 

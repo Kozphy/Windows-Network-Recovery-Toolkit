@@ -11,6 +11,8 @@ htmlcov/
 # Node / build (if you reintroduce a frontend)
 node_modules/
 .next/
+.venv/
+venv/
 dist/
 build/
 .cache/

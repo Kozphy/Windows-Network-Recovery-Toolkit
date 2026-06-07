@@ -35,7 +35,17 @@ jobs:
       - name: Mypy (scoped)
         run: mypy
 
-      - name: Pytest (offline)
+      - name: Safety regression suite
+        run: >
+          pytest -q
+          tests/test_policy_safety_contract.py
+          tests/test_replay_determinism.py
+          tests/test_audit_contract.py
+          tests/test_api_dry_run_default.py
+          tests/policy tests/api tests/replay
+          tests/test_safety_regression.py
+
+      - name: Pytest (full offline)
         run: pytest -q
         env:
           PYTHONPATH: ${{ github.workspace }}
