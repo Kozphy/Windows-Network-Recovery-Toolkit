@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from telemetry.eventlog_reader import parse_windows_registry_event, query_windows_eventlog_preview
+from telemetry.windows_eventlog import parse_windows_registry_event, query_windows_eventlog_preview
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "telemetry"
 

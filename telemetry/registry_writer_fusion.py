@@ -6,13 +6,18 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from telemetry.models import EvidenceLevel, RegistryWriteEvent, RegistryWriterEvidence
-from telemetry.sysmon_reader import is_relevant_proxy_registry_path
+from telemetry.models import (
+    EvidenceLevel,
+    ListenerObservation,
+    ProcessIdentity,
+    RegistryWriteEvent,
+    RegistryWriterEvidence,
+)
+from telemetry.sysmon_parser import is_relevant_proxy_registry_path
 
-NO_TELEMETRY_LIMITATION = "No Sysmon/EventLog/ETW registry writer telemetry was supplied."
+NO_WRITER_LIMITATION = "No registry writer telemetry was supplied for fusion."
 LISTENER_NOT_PROOF = (
-    "Listener/process correlation does not prove registry writer identity without "
-    "registry-write telemetry."
+    "Listener/process correlation is candidate evidence only; it does not prove registry writer identity."
 )
 WRITER_NOT_MALICIOUS = (
     "REGISTRY_WRITER_OBSERVED identifies a process that appears to have written a proxy "
@@ -22,23 +27,32 @@ MATCH_NOT_INTENT = (
     "WRITER_AND_LISTENER_MATCH means the same process appears to have written the proxy key "
     "and owned the listener port; this still does not prove intent."
 )
-CONFLICT_NEUTRAL = (
-    "Registry writer telemetry and listener owner disagree; attribution remains unresolved "
-    "and neither process should be accused automatically."
+MISMATCH_NEUTRAL = (
+    "Registry writer telemetry and listener owner disagree; attribution remains unresolved."
 )
 
 
-def default_no_telemetry_evidence() -> RegistryWriterEvidence:
-    """Baseline evidence payload when no telemetry input is supplied."""
+def default_no_telemetry_evidence(
+    listener: ListenerObservation | None = None,
+) -> RegistryWriterEvidence:
+    """Baseline when no writer telemetry is available."""
+    if listener is not None:
+        return RegistryWriterEvidence(
+            evidence_level="LISTENER_OBSERVED",
+            listener_observation=listener.to_dict(),
+            limitations=[LISTENER_NOT_PROOF, NO_WRITER_LIMITATION],
+            recommended_next_steps=[
+                "Import Sysmon Event ID 13 or Security 4657 rows around the proxy change time.",
+                "Do not treat listener ownership as registry-writer proof.",
+            ],
+            confidence_rank="low",
+        )
     return RegistryWriterEvidence(
-        evidence_level="NO_TELEMETRY",
-        matched_events=[],
-        candidate_writers=[],
-        listener_match=None,
-        limitations=[NO_TELEMETRY_LIMITATION, LISTENER_NOT_PROOF],
+        evidence_level="NO_WRITER_EVIDENCE",
+        limitations=[NO_WRITER_LIMITATION, LISTENER_NOT_PROOF],
         recommended_next_steps=[
-            "Enable Sysmon registry value set logging (Event ID 13) or import Event Log / Procmon traces.",
-            "Re-run fusion with telemetry fixtures or live exports around the proxy change time.",
+            "Enable Sysmon registry value set logging (Event ID 13) or import Event Log traces.",
+            "Optionally supply listener attribution for LISTENER_OBSERVED candidate evidence.",
         ],
         confidence_rank="none",
     )
@@ -50,116 +64,79 @@ def _normalize_process_path(path: str | None) -> str:
     return os.path.normcase(path.replace("/", "\\"))
 
 
-def _writer_identity(event: RegistryWriteEvent) -> dict[str, Any]:
-    return {
-        "process_id": event.process_id,
-        "process_name": event.process_name,
-        "process_path": event.process_path,
-        "process_guid": event.process_guid,
-        "user": event.user,
-    }
+def _writer_dict(identity: ProcessIdentity) -> dict[str, Any]:
+    return identity.to_dict()
 
 
 def _dedupe_writers(events: list[RegistryWriteEvent]) -> list[dict[str, Any]]:
     seen: set[tuple[Any, ...]] = set()
     writers: list[dict[str, Any]] = []
     for event in events:
+        identity = event.writer
         key = (
-            event.process_id,
-            _normalize_process_path(event.process_path),
-            (event.process_name or "").lower(),
+            identity.process_id,
+            _normalize_process_path(identity.process_path),
+            (identity.process_name or "").lower(),
         )
         if key in seen:
             continue
         seen.add(key)
-        writers.append(_writer_identity(event))
+        writers.append(_writer_dict(identity))
     return writers
 
 
-def _event_in_window(
-    event: RegistryWriteEvent,
-    *,
-    start: datetime,
-    end: datetime,
-) -> bool:
+def _event_in_window(event: RegistryWriteEvent, *, start: datetime, end: datetime) -> bool:
     ts = event.timestamp_utc
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=timezone.utc)
     return start <= ts <= end
 
 
-def _listener_owner(listener_attribution: dict[str, Any] | None) -> dict[str, Any] | None:
-    if not listener_attribution:
-        return None
-    pid = listener_attribution.get("pid") or listener_attribution.get("process_id")
-    return {
-        "process_id": pid,
-        "process_name": listener_attribution.get("process_name"),
-        "process_path": listener_attribution.get("process_path"),
-        "port": listener_attribution.get("port"),
-        "attribution_confidence": listener_attribution.get("attribution_confidence"),
-    }
-
-
-def _writer_matches_listener(writer: dict[str, Any], listener: dict[str, Any]) -> bool:
-    listener_pid = listener.get("process_id")
-    listener_path = _normalize_process_path(listener.get("process_path"))
-    listener_name = str(listener.get("process_name") or "").lower()
-    writer_pid = writer.get("process_id")
-    writer_path = _normalize_process_path(writer.get("process_path"))
-    writer_name = str(writer.get("process_name") or "").lower()
-    if listener_pid is not None and writer_pid is not None and listener_pid == writer_pid:
+def _identity_matches(a: ProcessIdentity, b: ProcessIdentity) -> bool:
+    if a.process_id is not None and b.process_id is not None and a.process_id == b.process_id:
         return True
-    if listener_path and writer_path and listener_path == writer_path:
+    ap = _normalize_process_path(a.process_path)
+    bp = _normalize_process_path(b.process_path)
+    if ap and bp and ap == bp:
         return True
-    if listener_name and writer_name and listener_name == writer_name:
-        return True
-    return False
+    an = (a.process_name or "").lower()
+    bn = (b.process_name or "").lower()
+    return bool(an and bn and an == bn)
 
 
 def _writers_match_listener(
-    writers: list[dict[str, Any]],
-    listener: dict[str, Any] | None,
+    writers: list[dict[str, Any]], listener: ListenerObservation
 ) -> bool:
-    if not listener or not writers:
-        return False
-    return any(_writer_matches_listener(writer, listener) for writer in writers)
+    listener_identity = ProcessIdentity.from_dict(listener.to_dict())
+    for writer in writers:
+        if _identity_matches(ProcessIdentity.from_dict(writer), listener_identity):
+            return True
+    return False
 
 
-def _writers_conflict_listener(
-    writers: list[dict[str, Any]],
-    listener: dict[str, Any] | None,
+def _writers_mismatch_listener(
+    writers: list[dict[str, Any]], listener: ListenerObservation
 ) -> bool:
-    if not listener or not writers:
-        return False
-    identifiable_writers = [
-        writer
-        for writer in writers
-        if writer.get("process_id") is not None
-        or writer.get("process_path")
-        or writer.get("process_name")
+    identifiable = [
+        w
+        for w in writers
+        if w.get("process_id") is not None or w.get("process_path") or w.get("process_name")
     ]
-    if not identifiable_writers:
+    if not identifiable:
         return False
-    listener_identifiable = (
-        listener.get("process_id") is not None
-        or listener.get("process_path")
-        or listener.get("process_name")
-    )
-    if not listener_identifiable:
+    listener_identity = ProcessIdentity.from_dict(listener.to_dict())
+    if (
+        listener_identity.process_id is None
+        and not listener_identity.process_path
+        and not listener_identity.process_name
+    ):
         return False
-    matches = [_writer_matches_listener(writer, listener) for writer in identifiable_writers]
-    if any(matches) and not all(matches):
-        return True
-    return not any(matches)
+    return not _writers_match_listener(identifiable, listener)
 
 
 def _writers_missing_identity(events: list[RegistryWriteEvent]) -> bool:
-    if not events:
-        return False
-    return all(
-        event.process_id is None and not event.process_path and not event.process_name
-        for event in events
+    return bool(events) and all(
+        e.process_id is None and not e.process_path and not e.process_name for e in events
     )
 
 
@@ -175,35 +152,24 @@ def fuse_registry_writer_evidence(
     if proxy_change_time.tzinfo is None:
         proxy_change_time = proxy_change_time.replace(tzinfo=timezone.utc)
 
+    listener = ListenerObservation.from_attribution_dict(listener_attribution)
+
     if not telemetry_events:
-        return default_no_telemetry_evidence()
+        return default_no_telemetry_evidence(listener)
 
     start = proxy_change_time - timedelta(seconds=window_before_seconds)
     end = proxy_change_time + timedelta(seconds=window_after_seconds)
-    windowed = [
-        event for event in telemetry_events if _event_in_window(event, start=start, end=end)
-    ]
-    relevant = [event for event in windowed if is_relevant_proxy_registry_path(event.registry_path)]
+    windowed = [e for e in telemetry_events if _event_in_window(e, start=start, end=end)]
+    relevant = [e for e in windowed if is_relevant_proxy_registry_path(e.registry_path)]
 
     if not relevant:
-        return RegistryWriterEvidence(
-            evidence_level="NO_RELEVANT_REGISTRY_WRITES",
-            matched_events=[],
-            candidate_writers=[],
-            listener_match=_listener_owner(listener_attribution),
-            limitations=[
-                "Telemetry rows were supplied but none matched proxy registry paths in the time window.",
-                LISTENER_NOT_PROOF,
-            ],
-            recommended_next_steps=[
-                "Verify Sysmon/EventLog collection includes HKCU Internet Settings proxy values.",
-                "Widen the fusion window or align proxy_change_time with the registry drift timestamp.",
-            ],
-            confidence_rank="none",
+        base = default_no_telemetry_evidence(listener)
+        base.limitations.append(
+            "Telemetry rows were supplied but none matched proxy registry paths in the time window."
         )
+        return base
 
     writers = _dedupe_writers(relevant)
-    listener = _listener_owner(listener_attribution)
     limitations = [WRITER_NOT_MALICIOUS, LISTENER_NOT_PROOF]
     for event in relevant:
         limitations.extend(event.parse_warnings)
@@ -213,12 +179,10 @@ def fuse_registry_writer_evidence(
             evidence_level="INCONCLUSIVE",
             matched_events=relevant,
             candidate_writers=writers,
-            listener_match=listener,
-            limitations=limitations
-            + ["Matched registry writes lack sufficient process identity fields."],
+            listener_observation=listener.to_dict() if listener else None,
+            limitations=limitations + ["Matched registry writes lack sufficient process identity."],
             recommended_next_steps=[
-                "Collect richer telemetry (Image/ProcessId/CommandLine) from Sysmon Event ID 13.",
-                "Import Procmon or Security 4657 rows with process metadata.",
+                "Collect richer Sysmon Event ID 13 fields (Image, ProcessId, CommandLine).",
             ],
             confidence_rank="low",
         )
@@ -228,40 +192,40 @@ def fuse_registry_writer_evidence(
     listener_match: dict[str, Any] | None = None
     recommended = [
         "Preserve telemetry exports and correlate with proxy drift timeline.",
-        "Review candidate writer signing, parent process, and recent package changes.",
+        "Review candidate writer signing and parent process context.",
     ]
 
-    if (
-        listener
-        and _writers_match_listener(writers, listener)
-        and not _writers_conflict_listener(writers, listener)
-    ):
-        evidence_level = "WRITER_AND_LISTENER_MATCH"
-        confidence_rank = "high"
-        listener_match = {
-            "matched": True,
-            "listener": listener,
-            "writers": writers,
-        }
-        limitations.append(MATCH_NOT_INTENT)
-    elif listener and _writers_conflict_listener(writers, listener):
-        evidence_level = "CONFLICTING_EVIDENCE"
-        confidence_rank = "medium"
-        listener_match = {
-            "matched": False,
-            "listener": listener,
-            "writers": writers,
-        }
-        limitations.append(CONFLICT_NEUTRAL)
-        recommended.append(
-            "Treat listener owner and registry writer as separate candidates until stronger proof is collected."
-        )
+    if listener:
+        if _writers_match_listener(writers, listener) and not _writers_mismatch_listener(
+            writers, listener
+        ):
+            evidence_level = "WRITER_AND_LISTENER_MATCH"
+            confidence_rank = "high"
+            listener_match = {
+                "matched": True,
+                "listener": listener.to_dict(),
+                "writers": writers,
+            }
+            limitations.append(MATCH_NOT_INTENT)
+        elif _writers_mismatch_listener(writers, listener):
+            evidence_level = "WRITER_LISTENER_MISMATCH"
+            confidence_rank = "medium"
+            listener_match = {
+                "matched": False,
+                "listener": listener.to_dict(),
+                "writers": writers,
+            }
+            limitations.append(MISMATCH_NEUTRAL)
+            recommended.append(
+                "Treat listener owner and registry writer as separate candidates until stronger proof."
+            )
 
     return RegistryWriterEvidence(
         evidence_level=evidence_level,
         matched_events=relevant,
         candidate_writers=writers,
         listener_match=listener_match,
+        listener_observation=listener.to_dict() if listener else None,
         limitations=limitations,
         recommended_next_steps=recommended,
         confidence_rank=confidence_rank,
@@ -275,8 +239,9 @@ def build_report_registry_writer_section(
     proxy_change_time: datetime | None = None,
 ) -> dict[str, Any]:
     """Build registry_writer_evidence dict for proxy_guard report payloads."""
+    listener = ListenerObservation.from_attribution_dict(attribution)
     if not telemetry_events:
-        return default_no_telemetry_evidence().to_dict()
+        return default_no_telemetry_evidence(listener).to_dict()
 
     change_time = proxy_change_time or datetime.now(timezone.utc)
     evidence = fuse_registry_writer_evidence(

@@ -18,7 +18,7 @@ def test_telemetry_audit_row_excludes_raw_events_by_default(tmp_path: Path) -> N
     )
     row = json.loads(path.read_text(encoding="utf-8").strip())
     assert "matched_events" not in row
-    assert row["evidence_level"] == "NO_TELEMETRY"
+    assert row["evidence_level"] == "NO_WRITER_EVIDENCE"
 
 
 def test_high_risk_actions_remain_blocked() -> None:

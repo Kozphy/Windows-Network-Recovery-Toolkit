@@ -29,7 +29,7 @@ from typing import Any
 
 from telemetry.audit import append_registry_writer_evidence_audit
 from telemetry.models import RegistryWriteEvent
-from telemetry.sysmon_reader import parse_sysmon_registry_event
+from telemetry.sysmon_parser import parse_sysmon_registry_event
 
 from .certificate_checker import collect_certificate_indicators
 from .persistence_checker import collect_persistence_indicators

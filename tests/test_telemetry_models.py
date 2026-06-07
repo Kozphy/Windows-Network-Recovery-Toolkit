@@ -29,10 +29,10 @@ def test_registry_write_event_round_trip() -> None:
 
 def test_registry_writer_evidence_to_dict() -> None:
     evidence = RegistryWriterEvidence(
-        evidence_level="NO_TELEMETRY",
+        evidence_level="NO_WRITER_EVIDENCE",
         limitations=["No telemetry supplied."],
         confidence_rank="none",
     )
     payload = evidence.to_dict()
-    assert payload["evidence_level"] == "NO_TELEMETRY"
+    assert payload["evidence_level"] == "NO_WRITER_EVIDENCE"
     assert payload["confidence_rank"] == "none"

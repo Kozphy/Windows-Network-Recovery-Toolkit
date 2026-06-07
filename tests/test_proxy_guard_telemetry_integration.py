@@ -14,5 +14,5 @@ def test_build_report_payload_includes_no_telemetry_by_default() -> None:
         risk={"classification": "unknown", "limitations": [], "recommended_actions": []},
     )
     section = payload["registry_writer_evidence"]
-    assert section["evidence_level"] == "NO_TELEMETRY"
+    assert section["evidence_level"] == "NO_WRITER_EVIDENCE"
     assert any("No Sysmon/EventLog/ETW" in item for item in section["limitations"])

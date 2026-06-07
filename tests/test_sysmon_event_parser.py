@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from telemetry.sysmon_reader import (
+from telemetry.sysmon_parser import (
     is_relevant_proxy_registry_path,
     normalize_registry_path,
     parse_sysmon_registry_event,
