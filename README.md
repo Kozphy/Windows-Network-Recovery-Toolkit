@@ -25,6 +25,22 @@
 | **API contract** | [docs/api_contract_platform.md](docs/api_contract_platform.md) |
 | **Public release** | [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md) · [SECURITY.md](SECURITY.md) |
 | **Registry writer telemetry** | [docs/telemetry_registry_writer_proof.md](docs/telemetry_registry_writer_proof.md) |
+| **Tier-1 demo** | [docs/tier1_demo_walkthrough.md](docs/tier1_demo_walkthrough.md) · [docs/interview_script_5_min.md](docs/interview_script_5_min.md) |
+| **Threat model** | [docs/threat_model.md](docs/threat_model.md) · [docs/security_boundaries.md](docs/security_boundaries.md) |
+
+### Endpoint Reliability Platform (Tier-1 positioning)
+
+This repository is a **production-shaped, local-first** endpoint reliability platform—not a single repair script.
+
+| Layer | Modules |
+|-------|---------|
+| **Telemetry proof** | `telemetry/` — Sysmon/EventLog fusion, evidence ladder |
+| **Fleet** | `platform_core/fleet_store.py`, `endpoint_model.py`, `agent_identity.py` |
+| **Incidents** | `platform_core/incident_engine.py` — lifecycle + severity rules |
+| **SLO / metrics** | `platform_core/reliability_metrics.py` — JSONL-derived KPIs |
+| **API + dashboard** | `backend/platform_routes.py`, `frontend/` (optional) |
+
+**Threat model (summary):** Malicious local processes, abused API callers, and stale telemetry are in scope; autonomous containment is explicitly out of scope. Controls: dry-run default, typed confirmation, policy allowlist, append-only audit, evidence levels. Details: [docs/threat_model.md](docs/threat_model.md).
 
 ### Registry Writer Telemetry Proof Layer
 

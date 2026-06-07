@@ -19,6 +19,11 @@ flowchart LR
     H[policy_engine + rbac]
     I[remediation_registry allowlist]
     J[audit + metrics]
+    FS[fleet_store + incident_engine]
+    RM[reliability_metrics / SLO]
+  end
+  subgraph Telemetry["telemetry/"]
+    TW[registry_writer_fusion]
   end
   subgraph API["backend /platform/*"]
     K[POST /platform/ingest/*]
@@ -41,7 +46,7 @@ flowchart LR
 1. **Collect** — diagnostics snapshots, proxy drift rows, heartbeat.  
 2. **Snapshot / normalize** — privacy redaction (`platform_core.privacy`).  
 3. **Detect drift** — compare baselines (`network-state`, proxy guard streams, or FailureBlocks).  
-4. **Attribute** — `evidence/` fuses heuristic + Procmon/Sysmon/ETW-stub tiers (**honest labeling** — no claimed “proof” without structured registry writer evidence).  
+4. **Attribute** — `telemetry/` fuses registry writer telemetry with listener observations; `evidence/` provides Procmon/Sysmon tiers (**honest labeling**).  
 5. **Decide policy** — `platform_core.policy` + **`policy_engine.evaluate_route_decision`**.  
 6. **Preview remediation** — `POST /platform/remediation/preview` (always before execute).  
 7. **Audit** — append-only `audit.jsonl` (including **`execute_live_pending`** before subprocess).  
@@ -60,6 +65,8 @@ All platform rows target files under **`PLATFORM_DATA_DIR`** (`platform_data/` b
 | `remediation_executions.jsonl` | dry_run / blocked / outcomes |
 | `audit.jsonl` | Operator-facing audit |
 | `platform_signals.jsonl` | KPI source for metrics merger |
+| `fleet_endpoints.jsonl` | Fleet heartbeats (`fleet_store`) |
+| `incidents.jsonl` | Incident lifecycle rows |
 | `attribution_context.jsonl` | Optional offline attribution fixtures |
 
 Typed envelope models for interviews live in **`platform_core/platform_event_contract.py`**.
