@@ -47,13 +47,11 @@ include = [
 exclude = ["tests*", "frontend*", "scripts*", "docs*"]
 
 [tool.pytest.ini_options]
+# Primary config lives in pytest.ini (pytest prefers pytest.ini over this section).
 pythonpath = ["."]
 testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
-]
-addopts = [
-    "--strict-markers",
 ]
 
 [tool.coverage.run]

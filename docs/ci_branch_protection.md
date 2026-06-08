@@ -4,7 +4,7 @@ This repository uses GitHub Actions workflows under [`.github/workflows/`](../.g
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| **CI (primary)** | `ci.yml` | `lint` · `test` · `build-smoke` · `frontend-build` |
+| **CI (primary)** | `ci.yml` | `lint` · `test` · `test-windows` · `build-smoke` · `frontend-build` |
 | **Lint (legacy)** | `lint.yml` | Ruff + Black — overlaps `ci` job `lint` |
 | **Test (extended)** | `test.yml` | mypy, coverage pytest, safety regression — overlaps `ci` job `test` |
 | **Build (release)** | `build.yml` | Docker image push to GHCR on default branch |
@@ -27,7 +27,8 @@ Enable **Require status checks to pass before merging** and select:
 | Check name (job) | Workflow | Rationale |
 |------------------|----------|-----------|
 | `lint` | CI | Ruff on first-party Python |
-| `test` | CI | Safety contracts, full pytest, fixture CLI smoke, health contracts |
+| `test` | CI | Safety contracts, full pytest + `tests/integration_linux`, fixture CLI smoke |
+| `test-windows` | CI | Full pytest on `windows-latest`; **fails if any test is skipped** (`pytest -q -rs`) |
 | `build-smoke` | CI | `docker compose config`, image build, compose/health tests |
 | `frontend-build` | CI | Next.js dashboard compiles |
 | `pip-audit` | Security | Python dependency CVEs |
