@@ -1,0 +1,60 @@
+{
+  "schema_version": "outcome_learning.fixture.v1",
+  "outcomes": [
+    {
+      "outcome_id": "oc_proxy_preview_ok",
+      "decision_id": "dec_proxy_preview_fixture",
+      "outcome": "Browser path restored after previewed WinINET proxy disable",
+      "success": true,
+      "predicted_success": true,
+      "cost": 12.5,
+      "time_to_resolution": 180.0,
+      "notes": "Preview matched live outcome; LKG snapshot available",
+      "recorded_at_utc": "2026-06-04T14:00:00Z"
+    },
+    {
+      "outcome_id": "oc_monitor_miss",
+      "decision_id": "dec_monitor_only",
+      "outcome": "Proxy drift persisted; operator intervened manually",
+      "success": false,
+      "predicted_success": true,
+      "cost": 45.0,
+      "time_to_resolution": 3600.0,
+      "notes": "False positive — monitoring alone did not resolve incident",
+      "recorded_at_utc": "2026-06-03T09:30:00Z"
+    },
+    {
+      "outcome_id": "oc_block_correct",
+      "decision_id": "dec_block_firewall_reset",
+      "outcome": "Destructive action blocked; manual runbook followed",
+      "success": true,
+      "predicted_success": false,
+      "cost": 5.0,
+      "time_to_resolution": 600.0,
+      "notes": "True negative — policy block was appropriate",
+      "recorded_at_utc": "2026-06-02T16:45:00Z"
+    },
+    {
+      "outcome_id": "oc_cpi_thesis_partial",
+      "decision_id": "dec_cpi_volatility",
+      "outcome": "Volatility elevated but direction two-sided",
+      "success": true,
+      "predicted_success": true,
+      "cost": 0.0,
+      "time_to_resolution": 900.0,
+      "notes": "Research thesis partially correct — market event fixture",
+      "recorded_at_utc": "2026-06-10T13:00:00Z"
+    },
+    {
+      "outcome_id": "oc_bridge_rumor_wrong",
+      "decision_id": "dec_bridge_exploit",
+      "outcome": "No exploit confirmed; price move muted",
+      "success": false,
+      "predicted_success": true,
+      "cost": 0.0,
+      "time_to_resolution": 120.0,
+      "notes": "False positive — preview-only gate should have applied",
+      "recorded_at_utc": "2026-06-01T11:00:00Z"
+    }
+  ]
+}

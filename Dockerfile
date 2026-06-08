@@ -24,9 +24,11 @@ COPY endpoint_agent endpoint_agent
 COPY shared shared
 COPY config config
 COPY shared shared
+COPY knowledge knowledge
+COPY fixtures fixtures
 
 RUN pip install --upgrade pip \
-    && pip wheel --wheel-dir /wheels .
+    && pip wheel --wheel-dir /wheels ".[postgres]"
 
 # --- Runtime stage: minimal image, non-root user ---
 FROM python:3.11-slim-bookworm AS runtime
@@ -48,7 +50,7 @@ RUN apt-get update \
     && useradd --uid 10001 --gid app --create-home app
 
 COPY --from=builder /wheels /wheels
-RUN pip install --no-cache-dir /wheels/*.whl \
+RUN pip install --no-cache-dir /wheels/*.whl "psycopg2-binary>=2.9" \
     && rm -rf /wheels \
     && mkdir -p /data/platform \
     && chown -R app:app /data/platform /app

@@ -1,0 +1,81 @@
+{
+  "decision_id": "dec_proxy_preview_fixture",
+  "domain": "endpoint_reliability",
+  "title": "Preview disable WinINET proxy after drift detection",
+  "evidence": [
+    {
+      "evidence_id": "ev_proxy_enabled",
+      "label": "ProxyEnable=1 in HKCU Internet Settings",
+      "kind": "observation",
+      "detail": "User proxy enabled without operator intent",
+      "weight": 0.7,
+      "supports_decision": true,
+      "source_ref": "fixture:proxy_incident"
+    },
+    {
+      "evidence_id": "ev_listener_match",
+      "label": "Local listener correlates with proxy port",
+      "kind": "inference",
+      "detail": "Candidate attribution — not causal proof",
+      "weight": 0.55,
+      "supports_decision": true,
+      "limitations": ["Correlation is not causation"]
+    }
+  ],
+  "confidence": 0.62,
+  "risk_score": 42.0,
+  "expected_outcome": {
+    "outcome_id": "out_restore_browse",
+    "label": "Browser path restored without persistent proxy",
+    "description": "Operator previews registry mutation; live execute requires typed confirmation",
+    "success_likelihood": 0.7
+  },
+  "alternative_options": [
+    {
+      "option_id": "opt_monitor",
+      "label": "Continue monitoring",
+      "description": "Observe-only — no registry change",
+      "confidence": 0.8,
+      "risk_score": 15.0,
+      "recommended": false,
+      "policy_gate": "ALLOW"
+    },
+    {
+      "option_id": "opt_preview_disable",
+      "label": "Preview disable WinINET proxy",
+      "description": "Dry-run remediation preview with audit row",
+      "confidence": 0.62,
+      "risk_score": 42.0,
+      "recommended": true,
+      "policy_gate": "PREVIEW"
+    }
+  ],
+  "context": {
+    "context_id": "ctx_fixture_proxy",
+    "domain": "endpoint_reliability",
+    "subject_id": "endpoint-local",
+    "timestamp_utc": "2026-06-04T12:00:00Z",
+    "run_id": "run_fixture_001",
+    "observation_refs": ["obs_proxy_enable", "obs_dns_ok"],
+    "hypothesis_refs": ["hyp_local_proxy_drift"]
+  },
+  "risks": [
+    {
+      "risk_id": "risk_registry_mutation",
+      "category": "state_change",
+      "score": 35.0,
+      "severity": "medium",
+      "description": "Registry mutation can affect browser connectivity",
+      "mitigations": ["LKG snapshot", "typed confirmation", "dry-run default"]
+    }
+  ],
+  "explanation": {
+    "summary": "Proxy drift detected with correlated listener evidence; preview remediation before execute.",
+    "main_drivers": ["ProxyEnable observation", "Listener correlation"],
+    "limitations": ["No Sysmon registry-writer proof in fixture"],
+    "policy_status": "PREVIEW",
+    "replay_ref": "tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json"
+  },
+  "schema_version": "decision_domain.v1",
+  "timestamp_utc": "2026-06-04T12:00:00Z"
+}

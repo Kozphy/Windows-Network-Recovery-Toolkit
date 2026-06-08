@@ -18,6 +18,7 @@
 
 | Quick link | Doc |
 |------------|-----|
+| **10-minute onboarding** | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) |
 | **3-minute demo** | [docs/demo_3_minute.md](docs/demo_3_minute.md) |
 | **Architecture** | [docs/architecture_platform.md](docs/architecture_platform.md) · [docs/architecture_service.md](docs/architecture_service.md) · [docs/event_state_reasoning_platform.md](docs/event_state_reasoning_platform.md) |
 | **Interview case study** | [docs/interview_case_study_tier1.md](docs/interview_case_study_tier1.md) |
@@ -304,28 +305,46 @@ python -m src proxy-forensics --since-minutes 30
 python -m src proxy-forensics --around "2026-06-08T05:00:55Z" --window-seconds 10
 python -m src proxy-forensics --watch-integrated --json
 
+# Final causation report (writer proof + port owner + path proof + verdict)
+python -m src proxy-causation --since-minutes 30
+python -m src proxy-causation --watch
+python -m src proxy-causation --export reports/proxy_causation.json
+python -m src proxy-causation --format markdown
+python -m src proxy-watch --final-causation
+
 # Optional Procmon proof tier
 python -m src proxy-attribution --procmon procmon.csv --json
 ```
 
 ### Final Causation Mode
 
-**Observation ≠ proof.** A localhost listener on the configured proxy port is **correlation**, not evidence that the same process wrote `HKCU\...\Internet Settings`.
+**Observation ≠ proof.** A localhost listener on the configured proxy port is **correlation**, not evidence that the same process wrote `HKCU\...\Internet Settings`. **node.exe** / **Cursor.exe** under PowerShell may be normal developer tooling — final proof requires registry-write telemetry (Sysmon Event ID 13, ETW, Event Log, or Procmon `RegSetValue`).
 
-| Level | Meaning | Required telemetry |
-| --- | --- | --- |
-| **CORRELATION_ONLY** | Process listens on the proxy port | netstat / enriched inventory |
-| **STRONG_CAUSATION** | Sysmon Event ID 13 on the correct key, partial Details match | Sysmon registry value set |
-| **FINAL_CAUSATION** | Event ID 13 on `ProxyEnable` / `ProxyServer` / `AutoConfigURL` / `ProxyOverride` with Details matching the new value | Sysmon + `ProcessGuid` join to Event ID 1 |
+| Proof level | Meaning |
+| --- | --- |
+| `OBSERVED_ONLY` | Proxy registry changed; no writer or port proof |
+| `CORRELATED` | Listener or heuristic process match only |
+| `PROVEN_REGISTRY_WRITER` | Sysmon Event ID 13 on `ProxyEnable` / `ProxyServer` / `AutoConfigURL` / `ProxyOverride` |
+| `PROVEN_NETWORK_IMPACT` | Proxied HTTPS path fails while bypass works |
+| `FINAL_CAUSATION` | Writer proof + port owner and/or flapping/suspicious classification |
+
+**Modules:**
+
+| Module | Role |
+| --- | --- |
+| `src/proxy_guard/registry_writer_proof.py` | Normalize Sysmon E13 registry-write evidence |
+| `src/proxy_guard/process_tree.py` | Process → parent → grandparent lineage |
+| `src/proxy_guard/port_owner.py` | Localhost proxy port listener owner |
+| `src/proxy_guard/proxy_path_proof.py` | Read-only direct/proxied/bypass path checks |
+| `src/proxy_guard/final_causation.py` | Merge evidence → final verdict report |
 
 **How it works:**
 
-- `src/telemetry/sysmon_reader.py` queries `Microsoft-Windows-Sysmon/Operational` for Event IDs 1, 3, 12, 13, 14 within a ±10s window (configurable).
-- `src/telemetry/registry_targets.py` normalizes `HKCU` and `HKU\<SID>` paths for the same Internet Settings keys.
-- `src/correlation/proxy_causation.py` joins registry writers to process creation (Event ID 1) and optional network evidence (Event ID 3).
-- `proxy-watch` on **high-risk** transitions runs causation analysis read-only and appends `causation` to `logs/proxy_guard.jsonl`.
+- `proxy-watch` detects WinINET drift and logs correlation to `logs/proxy_guard.jsonl`.
+- `proxy-causation` upgrades suspects to **proven registry writer** only when Sysmon/ETW/Event Log evidence matches target proxy keys.
+- `proxy-watch --final-causation` runs the final causation collector on each drift (best-effort; does not block if Sysmon is unavailable).
 
-**Safety:** No registry mutation, no process kill, no proxy disable. Classifications are neutral posture labels (`REGISTRY_WRITER_CONFIRMED`, `UNKNOWN_LOCAL_PROXY`, etc.) — not automatic malware verdicts.
+**Safety:** Safe mode never mutates network settings. No automatic process kill, proxy disable, firewall reset, or adapter changes. All reports are local-first.
 
 ### From Causation to Policy
 
@@ -903,6 +922,74 @@ Simulated NPU/thermal/driver scenarios with the same ALLOW/PREVIEW/BLOCK policy 
 python -m src edge-diagnose --fixture tests/fixtures/edge/healthy.json
 ```
 
+### Market Event Intelligence Engine (`src/market_events/`)
+
+Research-only catalyst monitoring that reuses the same epistemic pipeline as endpoint reliability — applied to crypto / macro calendar events. **No trade execution. No financial advice.**
+
+```powershell
+python -m src.market_events calendar
+python -m src.market_events score --event-id CPI_2026_06 --json
+python -m src.market_events thesis --event-id CPI_2026_06 --json
+python -m src.market_events review --event-id CPI_2026_06 --json
+python -m src.market_events replay --json
+```
+
+Fixtures: `fixtures/market_events/calendar.json`, `fixtures/market_events/reviews.json` · Audit: `logs/market_events_audit.jsonl`
+
+### Multi-Domain Decision Intelligence Platform (`platform_core/decision_platform/`)
+
+Five domains share one deterministic reasoning engine (`src/decision_engine`) via the `DomainAdapter` interface:
+
+| Domain | Adapter | Signals |
+|--------|---------|---------|
+| Windows | `WindowsAdapter` | Proxy drift, DNS, listener correlation |
+| Security | `SecurityAdapter` | Alert severity, IOC verification |
+| Cloud | `CloudAdapter` | Service health, error budget, failover |
+| Infrastructure | `InfrastructureAdapter` | CPU saturation, circuit breaker, SLO burn |
+| Market Events | `MarketAdapter` | Calendar catalysts, volatility bias |
+
+Common pipeline: **Observation → Evidence → Decision → Outcome**
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+pytest -q tests/decision_platform
+```
+
+Architecture: [`docs/decision_platform_architecture.md`](docs/decision_platform_architecture.md) · Migration: [`docs/decision_platform_migration.md`](docs/decision_platform_migration.md) · Index: [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md)
+
+---
+
+## From Endpoint Reliability to Event-Driven Market Research
+
+Windows proxy drift and crypto market catalysts are the same class of problem: **fast-moving observations** that must become **structured state**, **ranked evidence**, **policy-gated decisions**, and **replayable audit** — without confusing monitoring with proof or research with permission to act.
+
+| Endpoint reliability | Market event research |
+|----------------------|------------------------|
+| Proxy registry drift | Macro / regulatory / unlock catalyst |
+| Hypothesis + evidence ladder | Evidence tree + signal score |
+| ALLOW / PREVIEW / BLOCK remediation | ALLOW_RESEARCH / PREVIEW_ONLY / BLOCK_LOW_CONFIDENCE |
+| Post-incident replay | Post-event review + deterministic replay digest |
+
+This module demonstrates real-time monitoring, evidence ranking, risk gating, and forecast review for **SRE**, **platform engineering**, **quant research**, and **event-driven research** portfolios — not a trading bot.
+
+**60-second recruiter explanation:** *This project turns fast-moving events into structured research signals. It does not trade. It classifies catalysts, scores volatility risk, explains evidence, logs decisions, and reviews forecast quality after the event.*
+
+### Risk controls (research governance)
+
+- **Observation is not proof** — calendar rows and headlines are inputs, not verified market facts.
+- **Correlation is not causation** — scoring rules encode heuristics, not causal models.
+- **Confidence is not certainty** — scores are ordinal research aids; events below 0.4 confidence are gated.
+- **Research signal is not execution permission** — trade execution requests are always blocked.
+- **Every decision must be replayable** — scoring and thesis commands append SHA-256–hashed JSONL audit rows.
+
+Pipeline:
+
+```text
+Market Event → Classification → Asset Mapping → Expected Impact
+  → Evidence Collection → Confidence Score → Trade Thesis Draft
+  → Risk Notes → Post-Event Review → Replayable Audit Trail
+```
+
 ---
 
 ## Interview pitch
@@ -927,6 +1014,8 @@ python -m src edge-diagnose --fixture tests/fixtures/edge/healthy.json
 $env:PYTHONPATH = (Get-Location).Path
 pip install -e ".[dev]"
 pytest -q tests/test_policy_safety_contract.py tests/test_replay_determinism.py tests/test_audit_contract.py tests/test_api_dry_run_default.py
+pytest -q tests/market_events
+pytest -q tests/decision_platform
 pytest -q
 ```
 

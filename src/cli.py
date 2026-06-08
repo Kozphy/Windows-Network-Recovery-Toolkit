@@ -60,6 +60,7 @@ from .command_handlers import (
     cmd_proxy_classify,
     cmd_proxy_diagnose,
     cmd_proxy_disable,
+    cmd_proxy_causation,
     cmd_proxy_forensics,
     cmd_proxy_guard,
     cmd_proxy_investigate,
@@ -1290,6 +1291,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="Optional Procmon CSV export (Internet Settings path rows) to modestly boost attribution confidence.",
     )
+    p_pxw.add_argument(
+        "--final-causation",
+        dest="proxy_watch_final_causation",
+        action="store_true",
+        help="On drift, run final causation collector (best-effort; does not require Sysmon).",
+    )
     p_pxw.set_defaults(func=cmd_proxy_watch)
 
     p_pxw = sub.add_parser(
@@ -1562,6 +1569,58 @@ def build_parser() -> argparse.ArgumentParser:
         help="Load transitions from logs/proxy_guard.jsonl (same sink as proxy-watch).",
     )
     p_pxfore.set_defaults(func=cmd_proxy_forensics)
+
+    p_pxcaus = sub.add_parser(
+        "proxy-causation",
+        help="Final causation report: registry writer proof, port owner, path proof (read-only).",
+    )
+    p_pxcaus.add_argument(
+        "--since-minutes",
+        type=int,
+        default=30,
+        dest="proxy_causation_since_minutes",
+        help="Look-back window for Sysmon and proxy-watch transitions (default 30).",
+    )
+    p_pxcaus.add_argument(
+        "--watch",
+        dest="proxy_causation_watch",
+        action="store_true",
+        help="Integrate with proxy-watch loop and run final causation on each drift.",
+    )
+    p_pxcaus.add_argument(
+        "--interval",
+        type=float,
+        default=5.0,
+        help="Poll interval when --watch is set (default 5).",
+    )
+    p_pxcaus.add_argument(
+        "--once",
+        action="store_true",
+        help="Single poll when --watch is set.",
+    )
+    p_pxcaus.add_argument(
+        "--export",
+        dest="proxy_causation_export",
+        default=None,
+        metavar="PATH",
+        help="Write JSON report to path (e.g. reports/proxy_causation.json).",
+    )
+    p_pxcaus.add_argument(
+        "--format",
+        dest="proxy_causation_format",
+        choices=["text", "markdown", "json"],
+        default="markdown",
+        help="Output format (default markdown).",
+    )
+    p_pxcaus.add_argument(
+        "--fixture",
+        dest="proxy_causation_fixture",
+        default=None,
+        metavar="DIR",
+        help="Fixture scenario directory (CI/offline; skips live Windows probes).",
+    )
+    p_pxcaus.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON to stdout.")
+    p_pxcaus.set_defaults(func=cmd_proxy_causation)
 
     p_pxcls = sub.add_parser(
         "proxy-classify",

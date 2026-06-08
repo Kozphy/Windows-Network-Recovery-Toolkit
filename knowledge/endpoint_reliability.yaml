@@ -1,0 +1,49 @@
+schema_version: knowledge.v1
+knowledge_version: "2026.06.04"
+entries:
+  proxy_changed:
+    category: network
+    common_causes:
+      - developer_proxy
+      - security_tool
+      - malware
+    description: User-level WinINET proxy settings changed without operator intent.
+    recommended_checks:
+      - read_hkcu_proxy_enable
+      - correlate_local_listener
+      - check_proxy_allowlist
+    limitations:
+      - Listener correlation is not registry-writer proof.
+    tags:
+      - proxy
+      - wininet
+
+  dns_resolution_failure:
+    category: network
+    common_causes:
+      - stale_dns_cache
+      - captive_portal
+      - upstream_dns_outage
+    description: Hostname resolves incorrectly or not at all while raw IP connectivity may work.
+    recommended_checks:
+      - nslookup_target
+      - compare_system_dns_servers
+    tags:
+      - dns
+
+  browser_ok_ping_ok_https_fails:
+    category: network
+    common_causes:
+      - proxy_misconfiguration
+      - tls_interception
+      - pac_script_error
+    description: ICMP may succeed while HTTPS application path fails due to proxy or TLS issues.
+    recommended_checks:
+      - curl_https_probe
+      - read_wininet_proxy
+      - test_without_proxy
+    limitations:
+      - Ping success does not prove browser path health.
+    tags:
+      - proxy
+      - https

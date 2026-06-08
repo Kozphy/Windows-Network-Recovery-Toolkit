@@ -266,6 +266,87 @@ def cmd_proxy_diagnose(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_proxy_causation(args: argparse.Namespace) -> int:
+    """Final causation report — registry writer proof, port owner, path proof (read-only)."""
+
+    fixture = getattr(args, "proxy_causation_fixture", None)
+    if fixture:
+        from .proxy_guard.final_causation import collect_final_causation
+        from .reports.proxy_causation_report import (
+            render_final_causation_json,
+            render_final_causation_markdown,
+        )
+
+        report = collect_final_causation(
+            repo_root=_repo_root(getattr(args, "repo_root", None)),
+            fixture_dir=Path(str(fixture)),
+            since_minutes=int(getattr(args, "proxy_causation_since_minutes", 30) or 30),
+        )
+        fmt = str(getattr(args, "proxy_causation_format", "text") or "text").lower()
+        export = getattr(args, "proxy_causation_export", None)
+        if export:
+            out = Path(str(export))
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(
+                json.dumps(render_final_causation_json(report), indent=2),
+                encoding="utf-8",
+            )
+            print(f"Wrote {out}")
+        if fmt == "markdown":
+            print(render_final_causation_markdown(report))
+        elif bool(getattr(args, "emit_json", False)):
+            print(json.dumps(render_final_causation_json(report), indent=2))
+        else:
+            print(render_final_causation_markdown(report))
+        return 0
+
+    if (code := exit_code_if_not_windows("proxy-causation")) is not None:
+        return code
+
+    from .proxy_guard.final_causation import collect_final_causation
+    from .proxy_guard.proxy_transitions import load_recent_proxy_transitions
+    from .reports.proxy_causation_report import (
+        render_final_causation_json,
+        render_final_causation_markdown,
+    )
+
+    repo = _repo_root(getattr(args, "repo_root", None))
+    since_minutes = int(getattr(args, "proxy_causation_since_minutes", 30) or 30)
+    watch_mode = bool(getattr(args, "proxy_causation_watch", False))
+    fmt = str(getattr(args, "proxy_causation_format", "text") or "text").lower()
+    export = getattr(args, "proxy_causation_export", None)
+
+    if watch_mode:
+        from .proxy_guard.proxy_watch import run_proxy_watch_loop
+
+        run_proxy_watch_loop(
+            repo_root=repo,
+            interval_seconds=max(1.0, float(getattr(args, "interval", 5.0))),
+            once=bool(getattr(args, "once", False)),
+            final_causation=True,
+        )
+        return 0
+
+    transitions = load_recent_proxy_transitions(repo, since_seconds=since_minutes * 60, limit=20)
+    proxy_change = transitions[0] if transitions else None
+    report = collect_final_causation(
+        repo_root=repo,
+        proxy_change=proxy_change,
+        since_minutes=since_minutes,
+        recent_transitions=transitions,
+    )
+    if export:
+        out = Path(str(export))
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(render_final_causation_json(report), indent=2), encoding="utf-8")
+        print(f"Wrote {out}")
+    if fmt == "markdown" or (not bool(getattr(args, "emit_json", False)) and fmt != "json"):
+        print(render_final_causation_markdown(report))
+    else:
+        print(json.dumps(render_final_causation_json(report), indent=2))
+    return 0
+
+
 def cmd_proxy_forensics(args: argparse.Namespace) -> int:
     """Sysmon registry-write causation for proxy-watch transitions (read-only)."""
 
@@ -944,6 +1025,7 @@ def cmd_proxy_watch(args: argparse.Namespace) -> int:
         interval_seconds=max(1.0, float(getattr(args, "interval", 5.0))),
         once=bool(getattr(args, "once", False)),
         evidence_boost=eb,
+        final_causation=bool(getattr(args, "proxy_watch_final_causation", False)),
     )
     return 0
 

@@ -3,6 +3,24 @@
 # Safety: PLATFORM_SAFE_MODE=1 · dry-run remediation default · no auto-repair sidecars
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-di}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-di}
+      POSTGRES_DB: ${POSTGRES_DB:-decision_intelligence}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./platform_core/db/schema.sql:/docker-entrypoint-initdb.d/01_platform.sql:ro
+      - ./platform_core/db/decision_intelligence_schema.sql:/docker-entrypoint-initdb.d/02_decision_intelligence.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-di} -d ${POSTGRES_DB:-decision_intelligence}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: .
@@ -20,8 +38,12 @@ services:
       FAIL_FAST_ON_STARTUP: "1"
       REQUIRE_PING_BINARY: "1"
       PLATFORM_API_KEY: ${PLATFORM_API_KEY:-dev-platform-key-change-me}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-di}:${POSTGRES_PASSWORD:-di}@postgres:5432/${POSTGRES_DB:-decision_intelligence}
     volumes:
       - platform_data:/data/platform
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -62,4 +84,5 @@ services:
 
 volumes:
   platform_data:
+  pg_data:
   grafana_data:

@@ -1,0 +1,38 @@
+# Decision Intelligence monitoring stack overlay
+#
+# Full platform (API + Postgres + Prometheus + Grafana):
+#   docker compose up --build
+#
+# Monitoring only (API running on host :8000):
+#   docker compose -f docker-compose.monitoring.yml up
+#
+# Extend main stack with extra scrape targets:
+#   docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.standalone.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_monitoring_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  grafana_monitoring_data:

@@ -1,8 +1,142 @@
-"""Render parent/child process chains for proxy investigation reports."""
+"""Process tree rendering and Sysmon-backed lineage correlation.
+
+Includes:
+    - Parent-pointer chains for investigation reports (``build_process_chain_nodes``).
+    - :class:`ProcessTreeEvidence` from Sysmon Event ID 1 or live WMI/CIM snapshots.
+"""
 
 from __future__ import annotations
 
+import json
+import subprocess
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+from src.correlation.process_tree import ProcessTreeBuilder
+from src.telemetry.sysmon_reader import SysmonEvent
+
+
+@dataclass
+class ProcessTreeEvidence:
+    """Reconstructed lineage for a focus process."""
+
+    process: dict[str, Any]
+    parent: dict[str, Any] | None
+    grandparent: dict[str, Any] | None
+    chain: list[dict[str, Any]] = field(default_factory=list)
+    source: str = "unknown"
+    confidence: float = 0.5
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "process": self.process,
+            "parent": self.parent,
+            "grandparent": self.grandparent,
+            "chain": self.chain,
+            "source": self.source,
+            "confidence": self.confidence,
+        }
+
+
+def correlate_process_tree(
+    *,
+    process_id: int | None = None,
+    process_guid: str | None = None,
+    timestamp_utc: str | None = None,
+    sysmon_events: list[SysmonEvent] | None = None,
+    process_rows: list[dict[str, Any]] | None = None,
+    fixture_path: Path | None = None,
+    run: Callable[..., Any] = subprocess.run,
+) -> ProcessTreeEvidence:
+    """Reconstruct process → parent → grandparent lineage.
+
+    Prefers Sysmon Event ID 1 graph when ``process_guid`` or matching PID is available;
+    falls back to enriched process inventory rows or fixture JSON.
+    """
+    if fixture_path is not None and fixture_path.is_file():
+        data = json.loads(fixture_path.read_text(encoding="utf-8"))
+        tree = data.get("process_tree") if isinstance(data, dict) else data
+        if isinstance(tree, dict):
+            chain = list(tree.get("chain") or [])
+            return ProcessTreeEvidence(
+                process=dict(tree.get("process") or (chain[-1] if chain else {})),
+                parent=tree.get("parent"),
+                grandparent=tree.get("grandparent"),
+                chain=chain,
+                source="fixture",
+                confidence=float(tree.get("confidence") or 0.8),
+            )
+
+    if sysmon_events and (process_guid or process_id):
+        builder = ProcessTreeBuilder(sysmon_events)
+        focus_guid = process_guid
+        if not focus_guid and process_id is not None:
+            for ev in sysmon_events:
+                if ev.event_id == 1 and ev.process_id == process_id and ev.process_guid:
+                    focus_guid = ev.process_guid
+                    break
+        chain = _enrich_chain_from_sysmon(builder.ancestor_chain(focus_guid), sysmon_events)
+        if chain:
+            proc = chain[-1]
+            parent = chain[-2] if len(chain) >= 2 else None
+            grand = chain[-3] if len(chain) >= 3 else None
+            return ProcessTreeEvidence(
+                process=proc,
+                parent=parent,
+                grandparent=grand,
+                chain=chain,
+                source="sysmon_eid1",
+                confidence=0.85,
+            )
+
+    if process_rows and process_id is not None:
+        nodes = build_process_chain_nodes(focus_pid=process_id, process_rows=process_rows, matched_port=None)
+        if nodes:
+            proc = nodes[-1]
+            parent = nodes[-2] if len(nodes) >= 2 else None
+            grand = nodes[-3] if len(nodes) >= 3 else None
+            return ProcessTreeEvidence(
+                process=proc,
+                parent=parent,
+                grandparent=grand,
+                chain=nodes,
+                source="process_inventory",
+                confidence=0.6,
+            )
+
+    _ = timestamp_utc, run
+    return ProcessTreeEvidence(
+        process={},
+        parent=None,
+        grandparent=None,
+        chain=[],
+        source="unavailable",
+        confidence=0.0,
+    )
+
+
+def _enrich_chain_from_sysmon(chain: list[dict[str, Any]], events: list[SysmonEvent]) -> list[dict[str, Any]]:
+    """Attach user, hashes, and start time from matching Sysmon E1 rows."""
+    by_guid = {
+        (ev.process_guid or "").lower(): ev
+        for ev in events
+        if ev.event_id == 1 and ev.process_guid
+    }
+    enriched: list[dict[str, Any]] = []
+    for node in chain:
+        row = dict(node)
+        guid = str(row.get("process_guid") or "").lower()
+        ev = by_guid.get(guid)
+        if ev:
+            row.setdefault("user", ev.user)
+            row.setdefault("start_time_utc", ev.utc_time)
+            row.setdefault("hashes", ev.hashes)
+            row.setdefault("executable_path", row.get("image"))
+            row.setdefault("signed", None)
+        enriched.append(row)
+    return enriched
 
 
 def build_process_chain_nodes(

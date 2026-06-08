@@ -1,0 +1,79 @@
+{
+  "schema_version": "market_events.calendar.v1",
+  "events": [
+    {
+      "event_id": "CPI_2026_06",
+      "title": "US CPI release June 2026",
+      "category": "MACRO",
+      "timestamp_utc": "2026-06-10T12:30:00Z",
+      "affected_assets": ["BTC", "ETH", "SPX"],
+      "expected_volatility": "HIGH",
+      "direction_bias": "UNKNOWN",
+      "confidence": 0.72,
+      "source": "fixture:bls_cpi_schedule",
+      "notes": "Headline inflation print — cross-asset volatility catalyst"
+    },
+    {
+      "event_id": "ARB_UNLOCK_2026_06",
+      "title": "ARB token unlock tranche",
+      "category": "TOKEN_UNLOCK",
+      "timestamp_utc": "2026-06-15T00:00:00Z",
+      "affected_assets": ["ARB"],
+      "expected_volatility": "MEDIUM",
+      "direction_bias": "BEARISH",
+      "confidence": 0.65,
+      "source": "fixture:token_unlock_schedule",
+      "notes": "Large unlock tranche",
+      "metadata": { "supply_pct_unlocked": 8.5 }
+    },
+    {
+      "event_id": "ETH_PECTRA_2026_05",
+      "title": "Ethereum Pectra mainnet upgrade window",
+      "category": "PROTOCOL_UPGRADE",
+      "timestamp_utc": "2026-05-20T14:00:00Z",
+      "affected_assets": ["ETH"],
+      "expected_volatility": "MEDIUM",
+      "direction_bias": "BULLISH",
+      "confidence": 0.58,
+      "source": "fixture:ethereum_foundation_roadmap",
+      "notes": "Confirmed upgrade window",
+      "metadata": { "confirmed_date": "2026-05-20" }
+    },
+    {
+      "event_id": "SEC_ENFORCEMENT_2026_06",
+      "title": "SEC enforcement headline (fixture)",
+      "category": "REGULATORY",
+      "timestamp_utc": "2026-06-02T16:00:00Z",
+      "affected_assets": ["BTC", "ETH"],
+      "expected_volatility": "HIGH",
+      "direction_bias": "BEARISH",
+      "confidence": 0.55,
+      "source": "fixture:regulatory_wire",
+      "notes": "Enforcement action headline — downside tail"
+    },
+    {
+      "event_id": "BTC_ETF_INFLOW_2026_06",
+      "title": "Spot BTC ETF weekly inflow spike (fixture)",
+      "category": "ETF_FLOW",
+      "timestamp_utc": "2026-06-05T21:00:00Z",
+      "affected_assets": ["BTC"],
+      "expected_volatility": "MEDIUM",
+      "direction_bias": "BULLISH",
+      "confidence": 0.68,
+      "source": "fixture:etf_flow_tracker",
+      "notes": "Strong weekly inflow print"
+    },
+    {
+      "event_id": "BRIDGE_EXPLOIT_2026_06",
+      "title": "Cross-chain bridge exploit rumor (fixture)",
+      "category": "SECURITY_INCIDENT",
+      "timestamp_utc": "2026-06-01T09:15:00Z",
+      "affected_assets": ["ETH"],
+      "expected_volatility": "HIGH",
+      "direction_bias": "BEARISH",
+      "confidence": 0.35,
+      "source": "",
+      "notes": "Unverified rumor — no primary source in fixture"
+    }
+  ]
+}

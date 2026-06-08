@@ -37,3 +37,38 @@ groups:
           description: >
             High count of proxy_change_total with registry-related hypothesis labels in one hour.
             Escalate for human review — Sysmon/Procmon proof tier may still be required before attribution.
+
+  - name: decision_intelligence_alerts
+    rules:
+      - alert: decision_accuracy_low
+        expr: decision_accuracy < 0.5 and decisions_total > 0
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: Decision accuracy below 50%
+          description: >
+            Outcome learning accuracy gauge is below 0.5. Review counterfactual assumptions
+            and post-event outcomes — accuracy is ordinal batch quality, not probability.
+
+      - alert: decision_failure_spike
+        expr: increase(decision_failures[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: Elevated decision failure count
+          description: >
+            More than three decision_failures recorded in 15 minutes via the Decision Intelligence API.
+
+      - alert: decision_latency_high
+        expr: decision_latency_seconds > 2
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: Decision Intelligence API latency elevated
+          description: Mean handler latency for /decision-intelligence routes exceeds 2 seconds.

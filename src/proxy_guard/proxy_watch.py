@@ -380,6 +380,34 @@ def _emit_v2_watch_events(
         return
 
 
+def _run_final_causation_if_enabled(
+    *,
+    repo_root: Path,
+    diff: dict[str, Any],
+    run: Callable[..., Any],
+    enabled: bool,
+) -> dict[str, Any] | None:
+    """Collect final causation report on drift (best-effort; never blocks watch loop)."""
+    if not enabled:
+        return None
+    try:
+        from .final_causation import collect_final_causation
+
+        report = collect_final_causation(
+            repo_root=repo_root,
+            proxy_change={"diff": diff},
+            run=run,
+        )
+        print(
+            f"[final-causation] {report.verdict} ({report.proof_level}): {report.root_cause_sentence}",
+            file=sys.stderr,
+        )
+        return report.to_dict()
+    except Exception as exc:
+        print(f"[final-causation] skipped: {exc}", file=sys.stderr)
+        return None
+
+
 def run_proxy_watch_loop(
     *,
     repo_root: Path,
@@ -387,6 +415,7 @@ def run_proxy_watch_loop(
     once: bool,
     run: Callable[..., Any] = subprocess.run,
     evidence_boost: float = 0.0,
+    final_causation: bool = False,
 ) -> None:
     """Poll WinINET snapshots until interrupted; on drift, inventory processes and persist audit rows.
 
@@ -448,12 +477,19 @@ def run_proxy_watch_loop(
                     port_int=port_int,
                     run=run,
                 )
+                final_blob = _run_final_causation_if_enabled(
+                    repo_root=repo_root,
+                    diff=diff,
+                    run=run,
+                    enabled=final_causation,
+                )
                 emit_proxy_change_detected_audit(
                     repo_root,
                     diff=diff,
                     attribution=attribution,
                     decision=decision,
                     causation=causation_blob,
+                    final_causation=final_blob,
                 )
                 _emit_v2_watch_events(repo_root, diff=diff, attribution=attribution)
                 _print_human_banner(diff=diff, attribution=attribution, decision=decision)

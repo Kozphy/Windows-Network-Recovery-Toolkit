@@ -69,6 +69,15 @@ from .prometheus_exporter import gauges_from_platform_metrics, render_prometheus
 from .prometheus_exporter import inc as prom_inc
 from .tracing import init_tracing
 
+try:
+    from .decision_intelligence import router as decision_intelligence_router
+    from .decision_intelligence.logging_utils import configure_structured_logging
+    from .decision_intelligence.store import init_schema_if_postgres
+except ImportError:  # pragma: no cover
+    decision_intelligence_router = None  # type: ignore[assignment]
+    configure_structured_logging = None  # type: ignore[assignment]
+    init_schema_if_postgres = None  # type: ignore[assignment]
+
 _SUBSCRIPTION_EVENT_TYPES = frozenset(
     {
         "customer.subscription.created",
@@ -187,6 +196,10 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
         raise RuntimeError(f"startup checks failed: {', '.join(failed)}")
     bootstrap_labeled_metrics_from_storage()
     init_tracing("endpoint-reliability-platform")
+    if configure_structured_logging is not None:
+        configure_structured_logging()
+    if init_schema_if_postgres is not None:
+        init_schema_if_postgres()
     init_db()
     yield
 
@@ -206,6 +219,10 @@ app = FastAPI(
         {"name": "platform-v2", "description": "Versioned reliability pipeline (events, state, replay)"},
         {"name": "platform-sre", "description": "SRE incidents, RCA, MTTR, postmortems"},
         {"name": "platform-fleet", "description": "Fleet-scale ingest, dedup, partition replay"},
+        {
+            "name": "decision-intelligence",
+            "description": "Events, evidence, decisions, outcomes, replay, and learning metrics",
+        },
     ],
     lifespan=lifespan,
 )
@@ -215,6 +232,8 @@ app.include_router(platform_router)
 app.include_router(platform_v2_router, prefix="/platform")
 app.include_router(platform_sre_router, prefix="/platform")
 app.include_router(platform_fleet_router, prefix="/platform")
+if decision_intelligence_router is not None:
+    app.include_router(decision_intelligence_router)
 
 try:
     from src.api.routes_evidence_tree import router as proxy_evidence_router
@@ -247,6 +266,12 @@ def prometheus_metrics() -> Response:
     metrics = compute_platform_metrics()
     gauges = gauges_from_platform_metrics(metrics)
     body = render_prometheus_text(gauges)
+    try:
+        from backend.decision_intelligence.metrics import render_prometheus_lines
+
+        body = body.rstrip() + "\n" + render_prometheus_lines()
+    except ImportError:  # pragma: no cover
+        pass
     return Response(content=body, media_type="text/plain; version=0.0.4; charset=utf-8")
 
 

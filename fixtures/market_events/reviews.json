@@ -1,0 +1,25 @@
+{
+  "schema_version": "market_events.reviews.v1",
+  "reviews": [
+    {
+      "event_id": "CPI_2026_06",
+      "expected_volatility": "HIGH",
+      "actual_price_change_pct": -2.4,
+      "actual_volume_change_pct": 18.0,
+      "actual_volatility": "HIGH",
+      "thesis_correct": "true",
+      "lessons_learned": "Macro print aligned with elevated realized vol; direction remained two-sided.",
+      "scoring_adjustment_suggestion": "Keep macro BTC/ETH volatility bump; add realized-rate surprise factor in v2."
+    },
+    {
+      "event_id": "BRIDGE_EXPLOIT_2026_06",
+      "expected_volatility": "HIGH",
+      "actual_price_change_pct": -0.8,
+      "actual_volume_change_pct": 5.0,
+      "actual_volatility": "LOW",
+      "thesis_correct": "false",
+      "lessons_learned": "Rumor without source overstated downside; preview-only gate was appropriate.",
+      "scoring_adjustment_suggestion": "Increase penalty weight when source is empty before direction scoring."
+    }
+  ]
+}
