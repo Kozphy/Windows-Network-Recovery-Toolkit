@@ -55,6 +55,7 @@ from typing import Any
 from .diagnostics.collector import collect_features, load_features_json
 from .diagnostics.features import FeatureVector
 from .hypothesis.v1_scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
+from .proxy_guard.linux_proxy_commands import cmd_proxy_linux_snapshot
 from .command_handlers import (
     cmd_diagnose_live,
     cmd_replay_live_run,
@@ -1481,6 +1482,19 @@ def build_parser() -> argparse.ArgumentParser:
         help='Live restore requires exact phrase RESTORE_KNOWN_GOOD_PROXY; omit for dry-run preview only.',
     )
     p_pss_rs.set_defaults(func=cmd_proxy_snapshot_restore)
+
+    p_pxlinux = sub.add_parser(
+        "proxy-linux-snapshot",
+        help="Read-only Linux proxy snapshot (env, /etc/environment, gsettings, NM, apt).",
+    )
+    p_pxlinux.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_pxlinux.add_argument(
+        "--skip-optional-cli",
+        dest="skip_optional_cli",
+        action="store_true",
+        help="Skip gsettings/nmcli probes (faster; env and file reads only).",
+    )
+    p_pxlinux.set_defaults(func=cmd_proxy_linux_snapshot)
 
     p_pxdiag = sub.add_parser(
         "proxy-diagnose",

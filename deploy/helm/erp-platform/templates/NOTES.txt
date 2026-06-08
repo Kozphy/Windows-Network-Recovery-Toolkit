@@ -1,0 +1,25 @@
+Endpoint Reliability Platform (scaffold)
+
+API:
+  kubectl port-forward svc/{{ include "erp-platform.fullname" . }}-api 8000:{{ .Values.api.service.port }}
+  open http://127.0.0.1:8000/docs
+
+{{- if .Values.prometheus.enabled }}
+
+Prometheus:
+  kubectl port-forward svc/{{ include "erp-platform.fullname" . }}-prometheus {{ .Values.prometheus.service.port }}:{{ .Values.prometheus.service.port }}
+{{- end }}
+
+{{- if .Values.grafana.enabled }}
+
+Grafana:
+  kubectl port-forward svc/{{ include "erp-platform.fullname" . }}-grafana 3001:{{ .Values.grafana.service.port }}
+  login: {{ .Values.grafana.adminUser }} / (see values.grafana.adminPassword)
+{{- end }}
+
+Production checklist:
+  - Set image.repository/tag to your GHCR build
+  - Set api.existingSecret + PLATFORM_API_KEY
+  - Disable PLATFORM_FIXTURE_MODE
+  - Enable ingress + TLS
+  - Mount Grafana dashboards from deploy/grafana/provisioning/dashboards/json

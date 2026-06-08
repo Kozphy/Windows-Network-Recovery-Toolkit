@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import socket
 from pathlib import Path
@@ -40,12 +41,43 @@ class LinuxNetworkDiagnostics(NetworkDiagnosticsProvider):
             observation("hostname", socket.gethostname(), source="network_diagnostics.linux"),
             dns_observation(),
         ]
-        for key in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "no_proxy"):
-            val = os.environ.get(key)
-            if val:
-                rows.append(
-                    observation(f"env_{key.lower()}", val, source="network_diagnostics.linux")
+        try:
+            from src.proxy_guard.linux_proxy_snapshot import collect_linux_proxy_snapshot
+
+            snap = collect_linux_proxy_snapshot(skip_optional_cli=True)
+            proxy_lim = list(snap.limitations) if snap.limitations else None
+            rows.append(
+                observation(
+                    "linux_proxy_configured",
+                    snap.proxy_configured(),
+                    source="network_diagnostics.linux",
+                    limitations=proxy_lim,
                 )
+            )
+            rows.append(
+                observation(
+                    "linux_proxy_sources",
+                    ",".join(snap.sources) or "none",
+                    source="network_diagnostics.linux",
+                )
+            )
+            if snap.environment:
+                rows.append(
+                    observation(
+                        "linux_proxy_env_summary",
+                        json.dumps(snap.environment, sort_keys=True),
+                        source="network_diagnostics.linux",
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001 — observe-only path must not fail diagnostics
+            rows.append(
+                observation(
+                    "linux_proxy_snapshot_error",
+                    str(exc),
+                    source="network_diagnostics.linux",
+                    limitations=["linux_proxy_snapshot_unavailable"],
+                )
+            )
         try:
             route = Path("/proc/net/route").read_text(encoding="utf-8", errors="ignore")
             rows.append(

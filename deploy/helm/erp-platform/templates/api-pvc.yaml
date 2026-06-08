@@ -1,0 +1,17 @@
+{{- if .Values.api.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "erp-platform.fullname" . }}-api-data
+  labels:
+    {{- include "erp-platform.api.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.api.persistence.size }}
+  {{- if .Values.api.persistence.storageClass }}
+  storageClassName: {{ .Values.api.persistence.storageClass | quote }}
+  {{- end }}
+{{- end }}

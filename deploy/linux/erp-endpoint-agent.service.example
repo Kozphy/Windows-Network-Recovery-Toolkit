@@ -1,0 +1,28 @@
+# Example systemd unit for observe-only endpoint agent on Linux (not installed by default).
+# Copy to /etc/systemd/system/erp-endpoint-agent.service and adjust paths.
+#
+#   sudo cp deploy/linux/erp-endpoint-agent.service.example /etc/systemd/system/erp-endpoint-agent.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now erp-endpoint-agent
+
+[Unit]
+Description=Endpoint Reliability Platform agent (observe-only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=erp
+Group=erp
+WorkingDirectory=/opt/erp-platform
+Environment=PYTHONPATH=/opt/erp-platform
+Environment=PLATFORM_SAFE_MODE=1
+ExecStart=/usr/bin/python3 -m endpoint_agent --interval 300
+Restart=on-failure
+RestartSec=30
+
+# Optional: periodic Linux proxy snapshot audit (read-only)
+# ExecStartPost=/usr/bin/python3 -m src proxy-linux-snapshot --json >> /var/log/erp/proxy-linux.jsonl
+
+[Install]
+WantedBy=multi-user.target

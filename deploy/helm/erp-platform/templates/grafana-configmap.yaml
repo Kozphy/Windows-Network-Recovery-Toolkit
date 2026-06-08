@@ -1,0 +1,38 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "erp-platform.fullname" . }}-grafana-datasources
+  labels:
+    {{- include "erp-platform.grafana.labels" . | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://{{ include "erp-platform.fullname" . }}-prometheus:{{ .Values.prometheus.service.port }}
+        isDefault: true
+        editable: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "erp-platform.fullname" . }}-grafana-dashboards
+  labels:
+    {{- include "erp-platform.grafana.labels" . | nindent 4 }}
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: erp-platform
+        orgId: 1
+        folder: ERP
+        type: file
+        disableDeletion: true
+        editable: false
+        options:
+          path: /var/lib/grafana/dashboards
+{{- end }}

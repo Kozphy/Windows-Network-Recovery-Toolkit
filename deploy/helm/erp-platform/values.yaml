@@ -1,0 +1,73 @@
+# Scaffold values — tighten before production (secrets, ingress, resources).
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/kozphy/windows-network-recovery-toolkit
+  tag: latest
+  pullPolicy: IfNotPresent
+
+api:
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8000
+  resources: {}
+  env:
+    PLATFORM_SAFE_MODE: "1"
+    PLATFORM_FIXTURE_MODE: "1"
+    FAIL_FAST_ON_STARTUP: "1"
+    REQUIRE_PING_BINARY: "1"
+    PLATFORM_DATA_DIR: /data/platform
+  # Set via --set api.env.PLATFORM_API_KEY=... or external secret in production
+  existingSecret: ""
+  secretKey: PLATFORM_API_KEY
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+
+prometheus:
+  enabled: true
+  image: prom/prometheus:v2.54.1
+  service:
+    type: ClusterIP
+    port: 9090
+  retention: 15d
+  resources: {}
+
+grafana:
+  enabled: true
+  image: grafana/grafana:11.3.0
+  service:
+    type: ClusterIP
+    port: 3000
+  adminUser: admin
+  adminPassword: admin
+  resources: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: erp.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api
+  tls: []
+
+serviceAccount:
+  create: true
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false

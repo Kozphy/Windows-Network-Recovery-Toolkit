@@ -1,0 +1,12 @@
+apiVersion: v2
+name: erp-platform
+description: Endpoint Reliability Platform — API, Prometheus, Grafana (scaffold)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - endpoint-reliability
+  - prometheus
+  - grafana
+maintainers:
+  - name: platform-team
