@@ -82,3 +82,50 @@ Typed envelope models for interviews live in **`platform_core/platform_event_con
 | `security_auditor` | Audit + attribution reads; **no** ingest/previews |
 
 See [`platform_api_contract.md`](platform_api_contract.md) and [`rbac_and_remediation.md`](rbac_and_remediation.md).
+
+## Reliability pipeline (v2)
+
+Production-grade reasoning lives in `platform_core/reliability/` and exposes versioned HTTP at `/platform/v2/*`:
+
+```
+Observation → Event Normalization → State Machine → Hypothesis Ranking
+→ Evidence Graph → Policy → Signed Decision → Replay
+```
+
+| Component | Path |
+| --- | --- |
+| Append-only events | `platform_events.jsonl` (+ optional PostgreSQL `platform_core/db/schema.sql`) |
+| State machine | `platform_core/reliability/platform_states.py` |
+| Evidence graph | `platform_core/reliability/evidence_graph.py` |
+| Policy YAML | `config/platform_policy.yaml` |
+| API v2 | `backend/platform_v2_routes.py` |
+| Next.js pages | `frontend/app/platform/{events,states,evidence,policies,replay,timeline}/` |
+
+Design artifacts: [`adr/ADR-006-reliability-platform.md`](adr/ADR-006-reliability-platform.md), [`adr/ADR-007-sre-event-sourcing.md`](adr/ADR-007-sre-event-sourcing.md), [`diagrams/reliability_platform.md`](diagrams/reliability_platform.md), [`threat_model_reliability_platform.md`](threat_model_reliability_platform.md).
+
+## SRE operations layer
+
+Google SRE-style incident handling in `platform_core/sre/`:
+
+| Capability | Store / API |
+| --- | --- |
+| Canonical event log | `sre_domain_events.jsonl` |
+| Incident lifecycle | `POST /platform/v2/sre/incidents` |
+| Investigation + RCA | `POST .../investigate`, `GET .../rca` |
+| Timeline reconstruction | `GET .../timeline` |
+| Lifecycle MTTR | `GET /platform/v2/sre/metrics/mttr` → `platform_sre_mttr_seconds` |
+| Postmortem | `POST .../postmortem` → `platform_data/postmortems/*.md` |
+| Failure domains | `GET /platform/v2/sre/health` |
+
+## Fleet scale (100k endpoints)
+
+Target architecture for **100,000 endpoints** with distributed ingest, event streaming, partitioning, deduplication, multi-tenant RBAC, and partition-scoped replay.
+
+| Document | Purpose |
+| --- | --- |
+| [`architecture/fleet_scale_100k.md`](architecture/fleet_scale_100k.md) | System diagrams, topic topology, SLOs |
+| [`migration/fleet_scale_migration_plan.md`](migration/fleet_scale_migration_plan.md) | Phased migration JSONL → stream |
+| [`adr/ADR-008-fleet-scale-100k-endpoints.md`](adr/ADR-008-fleet-scale-100k-endpoints.md) | Architecture decision record |
+| `platform_core/fleet/` | Wire contracts (envelope, dedup, partitioning) |
+| `POST /platform/v3/fleet/ingest/batch` | Ingest gateway API |
+| `docker-compose.scale.yml` | Redpanda + Redis + Postgres dev stack |

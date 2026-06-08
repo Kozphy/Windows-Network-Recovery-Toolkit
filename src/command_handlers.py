@@ -253,6 +253,290 @@ def cmd_proxy_diagnose(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_proxy_forensics(args: argparse.Namespace) -> int:
+    """Sysmon registry-write causation for proxy-watch transitions (read-only)."""
+
+    if (code := exit_code_if_not_windows("proxy-forensics")) is not None:
+        return code
+
+    from datetime import datetime, timedelta, timezone
+
+    from .correlation.proxy_causation import analyze_from_proxy_watch_row
+    from .proxy_guard.proxy_transitions import load_recent_proxy_transitions, summarize_transition_row
+    from .reports.causation_report import render_causation_text
+
+    repo = _repo_root(getattr(args, "repo_root", None))
+    emit_json = bool(getattr(args, "emit_json", False))
+    window_seconds = max(1, int(getattr(args, "forensics_window_seconds", 10)))
+    run = subprocess.run
+
+    around = getattr(args, "forensics_around", None)
+    since_minutes = getattr(args, "forensics_since_minutes", None)
+    watch_integrated = bool(getattr(args, "forensics_watch_integrated", False))
+
+    rows: list[dict[str, Any]] = []
+    if around:
+        from .proxy_guard.audit import proxy_change_audit_jsonl_path
+
+        anchor_raw = str(around).strip().replace("Z", "+00:00")
+        try:
+            anchor = datetime.fromisoformat(anchor_raw)
+            if anchor.tzinfo is None:
+                anchor = anchor.replace(tzinfo=timezone.utc)
+            anchor = anchor.astimezone(timezone.utc)
+        except ValueError:
+            print(f"Invalid --around timestamp: {around}", file=sys.stderr)
+            return 1
+        path = proxy_change_audit_jsonl_path(repo)
+        if path.is_file():
+            win = timedelta(seconds=window_seconds)
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    blob = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if blob.get("event") != "proxy_change_detected":
+                    continue
+                ts_raw = str(blob.get("timestamp") or "")
+                try:
+                    ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                    ts = ts.astimezone(timezone.utc)
+                except ValueError:
+                    continue
+                if anchor - win <= ts <= anchor + win:
+                    rows.append(blob)
+    elif watch_integrated or since_minutes is not None:
+        minutes = int(since_minutes) if since_minutes is not None else 30
+        rows = load_recent_proxy_transitions(repo, since_seconds=minutes * 60, limit=50)
+    else:
+        rows = load_recent_proxy_transitions(repo, since_seconds=30 * 60, limit=50)
+
+    if not rows:
+        msg = "No proxy-watch transitions found in look-back window (run proxy-watch to populate logs/proxy_guard.jsonl)."
+        if emit_json:
+            print(json.dumps({"transitions": [], "message": msg}, indent=2))
+        else:
+            print(msg)
+        return 0
+
+    results: list[dict[str, Any]] = []
+    for row in rows:
+        causation = analyze_from_proxy_watch_row(
+            row,
+            window_seconds=window_seconds,
+            run=run,
+            repo_root=repo,
+        )
+        summary = summarize_transition_row(row)
+        entry = {
+            "transition_summary": summary,
+            "transition_timestamp": row.get("timestamp"),
+            "causation": causation.to_dict(),
+        }
+        results.append(entry)
+        if not emit_json:
+            print(render_causation_text(
+                causation,
+                transition_summary=summary,
+                observed_proxy_state=(row.get("diff") or {}).get("after"),
+            ))
+
+    if emit_json:
+        print(json.dumps({"transitions_analyzed": len(results), "results": results}, indent=2))
+    else:
+        print(f"\nAnalyzed {len(results)} proxy-watch transition(s). Read-only — no registry or process mutations.")
+    return 0
+
+
+def _load_latest_incident(repo: Path, *, window_seconds: int = 10, run: Any = None) -> dict[str, Any] | None:
+    from .proxy_guard.incident_pipeline import analyze_incident_from_row, load_latest_proxy_transition
+
+    row = load_latest_proxy_transition(repo)
+    if row is None:
+        return None
+    return analyze_incident_from_row(row, repo_root=repo, window_seconds=window_seconds, run=run)
+
+
+def cmd_proxy_classify(args: argparse.Namespace) -> int:
+    """Classify the registry writer for the latest proxy-watch transition (read-only)."""
+
+    if (code := exit_code_if_not_windows("proxy-classify")) is not None:
+        return code
+    repo = _repo_root(getattr(args, "repo_root", None))
+    bundle = _load_latest_incident(repo, run=subprocess.run)
+    if bundle is None:
+        print("No proxy-watch transitions in logs/proxy_guard.jsonl.", file=sys.stderr)
+        return 0
+    emit_json = bool(getattr(args, "emit_json", False))
+    cls = bundle["classification"]
+    if emit_json:
+        print(json.dumps(cls, indent=2))
+    else:
+        print(f"Classification: {cls.get('label')}")
+        print(f"Confidence: {cls.get('confidence')}")
+        print(f"Explanation: {cls.get('explanation')}")
+    return 0
+
+
+def cmd_proxy_policy(args: argparse.Namespace) -> int:
+    """Evaluate policy for latest transition or fixture/input JSONL (read-only)."""
+
+    from pathlib import Path as _Path
+
+    from .proxy_guard.incident_pipeline import analyze_fixture, analyze_incident_from_row
+    from .replay.fixture_loader import load_fixture
+
+    fixture_arg = getattr(args, "policy_fixture", None)
+    input_arg = getattr(args, "policy_input", None)
+    fmt = str(getattr(args, "policy_format", "text") or "text").lower()
+    emit_json = fmt == "json" or bool(getattr(args, "emit_json", False))
+
+    if fixture_arg:
+        bundle = analyze_fixture(load_fixture(_Path(str(fixture_arg))), repo_root=_repo_root(getattr(args, "repo_root", None)))
+    elif input_arg:
+        path = _Path(str(input_arg))
+        row = None
+        if path.is_file():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                try:
+                    blob = json.loads(line.strip())
+                except json.JSONDecodeError:
+                    continue
+                if blob.get("event") == "proxy_change_detected":
+                    row = blob
+        bundle = (
+            analyze_incident_from_row(row, repo_root=_repo_root(getattr(args, "repo_root", None)), run=subprocess.run)
+            if row
+            else None
+        )
+    else:
+        if (code := exit_code_if_not_windows("proxy-policy")) is not None:
+            return code
+        bundle = _load_latest_incident(_repo_root(getattr(args, "repo_root", None)), run=subprocess.run)
+
+    if bundle is None:
+        print("No proxy incident available.", file=sys.stderr)
+        return 0
+    pol = bundle["policy"]
+    if emit_json:
+        print(json.dumps({"policy": pol, "classification": bundle.get("classification")}, indent=2))
+    else:
+        print(f"Policy decision: {pol.get('decision') or pol.get('action')}")
+        print(f"Severity: {pol.get('severity')}")
+        print(f"Reason: {pol.get('reason')}")
+        for line in pol.get("explanation") or []:
+            print(f"  - {line}")
+        if pol.get("requires_confirmation") or pol.get("requires_human_review"):
+            print("Requires human review: yes")
+    return 0
+
+
+def cmd_proxy_timeline(args: argparse.Namespace) -> int:
+    """Replay ordered proxy incident timeline (read-only)."""
+
+    from pathlib import Path as _Path
+
+    from .proxy_guard.incident_pipeline import build_incident_timeline
+    from .replay.fixture_loader import load_fixture
+    from .replay.proxy_timeline import (
+        build_timeline_around,
+        build_timeline_from_fixture,
+        render_timeline_json,
+        render_timeline_markdown,
+        render_timeline_text,
+    )
+
+    repo = _repo_root(getattr(args, "repo_root", None))
+    fmt = str(getattr(args, "timeline_format", "text") or "text").lower()
+    fixture_arg = getattr(args, "timeline_fixture", None)
+    around = getattr(args, "timeline_around", None)
+
+    if fixture_arg:
+        events = build_timeline_from_fixture(load_fixture(_Path(str(fixture_arg))))
+    elif around:
+        if (code := exit_code_if_not_windows("proxy-timeline")) is not None:
+            return code
+        events = build_timeline_around(
+            repo,
+            str(around),
+            window_seconds=int(getattr(args, "timeline_window_seconds", 30)),
+            run=subprocess.run,
+        )
+    else:
+        if (code := exit_code_if_not_windows("proxy-timeline")) is not None:
+            return code
+        minutes = max(1, int(getattr(args, "timeline_since_minutes", 60)))
+        events = build_incident_timeline(repo, since_minutes=minutes, run=subprocess.run)
+
+    if fmt == "json":
+        print(render_timeline_json(events))
+    elif fmt == "markdown":
+        print(render_timeline_markdown(events))
+    else:
+        print(render_timeline_text(events))
+    return 0
+
+
+def cmd_proxy_report(args: argparse.Namespace) -> int:
+    """Full incident report: evidence tree + classification + policy (read-only)."""
+
+    if (code := exit_code_if_not_windows("proxy-report")) is not None:
+        return code
+    from .reports.evidence_tree import (
+        build_evidence_tree,
+        render_evidence_tree_markdown,
+        render_evidence_tree_text,
+    )
+
+    repo = _repo_root(getattr(args, "repo_root", None))
+    bundle = _load_latest_incident(repo, run=subprocess.run)
+    if bundle is None:
+        print("No proxy-watch transitions in logs/proxy_guard.jsonl.", file=sys.stderr)
+        return 0
+
+    fmt = str(getattr(args, "report_format", "text") or "text").lower()
+    row = bundle["transition"]
+    tree = build_evidence_tree(
+        transition_row=row,
+        causation=bundle["causation"],
+        classification=bundle["classification"],
+        policy=bundle["policy"],
+    )
+    report = {
+        "transition_timestamp": row.get("timestamp"),
+        "causation": bundle["causation"],
+        "classification": bundle["classification"],
+        "policy": bundle["policy"],
+        "evidence_tree": tree.to_dict(),
+    }
+    if fmt == "json":
+        print(json.dumps(report, indent=2))
+    elif fmt == "markdown":
+        lines = [
+            "# Proxy incident report",
+            "",
+            "## Evidence tree",
+            render_evidence_tree_markdown(tree),
+            "",
+            "## Classification",
+            f"- **{bundle['classification'].get('label')}** — {bundle['classification'].get('explanation')}",
+            "",
+            "## Policy",
+            f"- **{bundle['policy'].get('action')}** — {bundle['policy'].get('explanation')}",
+        ]
+        print("\n".join(lines))
+    else:
+        print(render_evidence_tree_text(tree))
+        print(f"\nClassification: {bundle['classification'].get('label')}")
+        print(f"Policy: {bundle['policy'].get('action')}")
+    return 0
+
+
 def cmd_proxy_investigate(args: argparse.Namespace) -> int:
     """Read-only unified proxy investigation bundle (no mutations)."""
 
@@ -267,7 +551,14 @@ def cmd_proxy_investigate(args: argparse.Namespace) -> int:
 
     repo = _repo_root(getattr(args, "repo_root", None))
     run = subprocess.run
-    bundle = build_proxy_investigation_bundle(repo_root=repo, run=run)
+    since = getattr(args, "investigate_since", None) or "30m"
+    procmon = getattr(args, "investigate_procmon", None)
+    bundle = build_proxy_investigation_bundle(
+        repo_root=repo,
+        run=run,
+        since_seconds=since,
+        procmon_csv=procmon,
+    )
 
     write_audit = bool(getattr(args, "investigate_audit", False))
     if write_audit and not bool(getattr(args, "investigate_no_audit", False)):
@@ -293,14 +584,46 @@ def cmd_proxy_attribution(args: argparse.Namespace) -> int:
     reg = read_proxy_registry(run=run)
     parsed = parse_proxy_server(reg.proxy_server)
     port = getattr(args, "port", None)
+    procmon_csv = getattr(args, "procmon_csv", None)
     attrib = build_localhost_proxy_attribution(
         reg,
         parsed,
         run=run,
         override_port=int(port) if port is not None else None,
     )
+    payload: dict[str, Any] = dict(attrib)
+    if procmon_csv:
+        from .proxy_guard.attribution_levels import compute_attribution_level
+        from .proxy_guard.procmon_import import load_procmon_proxy_events
+        from .proxy_guard.proxy_allowlist import load_proxy_allowlist
+
+        procmon_events = load_procmon_proxy_events(str(procmon_csv))
+        owner = (attrib.get("owners") or [None])[0]
+        if isinstance(owner, dict):
+            owner = {
+                **owner,
+                "listener_on_proxy_port": bool(attrib.get("listener_found")),
+            }
+        conclusion = compute_attribution_level(
+            owner=owner if isinstance(owner, dict) else None,
+            process_rows=[],
+            sysmon_events=[],
+            procmon_events=procmon_events,
+            matched_port=attrib.get("localhost_port"),
+            allowlist=load_proxy_allowlist(_repo_root(getattr(args, "repo_root", None))),
+        )
+        payload["procmon_evidence"] = [
+            {
+                "source": ev.source,
+                "confidence_score": ev.confidence_score,
+                "notes": list(ev.notes or []),
+                "raw_excerpt": ev.raw_excerpt,
+            }
+            for ev in procmon_events
+        ]
+        payload["attribution"] = conclusion.to_jsonable()
     if getattr(args, "emit_json", False):
-        print(json.dumps(attrib, indent=2, ensure_ascii=False))
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
     print(f"localhost_proxy_detected={attrib.get('localhost_proxy_detected')} port={attrib.get('localhost_port')}")
     if not attrib.get("localhost_proxy_detected"):

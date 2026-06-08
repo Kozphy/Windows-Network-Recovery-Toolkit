@@ -14,6 +14,10 @@ _flat_counters: dict[str, float] = {
     "platform_remediation_preview_total": 0.0,
     "platform_remediation_execute_dry_run_total": 0.0,
     "platform_policy_blocked_total": 0.0,
+    "platform_event_ingest_total": 0.0,
+    "platform_decision_runs_total": 0.0,
+    "platform_policy_allow_total": 0.0,
+    "platform_policy_preview_total": 0.0,
 }
 
 # Labeled pipeline counters
@@ -119,6 +123,11 @@ def gauges_from_platform_metrics(metrics: dict[str, Any]) -> dict[str, float]:
     audit_rows = metrics.get("audit_row_count")
     if isinstance(audit_rows, (int, float)):
         out["platform_audit_volume_total"] = float(audit_rows)
+    sre = metrics.get("sre_mttr_metrics")
+    if isinstance(sre, dict):
+        for key, val in sre.items():
+            if isinstance(val, (int, float)):
+                out[str(key)] = float(val)
     return out
 
 
@@ -132,6 +141,10 @@ def reset_metrics_for_tests() -> None:
                 "platform_remediation_preview_total": 0.0,
                 "platform_remediation_execute_dry_run_total": 0.0,
                 "platform_policy_blocked_total": 0.0,
+                "platform_event_ingest_total": 0.0,
+                "platform_decision_runs_total": 0.0,
+                "platform_policy_allow_total": 0.0,
+                "platform_policy_preview_total": 0.0,
             }
         )
         _labeled_counters.clear()

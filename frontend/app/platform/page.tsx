@@ -242,6 +242,11 @@ export default function PlatformPage() {
   return (
     <main style={{ padding: "1.25rem", maxWidth: 1040, margin: "0 auto", fontFamily: "system-ui" }}>
       <h1 style={{ marginTop: 0 }}>Endpoint Reliability Platform</h1>
+      <p style={{ fontSize: "0.9rem" }}>
+        <Link href="/platform/events">Events</Link> · <Link href="/platform/states">States</Link> ·{" "}
+        <Link href="/platform/evidence">Evidence</Link> · <Link href="/platform/policies">Policies</Link> ·{" "}
+        <Link href="/platform/replay">Replay</Link> · <Link href="/platform/timeline">Timeline</Link>
+      </p>
 
       <div
         style={{

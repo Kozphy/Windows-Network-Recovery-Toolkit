@@ -61,6 +61,10 @@ from .db import (
 from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 from .live_observability import router as toolkit_obs_router
 from .platform_routes import router as platform_router
+from .platform_v2_routes import router as platform_v2_router
+from .platform_sre_routes import router as platform_sre_router
+from .platform_fleet_routes import router as platform_fleet_router
+from .tracing import init_tracing
 from .observability_metrics import bootstrap_labeled_metrics_from_storage
 from .prometheus_exporter import gauges_from_platform_metrics, render_prometheus_text
 from .prometheus_exporter import inc as prom_inc
@@ -182,6 +186,7 @@ async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
         failed = [c.name for c in report.checks if c.status == "failed"]
         raise RuntimeError(f"startup checks failed: {', '.join(failed)}")
     bootstrap_labeled_metrics_from_storage()
+    init_tracing("endpoint-reliability-platform")
     init_db()
     yield
 
@@ -198,12 +203,27 @@ app = FastAPI(
     version=_settings.service_version,
     openapi_tags=[
         {"name": "platform", "description": "Fleet, incidents, correlation, policy-gated remediation"},
+        {"name": "platform-v2", "description": "Versioned reliability pipeline (events, state, replay)"},
+        {"name": "platform-sre", "description": "SRE incidents, RCA, MTTR, postmortems"},
+        {"name": "platform-fleet", "description": "Fleet-scale ingest, dedup, partition replay"},
     ],
     lifespan=lifespan,
 )
 
 app.include_router(toolkit_obs_router)
 app.include_router(platform_router)
+app.include_router(platform_v2_router, prefix="/platform")
+app.include_router(platform_sre_router, prefix="/platform")
+app.include_router(platform_fleet_router, prefix="/platform")
+
+try:
+    from src.api.routes_evidence_tree import router as proxy_evidence_router
+    from src.api.routes_proxy_incidents import router as proxy_incidents_router
+
+    app.include_router(proxy_incidents_router)
+    app.include_router(proxy_evidence_router)
+except ImportError:  # pragma: no cover
+    pass
 
 app.add_middleware(
     CORSMiddleware,

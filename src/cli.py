@@ -60,7 +60,12 @@ from .command_handlers import (
     cmd_replay_live_run,
     cmd_proxy_attribution,
     cmd_proxy_diagnose,
+    cmd_proxy_classify,
+    cmd_proxy_forensics,
     cmd_proxy_investigate,
+    cmd_proxy_policy,
+    cmd_proxy_report,
+    cmd_proxy_timeline,
     cmd_proxy_disable,
     cmd_proxy_guard,
     cmd_proxy_monitor,
@@ -1495,6 +1500,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_pxin.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
     p_pxin.add_argument(
+        "--since",
+        dest="investigate_since",
+        default="30m",
+        metavar="DURATION",
+        help="Look-back for proxy-watch transitions and Sysmon window (e.g. 30m, 2h, 3600).",
+    )
+    p_pxin.add_argument(
+        "--procmon",
+        dest="investigate_procmon",
+        default=None,
+        metavar="CSV",
+        help="Optional Procmon CSV export for registry writer proof tier.",
+    )
+    p_pxin.add_argument(
         "--audit",
         dest="investigate_audit",
         action="store_true",
@@ -1508,12 +1527,131 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_pxin.set_defaults(func=cmd_proxy_investigate, investigate_audit=False, investigate_no_audit=False)
 
+    p_pxfore = sub.add_parser(
+        "proxy-forensics",
+        help="Sysmon Event ID 13 registry-write causation for proxy-watch transitions (read-only).",
+    )
+    p_pxfore.add_argument("--json", dest="emit_json", action="store_true", help="Emit structured JSON only.")
+    p_pxfore.add_argument(
+        "--since-minutes",
+        type=int,
+        default=None,
+        dest="forensics_since_minutes",
+        help="Analyze proxy-watch JSONL transitions from the last N minutes (default 30).",
+    )
+    p_pxfore.add_argument(
+        "--around",
+        dest="forensics_around",
+        default=None,
+        metavar="ISO8601",
+        help='Anchor UTC timestamp for windowed forensics (e.g. "2026-06-08T05:00:55Z").',
+    )
+    p_pxfore.add_argument(
+        "--window-seconds",
+        type=int,
+        default=10,
+        dest="forensics_window_seconds",
+        help="±seconds around each transition for Sysmon query (default 10).",
+    )
+    p_pxfore.add_argument(
+        "--watch-integrated",
+        dest="forensics_watch_integrated",
+        action="store_true",
+        help="Load transitions from logs/proxy_guard.jsonl (same sink as proxy-watch).",
+    )
+    p_pxfore.set_defaults(func=cmd_proxy_forensics)
+
+    p_pxcls = sub.add_parser(
+        "proxy-classify",
+        help="Classify registry writer for latest proxy-watch transition (read-only).",
+    )
+    p_pxcls.add_argument("--json", dest="emit_json", action="store_true")
+    p_pxcls.add_argument("--latest", action="store_true", default=True, help=argparse.SUPPRESS)
+    p_pxcls.set_defaults(func=cmd_proxy_classify)
+
+    p_pxpol = sub.add_parser(
+        "proxy-policy",
+        help="Policy decision for latest proxy-watch transition (read-only).",
+    )
+    p_pxpol.add_argument("--json", dest="emit_json", action="store_true")
+    p_pxpol.add_argument("--latest", action="store_true", default=True, help=argparse.SUPPRESS)
+    p_pxpol.add_argument("--input", dest="policy_input", metavar="JSONL", help="proxy-watch audit JSONL path.")
+    p_pxpol.add_argument("--fixture", dest="policy_fixture", metavar="JSON", help="Incident fixture JSON (portable demo).")
+    p_pxpol.add_argument(
+        "--format",
+        dest="policy_format",
+        choices=("text", "json"),
+        default="text",
+        help="Output format (default text).",
+    )
+    p_pxpol.set_defaults(func=cmd_proxy_policy)
+
+    p_pxtl = sub.add_parser(
+        "proxy-timeline",
+        help="Replay proxy incident timeline from audit + Sysmon (read-only).",
+    )
+    p_pxtl.add_argument(
+        "--since-minutes",
+        type=int,
+        default=60,
+        dest="timeline_since_minutes",
+        help="Look-back window for transitions (default 60).",
+    )
+    p_pxtl.add_argument(
+        "--format",
+        dest="timeline_format",
+        choices=("text", "json", "markdown"),
+        default="text",
+        help="Output format (default text).",
+    )
+    p_pxtl.add_argument(
+        "--fixture",
+        dest="timeline_fixture",
+        metavar="JSON",
+        help="Replay timeline from incident fixture (works on Linux CI).",
+    )
+    p_pxtl.add_argument(
+        "--around",
+        dest="timeline_around",
+        metavar="ISO8601",
+        help='Anchor UTC timestamp (e.g. "2026-06-08T05:00:55Z").',
+    )
+    p_pxtl.add_argument(
+        "--window-seconds",
+        type=int,
+        default=30,
+        dest="timeline_window_seconds",
+        help="±seconds when using --around (default 30).",
+    )
+    p_pxtl.set_defaults(func=cmd_proxy_timeline)
+
+    p_pxrep = sub.add_parser(
+        "proxy-report",
+        help="Evidence tree + classification + policy for latest transition (read-only).",
+    )
+    p_pxrep.add_argument("--latest", action="store_true", default=True, help=argparse.SUPPRESS)
+    p_pxrep.add_argument(
+        "--format",
+        dest="report_format",
+        choices=("text", "json", "markdown"),
+        default="text",
+        help="Output format (default text).",
+    )
+    p_pxrep.set_defaults(func=cmd_proxy_report)
+
     p_pxattr = sub.add_parser(
         "proxy-attribution",
         help="Structured localhost proxy listener attribution (netstat + tasklist + CIM).",
     )
     p_pxattr.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON only.")
     p_pxattr.add_argument("--port", type=int, default=None, help="Override proxy port parsing.")
+    p_pxattr.add_argument(
+        "--procmon",
+        dest="procmon_csv",
+        default=None,
+        metavar="CSV",
+        help="Parse Procmon CSV for RegSetValue on Internet Settings proxy keys (proof tier).",
+    )
     p_pxattr.set_defaults(func=cmd_proxy_attribution)
 
     p_pxrb = sub.add_parser(

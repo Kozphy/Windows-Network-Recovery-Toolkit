@@ -55,9 +55,10 @@ import subprocess
 
 from ..core.time_utils import utc_now_iso
 from ..network_state import event_log as reliability_v2
+from ..correlation.proxy_causation import analyze_proxy_causation
 from .audit import emit_proxy_change_detected_audit
 from .change_attribution import attribute_proxy_change
-from .process_inventory import capture_process_inventory
+from .process_snapshot_enrichment import capture_enriched_process_snapshot
 from .state import snapshot_wininet_state
 from .wininet_change_diff import diff_wininet_states
 
@@ -200,6 +201,46 @@ def _print_human_banner(
     msg.append("")
     msg.append(f"Recommended policy action: {decision.get('action')} — {decision.get('reason')}")
     print("\n".join(msg), file=sys.stderr)
+
+
+def _run_causation_and_print(
+    *,
+    repo_root: Path,
+    diff: dict[str, Any],
+    attribution: dict[str, Any],
+    port_int: int | None,
+    run: Callable[..., Any],
+) -> dict[str, Any] | None:
+    """Sysmon registry-write attribution for high-risk transitions (read-only)."""
+    risk = str(diff.get("risk_level") or "low").lower()
+    if risk != "high":
+        return None
+    before = diff.get("before") or {}
+    after = diff.get("after") or {}
+    suspect = attribution.get("primary_suspect") if isinstance(attribution, dict) else None
+    listener = suspect if isinstance(suspect, dict) else None
+    result = analyze_proxy_causation(
+        timestamp_utc=utc_now_iso(),
+        before_state=before,
+        after_state=after,
+        changed_fields=list(diff.get("changed_fields") or []),
+        observed_localhost_port=port_int,
+        listener_process=listener,
+        run=run,
+        repo_root=repo_root,
+    )
+    if result.causation_level == "FINAL_CAUSATION":
+        print(
+            f"FINAL CAUSATION: {result.writer_process} wrote "
+            f"{result.matched_registry_target} = {result.matched_registry_details}",
+            file=sys.stderr,
+        )
+    elif result.causation_level in ("CORRELATION_ONLY", "UNKNOWN"):
+        print(
+            "Likely process / correlation only; registry writer proof unavailable",
+            file=sys.stderr,
+        )
+    return result.to_dict()
 
 
 def _emit_v2_watch_events(
@@ -391,7 +432,7 @@ def run_proxy_watch_loop(
                 elif isinstance(port_hint, str) and port_hint.strip().isdigit():
                     port_int = int(port_hint.strip())
 
-                inventory = capture_process_inventory(proxy_localhost_port=port_int, run=run)
+                inventory = capture_enriched_process_snapshot(proxy_localhost_port=port_int, run=run)
                 attribution = attribute_proxy_change(
                     proxy_diff=diff,
                     current_state=now_state,
@@ -401,11 +442,19 @@ def run_proxy_watch_loop(
                 )
 
                 decision = _decide_action(policy, diff)
+                causation_blob = _run_causation_and_print(
+                    repo_root=repo_root,
+                    diff=diff,
+                    attribution=attribution,
+                    port_int=port_int,
+                    run=run,
+                )
                 emit_proxy_change_detected_audit(
                     repo_root,
                     diff=diff,
                     attribution=attribution,
                     decision=decision,
+                    causation=causation_blob,
                 )
                 _emit_v2_watch_events(repo_root, diff=diff, attribution=attribution)
                 _print_human_banner(diff=diff, attribution=attribution, decision=decision)

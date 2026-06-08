@@ -98,6 +98,7 @@ def emit_proxy_change_detected_audit(
     diff: dict[str, Any],
     attribution: dict[str, Any],
     decision: dict[str, Any],
+    causation: dict[str, Any] | None = None,
 ) -> None:
     """Append one ``proxy_change_detected`` record for an observed HKCU proxy transition.
 
@@ -141,4 +142,6 @@ def emit_proxy_change_detected_audit(
             "requires_confirmation_for_rollback": True,
         },
     }
+    if causation is not None:
+        payload["causation"] = causation
     append_jsonl(path, payload)

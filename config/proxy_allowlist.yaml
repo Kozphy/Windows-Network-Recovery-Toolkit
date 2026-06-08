@@ -1,0 +1,22 @@
+# Trusted localhost proxy sources — reduces risk tier but still logs events.
+# Paths may use environment variables; matching is case-insensitive on Windows.
+
+trusted_processes:
+  - Cursor.exe
+  - Code.exe
+  - node.exe
+  - electron.exe
+  - python.exe
+
+trusted_paths:
+  - C:\Users\Zixsa\AppData\Local\Programs\cursor\
+  - C:\Program Files\Microsoft VS Code\
+  - C:\Program Files\nodejs\
+
+trusted_commandline_keywords:
+  - mcp
+  - extension
+  - devserver
+  - dev-server
+  - localhost
+  - proxy

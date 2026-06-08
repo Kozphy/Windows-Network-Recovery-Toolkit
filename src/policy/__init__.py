@@ -1,6 +1,9 @@
-"""Policy gates: combine ranked hypotheses, proof outcomes, and trust into ALLOW/PREVIEW/BLOCK."""
+"""Policy gates: hypothesis gates + proxy incident policy engine."""
 
 from __future__ import annotations
+
+from .proxy_policy_engine import evaluate_proxy_policy, evaluate_proxy_policy_input, load_proxy_policy_config
+from .models import PolicyDecisionKind, PolicySeverity, ProxyPolicyDecision, ProxyPolicyInput
 
 from .hypothesis_gates import (
     HYPOTHESIS_DISPLAY_NAME,

@@ -14,6 +14,8 @@ services:
         required: false
     environment:
       PLATFORM_SAFE_MODE: "1"
+      PLATFORM_FIXTURE_MODE: "1"
+      PLATFORM_REPO_ROOT: /app
       PLATFORM_DATA_DIR: /data/platform
       FAIL_FAST_ON_STARTUP: "1"
       REQUIRE_PING_BINARY: "1"

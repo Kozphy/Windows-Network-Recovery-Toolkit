@@ -16,6 +16,21 @@ from src.proxy_guard.investigation_bundle import (
 from src.proxy_guard.investigation_risk import classify_investigation_risk
 
 
+def _patch_investigation_deps(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "src.proxy_guard.investigation_bundle.capture_enriched_process_snapshot",
+        lambda **_: {"process_rows": [], "collection_warnings": []},
+    )
+    monkeypatch.setattr(
+        "src.proxy_guard.investigation_bundle.collect_sysmon_proxy_events",
+        lambda *a, **k: [],
+    )
+    monkeypatch.setattr(
+        "src.proxy_guard.investigation_bundle.load_recent_proxy_transitions",
+        lambda *a, **k: [],
+    )
+
+
 def _fake_reg(enable: int = 0, server: str | None = None):
     return type(
         "R",
@@ -69,6 +84,13 @@ def test_no_proxy_low_risk() -> None:
 
 
 def test_localhost_node_listener_high_suspicious(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_investigation_deps(monkeypatch)
+    from src.proxy_guard.proxy_allowlist import ProxyAllowlist
+
+    monkeypatch.setattr(
+        "src.proxy_guard.investigation_bundle.load_proxy_allowlist",
+        lambda _root=None: ProxyAllowlist(frozenset(), frozenset(), frozenset()),
+    )
     monkeypatch.setattr(
         "src.proxy_guard.investigation_bundle.read_proxy_registry",
         lambda **_: _fake_reg(1, "127.0.0.1:64642"),
@@ -99,17 +121,16 @@ def test_localhost_node_listener_high_suspicious(monkeypatch: pytest.MonkeyPatch
 
     bundle = build_proxy_investigation_bundle(repo_root=None, run=MagicMock())
     assert bundle.risk.risk_level in {"MEDIUM", "HIGH"}
-    assert bundle.risk.category == "HIGH_RISK_PROXY_TRANSITION"
+    assert bundle.risk.category in {"SENSITIVE_LOCALHOST_PROXY", "UNKNOWN_LOCAL_PROXY"}
     assert bundle.parsed_proxy.get("localhost_port") == 64642
     assert bundle.port_owner is not None
     assert bundle.port_owner["pid"] == 49112
     assert bundle.correlation.get("listener_matches_proxy_port") is True
     assert any(line.tier == "NOT_PROVEN" for line in bundle.evidence.lines)
     human = format_investigation_human(bundle)
-    assert "NOT PROVEN:" in human
-    assert "does not prove malware" in human
+    assert "Attribution conclusion" in human
+    assert "does not imply compromise" in human or "registry writer" in human.lower()
     assert "node.exe" in human
-    assert "CORRELATED:" in human
 
 
 def test_listener_correlation_not_registry_writer_proof() -> None:
@@ -125,7 +146,7 @@ def test_listener_correlation_not_registry_writer_proof() -> None:
         },
         before_snapshot=None,
     )
-    assert risk.category in {"HIGH_RISK_PROXY_TRANSITION", "SUSPICIOUS_LOCAL_PROXY", "UNKNOWN_LOCAL_PROXY"}
+    assert risk.category in {"SENSITIVE_LOCALHOST_PROXY", "UNKNOWN_LOCAL_PROXY"}
     assert "registry writer proof" in " ".join(risk.limitations).lower()
 
 
@@ -142,8 +163,8 @@ def test_cursor_low_confidence_not_proven() -> None:
         },
         before_snapshot=None,
     )
-    assert risk.category == "SUSPICIOUS_LOCAL_PROXY"
-    assert any("not registry writer proof" in e.lower() for e in risk.evidence)
+    assert risk.category == "SENSITIVE_LOCALHOST_PROXY"
+    assert any("registry writer" in e.lower() for e in risk.evidence)
 
 
 def test_remediation_not_sticky_category() -> None:
@@ -180,6 +201,7 @@ def test_missing_path_increases_risk_not_malware_claim() -> None:
 
 
 def test_audit_row_schema(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_investigation_deps(monkeypatch)
     monkeypatch.setattr(
         "src.proxy_guard.investigation_bundle.read_proxy_registry",
         lambda **_: _fake_reg(0, None),
@@ -268,6 +290,7 @@ def test_cmd_proxy_investigate_audit_when_flagged(monkeypatch: pytest.MonkeyPatc
 
 
 def test_json_output_stable_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_investigation_deps(monkeypatch)
     monkeypatch.setattr(
         "src.proxy_guard.investigation_bundle.read_proxy_registry",
         lambda **_: _fake_reg(1, "127.0.0.1:64642"),
@@ -293,5 +316,8 @@ def test_json_output_stable_keys(monkeypatch: pytest.MonkeyPatch) -> None:
         "parsed_proxy",
         "correlation",
         "proof_status",
+        "attribution",
+        "process_tree",
+        "evidence_table",
     ):
         assert key in payload

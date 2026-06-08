@@ -1,6 +1,6 @@
 """Proxy risk classification for read-only investigation bundles.
 
-High risk does not imply malware. Categories describe unexpected or sticky local proxy behavior.
+Uses posture language — sensitive localhost proxy posture, not compromise claims.
 """
 
 from __future__ import annotations
@@ -13,11 +13,11 @@ RiskCategory = Literal[
     "NO_PROXY",
     "MANUAL_LOCALHOST_PROXY",
     "KNOWN_DEV_PROXY",
-    "KNOWN_SECURITY_TOOL",
+    "TRUSTED_ALLOWLIST_MATCH",
+    "SENSITIVE_LOCALHOST_PROXY",
     "UNKNOWN_LOCAL_PROXY",
-    "SUSPICIOUS_LOCAL_PROXY",
+    "EXTERNAL_PROXY",
     "POSSIBLE_MITM_RISK",
-    "HIGH_RISK_PROXY_TRANSITION",
     "REMEDIATION_NOT_STICKY",
 ]
 PolicyAction = Literal[
@@ -56,6 +56,7 @@ class InvestigationRisk:
     limitations: tuple[str, ...]
     recommended_policy_action: PolicyAction
     recommended_next_step: str
+    posture_label: str
 
     def to_jsonable(self) -> dict[str, Any]:
         return {
@@ -66,6 +67,7 @@ class InvestigationRisk:
             "limitations": list(self.limitations),
             "recommended_policy_action": self.recommended_policy_action,
             "recommended_next_step": self.recommended_next_step,
+            "posture_label": self.posture_label,
         }
 
 
@@ -94,15 +96,18 @@ def classify_investigation_risk(
     port_owner: dict[str, Any] | None,
     before_snapshot: dict[str, Any] | None,
     registry_writer_proof: bool = False,
+    allowlist_match: bool = False,
+    attribution_level: str | None = None,
 ) -> InvestigationRisk:
     """Classify localhost proxy posture using observable signals only."""
 
     limitations = (
-        "High risk does not mean malware.",
+        "Sensitive localhost proxy posture does not imply compromise or malware.",
         "Listener correlation is not registry writer proof.",
     )
     enabled = proxy_enable == 1
     is_localhost = bool(parsed.get("is_localhost_proxy"))
+    is_external = enabled and not is_localhost and bool(parsed.get("proxy_server"))
     port = parsed.get("localhost_port")
 
     if not enabled:
@@ -114,6 +119,7 @@ def classify_investigation_risk(
             limitations=limitations,
             recommended_policy_action="OBSERVE_ONLY",
             recommended_next_step="No WinINET remediation required; monitor with proxy-watch if drift recurs.",
+            posture_label="normal",
         )
 
     if enabled and not is_localhost and not parsed.get("proxy_server"):
@@ -125,13 +131,26 @@ def classify_investigation_risk(
             limitations=limitations,
             recommended_policy_action="OBSERVE_ONLY",
             recommended_next_step="Review proxy-status and PAC/AutoConfigURL before remediation.",
+            posture_label="normal",
+        )
+
+    if is_external:
+        return InvestigationRisk(
+            category="EXTERNAL_PROXY",
+            risk_level="CRITICAL",
+            confidence=0.8,
+            evidence=(f"ProxyServer points to non-localhost destination: {parsed.get('proxy_server')!r}.",),
+            limitations=limitations,
+            recommended_policy_action="EXPORT_EVIDENCE",
+            recommended_next_step="Export Sysmon/Procmon proof and review external proxy destination before changes.",
+            posture_label="external proxy destination",
         )
 
     evidence: list[str] = []
     if enabled:
         evidence.append("WinINET proxy is enabled.")
     if is_localhost and port:
-        evidence.append(f"ProxyServer points to localhost port {port}.")
+        evidence.append(f"ProxyServer points to localhost port {port} (sensitive localhost proxy posture).")
 
     sticky = False
     if before_snapshot is not None:
@@ -153,7 +172,7 @@ def classify_investigation_risk(
     listener_match = bool(owner.get("listener_on_proxy_port"))
 
     if path_missing:
-        evidence.append("Executable path for port owner is missing.")
+        evidence.append("Executable path for port owner is unresolved_path.")
     if path_writable:
         evidence.append("Executable path appears user-writable.")
     if _cmdline_has_proxy_terms(str(cmdline) if cmdline else None):
@@ -161,42 +180,56 @@ def classify_investigation_risk(
     if parent_name in _DEV_PARENT_NAMES:
         evidence.append(f"Parent process is {parent_name}.")
 
-    category: RiskCategory = "MANUAL_LOCALHOST_PROXY"
+    category: RiskCategory = "SENSITIVE_LOCALHOST_PROXY"
     risk_level: RiskLevel = "MEDIUM"
     confidence = 0.55
     policy: PolicyAction = "DISABLE_WININET_PROXY"
     next_step = (
-        "Preview proxy-disable, then apply with DISABLE_WININET_PROXY after review. "
-        "Use proxy-stop-listener / proxy-stop-reverter only with typed Admin confirmation."
+        "Preview proxy-disable after review. Use proxy-stop-listener / proxy-stop-reverter only "
+        "with typed Admin confirmation."
     )
+    posture = "sensitive localhost proxy posture"
 
-    if proc_name in _SECURITY_TOOL_NAMES:
-        category = "KNOWN_SECURITY_TOOL"
+    if allowlist_match:
+        category = "TRUSTED_ALLOWLIST_MATCH"
+        risk_level = "LOW"
+        confidence = 0.7
+        policy = "OBSERVE_ONLY"
+        evidence.append("Process matched config/proxy_allowlist.yaml (event still logged).")
+        next_step = "Monitor with proxy-watch; export Sysmon/Procmon if registry writer proof is required."
+        posture = "trusted-tool localhost proxy posture"
+
+    elif proc_name in _SECURITY_TOOL_NAMES:
+        category = "KNOWN_DEV_PROXY"
         risk_level = "MEDIUM"
         confidence = 0.6
         policy = "OBSERVE_ONLY"
         next_step = "Confirm intentional security tooling before disabling proxy."
+
     elif proc_name in _DEV_PROCESS_NAMES or parent_name in {"powershell.exe", "pwsh.exe", "cmd.exe"}:
-        if listener_match:
-            category = "HIGH_RISK_PROXY_TRANSITION"
-            confidence = 0.65
-            risk_level = "HIGH"
-        else:
-            category = "UNKNOWN_LOCAL_PROXY"
-            confidence = 0.5
-            risk_level = "MEDIUM"
+        category = "SENSITIVE_LOCALHOST_PROXY"
+        risk_level = "MEDIUM" if listener_match else "MEDIUM"
+        confidence = 0.65 if listener_match else 0.5
+
     elif proc_name in {"cursor.exe", "code.exe"}:
-        category = "SUSPICIOUS_LOCAL_PROXY"
+        category = "SENSITIVE_LOCALHOST_PROXY"
         risk_level = "MEDIUM"
         confidence = 0.45
-        evidence.append("IDE process correlated — low confidence; not registry writer proof.")
+        evidence.append("IDE-adjacent process correlated — not registry writer proof.")
+
     elif path_missing or path_writable:
-        category = "SUSPICIOUS_LOCAL_PROXY"
+        category = "UNKNOWN_LOCAL_PROXY"
+        risk_level = "HIGH"
+        confidence = 0.6
+        posture = "sensitive localhost proxy posture (unknown owner path)"
+
+    elif enabled and is_localhost and listener_match:
+        category = "UNKNOWN_LOCAL_PROXY"
         risk_level = "HIGH"
         confidence = 0.6
 
     if sticky:
-        category = "REMEDIATION_NOT_STICKY" if before_snapshot else "HIGH_RISK_PROXY_TRANSITION"
+        category = "REMEDIATION_NOT_STICKY"
         risk_level = "HIGH"
         confidence = max(confidence, 0.7)
         policy = "TERMINATE_PROXY_REVERTER"
@@ -204,17 +237,14 @@ def classify_investigation_risk(
             "Proxy re-enabled after prior disable. Stop attributed reverter parent "
             "(STOP_PROXY_REVERTER) then listener (STOP_PROXY_LISTENER), then proxy-disable with soak."
         )
-    elif enabled and is_localhost and listener_match and proc_name not in _DEV_PROCESS_NAMES:
-        if category == "MANUAL_LOCALHOST_PROXY":
-            category = "UNKNOWN_LOCAL_PROXY"
-            risk_level = "HIGH"
-            confidence = 0.6
+        posture = "sensitive localhost proxy posture (sticky re-enable)"
 
-    if registry_writer_proof:
+    if registry_writer_proof or attribution_level == "PROVEN_REGISTRY_WRITER":
         category = "POSSIBLE_MITM_RISK"
         risk_level = "CRITICAL"
         confidence = 0.85
-        evidence.append("Event-level registry write evidence present (review source).")
+        evidence.append("Event-level registry write proof present (review source and authorization).")
+        posture = "proven registry writer on proxy keys"
 
     return InvestigationRisk(
         category=category,
@@ -224,4 +254,5 @@ def classify_investigation_risk(
         limitations=limitations,
         recommended_policy_action=policy,
         recommended_next_step=next_step,
+        posture_label=posture,
     )

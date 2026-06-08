@@ -35,6 +35,8 @@ logs/
 !logs/.gitignore
 reports/
 !reports/.gitignore
+!src/reports/
+!src/reports/**
 platform_data/
 platform_data_fleet_demo/
 data/failure_blocks/

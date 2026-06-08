@@ -16,12 +16,26 @@ from typing import Any
 from ..core.models import registry_with_parsed
 from ..core.time_utils import utc_now_iso
 from ..version import SCRIPT_VERSION
+from .attribution_levels import compute_attribution_level
+from .flip_flop import detect_active_reverter
 from .investigation_evidence import EvidenceLine, InvestigationEvidence
 from .investigation_risk import InvestigationRisk, classify_investigation_risk
 from .localhost_attribution import build_localhost_proxy_attribution
 from .parser import parse_proxy_server
+from .process_snapshot_enrichment import capture_enriched_process_snapshot
+from .process_tree import build_process_chain_nodes, render_process_tree_json, render_process_tree_text
+from .proxy_allowlist import allowlist_match_summary, load_proxy_allowlist
+from .proxy_transitions import (
+    build_recovery_guidance,
+    load_recent_proxy_transitions,
+    parse_since_duration,
+    summarize_transition_row,
+)
+from .procmon_import import load_procmon_proxy_events
 from .registry import read_proxy_registry
 from .snapshot_capture import capture_proxy_snapshot
+from .sysmon_attribution import collect_sysmon_proxy_events
+from .sysmon_correlation import filter_sysmon_within_seconds_of_transition
 
 
 def _primary_owner(attrib: dict[str, Any]) -> dict[str, Any] | None:
@@ -122,6 +136,7 @@ def _build_evidence(
     attrib: dict[str, Any],
     owner: dict[str, Any] | None,
     winhttp: dict[str, Any],
+    attribution: Any | None = None,
 ) -> InvestigationEvidence:
     lines: list[EvidenceLine] = []
     observed: list[str] = []
@@ -203,12 +218,18 @@ def _build_evidence(
         missing.append("Listener on configured localhost port (no matching LISTEN row).")
 
     proof_status: str = "CORRELATED" if owner and owner.get("listener_on_proxy_port") else "OBSERVED_ONLY"
+    if attribution is not None:
+        level = getattr(attribution, "level", None)
+        if level is not None and getattr(level, "value", "") == "PROVEN_REGISTRY_WRITER":
+            proof_status = "PROVEN_BY_SYSMON"
+        elif level is not None and getattr(level, "value", "") == "STRONG_CORRELATION":
+            proof_status = "STRONGLY_CORRELATED"
     confidence = 0.65 if owner and owner.get("listener_on_proxy_port") else 0.4
 
     limitations = (
-        "Registry writer proof requires Sysmon, Procmon, ETW, or Event Log correlation.",
+        "Registry writer proof requires Sysmon Event ID 13 or Procmon RegSetValue export.",
         "Listener ownership and process correlation are candidate evidence only.",
-        "High risk does not mean malware.",
+        "Sensitive localhost proxy posture does not imply compromise.",
     )
 
     return InvestigationEvidence(
@@ -269,6 +290,15 @@ class ProxyInvestigationBundle:
     risk: InvestigationRisk
     recommended_next_steps: tuple[str, ...]
     limitations: tuple[str, ...]
+    process_snapshot: dict[str, Any]
+    process_tree: dict[str, Any]
+    process_tree_text: str
+    attribution: dict[str, Any]
+    evidence_table: tuple[dict[str, Any], ...]
+    recent_transitions: tuple[dict[str, Any], ...]
+    policy_recommendation: dict[str, Any]
+    situation_interpretation: str
+    active_reverter: dict[str, Any] | None
 
     def to_jsonable(self) -> dict[str, Any]:
         return {
@@ -287,8 +317,17 @@ class ProxyInvestigationBundle:
             "port_owner": self.port_owner,
             "correlation": self.correlation,
             "evidence": self.evidence.to_jsonable(),
+            "evidence_table": list(self.evidence_table),
             "proof_status": self.evidence.proof_status,
             "risk": self.risk.to_jsonable(),
+            "attribution": self.attribution,
+            "process_snapshot": self.process_snapshot,
+            "process_tree": self.process_tree,
+            "process_tree_text": self.process_tree_text,
+            "recent_transitions": list(self.recent_transitions),
+            "policy_recommendation": self.policy_recommendation,
+            "situation_interpretation": self.situation_interpretation,
+            "active_reverter": self.active_reverter,
             "recommended_next_steps": list(self.recommended_next_steps),
             "limitations": list(self.limitations),
             "result": "success",
@@ -300,9 +339,14 @@ def build_proxy_investigation_bundle(
     *,
     repo_root: Path | None = None,
     before_snapshot: dict[str, Any] | None = None,
+    since_seconds: int | str | None = 1800,
+    procmon_csv: str | None = None,
     run: Callable[..., Any] = subprocess.run,
 ) -> ProxyInvestigationBundle:
     """Collect read-only proxy investigation state (no mutations)."""
+
+    lookback = parse_since_duration(since_seconds)
+    root = repo_root or Path.cwd()
 
     if before_snapshot is None and repo_root is not None:
         from ..proxy_investigation.collectors import load_optional_before_snapshot
@@ -316,6 +360,67 @@ def build_proxy_investigation_bundle(
     attrib = build_localhost_proxy_attribution(reg, parsed, run=run)
     owner = _primary_owner(attrib)
     parsed_dict = dict(merged.get("parsed_proxy") or parsed.to_dict())
+    localhost_port = parsed_dict.get("localhost_port")
+
+    process_snapshot = capture_enriched_process_snapshot(
+        proxy_localhost_port=int(localhost_port) if localhost_port else None,
+        run=run,
+    )
+    process_rows = process_snapshot.get("process_rows") or []
+
+    allowlist = load_proxy_allowlist(root)
+    allow_match = allowlist_match_summary(
+        process_name=str(owner.get("process_name") or "") if owner else None,
+        executable_path=str(owner.get("executable_path") or "") if owner else None,
+        command_line=str(owner.get("command_line") or "") if owner else None,
+        allowlist=allowlist,
+    )
+
+    recent = tuple(load_recent_proxy_transitions(root, since_seconds=lookback))
+    flip_records: list[dict[str, Any]] = []
+    for row in recent:
+        diff = row.get("diff") or {}
+        if isinstance(diff.get("before"), dict) and isinstance(diff.get("after"), dict):
+            flip_records.append(
+                {
+                    "timestamp": row.get("timestamp"),
+                    "before_snapshot": diff["before"],
+                    "after_snapshot": diff["after"],
+                }
+            )
+        else:
+            flip_records.append(row)
+    reverter = detect_active_reverter(flip_records, window_minutes=max(1, lookback // 60))
+    reverter_blob = reverter.to_dict() if reverter else None
+
+    sysmon_window = min(max(lookback, 10), 600)
+    sysmon_events = collect_sysmon_proxy_events(sysmon_window, run=run)
+    if recent:
+        sysmon_events = filter_sysmon_within_seconds_of_transition(
+            sysmon_events,
+            str(recent[-1].get("timestamp") or ""),
+            window_seconds=10,
+        )
+    procmon_events: list[Any] = []
+    if procmon_csv:
+        procmon_events = load_procmon_proxy_events(procmon_csv, since_seconds=lookback)
+
+    attribution = compute_attribution_level(
+        owner=owner,
+        process_rows=process_rows,
+        sysmon_events=sysmon_events,
+        procmon_events=procmon_events,
+        matched_port=int(localhost_port) if localhost_port else None,
+        allowlist=allowlist,
+    )
+
+    chain_nodes = build_process_chain_nodes(
+        focus_pid=int(owner["pid"]) if owner and owner.get("pid") is not None else None,
+        process_rows=process_rows,
+        matched_port=int(localhost_port) if localhost_port else None,
+    )
+    tree_json = render_process_tree_json(chain_nodes, matched_port=localhost_port)
+    tree_text = render_process_tree_text(chain_nodes, matched_port=localhost_port)
 
     proxy = {
         "proxy_enable": reg.proxy_enable,
@@ -332,6 +437,7 @@ def build_proxy_investigation_bundle(
         "error": None if snap.winhttp_direct_access is not None else "WinHTTP state unavailable",
     }
     correlation = build_correlation_result(parsed_dict=parsed_dict, owner=owner)
+    correlation["attribution_level"] = attribution.level.value
 
     evidence = _build_evidence(
         proxy=proxy,
@@ -339,31 +445,44 @@ def build_proxy_investigation_bundle(
         attrib=attrib,
         owner=owner,
         winhttp=winhttp,
+        attribution=attribution,
     )
     risk = classify_investigation_risk(
         proxy_enable=reg.proxy_enable,
         parsed=parsed_dict,
         port_owner=owner,
         before_snapshot=before_snapshot,
+        registry_writer_proof=attribution.level.value == "PROVEN_REGISTRY_WRITER",
+        allowlist_match=bool(allow_match.get("any_match")),
+        attribution_level=attribution.level.value,
     )
 
-    pid_hint = owner.get("pid") if owner else None
-    next_steps = (
-        f"python -m src proxy-stop-listener --dry-run  # preview listener PID {pid_hint or '?'}",
-        f"python -m src proxy-stop-listener --dry-run false --confirm STOP_PROXY_LISTENER  # exact listener",
-        "python -m src proxy-stop-reverter --dry-run  # if powershell respawns listener",
-        "python -m src proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY --soak-minutes 15",
-        "python -m src proxy-watch --interval 5  # observe re-enable / port drift",
-        "Optional proof adapters (Sysmon/Procmon/EventLog/ETW) — see docs/PROOF_ADAPTERS.md (planned)",
+    interpretation, next_steps = build_recovery_guidance(
+        proxy_enable=reg.proxy_enable,
+        is_localhost_proxy=bool(parsed_dict.get("is_localhost_proxy")),
+        recent_transitions=list(recent),
+        port_owner=owner,
+        active_reverter=reverter_blob,
     )
-    if risk.category == "REMEDIATION_NOT_STICKY":
+    if risk.category == "REMEDIATION_NOT_STICKY" and reverter_blob is None:
         next_steps = (
-            "Run scripts\\run_proxy_recovery_admin.ps1 (Administrator) or chain "
-            "stop-reverter + stop-listener + proxy-disable with soak.",
-            *next_steps[2:],
+            "Run scripts\\run_proxy_recovery_admin.ps1 (Administrator) for sticky re-enable.",
+            *next_steps,
         )
 
-    all_limits = tuple(dict.fromkeys((*evidence.limitations, *risk.limitations)))
+    policy_recommendation = {
+        "policy_decision": "PREVIEW",
+        "recommended_policy_action": risk.recommended_policy_action,
+        "posture_label": risk.posture_label,
+        "rationale": risk.recommended_next_step,
+        "no_auto_remediation": True,
+    }
+
+    evidence_table = tuple(item.to_jsonable() for item in attribution.evidence_items)
+
+    all_limits = tuple(
+        dict.fromkeys((*evidence.limitations, *risk.limitations, *attribution.limitations))
+    )
 
     return ProxyInvestigationBundle(
         event_id=str(uuid.uuid4()),
@@ -372,7 +491,7 @@ def build_proxy_investigation_bundle(
         command="proxy-investigate",
         action_type="OBSERVE_ONLY",
         dry_run=True,
-        policy_decision="ALLOW",
+        policy_decision="PREVIEW",
         wininet=proxy,
         winhttp=winhttp,
         parsed_proxy=parsed_dict,
@@ -382,6 +501,15 @@ def build_proxy_investigation_bundle(
         risk=risk,
         recommended_next_steps=next_steps,
         limitations=all_limits,
+        process_snapshot=process_snapshot,
+        process_tree=tree_json,
+        process_tree_text=tree_text,
+        attribution=attribution.to_jsonable(),
+        evidence_table=evidence_table,
+        recent_transitions=recent,
+        policy_recommendation=policy_recommendation,
+        situation_interpretation=interpretation,
+        active_reverter=reverter_blob,
     )
 
 
@@ -393,9 +521,9 @@ def format_investigation_human(bundle: ProxyInvestigationBundle) -> str:
         mode_label = "manual localhost proxy"
 
     lines = [
-        "Proxy Investigation Summary",
+        "Proxy Investigation Report",
         "",
-        "Current proxy:",
+        "=== Current proxy state ===",
         f"- ProxyEnable: {bundle.wininet.get('proxy_enable')}",
         f"- ProxyServer: {bundle.wininet.get('proxy_server') or '(empty)'}",
         f"- AutoConfigURL: {bundle.wininet.get('auto_config_url') or '(empty)'}",
@@ -409,15 +537,31 @@ def format_investigation_human(bundle: ProxyInvestigationBundle) -> str:
     if port:
         lines.append(f"- Localhost port: {port}")
 
-    lines.extend(["", "WinHTTP:"])
-    if bundle.winhttp.get("direct_access") is True:
-        lines.append("- Mode: direct access (browser may still use WinINET)")
-    elif bundle.winhttp.get("error"):
-        lines.append(f"- Note: {bundle.winhttp.get('error')}")
-    else:
-        lines.append(f"- Raw: {bundle.winhttp.get('raw') or '(unknown)'}")
+    lines.extend(["", "=== Situation ===", bundle.situation_interpretation])
 
-    lines.extend(["", "Port owner:"])
+    if bundle.active_reverter:
+        ar = bundle.active_reverter
+        lines.extend(
+            [
+                "",
+                "=== Active reverter suspicion ===",
+                f"- Class: {ar.get('incident_class')}",
+                f"- ProxyEnable toggles in window: {ar.get('toggle_count')}",
+                f"- Window: {ar.get('window_minutes')} minutes",
+            ]
+        )
+
+    lines.extend(["", "=== Recent proxy transitions ==="])
+    if bundle.recent_transitions:
+        for row in bundle.recent_transitions[-5:]:
+            diff = row.get("diff") or {}
+            lines.append(f"- {row.get('timestamp')}: {summarize_transition_row(row)}")
+            if diff.get("risk_level"):
+                lines.append(f"  risk={diff.get('risk_level')} reason={diff.get('reason') or 'n/a'}")
+    else:
+        lines.append("- No proxy-watch transitions in look-back window (run proxy-watch to populate).")
+
+    lines.extend(["", "=== Candidate processes ==="])
     owner = bundle.port_owner
     if owner:
         lines.extend(
@@ -425,57 +569,55 @@ def format_investigation_human(bundle: ProxyInvestigationBundle) -> str:
                 f"- PID: {owner.get('pid')}",
                 f"- Name: {owner.get('process_name') or 'unknown'}",
                 f"- Parent: {owner.get('parent_name') or 'unknown'} (PID {owner.get('parent_pid') or 'unknown'})",
-                f"- Path: {owner.get('executable_path') or 'unknown'}",
+                f"- Path: {owner.get('executable_path') or 'unresolved_path'}",
                 f"- Command line: {(owner.get('command_line') or '(unavailable)')[:120]}",
             ]
         )
-        if owner.get("start_time"):
-            lines.append(f"- Start time: {owner.get('start_time')}")
-        if owner.get("path_missing"):
-            lines.append("- Path missing: yes")
-        if owner.get("path_user_writable"):
-            lines.append("- Path user-writable: yes")
-        if owner.get("cmdline_proxy_terms"):
-            lines.append("- Command line proxy/tunnel terms: yes")
-        if owner.get("dev_tool_indicator"):
-            lines.append("- Dev-tool indicator: yes")
     else:
         lines.append("- No listener owner resolved for configured port.")
 
-    corr = bundle.correlation
+    lines.extend(["", "=== Process tree ===", bundle.process_tree_text or "(empty)"])
+
+    attr = bundle.attribution
     lines.extend(
         [
             "",
-            "Correlation (Level 1 — not registry writer proof):",
-            f"- Listener matches proxy port: {corr.get('listener_matches_proxy_port')}",
-            f"- Process class: {corr.get('process_class')}",
-            f"- Parent is powershell/cmd/ide: "
-            f"{corr.get('parent_is_powershell')}/{corr.get('parent_is_cmd')}/{corr.get('parent_is_ide')}",
-            f"- Proof status: {corr.get('proof_status')}",
-            "",
-            "Risk:",
-            f"- Category: {bundle.risk.category}",
-            f"- Level: {bundle.risk.risk_level}",
-            f"- Confidence: {bundle.risk.confidence}",
-            f"- Recommended policy action: {bundle.risk.recommended_policy_action}",
-            "",
-            "Evidence:",
+            "=== Attribution conclusion ===",
+            f"- Level: {attr.get('level')}",
+            f"- Suspect: {attr.get('suspect_process') or 'none'} (PID {attr.get('suspect_pid') or 'n/a'})",
+            f"- Parent chain: {' -> '.join(attr.get('parent_chain') or []) or 'n/a'}",
+            f"- Conclusion: {attr.get('conclusion_text')}",
         ]
     )
-    for tier in ("OBSERVED", "CORRELATED", "NOT_PROVEN"):
-        tier_lines = [ln for ln in bundle.evidence.lines if ln.tier == tier]
-        if not tier_lines:
-            continue
-        label = "NOT PROVEN" if tier == "NOT_PROVEN" else tier
-        lines.append(f"{label}:")
-        for line in tier_lines:
-            lines.append(f"- {line.text}")
 
-    lines.extend(["", "LIMITATIONS:"])
+    lines.extend(["", "=== Evidence table ==="])
+    for item in bundle.evidence_table:
+        lines.append(
+            f"- [{item.get('strength')}] {item.get('evidence_type')}: {item.get('description')}"
+        )
+    if not bundle.evidence_table:
+        for tier in ("OBSERVED", "CORRELATED", "NOT_PROVEN"):
+            tier_lines = [ln for ln in bundle.evidence.lines if ln.tier == tier]
+            for line in tier_lines:
+                lines.append(f"- ({tier}) {line.text}")
+
+    lines.extend(
+        [
+            "",
+            "=== Policy recommendation ===",
+            f"- Decision: {bundle.policy_recommendation.get('policy_decision')} (no auto-remediation)",
+            f"- Action: {bundle.policy_recommendation.get('recommended_policy_action')}",
+            f"- Posture: {bundle.risk.posture_label}",
+            f"- Risk level: {bundle.risk.risk_level} ({bundle.risk.category})",
+        ]
+    )
+
+    lines.extend(["", "=== Limitations ==="])
     for lim in bundle.limitations:
         lines.append(f"- {lim}")
 
-    lines.extend(["", "Recommended next step:", f"- {bundle.risk.recommended_next_step}"])
+    lines.extend(["", "Recommended next steps:"])
+    lines.append(f"- {bundle.risk.recommended_next_step}")
     for step in bundle.recommended_next_steps:
         lines.append(f"- {step}")
 
@@ -502,7 +644,10 @@ def investigation_audit_row(bundle: ProxyInvestigationBundle) -> dict[str, Any]:
         "before_state": payload["wininet"],
         "after_state": payload["wininet"],
         "diff": {},
-        "process_snapshot": bundle.port_owner,
+        "process_snapshot": bundle.process_snapshot,
+        "attribution": payload.get("attribution"),
+        "process_tree": payload.get("process_tree"),
+        "evidence_table": payload.get("evidence_table"),
         "evidence": payload["evidence"],
         "risk": payload["risk"],
         "proof_status": payload.get("proof_status"),

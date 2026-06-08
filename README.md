@@ -5,7 +5,7 @@
 ![Local first](https://img.shields.io/badge/telemetry-local--first-lightgrey)
 ![CI pytest](https://img.shields.io/badge/CI-pytest%20offline-brightgreen)
 
-**One-liner:** A local-first Windows endpoint reliability platform that diagnoses browser/proxy/network failures, separates observation from proof, gates remediation through explicit policy, and records every decision in replayable append-only audit logs.
+**One-liner:** A local-first Windows endpoint reliability platform that detects proxy drift, proves registry-writer causation, classifies process behavior, applies policy-gated decisions, and generates replayable evidence timelines.
 
 **Safety-first:** No silent process kill · no silent firewall reset · no silent adapter disable · no registry mutation without typed confirmation · listener correlation is candidate evidence only, not proof.
 
@@ -249,11 +249,110 @@ python -m src proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY --st
 
 ---
 
+## Observation vs Proof
+
+This toolkit separates **what changed**, **what correlates**, and **what is proven**:
+
+| Layer | Meaning | Example |
+| --- | --- | --- |
+| **Observation** | Registry or network fact read from the host | `ProxyEnable=1`, `ProxyServer=127.0.0.1:64394` |
+| **Correlation** | Process/listener aligns with the configured port | `node.exe` listens on the same localhost port |
+| **Likely attribution** | Ranked candidate with parent chain (not proof) | `Cursor.exe → powershell.exe → node.exe` |
+| **Proven registry writer** | Sysmon Event ID 13 or Procmon `RegSetValue` on Internet Settings keys | Image/PID on `ProxyEnable` / `ProxyServer` / `AutoConfigURL` |
+| **Policy decision** | Preview-only recommendation — no silent repair | `PREVIEW` + typed confirmation for any mutation |
+
+**Key points:**
+
+- **`proxy-watch`** detects WinINET drift and captures enriched process snapshots at change time.
+- **Listener correlation is not proof** — a process can listen on the proxy port without having written the registry key.
+- **Sysmon/Procmon is required** for proven registry-writer attribution; without it the report states: *Sysmon unavailable: registry writer cannot be proven.*
+- **Localhost proxy can be normal** for developer tools (Cursor, VS Code, Node dev servers). Allowlist matches in `config/proxy_allowlist.yaml` reduce risk tier but still log the event.
+- **External proxy destinations**, unknown persistent writers, or proof-tier unauthorized registry writes are higher risk — described as *sensitive localhost proxy posture* or *proven registry writer*, not automatic “malware” labels.
+
+```powershell
+# Read-only investigation report (30-minute look-back)
+python -m src proxy-investigate --since 30m
+
+# Sysmon registry-write causation (proxy-watch JSONL + Event ID 13)
+python -m src proxy-forensics --since-minutes 30
+python -m src proxy-forensics --around "2026-06-08T05:00:55Z" --window-seconds 10
+python -m src proxy-forensics --watch-integrated --json
+
+# Optional Procmon proof tier
+python -m src proxy-attribution --procmon procmon.csv --json
+```
+
+### Final Causation Mode
+
+**Observation ≠ proof.** A localhost listener on the configured proxy port is **correlation**, not evidence that the same process wrote `HKCU\...\Internet Settings`.
+
+| Level | Meaning | Required telemetry |
+| --- | --- | --- |
+| **CORRELATION_ONLY** | Process listens on the proxy port | netstat / enriched inventory |
+| **STRONG_CAUSATION** | Sysmon Event ID 13 on the correct key, partial Details match | Sysmon registry value set |
+| **FINAL_CAUSATION** | Event ID 13 on `ProxyEnable` / `ProxyServer` / `AutoConfigURL` / `ProxyOverride` with Details matching the new value | Sysmon + `ProcessGuid` join to Event ID 1 |
+
+**How it works:**
+
+- `src/telemetry/sysmon_reader.py` queries `Microsoft-Windows-Sysmon/Operational` for Event IDs 1, 3, 12, 13, 14 within a ±10s window (configurable).
+- `src/telemetry/registry_targets.py` normalizes `HKCU` and `HKU\<SID>` paths for the same Internet Settings keys.
+- `src/correlation/proxy_causation.py` joins registry writers to process creation (Event ID 1) and optional network evidence (Event ID 3).
+- `proxy-watch` on **high-risk** transitions runs causation analysis read-only and appends `causation` to `logs/proxy_guard.jsonl`.
+
+**Safety:** No registry mutation, no process kill, no proxy disable. Classifications are neutral posture labels (`REGISTRY_WRITER_CONFIRMED`, `UNKNOWN_LOCAL_PROXY`, etc.) — not automatic malware verdicts.
+
+### From Causation to Policy
+
+| Stage | Question answered | Module |
+| --- | --- | --- |
+| **Final causation** | Who wrote the registry key? | `src/correlation/proxy_causation.py` |
+| **Classification** | What kind of process is it? | `src/classification/process_classifier.py` |
+| **Policy** | What action is permitted? | `src/policy/proxy_policy_engine.py` |
+| **Timeline replay** | What happened, in order? | `src/replay/proxy_timeline.py` |
+| **Evidence tree** | How do observations chain to action? | `src/reports/evidence_tree.py` |
+
+- **Final causation proves who wrote the key** — Sysmon Event ID 13 + `ProcessGuid` join.
+- **Classification explains what kind of process it is** — Cursor, VS Code, dev server, security tool, unknown, suspicious, or possible MITM risk (never labeled malware automatically).
+- **Policy decides what action is allowed** — `ALLOW`, `OBSERVE`, `ALERT`, `PREVIEW_DISABLE`, `REQUIRE_CONFIRMATION`, `BLOCK_RECOMMENDED`, or `CORRELATION_ONLY_ALERT`. No automatic process kill.
+- **Timeline replay makes the incident auditable** — merges proxy-watch JSONL, Sysmon, classification, policy, and repair audit rows.
+
+```powershell
+python -m src proxy-classify --latest
+python -m src proxy-policy --latest --format json
+python -m src proxy-timeline --since-minutes 60
+python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown
+python -m src proxy-report --latest --format markdown
+```
+
+**Architecture pipeline:**
+
+```text
+Observation → Event → State Transition → Sysmon Registry Writer Proof
+  → Process Lineage → Classification → Policy Decision
+  → Evidence Tree → Timeline Replay → Human-readable Report
+```
+
+**Core philosophy:** Observation ≠ Proof · Listener correlation ≠ Registry writer causation · Confidence ≠ Certainty · Policy permission ≠ Safety guarantee · No destructive action by default.
+
+### Demo modes
+
+| Mode | Command |
+| --- | --- |
+| **Local Windows** | `python -m src proxy-watch --interval 5` then `proxy-forensics --watch-integrated` |
+| **Fixture replay (Linux CI)** | `python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown` |
+| **Docker dashboard** | `PLATFORM_FIXTURE_MODE=1 docker compose up` → `http://localhost:8000/api/proxy/incidents` |
+
+**Engineering:** `make test` · `make lint` · `make replay-fixtures` · CI workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+**Docs:** [docs/linkedin_post.md](docs/linkedin_post.md) · [docs/demo_video_script.md](docs/demo_video_script.md)
+
+---
+
 ## Current best demo
 
 Local-first Windows network recovery toolkit that explains proxy failures, previews safe fixes, and logs every decision.
 
-1. Read-only investigation: `python -m src proxy-investigate`
+1. Read-only investigation: `python -m src proxy-investigate --since 30m`
 2. Watch proxy drift: `python -m src proxy-watch --interval 5`
 3. Preview disable: `python -m src proxy-disable` (default dry-run)
 4. Confirmed fix + soak: `python -m src proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY --soak-minutes 15`

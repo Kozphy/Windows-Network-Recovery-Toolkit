@@ -1,0 +1,25 @@
+# Endpoint Reliability Platform — configurable policy defaults
+# Observation != Proof; ALLOW never implies silent auto-repair.
+
+safe_mode: true
+default_outcome: PREVIEW
+
+rules:
+  - rule_id: destructive_always_block
+    outcome: BLOCK
+    blocked_actions:
+      - firewall_reset
+      - adapter_disable
+      - process_kill_arbitrary
+    reason: Destructive actions are manual-only.
+
+  - rule_id: proof_and_confirmation_allow
+    outcome: ALLOW
+    min_confidence: 0.85
+    requires_proof_tier: true
+    reason: Safe-tier allow only with proof and explicit confirmation.
+
+  - rule_id: high_impact_preview
+    outcome: PREVIEW
+    min_confidence: 0.70
+    reason: High ordinal confidence without proof remains preview-only.

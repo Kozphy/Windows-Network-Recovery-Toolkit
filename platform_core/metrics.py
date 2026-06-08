@@ -186,6 +186,15 @@ def compute_platform_metrics(*, platform_root: Path | None = None) -> dict[str, 
     from platform_core.reliability_metrics import reliability_metrics_dict
 
     merged["reliability_metrics"] = reliability_metrics_dict(data_root=root)
+    try:
+        from platform_core.sre.mttr import compute_incident_mttr_metrics, mttr_metrics_for_prometheus
+
+        sre_metrics = compute_incident_mttr_metrics()
+        merged["sre_incident_metrics"] = sre_metrics.model_dump(mode="json")
+        merged["sre_mttr_metrics"] = mttr_metrics_for_prometheus(sre_metrics)
+    except Exception:
+        merged["sre_incident_metrics"] = {}
+        merged["sre_mttr_metrics"] = {}
     return merged
 
 
