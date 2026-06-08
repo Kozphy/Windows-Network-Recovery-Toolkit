@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any
 
 from platform_core.reliability.models import NormalizedPlatformEvent, PlatformDecisionRecord
 
@@ -63,7 +62,7 @@ def append_decision_pg(record: PlatformDecisionRecord) -> bool:
         return False
     conn = psycopg2.connect(url)
     try:
-        blob = record.model_dump(mode="json")
+        record.model_dump(mode="json")
         with conn.cursor() as cur:
             cur.execute(
                 """

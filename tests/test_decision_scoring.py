@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.diagnostics.collector import load_features_json
 from src.decision_engine.scoring import explain_primary, score_root_causes
+from src.diagnostics.collector import load_features_json
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 

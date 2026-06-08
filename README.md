@@ -80,6 +80,32 @@ pytest -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py
 
 **Full demo path:** [docs/demo_3_minute.md](docs/demo_3_minute.md) · **Safety model:** [docs/safety_model.md](docs/safety_model.md) · **ADRs:** [docs/adr/](docs/adr/)
 
+### Verified demo path
+
+Single read-only command (fixtures + safety tests; no registry/firewall/process mutation):
+
+```powershell
+.\scripts\demo_tier1.ps1
+```
+
+```bash
+make demo-tier1
+```
+
+Details: [docs/verified_demo.md](docs/verified_demo.md)
+
+| Capability | Command | Evidence |
+|------------|---------|----------|
+| CI lint + test | `pytest -q` | `.github/workflows/ci.yml` |
+| Safety contracts | `pytest -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py tests/test_replay_determinism.py tests/test_audit_contract.py` | 20 tests in CI job |
+| Fixture diagnosis | `python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json` | CI fixture smoke |
+| Proxy timeline replay | `python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown` | CI fixture smoke |
+| Policy decision | `python -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json` | CI fixture smoke |
+| Evidence tree report | `python -m src proxy-report --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown` | CI fixture smoke |
+| Public release audit | `python tools/public_release_audit.py --tracked-only` | CI + `tools/public_release_audit.py` |
+| API health / ready / metrics | `docker compose up` → `:8000/platform/health`, `:8000/platform/ready`, `:8000/metrics` | `tests/test_platform_health_routes.py` |
+| Trivy scan | GitHub Actions `security.yml` | SARIF artifacts (HIGH/CRITICAL; non-blocking `exit-code: 0`) |
+
 ---
 
 ## Deployment (Docker)

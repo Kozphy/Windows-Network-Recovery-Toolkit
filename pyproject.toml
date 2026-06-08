@@ -109,6 +109,9 @@ ignore = [
 "backend/platform_routes.py" = ["E402"]
 "failure_system/models.py" = ["UP042"]
 "platform_core/reasoning/layers.py" = ["UP042"]
+"platform_core/reliability/models.py" = ["UP042"]
+"platform_core/sre/**/*.py" = ["UP042"]
+"network_agent/**/*.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.11"

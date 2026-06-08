@@ -3,12 +3,11 @@ from __future__ import annotations
 from backend.observability_metrics import (
     confidence_label,
     hostname_label,
-    policy_label,
     record_policy_decision,
     record_reasoning_pipeline,
     sanitize_label,
 )
-from backend.prometheus_exporter import inc_labeled, render_prometheus_text, reset_metrics_for_tests
+from backend.prometheus_exporter import render_prometheus_text, reset_metrics_for_tests
 
 
 def test_hostname_label_is_hashed_not_raw() -> None:

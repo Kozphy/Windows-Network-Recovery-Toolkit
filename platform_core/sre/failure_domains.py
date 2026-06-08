@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from platform_core.reliability.resilience import CircuitBreaker
 
 from .event_store import append_domain_event
-from .models import FailureDomainName
 
 T = TypeVar("T")
 

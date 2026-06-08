@@ -12,13 +12,13 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from proxy_reasoning.constants import (
+    SCHEMA_VERSION,
     ConclusionStrength,
     ConfidenceRank,
     EvidenceLevel,
     PolicyOutcome,
     ProxyClassification,
     RiskLevel,
-    SCHEMA_VERSION,
     VerificationStatus,
 )
 

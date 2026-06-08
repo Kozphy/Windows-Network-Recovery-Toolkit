@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Protocol
 
 from .deduplication import DedupDecision, IdempotencyStore, InMemoryIdempotencyStore
-from .models import FleetEventEnvelope, TenantContext
+from .models import FleetEventEnvelope
 from .partitioning import assign_partition, topic_for_stream
 
 

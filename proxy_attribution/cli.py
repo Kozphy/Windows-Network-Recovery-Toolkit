@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 
 from proxy_attribution.attribution_engine import run_attribution
 

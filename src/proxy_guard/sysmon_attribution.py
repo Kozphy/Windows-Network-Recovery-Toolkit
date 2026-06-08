@@ -57,11 +57,10 @@ import json
 import platform
 import subprocess
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .attribution_model import AttributionEvidence
-
 
 _INTERNET_SETTINGS_FRAGMENT = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings".lower()
 _PROXY_VALUES = frozenset(
@@ -76,7 +75,7 @@ _PROXY_VALUES = frozenset(
 
 
 def _utc_now_compact() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def parse_sysmon_e13_message(message: str) -> dict[str, str]:
@@ -323,7 +322,7 @@ def collect_sysmon_proxy_events(
             time_hint = tc
         elif hasattr(tc, "strftime"):
             try:
-                time_hint = tc.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                time_hint = tc.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
             except (OSError, ValueError):
                 time_hint = str(tc)
         ev = attribution_evidence_from_sysmon_message(msg, time_created_hint=time_hint or _utc_now_compact())

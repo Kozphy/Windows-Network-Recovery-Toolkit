@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 
-class ProxyTimelineEventType(str, Enum):
+class ProxyTimelineEventType(StrEnum):
     PROCESS_CREATED = "PROCESS_CREATED"
     REGISTRY_VALUE_SET = "REGISTRY_VALUE_SET"
     PROXY_STATE_CHANGED = "PROXY_STATE_CHANGED"

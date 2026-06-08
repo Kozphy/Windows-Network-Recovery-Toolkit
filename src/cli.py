@@ -48,45 +48,58 @@ import platform
 import subprocess
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .diagnostics.collector import collect_features, load_features_json
-from .diagnostics.features import FeatureVector
-from .hypothesis.v1_scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
-from .proxy_guard.linux_proxy_commands import cmd_proxy_linux_snapshot
+from edge_device.cli_handlers import cmd_edge_diagnose, cmd_edge_replay
+
 from .command_handlers import (
     cmd_diagnose_live,
-    cmd_replay_live_run,
     cmd_proxy_attribution,
-    cmd_proxy_diagnose,
     cmd_proxy_classify,
-    cmd_proxy_forensics,
-    cmd_proxy_investigate,
-    cmd_proxy_policy,
-    cmd_proxy_report,
-    cmd_proxy_timeline,
+    cmd_proxy_diagnose,
     cmd_proxy_disable,
+    cmd_proxy_forensics,
     cmd_proxy_guard,
+    cmd_proxy_investigate,
     cmd_proxy_monitor,
     cmd_proxy_owner,
-    cmd_proxy_stop_listener,
-    cmd_proxy_stop_reverter,
+    cmd_proxy_path_status,
+    cmd_proxy_policy,
     cmd_proxy_report,
-    cmd_proxy_watch_report,
     cmd_proxy_rollback,
-    cmd_proxy_watch,
     cmd_proxy_snapshot_diff,
     cmd_proxy_snapshot_list,
     cmd_proxy_snapshot_restore,
     cmd_proxy_snapshot_save,
     cmd_proxy_snapshot_show,
-    cmd_proxy_path_status,
     cmd_proxy_status,
+    cmd_proxy_stop_listener,
+    cmd_proxy_stop_reverter,
+    cmd_proxy_timeline,
+    cmd_proxy_watch,
+    cmd_proxy_watch_report,
     cmd_repair_apply,
     cmd_repair_preview,
+    cmd_replay_live_run,
     cmd_snapshot,
+)
+from .command_handlers_safety import (
+    cmd_agent_next_step,
+    cmd_proxy_config_check,
+    cmd_proxy_registry_writer_proof,
+    cmd_proxy_restore_lkg,
+)
+from .diagnostics.collector import collect_features, load_features_json
+from .diagnostics.features import FeatureVector
+from .hypothesis.v1_scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
+from .logging.audit import append_jsonl
+from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
+from .network_recovery.cli_handlers import (
+    cmd_diagnose_app,
+    cmd_preview_scenario,
+    cmd_remediate_scenario,
 )
 from .network_state.cli_handlers import (
     cmd_network_state_diff,
@@ -98,21 +111,8 @@ from .network_state.cli_handlers import (
     cmd_network_state_snapshot_set_default,
     cmd_network_state_snapshot_show,
 )
-from edge_device.cli_handlers import cmd_edge_diagnose, cmd_edge_replay
-from .command_handlers_safety import (
-    cmd_agent_next_step,
-    cmd_proxy_config_check,
-    cmd_proxy_registry_writer_proof,
-    cmd_proxy_restore_lkg,
-)
-from .network_recovery.cli_handlers import (
-    cmd_diagnose_app,
-    cmd_preview_scenario,
-    cmd_remediate_scenario,
-)
-from .logging.audit import append_jsonl
-from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
 from .proof.proxy_https import run_localhost_proxy_https_proof
+from .proxy_guard.linux_proxy_commands import cmd_proxy_linux_snapshot
 from .recommendations.engine import RecommendationBundle, build_recommendations
 from .version import SCRIPT_VERSION
 
@@ -351,7 +351,7 @@ def _build_payload(
     primary = decision.primary()
     return {
         "diagnosis_id": diagnosis_id,
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": datetime.now(UTC).isoformat(),
         "script_version": SCRIPT_VERSION,
         "machine": _fingerprint(),
         "features": features.to_dict(),
@@ -429,7 +429,7 @@ def _audit(repo: Path, payload: dict[str, Any]) -> None:
     audit_path = repo / "logs" / "decision_audit.jsonl"
     record = {
         "type": "diagnosis",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "diagnosis_id": payload["diagnosis_id"],
         "script_version": SCRIPT_VERSION,
         "machine": payload["machine"],
@@ -573,7 +573,7 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         [
             "",
             f"Structured snapshot: {last_path}",
-            f"Audit log appended: logs\\decision_audit.jsonl",
+            "Audit log appended: logs\\decision_audit.jsonl",
         ]
     )
 
@@ -816,10 +816,6 @@ def cmd_repair_safe(args: argparse.Namespace) -> int:
     )
     subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=False)
 
-    note = (
-        f"Ran safe-tier script `{script_rel}` for diagnosis `{diag_id}` under interactive confirmation.\n\n"
-        "Was the connectivity issue resolved? Re-run diagnostics if unsure."
-    )
     answer_fix = (
         input("Did that fix your issue? [y/N/unknown]: ").strip().lower() or "unknown"
     )
@@ -969,7 +965,7 @@ def _write_live_diagnosis_report(repo: Path, payload: dict[str, Any], args: argp
     )
     report_dir = repo / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     outfile = Path(args.out) if args.out else report_dir / f"diagnosis_live_report_{ts}.txt"
     outfile.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {outfile}")
@@ -1090,7 +1086,7 @@ def cmd_export_report(args: argparse.Namespace) -> int:
 
     report_dir = repo / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     outfile = Path(args.out) if args.out else report_dir / f"diagnosis_report_{ts}.txt"
     outfile.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {outfile}")
@@ -1295,14 +1291,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional Procmon CSV export (Internet Settings path rows) to modestly boost attribution confidence.",
     )
     p_pxw.set_defaults(func=cmd_proxy_watch)
-
-    p_pxrep = sub.add_parser(
-        "proxy-report",
-        help="Summarize recent proxy-watch rows from logs/proxy_guard.jsonl.",
-    )
-    p_pxrep.add_argument("--tail", type=int, default=50, dest="proxy_report_tail", help="Inspect last N rows.")
-    p_pxrep.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON summary + rows.")
-    p_pxrep.set_defaults(func=cmd_proxy_report)
 
     p_pxw = sub.add_parser(
         "proxy-watch-report",
@@ -1641,15 +1629,29 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_pxrep = sub.add_parser(
         "proxy-report",
-        help="Evidence tree + classification + policy for latest transition (read-only).",
+        help="Incident evidence report (default) or JSONL tail summary with --tail.",
     )
     p_pxrep.add_argument("--latest", action="store_true", default=True, help=argparse.SUPPRESS)
+    p_pxrep.add_argument(
+        "--tail",
+        type=int,
+        default=None,
+        dest="proxy_report_tail",
+        help="Legacy mode: summarize last N rows from logs/proxy_guard.jsonl.",
+    )
+    p_pxrep.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON (both modes).")
+    p_pxrep.add_argument(
+        "--fixture",
+        dest="report_fixture",
+        metavar="JSON",
+        help="Incident fixture JSON for portable evidence-tree demo (Linux CI safe).",
+    )
     p_pxrep.add_argument(
         "--format",
         dest="report_format",
         choices=("text", "json", "markdown"),
         default="text",
-        help="Output format (default text).",
+        help="Incident report output format (default text; ignored with --tail).",
     )
     p_pxrep.set_defaults(func=cmd_proxy_report)
 

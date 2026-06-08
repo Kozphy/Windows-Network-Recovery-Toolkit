@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from .attribution_model import AttributionEvidence
-
 
 _INTERNET_SETTINGS = "internet settings"
 
@@ -38,7 +37,7 @@ def load_procmon_proxy_events(
     if not path.is_file():
         return []
 
-    now_ts = datetime.now(timezone.utc).timestamp()
+    now_ts = datetime.now(UTC).timestamp()
 
     hits: list[AttributionEvidence] = []
     try:
@@ -86,7 +85,7 @@ def load_procmon_proxy_events(
                     for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%m/%d/%Y %I:%M:%S %p", "%H:%M:%S.%f", "%H:%M:%S"):
                         try:
                             dt = datetime.strptime(time_s[:26], fmt)  # type: ignore[arg-type]
-                            parsed_ts = dt.replace(tzinfo=timezone.utc).timestamp()
+                            parsed_ts = dt.replace(tzinfo=UTC).timestamp()
                             break
                         except ValueError:
                             continue

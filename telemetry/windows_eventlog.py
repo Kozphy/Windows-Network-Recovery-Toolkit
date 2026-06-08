@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import platform
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from telemetry.models import RegistryWriteEvent
@@ -43,7 +43,7 @@ def _parse_eventlog_timestamp(raw: dict[str, Any], warnings: list[str]) -> datet
         except ValueError:
             warnings.append(f"unparseable_timestamp:{key}={text}")
     warnings.append("missing_timestamp_defaulted_to_epoch")
-    return datetime(1970, 1, 1, tzinfo=timezone.utc)
+    return datetime(1970, 1, 1, tzinfo=UTC)
 
 
 def parse_windows_registry_event(raw: dict[str, Any]) -> RegistryWriteEvent | None:

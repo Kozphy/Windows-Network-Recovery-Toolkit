@@ -6,7 +6,7 @@ Separates observed facts, correlated inference, and explicit non-proof boundarie
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 ProofStatus = Literal[
@@ -23,7 +23,7 @@ ProofStatus = Literal[
 EvidenceTier = Literal["OBSERVED", "CORRELATED", "NOT_PROVEN"]
 
 
-class ProofStatusEnum(str, Enum):
+class ProofStatusEnum(StrEnum):
     """Machine-readable proof status; never emit PROVEN_* without event evidence."""
 
     OBSERVED_ONLY = "OBSERVED_ONLY"

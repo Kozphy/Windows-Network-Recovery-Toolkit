@@ -22,8 +22,9 @@ Boundary:
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator, Literal, cast
+from typing import Any, Literal, cast
 
 from ..core.models import LiveNetworkSnapshot, ParsedProxy, PortOwnerRecord, ProxyRegistrySnapshot
 from ..diagnostics.features import FeatureVector
@@ -31,7 +32,6 @@ from ..hypothesis.live_scoring import score_live_snapshot
 from ..observation.trust import assess_trust
 from ..policy.hypothesis_gates import build_hypothesis_decisions
 from ..proof.contracts import ProofObservation, ProofResult, ProofStatus
-
 
 SchemaVersion = Literal["live_run_audit_v1"]
 
@@ -260,7 +260,7 @@ def build_replay_report(record: dict[str, Any]) -> dict[str, Any]:
     dec_aligned = False
     if isinstance(stored_decisions, list) and len(decisions_new) == len(stored_decisions):
         dec_aligned = all(
-            isinstance(s, dict) and row_sig(s) == row_sig(a) for s, a in zip(stored_decisions, decisions_new)
+            isinstance(s, dict) and row_sig(s) == row_sig(a) for s, a in zip(stored_decisions, decisions_new, strict=False)
         )
 
     verification = {

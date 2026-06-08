@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from backend.prometheus_exporter import gauges_from_platform_metrics, inc, render_prometheus_text, reset_metrics_for_tests
+from backend.prometheus_exporter import (
+    gauges_from_platform_metrics,
+    inc,
+    render_prometheus_text,
+    reset_metrics_for_tests,
+)
 
 
 def test_render_prometheus_text_includes_counters() -> None:

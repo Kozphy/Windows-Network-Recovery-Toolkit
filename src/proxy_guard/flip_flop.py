@@ -33,7 +33,7 @@ Audit Notes:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
@@ -48,8 +48,8 @@ def _parse_ts(value: Any) -> datetime | None:
             text = text[:-1] + "+00:00"
         dt = datetime.fromisoformat(text)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
     except ValueError:
         return None
 
@@ -143,7 +143,7 @@ def detect_active_reverter(
     elif transitions:
         ref = transitions[-1][0]
     else:
-        ref = datetime.now(timezone.utc)
+        ref = datetime.now(UTC)
     window = timedelta(minutes=window_minutes)
     cutoff = ref - window
     in_window = [t for t in transitions if t[0] >= cutoff]

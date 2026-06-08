@@ -17,8 +17,9 @@ Audit Notes:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from proxy_reasoning.constants import DEFAULT_AUDIT_FILE
 from proxy_reasoning.models import ProxyReasoningRun, ProxySignal

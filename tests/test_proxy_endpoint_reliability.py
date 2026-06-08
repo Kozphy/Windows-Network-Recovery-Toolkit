@@ -329,20 +329,53 @@ def test_proxy_disable_wrong_confirmation_blocks(monkeypatch: pytest.MonkeyPatch
     assert written[-1]["reason"] == "confirmation_mismatch"
 
 
-def test_proxy_disable_clear_server_live_blocks_even_with_confirmation(
+def test_proxy_disable_clear_server_allowlisted_with_confirmation(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    """ProxyServer delete is allowlisted when operator supplies the typed confirmation phrase."""
     repo = tmp_path
-    reg = ProxyRegistrySnapshot(1, "127.0.0.1:9", None, None, None)
+    reg_before = ProxyRegistrySnapshot(1, "127.0.0.1:9", None, None, None)
+    reg_after = ProxyRegistrySnapshot(0, None, None, None, None)
+    counter = {"i": 0}
+
+    def fake_read(**_k: object) -> ProxyRegistrySnapshot:
+        i = counter["i"]
+        counter["i"] += 1
+        return reg_before if i == 0 else reg_after
+
     m1 = ProxyDisableMutation(argv=("reg", "add"), human="h")
     m2 = ProxyDisableMutation(argv=("reg", "delete"), human="delete")
     written: list[dict[str, object]] = []
 
-    monkeypatch.setattr("src.command_handlers.read_proxy_registry", lambda **_: reg)
-    monkeypatch.setattr("src.command_handlers.build_user_proxy_disable_mutations", lambda **_: ((m1, m2), ("h", "delete")))
+    class _Result:
+        argv = ("reg",)
+        returncode = 0
+        stderr = ""
+        stdout = ""
+
+    monkeypatch.setattr("src.command_handlers.read_proxy_registry", fake_read)
+    monkeypatch.setattr(
+        "src.command_handlers.build_user_proxy_disable_mutations",
+        lambda **_: ((m1, m2), ("h", "delete")),
+    )
     monkeypatch.setattr("src.command_handlers.summarize_mutations_plaintext", lambda _m: "argv")
-    monkeypatch.setattr("src.command_handlers.apply_mutations", lambda *_a, **_k: pytest.fail("must not mutate"))
+    monkeypatch.setattr("src.command_handlers.apply_mutations", lambda *_a, **_k: (_Result(),))
+    cap = WinInetCapturedState(
+        snapshot_id="snap-fixture",
+        captured_at_utc="t",
+        values={k: None for k in ("ProxyEnable", "ProxyServer", "AutoConfigURL", "AutoDetect", "ProxyOverride")},
+        presence={k: True for k in ("ProxyEnable", "ProxyServer", "AutoConfigURL", "AutoDetect", "ProxyOverride")},
+    )
+    monkeypatch.setattr("src.command_handlers.capture_wininet_snapshot", lambda **_: cap)
+    monkeypatch.setattr(
+        "src.command_handlers.build_rollback_plan",
+        lambda _c: {"rollback": []},
+    )
+    monkeypatch.setattr(
+        "src.command_handlers.append_proxy_snapshots_jsonl",
+        lambda _repo, _row: _repo / "logs" / "proxy_snapshots.jsonl",
+    )
     monkeypatch.setattr("src.command_handlers.append_jsonl_core", lambda _path, payload: written.append(dict(payload)))
     monkeypatch.setattr("src.command_handlers._repo_root", lambda _p=None: repo)
 
@@ -351,8 +384,8 @@ def test_proxy_disable_clear_server_live_blocks_even_with_confirmation(
     rc = cmd_proxy_disable(
         Namespace(repo_root=repo, dry_run=False, clear_server=True, confirm_phrase=CONFIRMATION_PHRASE),
     )
-    assert rc == 1
-    assert "ProxyServer" in str(written[-1]["reason"])
+    assert rc == 0
+    assert any(row.get("event_kind") == "successful_mutation" for row in written)
 
 
 def test_proxy_diagnose_skip_probe_json(monkeypatch: pytest.MonkeyPatch) -> None:

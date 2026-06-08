@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import platform
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from telemetry.models import RegistryWriteEvent
@@ -29,13 +29,13 @@ def parse_etw_registry_event(raw: dict[str, Any]) -> RegistryWriteEvent | None:
     ts_raw = raw.get("timestamp_utc") or raw.get("UtcTime") or raw.get("timestamp")
     if ts_raw is None:
         warnings.append("missing_timestamp_defaulted_to_epoch")
-        timestamp = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        timestamp = datetime(1970, 1, 1, tzinfo=UTC)
     else:
         try:
             timestamp = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
         except ValueError:
             warnings.append(f"unparseable_timestamp:{ts_raw}")
-            timestamp = datetime(1970, 1, 1, tzinfo=timezone.utc)
+            timestamp = datetime(1970, 1, 1, tzinfo=UTC)
 
     process_path = str(raw.get("process_path") or raw.get("Image") or "").strip() or None
     pid = raw.get("process_id") or raw.get("ProcessId")

@@ -33,7 +33,6 @@ from typing import Any
 from ..core.time_utils import utc_now_iso
 from ..proxy_guard.known_good_store import summarize_snapshot_risk
 from ..proxy_guard.models import ProxySnapshot
-
 from .paths import default_profile_json, snapshots_jsonl
 
 SCHEMA_VERSION = 1

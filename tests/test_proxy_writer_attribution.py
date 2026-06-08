@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from evidence.registry_writer import parse_procmon_csv, parse_security_4657_rows, parse_sysmon_event_rows
+from evidence.registry_writer import (
+    parse_procmon_csv,
+    parse_security_4657_rows,
+    parse_sysmon_event_rows,
+)
 from proxy_guard.attribution import build_proxy_attribution_event
 from proxy_guard.watch_registry import append_proxy_writer_event, import_procmon_trace
 

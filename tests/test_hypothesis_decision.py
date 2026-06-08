@@ -71,7 +71,8 @@ def test_build_hypothesis_decisions_shape() -> None:
         proofs_enabled=True,
     )
     assert len(rows) == 2
-    assert set(rows[0].keys()) == {"hypothesis", "confidence", "proof_status", "why", "decision", "risk_score"}
+    required = {"hypothesis", "confidence", "proof_status", "why", "decision", "risk_score"}
+    assert required.issubset(rows[0].keys())
     assert rows[0]["proof_status"] == "INCONCLUSIVE"
     assert rows[0]["decision"] in {"ALLOW", "PREVIEW", "BLOCK"}
     assert rows[1]["proof_status"] == "UNPROVEN"

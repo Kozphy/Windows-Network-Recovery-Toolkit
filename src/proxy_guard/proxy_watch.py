@@ -45,17 +45,16 @@ Engineering Notes:
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import subprocess
-
 from ..core.time_utils import utc_now_iso
-from ..network_state import event_log as reliability_v2
 from ..correlation.proxy_causation import analyze_proxy_causation
+from ..network_state import event_log as reliability_v2
 from .audit import emit_proxy_change_detected_audit
 from .change_attribution import attribute_proxy_change
 from .process_snapshot_enrichment import capture_enriched_process_snapshot

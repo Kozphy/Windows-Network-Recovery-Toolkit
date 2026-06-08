@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 
 from src.core.models import LiveNetworkSnapshot, ProxyRegistrySnapshot
+from src.decision_engine.adversarial_hints import adversarial_hints
 from src.decision_engine.hypothesis_decision import PolicyDecision, build_hypothesis_decisions
 from src.decision_engine.risk_numeric import hypothesis_impact, hypothesis_risk_score
-from src.decision_engine.adversarial_hints import adversarial_hints
 from src.decision_engine.trust_layer import assess_trust
 from src.diagnostics.features import FeatureVector
 from src.proof.contracts import ProofResult, ProofStatus

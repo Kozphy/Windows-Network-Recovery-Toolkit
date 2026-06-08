@@ -8,7 +8,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 SYSMON_LOG = "Microsoft-Windows-Sysmon/Operational"
@@ -152,7 +152,7 @@ def parse_sysmon_xml_batch(xml_documents: Iterable[str]) -> list[SysmonEvent]:
 
 def _format_ps_datetime(dt: datetime) -> str:
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     local = dt.astimezone()
     return local.strftime("%Y-%m-%d %H:%M:%S")
 

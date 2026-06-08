@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import platform
 
-import platform
-
 import pytest
 
 from platform_core.os_probe import (

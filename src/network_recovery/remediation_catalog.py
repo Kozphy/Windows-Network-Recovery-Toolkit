@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .models import RemediationActionPreview, RiskTier
+from .models import RemediationActionPreview
 
 # BLOCK tier — never auto-executed; policy BLOCK
 _BLOCKED: tuple[tuple[str, str, str], ...] = (

@@ -4,7 +4,12 @@ import tempfile
 from pathlib import Path
 
 from platform_core.diagnosis_text import render_reasoning_summary
-from platform_core.reasoning_audit import append_reasoning_run, iter_reasoning_records, replay_reasoning_record, to_audit_record
+from platform_core.reasoning_audit import (
+    append_reasoning_run,
+    iter_reasoning_records,
+    replay_reasoning_record,
+    to_audit_record,
+)
 from platform_core.reasoning_engine import observation, run_reasoning
 from platform_core.reasoning_models import ProofResult
 

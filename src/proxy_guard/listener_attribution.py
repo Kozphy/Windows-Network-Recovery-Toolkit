@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Callable
 from typing import Any
 
@@ -9,7 +10,6 @@ from .attribution_model import AttributionEvidence, LayeredAttributionResult, Pr
 from .owner import attribution_payload
 from .parser import parse_proxy_server
 from .planning import listen_port_for_attribution
-
 
 _LISTENER_NOTE = (
     "Listener attribution identifies the process listening on the configured localhost proxy port; "

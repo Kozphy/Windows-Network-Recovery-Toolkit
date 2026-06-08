@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-
 INTERNET_SETTINGS_SUFFIX = r"software\microsoft\windows\currentversion\internet settings"
 
 PROXY_VALUE_NAMES = frozenset(

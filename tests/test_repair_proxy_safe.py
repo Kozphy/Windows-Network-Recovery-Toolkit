@@ -28,8 +28,14 @@ def test_apply_mutations_dry_run_returns_zero_codes() -> None:
 
 
 def test_clear_server_adds_second_mutation() -> None:
-    a, ta = build_user_proxy_disable_mutations(clear_proxy_server_value=False)
-    b, tb = build_user_proxy_disable_mutations(clear_proxy_server_value=True)
+    a, _ta = build_user_proxy_disable_mutations(
+        clear_proxy_server_value=False,
+        clear_autoconfig_url=False,
+    )
+    b, tb = build_user_proxy_disable_mutations(
+        clear_proxy_server_value=True,
+        clear_autoconfig_url=False,
+    )
     assert len(a) == 1
     assert len(b) == 2
     assert "delete" in " ".join(tb).lower()
@@ -39,7 +45,8 @@ def test_proxy_disable_allowlist_requires_confirmation() -> None:
     action = get_remediation_action("disable_wininet_proxy")
     assert action is not None
     assert action.required_confirmation == "DISABLE_WININET_PROXY"
-    assert action.allowed_registry_fields == ("ProxyEnable",)
+    assert "ProxyEnable" in action.allowed_registry_fields
+    assert "ProxyServer" in action.allowed_registry_fields
 
     preview = validate_action_confirmation(
         action_id="disable_wininet_proxy",
@@ -93,7 +100,7 @@ def test_proxy_disable_blocks_non_allowlisted_registry_field() -> None:
         action_id="disable_wininet_proxy",
         dry_run=False,
         confirmation=CONFIRMATION_PHRASE,
-        requested_registry_fields=("ProxyEnable", "ProxyServer"),
+        requested_registry_fields=("ProxyEnable", "ProxyOverride"),
     )
     assert decision == "BLOCK"
-    assert "ProxyServer" in reason
+    assert "ProxyOverride" in reason

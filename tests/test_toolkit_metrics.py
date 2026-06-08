@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from order_flow_simulator import OrderFlowSimulator
 from platform_core.event_store import record_live_diagnosis_run
 from platform_core.toolkit_metrics import compute_toolkit_metrics
-from order_flow_simulator import OrderFlowSimulator
 
 
 def test_compute_toolkit_metrics_counts(tmp_path: Path) -> None:

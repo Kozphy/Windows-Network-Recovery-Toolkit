@@ -5,8 +5,8 @@ from __future__ import annotations
 from ..models import (
     CASE_CHATGPT_APP_FIREWALL_FILTERING_INTERACTION,
     DESKTOP_APP_PATH_DEGRADED_EVENT,
-    RankedHypothesis,
     SCENARIO_CHATGPT_APP_FIREWALL,
+    RankedHypothesis,
     SignalBundle,
 )
 

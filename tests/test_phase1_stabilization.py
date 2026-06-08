@@ -12,7 +12,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from platform_core.policy.engine import OperatorContext, StructuredPolicyDecision, evaluate
-from platform_core.remediation_registry import canonical_action_name, get_remediation_action
 from platform_core.policy_vocabulary import (
     explain_tri_state,
     product_contract_decision_to_tri_state,
@@ -22,6 +21,7 @@ from platform_core.policy_vocabulary import (
 from platform_core.reasoning_audit import replay_reasoning_record, to_audit_record
 from platform_core.reasoning_engine import observation, run_reasoning
 from platform_core.reasoning_models import ProofResult
+from platform_core.remediation_registry import canonical_action_name, get_remediation_action
 
 
 def _admin_api() -> OperatorContext:

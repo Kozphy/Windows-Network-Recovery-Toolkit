@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from platform_core.fleet.deduplication import InMemoryIdempotencyStore
 from platform_core.fleet.ingestion import FleetIngestGateway
 from platform_core.fleet.models import FleetEventEnvelope, TenantContext

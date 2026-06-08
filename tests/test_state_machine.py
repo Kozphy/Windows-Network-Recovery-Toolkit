@@ -5,7 +5,6 @@ from platform_core.reasoning_models import ProofResult
 from platform_core.state_machine import (
     CANONICAL_STATES,
     event_category,
-    infer_canonical_transitions,
     map_scenario_state,
 )
 

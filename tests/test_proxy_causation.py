@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -18,7 +17,11 @@ from src.telemetry.registry_targets import (
     normalize_registry_path,
     proxy_registry_value_name,
 )
-from src.telemetry.sysmon_reader import parse_sysmon_xml, parse_sysmon_xml_batch, query_sysmon_events
+from src.telemetry.sysmon_reader import (
+    parse_sysmon_xml,
+    parse_sysmon_xml_batch,
+    query_sysmon_events,
+)
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "sysmon"
 

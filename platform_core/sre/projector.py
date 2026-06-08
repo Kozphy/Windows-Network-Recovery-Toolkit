@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from platform_core.reasoning_models import new_id
-
 from .event_store import DomainEventStore
 from .models import DomainEvent, IncidentPhase, IncidentProjection
 

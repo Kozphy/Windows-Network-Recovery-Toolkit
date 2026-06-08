@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .models import HypothesisCategory, NormalizedPlatformEvent, RankedHypothesis
+from .models import NormalizedPlatformEvent, RankedHypothesis
 
 HYPOTHESIS_CATALOG: dict[str, dict[str, Any]] = {
     "known_developer_tool": {

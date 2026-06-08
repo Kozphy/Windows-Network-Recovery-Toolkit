@@ -26,10 +26,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from platform_core.reasoning_models import ProofResult
 from edge_device.audit import append_edge_run, load_edge_run
 from edge_device.reasoning import run_edge_reasoning
 from edge_device.simulator import SIM_PROFILES, simulate_edge_observations, simulated_device_profile
+from platform_core.reasoning_models import ProofResult
 
 
 def _repo_root(cli: Path | None) -> Path:

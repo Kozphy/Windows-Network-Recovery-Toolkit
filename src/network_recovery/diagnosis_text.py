@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from .models import DESKTOP_APP_PATH_DEGRADED_EVENT, RankedHypothesis, SignalBundle, VerificationStatus
+from .models import (
+    DESKTOP_APP_PATH_DEGRADED_EVENT,
+    RankedHypothesis,
+    SignalBundle,
+    VerificationStatus,
+)
 
 
 def format_diagnosis_report(

@@ -18,7 +18,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from ..core.models import PortOwnerRecord
 from ..core.time_utils import utc_now_iso
 from .owner import resolve_localhost_proxy_owners
 from .parser import parse_proxy_server

@@ -14,12 +14,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from platform_core.reasoning_models import ProofResult
 from edge_device.audit import append_edge_run, load_edge_run
 from edge_device.policy import EDGE_SAFE_ACTIONS
 from edge_device.reasoning import run_edge_reasoning
 from edge_device.scenarios import EDGE_SCENARIOS, NOMINAL_HYPOTHESIS
 from edge_device.simulator import SIM_PROFILES, simulate_edge_observations
+from platform_core.reasoning_models import ProofResult
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "edge"
 

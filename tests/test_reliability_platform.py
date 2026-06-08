@@ -17,6 +17,7 @@ from platform_core.reliability.policy_config import PolicyConfig, evaluate_platf
 from platform_core.reliability.resilience import CircuitBreaker, retry_with_backoff
 from platform_core.reliability.time_travel import TimeTravelReplay
 
+
 @pytest.fixture
 def isolated_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> EventPipeline:
     monkeypatch.setattr("platform_core.storage.platform_data_dir", lambda: tmp_path)

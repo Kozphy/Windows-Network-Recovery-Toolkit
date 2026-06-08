@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -19,8 +19,8 @@ from src.proxy_guard.diff import (
     wininet_argv_restored_fields,
 )
 from src.proxy_guard.guard_evaluation import evaluate_proxy_transition, hkcu_proxy_core_tuple
-from src.proxy_guard.parser import parse_proxy_server
 from src.proxy_guard.models import AttributionResult, ProxyGuardPolicyDecision, ProxySnapshot
+from src.proxy_guard.parser import parse_proxy_server
 from src.proxy_guard.pipeline import rollback_payload_for_audit, summarize_stdout_event
 from src.proxy_guard.policy import ProxyGuardPolicy
 from src.proxy_guard.rollback import execute_lkg_snapshot_rollback

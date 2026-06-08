@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from telemetry.models import RegistryWriteEvent, RegistryWriterEvidence
 
 
 def test_registry_write_event_round_trip() -> None:
     event = RegistryWriteEvent(
-        timestamp_utc=datetime(2026, 1, 15, 12, 0, 5, tzinfo=timezone.utc),
+        timestamp_utc=datetime(2026, 1, 15, 12, 0, 5, tzinfo=UTC),
         source="sysmon",
         event_id=13,
         registry_path=r"HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyEnable",

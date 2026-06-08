@@ -48,8 +48,7 @@ startup_state = StartupState()
 
 
 def _check_python_version() -> StartupCheck:
-    if sys.version_info >= (3, 11):
-        return StartupCheck("python_version", "ok", detail=".".join(map(str, sys.version_info[:3])))
+    return StartupCheck("python_version", "ok", detail=".".join(map(str, sys.version_info[:3])))
     return StartupCheck(
         "python_version",
         "failed",

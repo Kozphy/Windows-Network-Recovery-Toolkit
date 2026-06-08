@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 # Evidence kinds (display / audit); not registry writer proof unless tier says so.
 LISTENER_CORRELATION = "ListenerCorrelation"
 REGISTRY_WRITER_PROOF = "RegistryWriterProof"

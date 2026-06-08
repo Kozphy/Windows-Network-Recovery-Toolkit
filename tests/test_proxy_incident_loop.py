@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from src.proxy_guard.causality_labels import (
@@ -35,7 +35,7 @@ def test_allowed_maps_to_observe_no_rollback() -> None:
 
 
 def test_three_toggles_within_30_minutes_active_reverter() -> None:
-    base = datetime(2026, 5, 16, 9, 0, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 5, 16, 9, 0, 0, tzinfo=UTC)
     rows = []
     for i, (old, new) in enumerate([(1, 0), (0, 1), (1, 0)]):
         rows.append(
@@ -55,7 +55,7 @@ def test_three_toggles_within_30_minutes_active_reverter() -> None:
 
 
 def test_two_toggles_only_no_active_reverter() -> None:
-    base = datetime(2026, 5, 16, 9, 0, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 5, 16, 9, 0, 0, tzinfo=UTC)
     rows = [
         {
             "timestamp": base.isoformat(),

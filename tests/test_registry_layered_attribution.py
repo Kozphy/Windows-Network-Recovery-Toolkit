@@ -8,14 +8,17 @@ import pytest
 
 from src.proxy_guard.attribution import heuristic_attribution_to_audit_dict
 from src.proxy_guard.attribution_engine import attribute_proxy_change, layered_to_heuristic_pipeline
-from src.proxy_guard.attribution_model import AttributionEvidence, LayeredAttributionResult, ProxyActor
+from src.proxy_guard.attribution_model import (
+    AttributionEvidence,
+    LayeredAttributionResult,
+    ProxyActor,
+)
 from src.proxy_guard.procmon_import import load_procmon_proxy_events
 from src.proxy_guard.sysmon_attribution import (
     attribution_evidence_from_sysmon_message,
     parse_sysmon_e13_message,
     proxy_target_from_sysmon_fields,
 )
-
 
 _SAMPLE_SYSMON_MESSAGE = """Registry value set:
 RuleName: technique_id=T1112

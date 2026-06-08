@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from .causality_labels import (
-    LISTENER_CORRELATION,
     REGISTRY_WRITER_PROOF,
     attribution_mode_label,
     format_cpu_process_snapshot,

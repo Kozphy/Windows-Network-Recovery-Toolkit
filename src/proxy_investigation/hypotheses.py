@@ -133,7 +133,7 @@ def build_hypotheses(
             ),
         )
 
-    dev_names = [str((o.get("process_name") or "")).lower() for o in owners if isinstance(o, dict)]
+    dev_names = [str(o.get("process_name") or "").lower() for o in owners if isinstance(o, dict)]
     if any("node" in n for n in dev_names) or dev.get("dev_process_rows"):
         hyps.append(
             Hypothesis(

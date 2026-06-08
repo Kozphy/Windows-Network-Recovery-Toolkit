@@ -48,7 +48,7 @@ from .collectors import (
     collect_proxy_state,
     load_optional_before_snapshot,
 )
-from .constants import ATTRIBUTION_LISTENER_ONLY, ENGINE_VERSION, MALWARE_FORBIDDEN, SCHEMA_VERSION
+from .constants import ATTRIBUTION_LISTENER_ONLY, MALWARE_FORBIDDEN, SCHEMA_VERSION
 from .hypotheses import build_hypotheses, observations_from_evidence
 from .models import ProxyInvestigationResult, new_run_id
 from .remediation import remediation_previews

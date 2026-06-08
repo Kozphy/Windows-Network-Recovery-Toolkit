@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class ProcessClassificationKind(str, Enum):
+class ProcessClassificationKind(StrEnum):
     KNOWN_CURSOR_PROXY = "KNOWN_CURSOR_PROXY"
     KNOWN_VSCODE_EXTENSION = "KNOWN_VSCODE_EXTENSION"
     KNOWN_DEV_PROXY = "KNOWN_DEV_PROXY"

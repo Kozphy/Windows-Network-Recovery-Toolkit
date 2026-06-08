@@ -6,9 +6,8 @@ artifacts. Copy fields into JSONL audits or platform payloads as needed.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal
-
 
 ProxyFailureSeverity = Literal["info", "warning", "error"]
 ProxyRiskLevel = Literal["low", "medium", "high"]

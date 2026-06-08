@@ -37,7 +37,7 @@ def assign_partition(
 ) -> PartitionKey:
     """Murmur-style stable hash — same endpoint always maps to same partition."""
     total_parts = total or partition_count()
-    material = f"{tenant_id}:{endpoint_id_hash.lower()}".encode("utf-8")
+    material = f"{tenant_id}:{endpoint_id_hash.lower()}".encode()
     digest = hashlib.blake2b(material, digest_size=8).digest()
     pid = int.from_bytes(digest, "big") % total_parts
     return PartitionKey(

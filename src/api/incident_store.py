@@ -6,7 +6,10 @@ import os
 from pathlib import Path
 from typing import Any
 
-from src.proxy_guard.incident_pipeline import analyze_fixture, analyze_incident_from_row, incident_id_for_row
+from src.proxy_guard.incident_pipeline import (
+    analyze_fixture,
+    analyze_incident_from_row,
+)
 from src.proxy_guard.proxy_transitions import load_recent_proxy_transitions
 from src.replay.fixture_loader import load_all_fixtures, load_fixture
 from src.replay.proxy_timeline import build_proxy_timeline, build_timeline_from_fixture

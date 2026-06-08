@@ -13,7 +13,7 @@ from src.policy.models import ProxyPolicyInput
 from src.policy.proxy_policy_engine import evaluate_proxy_policy_input, load_proxy_policy_config
 from src.proxy_guard.audit import proxy_change_audit_jsonl_path
 from src.replay.proxy_timeline import ProxyTimelineEvent, build_proxy_timeline
-from src.reports.evidence_tree import EvidenceNode, build_evidence_tree
+from src.reports.evidence_tree import build_evidence_tree
 from src.telemetry.registry_targets import proxy_registry_value_name
 
 

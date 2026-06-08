@@ -19,9 +19,9 @@ from collections.abc import Callable
 from typing import Any
 
 from ..attribution.port_owner import netstat_listen_rows, owners_for_port, parse_tasklist_csv_data
-from ..observability.tcp_table import capture_netstat_ano
 from ..core.models import PortOwnerRecord
 from ..diagnostics.collector import run_command
+from ..observability.tcp_table import capture_netstat_ano
 
 
 def _full_tasklist_text(run: Callable[..., Any]) -> tuple[int, str]:

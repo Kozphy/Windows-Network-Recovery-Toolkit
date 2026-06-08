@@ -10,27 +10,15 @@ Thin compatibility layer over :mod:`platform_core.network_diagnostics`.
 
 from __future__ import annotations
 
-
-
 from typing import Any
 
-
-
 from platform_core.network_diagnostics import (
-
     detect_linux_distro,
-
     detect_os_family,
-
     get_network_diagnostics,
-
     is_wsl,
-
 )
-
 from platform_core.network_diagnostics.base import ping_host
-
-
 
 __all__ = [
 

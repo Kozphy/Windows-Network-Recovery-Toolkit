@@ -18,7 +18,7 @@ import logging
 import platform
 import re
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
@@ -131,14 +131,14 @@ def _parse_powershell_datetime(value: Any) -> datetime | None:
     dotnet_match = re.match(r"^/Date\((?P<millis>-?\d+)(?:[+-]\d+)?\)/$", text)
     if dotnet_match:
         millis = int(dotnet_match.group("millis"))
-        return datetime.fromtimestamp(millis / 1000, tz=timezone.utc)
+        return datetime.fromtimestamp(millis / 1000, tz=UTC)
     try:
         parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _text_blob(cert: dict[str, Any]) -> str:
@@ -184,7 +184,7 @@ def collect_certificate_indicators() -> dict[str, Any]:
             "observations": ["Trusted root certificates were not inspected because platform is not Windows."],
             "limitations": ["non_windows_platform"],
         }
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     suspicious: list[dict[str, Any]] = []
     recent: list[dict[str, Any]] = []
     unknown_issuers: list[dict[str, Any]] = []

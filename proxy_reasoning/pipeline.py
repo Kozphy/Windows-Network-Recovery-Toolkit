@@ -26,7 +26,6 @@ from __future__ import annotations
 from typing import Any
 
 from platform_core.models import utc_now_iso
-
 from proxy_reasoning.constants import ENGINE_VERSION, SCHEMA_VERSION
 from proxy_reasoning.models import (
     ConfidenceBoundary,

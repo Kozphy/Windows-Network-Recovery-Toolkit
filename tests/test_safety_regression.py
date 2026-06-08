@@ -16,7 +16,10 @@ from platform_core.events import ActorAttribution, AuditEvent, NormalizedEvent
 from platform_core.policy import ACTION_REGISTRY, validate_confirmation_phrase
 from platform_core.policy.engine import OperatorContext, evaluate
 from platform_core.privacy import stable_endpoint_hash
-from platform_core.remediation_registry import canonical_action_name, build_action_registry_legacy_dict
+from platform_core.remediation_registry import (
+    build_action_registry_legacy_dict,
+    canonical_action_name,
+)
 from platform_core.replay.runner import summarize_inline
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]

@@ -29,15 +29,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from platform_core.reasoning_models import (
-    EndpointEvent,
-    EvidenceNode,
-    EvidenceTree,
-    Observation,
-    ProofResult,
-    StateTransition,
-    new_id,
-)
 from edge_device.models import EdgeImpact, EdgeReasoningRun
 from edge_device.policy import EDGE_SAFE_ACTIONS, evaluate_edge_policy
 from edge_device.scenarios import (
@@ -47,6 +38,15 @@ from edge_device.scenarios import (
     scenario_by_id,
 )
 from edge_device.signals import detect_edge_events, normalize_edge_signals, observations_from_raw
+from platform_core.reasoning_models import (
+    EndpointEvent,
+    EvidenceNode,
+    EvidenceTree,
+    Observation,
+    ProofResult,
+    StateTransition,
+    new_id,
+)
 
 _LIMITATIONS = (
     "Edge signals are simulated; no real FPGA/NPU/x86-embedded hardware is queried.",
@@ -82,7 +82,7 @@ def _build_transitions(events: list[EndpointEvent], state_path: list[str]) -> li
     """Build ordered state transitions linking consecutive states in the path."""
     event_ids = [e.id for e in events]
     transitions: list[StateTransition] = []
-    for frm, to in zip(state_path, state_path[1:]):
+    for frm, to in zip(state_path, state_path[1:], strict=False):
         transitions.append(
             StateTransition(
                 source="edge_reasoning",

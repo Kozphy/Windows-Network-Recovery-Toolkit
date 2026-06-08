@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from ..core.time_utils import utc_now_iso
-
 from .paths import events_jsonl
 
 EventType = Literal[

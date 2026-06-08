@@ -67,7 +67,6 @@ from platform_core.failure_scenarios import (
     normalize_signals,
 )
 from platform_core.impact_score import calculate_reliability_impact
-from platform_core.state_machine import canonical_state_path, infer_canonical_transitions
 from platform_core.reasoning_models import (
     EndpointEvent,
     EvidenceTree,
@@ -78,6 +77,7 @@ from platform_core.reasoning_models import (
     StateTransition,
     new_id,
 )
+from platform_core.state_machine import canonical_state_path, infer_canonical_transitions
 
 SAFE_REGISTRY_ACTIONS = {
     "restore_proxy",

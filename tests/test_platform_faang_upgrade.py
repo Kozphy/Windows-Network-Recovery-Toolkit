@@ -5,17 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from platform_core.attribution.polling import PollingHeuristicProvider
 from platform_core.attribution.windows_eventlog import WindowsEventLogAttributionProvider
-from platform_core.events import NormalizedEvent, PolicyDecisionPayload, SUPPORTED_SCHEMA_VERSIONS
 from platform_core.event_bus import append_event, read_events, validate_schema_version
+from platform_core.events import SUPPORTED_SCHEMA_VERSIONS, NormalizedEvent, PolicyDecisionPayload
 from platform_core.policy import ACTION_REGISTRY
 from platform_core.policy.engine import OperatorContext, evaluate
 from platform_core.privacy import redact_text, sanitize_ip, stable_endpoint_hash
 from platform_core.replay.runner import accumulate_replay_counters, summarize_inline
-
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "platform"
 

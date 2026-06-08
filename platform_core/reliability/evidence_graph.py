@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from .models import (
     EvidenceGraphEdge,
@@ -28,7 +28,7 @@ class EvidenceGraph:
         from_id: str,
         to_id: str,
         *,
-        relation: EvidenceGraphEdge.__annotations__["relation"] = "supports",  # type: ignore[name-defined]
+        relation: Literal["supports", "contradicts", "caused_by", "correlates_with"] = "supports",
         weight: float = 0.5,
     ) -> EvidenceGraphEdge:
         edge = EvidenceGraphEdge(
@@ -96,7 +96,7 @@ def build_evidence_graph(
             limitations=["Process correlation is not registry writer proof."],
         )
         graph.add_node(proc)
-        for eid, nid in list(obs_nodes.items())[:1]:
+        for _eid, nid in list(obs_nodes.items())[:1]:
             graph.link(nid, proc.node_id, relation="correlates_with", weight=0.6)
 
     prev_trans_node: str | None = None

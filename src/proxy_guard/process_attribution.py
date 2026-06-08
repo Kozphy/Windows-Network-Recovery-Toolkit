@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .eventlog_attribution import attribution_from_windows_event_logs
@@ -26,10 +26,14 @@ def _try_psutil_enrich(pid: int | None) -> tuple[
     try:
         import psutil  # type: ignore[import-not-found]
         from psutil import Error as PsutilError  # noqa: N811
+        from psutil import NoSuchProcess  # noqa: N811
     except ImportError:
         return None, None, None, None, None, None, ("psutil_not_installed_optional_dependency",)
 
-    proc = psutil.Process(int(pid))
+    try:
+        proc = psutil.Process(int(pid))
+    except (NoSuchProcess, PsutilError, OSError, ValueError):
+        return None, None, None, None, None, None, ("psutil_process_not_found_or_invalid_pid",)
     exe_s = None
     try:
         exe_s = proc.exe()
@@ -43,7 +47,7 @@ def _try_psutil_enrich(pid: int | None) -> tuple[
     utc = None
     try:
         create = proc.create_time()
-        utc = datetime.fromtimestamp(create, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+        utc = datetime.fromtimestamp(create, tz=UTC).isoformat().replace("+00:00", "Z")
     except (PsutilError, OSError, OverflowError):
         limits += ("create_time_optional_lookup_failed",)
 

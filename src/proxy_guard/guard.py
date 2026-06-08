@@ -47,11 +47,13 @@ from .attribution import (
 )
 from .attribution_engine import (
     attribute_proxy_change as registry_layer_attribute_proxy_change,
+)
+from .attribution_engine import (
     layered_to_heuristic_pipeline,
 )
 from .audit import build_rollback_plan, emit_pipeline_audit_v1, emit_proxy_guard_audit
-from .connectivity import compare_connectivity, capture_connectivity_snapshot
 from .config import ProxyGuardServiceConfig
+from .connectivity import capture_connectivity_snapshot, compare_connectivity
 from .decision import finalize_decision
 from .diff import (
     proxy_state_audit_dict,
@@ -61,6 +63,7 @@ from .diff import (
 from .events import proxy_guard_control_event
 from .evidence import build_connectivity_evidence, build_registry_change_evidence
 from .guard_evaluation import evaluate_proxy_transition
+from .human_report import format_proxy_guard_change
 from .models import (
     AttributionResult,
     HeuristicPipelineAttribution,
@@ -71,12 +74,11 @@ from .models import (
 )
 from .owner import attribution_payload
 from .parser import parse_proxy_server
-from .planning import listen_port_for_attribution, normalize_registry_view, registry_views_equal
-from .human_report import format_proxy_guard_change
 from .pipeline import policy_payload_for_audit, rollback_payload_for_audit, summarize_stdout_event
-from .process_attribution import resolve_attribution
-from .probes import read_proxy_registry_with_retries
+from .planning import listen_port_for_attribution, normalize_registry_view, registry_views_equal
 from .port_listen_probe import localhost_port_listen_state
+from .probes import read_proxy_registry_with_retries
+from .process_attribution import resolve_attribution
 from .proxy_path_operational import assess_proxy_path_operational
 from .rollback import execute_known_good_proxy_restore, execute_lkg_snapshot_rollback
 from .rollback_limits import RollbackLimiter

@@ -45,7 +45,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from endpoint_agent.local_events import append_agent_event
-
 from platform_core.models import utc_now_iso
 from platform_core.storage import append_platform_signal, append_snapshot, upsert_endpoint
 

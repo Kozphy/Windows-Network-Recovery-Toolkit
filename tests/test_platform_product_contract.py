@@ -10,7 +10,8 @@ from platform_core.product_contract import ProbeResult
 def plat_client(monkeypatch, tmp_path):
     """Return a platform TestClient with JSONL storage isolated under pytest temp."""
 
-    target = lambda: tmp_path
+    def target():
+        return tmp_path
     monkeypatch.setattr("platform_core.storage.platform_data_dir", target)
     monkeypatch.setattr("platform_core.event_bus.platform_data_dir", target)
 

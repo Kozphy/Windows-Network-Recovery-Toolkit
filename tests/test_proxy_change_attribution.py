@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+
 import pytest
 
 from src.proxy_guard.audit import emit_proxy_change_detected_audit, proxy_change_audit_jsonl_path

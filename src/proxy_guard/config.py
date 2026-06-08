@@ -34,11 +34,12 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from .policy import ProxyGuardPolicy, load_proxy_guard_policy
+from .policy import ProxyGuardPolicy
 
 
 def _env_float(key: str, default: float) -> float:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 # Lowercase tokens matched against process base name / image name.
 VPN_CLIENT_TOKENS: tuple[str, ...] = (
     "clash",

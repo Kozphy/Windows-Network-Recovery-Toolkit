@@ -30,7 +30,7 @@ from typing import Any
 from .models import AttributionResult, ProxyGuardPolicyDecision, ProxySnapshot
 from .parser import ParsedProxy
 from .pipeline import disabling_transition_allowed
-from .policy import ProxyGuardPolicy, PolicyDecision
+from .policy import PolicyDecision, ProxyGuardPolicy
 from .proxy_path_operational import ProxyPathOperationalAssessment
 
 

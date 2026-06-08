@@ -20,7 +20,7 @@ Audit Notes:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +29,7 @@ from telemetry.registry_writer_fusion import build_report_registry_writer_sectio
 
 def _now_iso() -> str:
     """Return timezone-aware UTC timestamp string."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def build_report_payload(

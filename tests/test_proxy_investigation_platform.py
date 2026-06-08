@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -24,7 +23,10 @@ from src.proxy_guard.proxy_transitions import (
     parse_since_duration,
     summarize_transition_row,
 )
-from src.proxy_guard.sysmon_attribution import attribution_evidence_from_sysmon_message, parse_sysmon_e13_message
+from src.proxy_guard.sysmon_attribution import (
+    attribution_evidence_from_sysmon_message,
+    parse_sysmon_e13_message,
+)
 
 
 def test_parse_localhost_proxy_port() -> None:

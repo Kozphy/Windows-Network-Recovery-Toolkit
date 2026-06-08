@@ -10,8 +10,8 @@ Correctness over convenience:
 from platform_core.sre.event_store import DomainEventStore, append_domain_event
 from platform_core.sre.failure_domains import FailureDomain, execute_in_domain
 from platform_core.sre.incident_aggregate import IncidentAggregate
-from platform_core.sre.models import IncidentPhase
 from platform_core.sre.investigation import run_investigation
+from platform_core.sre.models import IncidentPhase
 from platform_core.sre.mttr import compute_incident_mttr_metrics
 from platform_core.sre.postmortem import generate_postmortem
 from platform_core.sre.projector import Projector, rebuild_incident

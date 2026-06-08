@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from platform_core import storage
 
-from .models import DomainEvent
+from .models import DomainEvent, DomainEventType, FailureDomainName
 
 CANONICAL_LOG = "sre_domain_events.jsonl"
 
@@ -102,12 +102,12 @@ class DomainEventStore:
 def append_domain_event(
     *,
     aggregate_id: str,
-    aggregate_type: DomainEvent.__annotations__["aggregate_type"],  # type: ignore[name-defined]
-    event_type: DomainEvent.__annotations__["event_type"],  # type: ignore[name-defined]
+    aggregate_type: Literal["incident", "endpoint", "decision", "audit"],
+    event_type: DomainEventType,
     correlation_id: str,
     payload: dict[str, Any] | None = None,
     causation_id: str | None = None,
-    failure_domain: DomainEvent.__annotations__["failure_domain"] = None,  # type: ignore[name-defined]
+    failure_domain: FailureDomainName | None = None,
     actor: str = "system",
     store: DomainEventStore | None = None,
 ) -> DomainEvent:

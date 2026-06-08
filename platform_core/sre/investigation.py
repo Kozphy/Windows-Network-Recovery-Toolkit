@@ -10,7 +10,7 @@ from platform_core.reliability.event_pipeline import normalize_raw_observation
 from platform_core.reliability.policy_config import PolicyConfig
 
 from .event_store import append_domain_event
-from .failure_domains import FailureDomain, DomainDegradedError, execute_in_domain
+from .failure_domains import DomainDegradedError, FailureDomain, execute_in_domain
 from .incident_aggregate import IncidentAggregate
 from .models import IncidentPhase
 from .rca import build_rca_report
@@ -93,7 +93,8 @@ def run_investigation(
     )
 
     has_proof = any(
-        str(l).lower().find("no proof") < 0 and "proof" in str(l).lower() for l in record.limitations
+        str(line).lower().find("no proof") < 0 and "proof" in str(line).lower()
+        for line in record.limitations
     ) or "ROOT_CAUSE_IDENTIFIED" in record.state_path
 
     rca = build_rca_report(incident_id, decision=record)

@@ -10,13 +10,14 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from pydantic import BaseModel, Field
+
 from platform_core.models import utc_now_iso
 from platform_core.reasoning_models import (
     EndpointEvent,
     StateTransition,
     new_id,
 )
-from pydantic import BaseModel, Field
 
 CanonicalState = Literal["NORMAL", "SUSPICIOUS", "DEGRADED", "BROKEN", "RECOVERING"]
 

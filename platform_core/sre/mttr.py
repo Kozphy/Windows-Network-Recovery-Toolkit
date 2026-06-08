@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from platform_core import storage
-
 from .event_store import DomainEventStore
 from .models import IncidentPhase, MTTRMetrics
 from .projector import list_incident_ids, rebuild_incident

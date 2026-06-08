@@ -11,11 +11,11 @@ from src.proxy_guard.operator_language import display_policy_decision
 from src.proxy_guard.policy import ProxyGuardPolicy
 from src.proxy_guard.proxy_path_operational import (
     ProxyPathOperationalAssessment,
+    _run_https_contrast,
     assess_proxy_path_operational,
     classify_composite_state,
     policy_for_composite,
 )
-from src.proxy_guard.proxy_path_operational import _run_https_contrast
 
 
 def _parsed_localhost(port: int = 54321) -> ParsedProxy:

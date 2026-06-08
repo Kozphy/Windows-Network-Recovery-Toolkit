@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from platform_core.reasoning import cap_conclusion_strength, run_reasoning, observation
+from platform_core.reasoning import cap_conclusion_strength, observation, run_reasoning
 from platform_core.reasoning.layers import EpistemicLayer, evidence_level_for_layer
 
 

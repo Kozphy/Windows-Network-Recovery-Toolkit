@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from agent.classifier import classify_with_primary
 from agent.collector import load_evidence_from_json
 

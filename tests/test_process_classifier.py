@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from src.classification.models import ProcessClassificationInput, ProcessClassificationKind
 from src.classification.process_classifier import classify_process
 from src.proxy_guard.incident_pipeline import analyze_fixture

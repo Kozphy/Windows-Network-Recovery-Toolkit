@@ -34,7 +34,6 @@ from typing import Any
 from .attribution_model import ProxyActor
 from .owner import attribution_payload
 
-
 _HEURISTIC_LEXICON = frozenset(
     {
         "cursor",

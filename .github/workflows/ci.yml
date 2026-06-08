@@ -16,51 +16,115 @@ env:
 
 jobs:
   lint:
+    name: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - run: pip install -e ".[dev]"
-      - run: ruff check platform_core backend evidence failure_system telemetry src tests
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  test-proxy-pipeline:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -e ".[dev]"
-      - run: |
-          pytest -q \
-            tests/test_process_classifier.py \
-            tests/test_proxy_policy_engine.py \
-            tests/test_proxy_timeline.py \
-            tests/test_proxy_causation.py \
-            tests/test_proxy_incidents_api.py
 
-  test-full:
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Ruff check
+        run: ruff check .
+
+      - name: Black check
+        # Formatting debt: ~200 files pending `black .` pass — see docs/platform_engineering_gap_report.md
+        continue-on-error: true
+        run: black --check .
+
+  test:
+    name: test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -e ".[dev]"
-      - run: pytest -q --junitxml=reports/junit.xml
-      - uses: actions/upload-artifact@v4
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Safety contract tests (ordered)
+        run: |
+          pytest -q tests/test_policy_safety_contract.py
+          pytest -q tests/test_api_dry_run_default.py
+          pytest -q tests/test_replay_determinism.py
+          pytest -q tests/test_audit_contract.py
+
+      - name: Pytest (full suite)
+        run: |
+          mkdir -p reports
+          pytest -q --junitxml=reports/junit.xml
+
+      - name: Fixture demo smoke (read-only CLI)
+        run: |
+          python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json
+          python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown
+          python -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json
+          python -m src proxy-report --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown
+          python tools/public_release_audit.py --tracked-only
+
+      - name: Platform health contracts (in-process)
+        run: |
+          pytest -q tests/test_platform_health_routes.py tests/test_compose_platform_contract.py
+
+      - name: Upload JUnit
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: junit-${{ github.sha }}
           path: reports/junit.xml
+          retention-days: 14
+
+  build-smoke:
+    name: build-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Validate docker-compose config
+        run: docker compose config --quiet
+
+      - name: Build API image
+        run: docker build -t er-platform-api:ci-${{ github.sha }} .
+
+      - name: Compose + health contract tests
+        run: pytest -q tests/test_compose_platform_contract.py tests/test_platform_health_routes.py
 
   frontend:
+    name: frontend-build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -75,15 +139,3 @@ jobs:
       - run: npm run build
         env:
           NEXT_PUBLIC_PLATFORM_API: http://127.0.0.1:8000
-
-  linux-proxy-snapshot:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-      - run: pip install -e ".[dev]"
-      - run: python -m pytest tests/test_linux_proxy_snapshot.py -q
-      - run: python -m src proxy-linux-snapshot --json --skip-optional-cli

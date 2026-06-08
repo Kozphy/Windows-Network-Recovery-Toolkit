@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from order_flow_simulator.models import OrderEventType, OrderState
 from order_flow_simulator.simulator import OrderFlowSimulator
 from order_flow_simulator.state_machine import apply_event

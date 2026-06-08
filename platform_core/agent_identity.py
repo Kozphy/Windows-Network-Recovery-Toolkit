@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import platform
 import socket
-import uuid
 from typing import Any
 
 from platform_core.privacy import stable_endpoint_hash

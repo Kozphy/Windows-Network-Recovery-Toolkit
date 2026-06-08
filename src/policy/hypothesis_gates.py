@@ -38,14 +38,14 @@ Boundary:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Final
+
+from platform_core import policy_v2 as pv2
 
 from ..hypothesis.keys import HypothesisKey
 from ..hypothesis.risk import hypothesis_risk_score
 from ..observation.trust import TrustAssessment
-from platform_core import policy_v2 as pv2
-
 from ..proof.contracts import ProofResult, ProofStatus
 
 # Confidence bands for *unproven* / inconclusive hypotheses (proof not CONFIRMED).
@@ -53,7 +53,7 @@ _HIGH_CONF_PREVIEW: Final[float] = 0.60
 _LOW_CONF_BLOCK: Final[float] = 0.35
 
 
-class PolicyDecision(str, Enum):
+class PolicyDecision(StrEnum):
     """Operator-facing gate for remediation aligned to platform preview/execute split."""
 
     ALLOW = "ALLOW"

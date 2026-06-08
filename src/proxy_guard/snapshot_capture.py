@@ -12,10 +12,9 @@ if TYPE_CHECKING:
     pass
 
 from ..core.models import ProxyRegistrySnapshot
-
+from .models import ProxySnapshot
 from .registry import read_proxy_registry
 from .rollback import parse_netsh_winhttp_show
-from .models import ProxySnapshot
 
 
 def _capture_winhttp_stdout(*, run: Callable[..., Any]) -> str:
@@ -112,9 +111,8 @@ def capture_proxy_snapshot(
 
 def save_lkg_snapshot(path: Any, snapshot: ProxySnapshot) -> None:
     """Persist ``snapshot`` UTF-JSON for rollback restore."""
-    from pathlib import Path
-
     import json
+    from pathlib import Path
 
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -123,9 +121,8 @@ def save_lkg_snapshot(path: Any, snapshot: ProxySnapshot) -> None:
 
 def load_lkg_snapshot(path: Any) -> ProxySnapshot | None:
     """Load persisted LKG; returns ``None`` when absent or malformed."""
-    from pathlib import Path
-
     import json
+    from pathlib import Path
 
     p = Path(path)
     if not p.is_file():

@@ -14,7 +14,7 @@ from __future__ import annotations
 import csv
 import io
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 _TCP_LISTEN = re.compile(
     r"^\s*TCP\s+(?P<local>\S+)\s+\S+\s+LISTENING\s+(?P<pid>\d+)",
@@ -62,7 +62,7 @@ def owners_for_port(rows: Iterable[tuple[str, int, int]], port: int) -> list[int
     """Return distinct PIDs listening on ``port`` (any local bind address)."""
     seen: set[int] = set()
     pids: list[int] = []
-    for host, prt, pid in rows:
+    for _host, prt, pid in rows:
         if prt != port:
             continue
         if pid in seen:

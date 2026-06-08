@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from src.classification.models import ProcessClassificationResult
 
 
-class PolicyDecisionKind(str, Enum):
+class PolicyDecisionKind(StrEnum):
     ALLOW = "ALLOW"
     OBSERVE = "OBSERVE"
     ALERT = "ALERT"
@@ -20,7 +20,7 @@ class PolicyDecisionKind(str, Enum):
     CORRELATION_ONLY_ALERT = "CORRELATION_ONLY_ALERT"
 
 
-class PolicySeverity(str, Enum):
+class PolicySeverity(StrEnum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"

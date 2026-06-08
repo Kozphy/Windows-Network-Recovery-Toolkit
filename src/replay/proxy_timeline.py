@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from .models import ProxyTimelineEvent, ProxyTimelineEventType, TimelineEvent
+from .models import ProxyTimelineEvent, ProxyTimelineEventType
 
 
 def _parse_ts(value: str | None) -> str:
@@ -17,8 +17,8 @@ def _parse_ts(value: str | None) -> str:
     try:
         dt = datetime.fromisoformat(text)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     except ValueError:
         return value or ""
 
@@ -27,7 +27,7 @@ def _load_repair_audit(repo_root: Path, since_seconds: int) -> list[dict[str, An
     path = repo_root / "logs" / "repair_audit.jsonl"
     if not path.is_file():
         return []
-    cutoff = datetime.now(timezone.utc).timestamp() - since_seconds
+    datetime.now(UTC).timestamp() - since_seconds
     rows: list[dict[str, Any]] = []
     try:
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -244,7 +244,7 @@ def build_timeline_around(
     from src.proxy_guard.audit import proxy_change_audit_jsonl_path
     from src.proxy_guard.incident_pipeline import analyze_incident_from_row
 
-    anchor = datetime.fromisoformat(anchor_utc.replace("Z", "+00:00")).astimezone(timezone.utc)
+    anchor = datetime.fromisoformat(anchor_utc.replace("Z", "+00:00")).astimezone(UTC)
     win = timedelta(seconds=window_seconds)
     path = proxy_change_audit_jsonl_path(repo_root)
     rows: list[dict[str, Any]] = []
@@ -258,8 +258,8 @@ def build_timeline_around(
                 continue
             ts = datetime.fromisoformat(str(blob.get("timestamp", "")).replace("Z", "+00:00"))
             if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
-            ts = ts.astimezone(timezone.utc)
+                ts = ts.replace(tzinfo=UTC)
+            ts = ts.astimezone(UTC)
             if anchor - win <= ts <= anchor + win:
                 rows.append(blob)
 

@@ -75,8 +75,10 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from backend.observability_metrics import (
+    record_reasoning_pipeline,
+)
 from backend.platform_auth import get_platform_principal
-from backend.observability_metrics import bootstrap_labeled_metrics_from_storage, record_reasoning_pipeline
 from backend.prometheus_exporter import inc as prom_inc
 from evidence.attribution_engine import build_attribution, parse_sysmon_sequence
 from evidence.procmon_importer import ProcmonRegistryWrite, iter_procmon_registry_writes_from_csv
@@ -96,8 +98,6 @@ from platform_core.models import (
     utc_now_iso,
 )
 from platform_core.network_diagnostics import detect_os_family, get_network_diagnostics, is_wsl
-from platform_core.settings import get_settings
-from platform_core.startup_checks import run_startup_checks, startup_state
 from platform_core.policy import (
     ACTION_REGISTRY,
     PolicyDecision,
@@ -136,8 +136,6 @@ from platform_core.rbac import (
     assert_can_read_normalized_events,
     assert_can_write_platform_payload,
 )
-from platform_core.remediation import allowlisted_script
-from platform_core.remediation_registry import get_remediation_action
 from platform_core.reasoning_audit import (
     append_reasoning_run,
     iter_reasoning_records,
@@ -145,7 +143,11 @@ from platform_core.reasoning_audit import (
 )
 from platform_core.reasoning_engine import run_reasoning
 from platform_core.reasoning_models import Observation, ProofResult
+from platform_core.remediation import allowlisted_script
+from platform_core.remediation_registry import get_remediation_action
 from platform_core.replay.runner import ReplaySummary, summarize_inline
+from platform_core.settings import get_settings
+from platform_core.startup_checks import run_startup_checks, startup_state
 from platform_core.storage import (
     _path,
     append_attribution_record,

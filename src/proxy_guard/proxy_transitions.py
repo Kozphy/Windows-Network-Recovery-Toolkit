@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -36,8 +36,8 @@ def _parse_ts(value: str) -> datetime | None:
     try:
         dt = datetime.fromisoformat(text)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
     except ValueError:
         return None
 
@@ -52,7 +52,7 @@ def load_recent_proxy_transitions(
     path = proxy_change_audit_jsonl_path(repo_root)
     if not path.is_file():
         return []
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=since_seconds)
+    cutoff = datetime.now(UTC) - timedelta(seconds=since_seconds)
     rows: list[dict[str, Any]] = []
     try:
         for line in path.read_text(encoding="utf-8", errors="replace").splitlines():

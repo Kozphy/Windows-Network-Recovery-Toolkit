@@ -60,14 +60,14 @@ from .db import (
 )
 from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 from .live_observability import router as toolkit_obs_router
-from .platform_routes import router as platform_router
-from .platform_v2_routes import router as platform_v2_router
-from .platform_sre_routes import router as platform_sre_router
-from .platform_fleet_routes import router as platform_fleet_router
-from .tracing import init_tracing
 from .observability_metrics import bootstrap_labeled_metrics_from_storage
+from .platform_fleet_routes import router as platform_fleet_router
+from .platform_routes import router as platform_router
+from .platform_sre_routes import router as platform_sre_router
+from .platform_v2_routes import router as platform_v2_router
 from .prometheus_exporter import gauges_from_platform_metrics, render_prometheus_text
 from .prometheus_exporter import inc as prom_inc
+from .tracing import init_tracing
 
 _SUBSCRIPTION_EVENT_TYPES = frozenset(
     {

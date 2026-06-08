@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -85,8 +85,8 @@ def _parse_ts(value: str | None) -> datetime | None:
     try:
         dt = datetime.fromisoformat(text)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
     except ValueError:
         return None
 
@@ -191,7 +191,6 @@ def _score_registry_match(
     vname = proxy_registry_value_name(target)
     if not vname:
         return 0.3, False
-    st_key = vname  # proxyenable etc.
     # map to state keys
     state_key = {
         "proxyenable": "proxy_enable",

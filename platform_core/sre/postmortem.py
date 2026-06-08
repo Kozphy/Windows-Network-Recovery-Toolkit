@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from platform_core import storage
 from platform_core.reliability.models import PlatformDecisionRecord
 

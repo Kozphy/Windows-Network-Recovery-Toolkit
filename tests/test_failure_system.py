@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,10 +14,13 @@ from failure_system.api import create_app
 from failure_system.cli import main as failure_cli_main
 from failure_system.collector import DiagnosticSnapshot
 from failure_system.generator import build_failure_block
-from failure_system.models import DiagnosticCommandResult, FailureBlock, RiskLevel, RuleOutcome
+from failure_system.models import DiagnosticCommandResult, FailureBlock, RiskLevel
 from failure_system.rules import RuleEngine
 from failure_system.search import search_failure_blocks
-from failure_system.storage import append_failure_block, iter_failure_blocks, load_failure_block_by_id
+from failure_system.storage import (
+    append_failure_block,
+    load_failure_block_by_id,
+)
 
 
 def test_rule_dns_issue() -> None:
@@ -78,7 +81,7 @@ def test_storage_roundtrip(tmp_path: Path) -> None:
         risk_level=RiskLevel.LOW,
         safety_boundary="No auto repair",
         rollback_plan="Restore DNS list",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         source_logs=["rules:dns_failure_likely"],
     )
     append_failure_block(block, data_dir=data_dir)
@@ -101,7 +104,7 @@ def test_search_matches(tmp_path: Path) -> None:
         risk_level=RiskLevel.LOW,
         safety_boundary="x",
         rollback_plan="y",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         source_logs=[],
     )
     append_failure_block(b, data_dir=data_dir)
@@ -245,7 +248,11 @@ def test_cli_diagnose_verbose_output(
 
 
 def test_formatters_missing_field_resilience() -> None:
-    from failure_system.formatters import format_human_summary, format_markdown_report, format_verbose_report
+    from failure_system.formatters import (
+        format_human_summary,
+        format_markdown_report,
+        format_verbose_report,
+    )
 
     payload = {
         "failure_block": {"name": "Unknown"},

@@ -30,7 +30,11 @@ from __future__ import annotations
 
 from evidence.attribution_engine import build_attribution, parse_sysmon_sequence
 from evidence.etw_reader import ETWTraceBatch, StubETWReader
-from evidence.procmon_importer import ProcmonRegistryWrite, procmon_concerns_proxy, procmon_row_to_dict
+from evidence.procmon_importer import (
+    ProcmonRegistryWrite,
+    procmon_concerns_proxy,
+    procmon_row_to_dict,
+)
 from evidence.registry_event_parser import describe_diff, parse_registry_hint
 from evidence.sysmon_reader import parse_sysmon_row, registry_event_concerns_internet_settings
 

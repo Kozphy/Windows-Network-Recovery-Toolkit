@@ -6,12 +6,11 @@ import json
 import re
 import subprocess
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from ..proxy_guard.snapshot_capture import capture_proxy_snapshot
-
 from .diff_engine import drift_bundle
 from .paths import events_jsonl, policy_json
 from .policy import NetworkStatePolicy
@@ -48,7 +47,7 @@ def iter_recent_events(repo_root: Path, since: str) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
     hours = _parse_since_hours(since)
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
     rows: list[dict[str, Any]] = []
     with path.open(encoding="utf-8") as fh:
         for line in fh:
@@ -129,7 +128,7 @@ def build_network_state_report(
     actors_note = "Attach proxy-attribution for candidate actors when investigating (heuristic-only)."
 
     return {
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "generated_at_utc": datetime.now(UTC).isoformat(),
         "window": since,
         "event_totals": {
             "proxy_drift_signals": proxy_changes,

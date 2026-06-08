@@ -1,13 +1,16 @@
 # CI/CD branch protection
 
-This repository uses split GitHub Actions workflows under [`.github/workflows/`](../.github/workflows/):
+This repository uses GitHub Actions workflows under [`.github/workflows/`](../.github/workflows/):
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| **Lint** | `lint.yml` | Ruff + Black format gates |
-| **Test** | `test.yml` | Ruff, mypy, pytest (safety + full), frontend build |
-| **Build** | `build.yml` | Docker image (`latest` on default branch, SHA tags) |
+| **CI (primary)** | `ci.yml` | `lint` · `test` · `build-smoke` · `frontend-build` |
+| **Lint (legacy)** | `lint.yml` | Ruff + Black — overlaps `ci` job `lint` |
+| **Test (extended)** | `test.yml` | mypy, coverage pytest, safety regression — overlaps `ci` job `test` |
+| **Build (release)** | `build.yml` | Docker image push to GHCR on default branch |
 | **Security** | `security.yml` | pip-audit, Trivy (filesystem + container) |
+
+Gap audit: [platform_engineering_gap_report.md](platform_engineering_gap_report.md)
 
 Artifacts (JUnit XML, coverage XML/HTML, SARIF, pip-audit JSON) are uploaded per workflow run and retained 7–30 days.
 
@@ -23,16 +26,15 @@ Enable **Require status checks to pass before merging** and select:
 
 | Check name (job) | Workflow | Rationale |
 |------------------|----------|-----------|
-| `ruff & black` | Lint | Style + import hygiene |
-| `ruff` | Test | Fast duplicate gate on test path |
-| `mypy` | Test | Typed platform/backend surfaces |
-| `pytest (safety regression)` | Test | Policy, replay, audit, API dry-run contracts |
-| `pytest (full)` | Test | Full offline regression signal |
-| `frontend build` | Test | Next.js dashboard compiles |
+| `lint` | CI | Ruff on first-party Python |
+| `test` | CI | Safety contracts, full pytest, fixture CLI smoke, health contracts |
+| `build-smoke` | CI | `docker compose config`, image build, compose/health tests |
+| `frontend-build` | CI | Next.js dashboard compiles |
 | `pip-audit` | Security | Python dependency CVEs |
 | `trivy (filesystem)` | Security | Repo secrets/misconfig/high vulns |
 | `trivy (container)` | Security | Production image scan |
-| `docker` | Build | Dockerfile builds; pushes on merge to default branch |
+| `docker` | Build (optional) | GHCR push on merge to default branch |
+| `mypy` | Test (optional) | Extended typing gate |
 
 Optional (stricter teams): require **all** workflows on `schedule` security runs to stay green weekly.
 

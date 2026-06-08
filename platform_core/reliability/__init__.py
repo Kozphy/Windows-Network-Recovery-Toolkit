@@ -4,8 +4,8 @@ from platform_core.reliability.event_pipeline import EventPipeline, ingest_raw_o
 from platform_core.reliability.evidence_graph import EvidenceGraph, build_evidence_graph
 from platform_core.reliability.hypothesis_engine import HypothesisEngine, rank_hypotheses
 from platform_core.reliability.platform_states import PlatformState, transition_platform_state
-from platform_core.reliability.time_travel import TimeTravelReplay
 from platform_core.reliability.policy_config import PolicyConfig, evaluate_platform_policy
+from platform_core.reliability.time_travel import TimeTravelReplay
 
 __all__ = [
     "EventPipeline",

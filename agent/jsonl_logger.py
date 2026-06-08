@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -30,7 +30,7 @@ EventType = Literal[
 
 def _utc_iso() -> str:
     """Return RFC3339/ISO8601 UTC timestamp for JSONL ordering."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class JsonlEventLogger:

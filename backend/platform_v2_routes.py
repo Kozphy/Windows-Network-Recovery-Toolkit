@@ -11,13 +11,17 @@ from pydantic import BaseModel, Field
 from backend.platform_auth import get_platform_principal
 from backend.prometheus_exporter import inc as prom_inc
 from backend.tracing import span
-from platform_core.rbac import DemoPrincipal, assert_can_preview, assert_can_read_metrics
-from platform_core.reliability.decision_engine import persist_decision, replay_decision, run_platform_decision
-from platform_core.reliability.event_pipeline import EventPipeline
-from platform_core.reliability.policy_config import PolicyConfig
-from platform_core.reliability.audit_integrity import verify_decision_record
-from platform_core.reliability.models import PlatformDecisionRecord
 from platform_core.db.postgres import append_event_pg, is_postgres_configured
+from platform_core.rbac import DemoPrincipal, assert_can_preview, assert_can_read_metrics
+from platform_core.reliability.audit_integrity import verify_decision_record
+from platform_core.reliability.decision_engine import (
+    persist_decision,
+    replay_decision,
+    run_platform_decision,
+)
+from platform_core.reliability.event_pipeline import EventPipeline
+from platform_core.reliability.models import PlatformDecisionRecord
+from platform_core.reliability.policy_config import PolicyConfig
 
 router = APIRouter(prefix="/v2", tags=["platform-v2"])
 

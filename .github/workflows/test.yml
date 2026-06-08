@@ -96,7 +96,7 @@ jobs:
             tests/test_network_diagnostics.py \
             tests/test_os_probe.py \
             tests/test_correlation_engine.py \
-            tests/test_prometheus_exporter.py
+            tests/test_prometheus_exporter.py \
             tests/test_observability_metrics.py \
             tests/test_platform_production_routes.py
 

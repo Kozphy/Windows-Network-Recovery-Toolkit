@@ -7,7 +7,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from platform_core.sre.event_store import DomainEventStore
-from platform_core.sre.failure_domains import DomainDegradedError, FailureDomain, execute_in_domain, reset_domains_for_tests
+from platform_core.sre.failure_domains import (
+    DomainDegradedError,
+    FailureDomain,
+    execute_in_domain,
+    reset_domains_for_tests,
+)
 from platform_core.sre.incident_aggregate import IncidentAggregate
 from platform_core.sre.investigation import run_investigation
 from platform_core.sre.models import DomainEvent, IncidentPhase

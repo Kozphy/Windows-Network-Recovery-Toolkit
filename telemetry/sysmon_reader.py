@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from telemetry.models import PROXY_REGISTRY_VALUE_NAMES, RegistryWriteEvent
@@ -54,7 +54,7 @@ def _parse_timestamp(raw: dict[str, Any], warnings: list[str]) -> datetime:
         except ValueError:
             warnings.append(f"unparseable_timestamp:{key}={text}")
     warnings.append("missing_timestamp_defaulted_to_epoch")
-    return datetime(1970, 1, 1, tzinfo=timezone.utc)
+    return datetime(1970, 1, 1, tzinfo=UTC)
 
 
 def _extract_value_name(target_object: str) -> str | None:

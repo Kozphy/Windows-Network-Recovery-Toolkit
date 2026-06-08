@@ -7,8 +7,8 @@ from platform_core.policy.engine import OperatorContext, evaluate
 from platform_core.reasoning_engine import evaluate_reasoning_policy, observation, run_reasoning
 from platform_core.reasoning_models import ProofResult, StateTransition
 from src.decision_engine.hypothesis_decision import PolicyDecision, build_hypothesis_decisions
-from src.proof.contracts import ProofStatus
 from src.proof.contracts import ProofResult as CliProofResult
+from src.proof.contracts import ProofStatus
 
 
 def test_high_confidence_unproven_stays_preview_with_v2_codes() -> None:

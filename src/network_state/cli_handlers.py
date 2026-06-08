@@ -14,13 +14,14 @@ from ..proxy_guard.owner import attribution_payload
 from ..proxy_guard.parser import parse_proxy_server
 from ..proxy_guard.rollback import execute_known_good_proxy_restore
 from ..proxy_guard.snapshot_capture import capture_proxy_snapshot
-
 from .audit import append_restore_audit
 from .diff_engine import drift_bundle
 from .events import emit_network_state_event
 from .evidence_import import append_evidence_rows, parse_procmon_like_csv
-from .paths import evidence_jsonl as evidence_path, report_json as report_json_path, report_txt as report_txt_path
+from .paths import evidence_jsonl as evidence_path
 from .paths import policy_json
+from .paths import report_json as report_json_path
+from .paths import report_txt as report_txt_path
 from .policy import NetworkStatePolicy
 from .report import build_network_state_report
 from .snapshot_store import (

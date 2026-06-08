@@ -13,7 +13,7 @@ import json
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -64,7 +64,7 @@ def capture_wininet_snapshot(
     """
     snap, presence = read_proxy_registry_with_presence(run=run)
     sid = snapshot_id or str(uuid.uuid4())
-    ts = datetime.now(timezone.utc).isoformat()
+    ts = datetime.now(UTC).isoformat()
     values: dict[str, Any] = {
         "ProxyEnable": snap.proxy_enable,
         "ProxyServer": snap.proxy_server,

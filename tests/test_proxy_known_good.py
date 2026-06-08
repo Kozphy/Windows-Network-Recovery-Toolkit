@@ -13,7 +13,11 @@ from src.core.models import ProxyRegistrySnapshot
 from src.proxy_guard import proxy_snapshot_commands as psc_cmds
 from src.proxy_guard import snapshot_capture as snap_cap
 from src.proxy_guard.known_good_diff import diff_snapshots
-from src.proxy_guard.known_good_store import append_named_snapshot, get_latest_named_record, list_snapshot_summaries
+from src.proxy_guard.known_good_store import (
+    append_named_snapshot,
+    get_latest_named_record,
+    list_snapshot_summaries,
+)
 from src.proxy_guard.models import ProxySnapshot
 from src.proxy_guard.rollback import execute_known_good_proxy_restore
 

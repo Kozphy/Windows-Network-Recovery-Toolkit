@@ -13,11 +13,11 @@ Listener correlation is emitted as ``candidate_actor`` only. It is never promote
 from __future__ import annotations
 
 import uuid
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from typing import Any, Literal
 
-from evidence.registry_writer import RegistryWriterEvidence, WRITER_PROOF_UNAVAILABLE
+from evidence.registry_writer import WRITER_PROOF_UNAVAILABLE, RegistryWriterEvidence
 
 EvidenceLevel = Literal["OBSERVED_STATE", "STATE_CHANGE", "CORRELATED_PROCESS", "WRITER_PROOF"]
 ProxyWriterClassification = Literal[
@@ -131,7 +131,7 @@ class ProxyAttributionEvent:
 def utc_now_iso() -> str:
     """Return a UTC ISO-8601 timestamp with timezone information."""
 
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def proxy_tuple_from_signals(signals: dict[str, Any] | None) -> dict[str, Any]:

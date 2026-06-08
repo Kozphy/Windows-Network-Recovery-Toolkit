@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from ..core.time_utils import utc_now_iso
-
 from .paths import evidence_jsonl
 
 _INTERNET_SETTINGS = re.compile(r"Internet Settings", re.I)

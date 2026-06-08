@@ -17,8 +17,9 @@ import os
 import platform
 import shutil
 import subprocess
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any
 
 try:
     # Hoisted from inside ``collect_wininet_proxy`` per the workspace

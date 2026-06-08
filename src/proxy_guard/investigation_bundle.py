@@ -23,7 +23,12 @@ from .investigation_risk import InvestigationRisk, classify_investigation_risk
 from .localhost_attribution import build_localhost_proxy_attribution
 from .parser import parse_proxy_server
 from .process_snapshot_enrichment import capture_enriched_process_snapshot
-from .process_tree import build_process_chain_nodes, render_process_tree_json, render_process_tree_text
+from .process_tree import (
+    build_process_chain_nodes,
+    render_process_tree_json,
+    render_process_tree_text,
+)
+from .procmon_import import load_procmon_proxy_events
 from .proxy_allowlist import allowlist_match_summary, load_proxy_allowlist
 from .proxy_transitions import (
     build_recovery_guidance,
@@ -31,7 +36,6 @@ from .proxy_transitions import (
     parse_since_duration,
     summarize_transition_row,
 )
-from .procmon_import import load_procmon_proxy_events
 from .registry import read_proxy_registry
 from .snapshot_capture import capture_proxy_snapshot
 from .sysmon_attribution import collect_sysmon_proxy_events
@@ -83,7 +87,7 @@ def build_correlation_result(
 
     owner = owner or {}
     proc = _norm(owner.get("process_name"))
-    parent = _norm(owner.get("parent_name"))
+    _norm(owner.get("parent_name"))
     return {
         "listener_matches_proxy_port": bool(owner.get("listener_on_proxy_port")),
         "process_name": owner.get("process_name"),

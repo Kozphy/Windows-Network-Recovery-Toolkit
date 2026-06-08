@@ -19,7 +19,6 @@ Audit Notes:
 
 from __future__ import annotations
 
-from proxy_reasoning.constants import PolicyOutcome
 from proxy_reasoning.models import PolicyAttributes, ProxyEntity, VerificationResult
 
 ALLOW_READ_ONLY = frozenset(
@@ -74,8 +73,7 @@ def evaluate_proxy_policy(
 ) -> PolicyAttributes:
     """Map requested action and verification state to ALLOW / PREVIEW / BLOCK."""
     action = (requested_action or "").strip().lower()
-    blocked: list[str] = []
-    allowed: list[str] = list(ALLOW_READ_ONLY)
+    list(ALLOW_READ_ONLY)
 
     if any(token in action for token in BLOCK_TOKENS):
         return PolicyAttributes(

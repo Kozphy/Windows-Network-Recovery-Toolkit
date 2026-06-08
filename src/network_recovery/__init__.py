@@ -1,5 +1,6 @@
 """App-path reliability scenarios (diagnose-first, audit-backed, preview-gated remediation)."""
 
+from .engine import run_scenario_diagnosis
 from .models import (
     CASE_CHATGPT_APP_FIREWALL_FILTERING_INTERACTION,
     SCENARIO_CHATGPT_APP_FIREWALL,
@@ -9,7 +10,6 @@ from .models import (
     PolicyOutcome,
     SignalBundle,
 )
-from .engine import run_scenario_diagnosis
 
 __all__ = [
     "CASE_CHATGPT_APP_FIREWALL_FILTERING_INTERACTION",

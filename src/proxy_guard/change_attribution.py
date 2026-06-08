@@ -24,7 +24,7 @@ Failure modes:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 _TOOL_NAMES = frozenset(
@@ -81,7 +81,7 @@ def _score_row(
     if name.endswith(".exe"):
         nm = name
     else:
-        nm = name + ".exe" if name and not "." in name else name
+        nm = name + ".exe" if name and "." not in name else name
     if nm in _TOOL_NAMES or name in _TOOL_NAMES:
         score += 0.20
         evidence.append(f"Process name resembles developer/proxy toolchain ({name or nm})")
@@ -101,8 +101,8 @@ def _score_row(
         try:
             ts = datetime.fromisoformat(ctime_s.replace("Z", "+00:00"))
             if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
-            age_sec = abs((now_ts - ts.astimezone(timezone.utc)).total_seconds())
+                ts = ts.replace(tzinfo=UTC)
+            age_sec = abs((now_ts - ts.astimezone(UTC)).total_seconds())
             if age_sec <= recent_window_seconds:
                 score += 0.15
                 evidence.append("Process creation time within recent correlation window")
@@ -211,7 +211,7 @@ def attribute_proxy_change(
     rows: list[dict[str, Any]] = list(inventory.get("process_rows") or [])
     _merge_listen_owners(inventory, rows)
     pmap = _parent_names_map(rows)
-    now_ts = datetime.now(timezone.utc)
+    now_ts = datetime.now(UTC)
 
     enriched: list[dict[str, Any]] = []
     for r in rows:

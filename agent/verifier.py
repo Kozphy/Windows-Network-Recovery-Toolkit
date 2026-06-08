@@ -6,10 +6,9 @@ without introducing additional remediation actions.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from .schemas import DiagnosticEvidence, VerificationResult
-
 
 KeyFields = ("ping_ok", "dns_ok", "tcp_443_ok", "https_ok")
 

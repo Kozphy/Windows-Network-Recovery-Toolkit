@@ -3,8 +3,8 @@ from __future__ import annotations
 from platform_core.privacy import (
     redact_text,
     sanitize_domain,
-    sanitize_ip,
     sanitize_hostname,
+    sanitize_ip,
     sanitize_username,
     stable_endpoint_hash,
 )

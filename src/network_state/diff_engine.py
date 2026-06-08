@@ -27,7 +27,6 @@ from typing import Any
 from ..proxy_guard.known_good_diff import diff_snapshots as base_diff_snapshots
 from ..proxy_guard.models import ProxySnapshot
 from ..proxy_guard.parser import ParsedProxy, parse_proxy_server
-
 from .policy import NetworkStatePolicy, evaluate_network_state_policy
 
 

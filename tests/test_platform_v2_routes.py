@@ -8,7 +8,8 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture()
 def v2_client(monkeypatch: pytest.MonkeyPatch, tmp_path) -> TestClient:
-    target = lambda: tmp_path
+    def target():
+        return tmp_path
     monkeypatch.setattr("platform_core.storage.platform_data_dir", target)
     monkeypatch.setattr("platform_core.event_bus.platform_data_dir", target)
     from backend.main import app

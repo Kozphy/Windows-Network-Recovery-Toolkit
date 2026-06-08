@@ -6,7 +6,11 @@ from src.classification.models import (
     ProcessClassificationResult,
     ProcessNode,
 )
-from src.classification.process_classifier import ProcessClassification, ProcessLabel, classify_process
+from src.classification.process_classifier import (
+    ProcessClassification,
+    ProcessLabel,
+    classify_process,
+)
 
 __all__ = [
     "ProcessClassification",

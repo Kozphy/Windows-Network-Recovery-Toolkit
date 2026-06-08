@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.core.models import LiveNetworkSnapshot, ParsedProxy, PortOwnerRecord, ProxyRegistrySnapshot
+from src.core.models import LiveNetworkSnapshot, PortOwnerRecord, ProxyRegistrySnapshot
 from src.decision_engine.live_scoring import score_live_snapshot
 from src.diagnostics.features import FeatureVector
 from src.proxy_guard.parser import parse_proxy_server

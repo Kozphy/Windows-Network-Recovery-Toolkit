@@ -17,7 +17,12 @@ from src.network_state.events import emit_network_state_event
 from src.network_state.evidence_import import parse_procmon_like_csv
 from src.network_state.policy import NetworkStatePolicy, evaluate_network_state_policy
 from src.network_state.report import build_network_state_report
-from src.network_state.snapshot_store import append_snapshot, get_latest_named, list_profile_summaries, write_default_profile
+from src.network_state.snapshot_store import (
+    append_snapshot,
+    get_latest_named,
+    list_profile_summaries,
+    write_default_profile,
+)
 from src.proxy_guard.models import ProxySnapshot
 from src.proxy_guard.parser import parse_proxy_server
 

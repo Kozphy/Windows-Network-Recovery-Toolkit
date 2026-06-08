@@ -29,7 +29,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from ..core.time_utils import utc_now_iso
-
 from .paths import audit_jsonl
 
 Phase = Literal["restore_pre_change", "restore_post_change"]

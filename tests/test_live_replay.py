@@ -28,7 +28,7 @@ def test_snapshot_roundtrip_observations_score_parity() -> None:
     a = score_live_snapshot(snap)
     b = score_live_snapshot(snap2)
     assert [x.hypothesis for x in a] == [x.hypothesis for x in b]
-    for x, y in zip(a, b):
+    for x, y in zip(a, b, strict=False):
         assert abs(x.confidence - y.confidence) < 1e-9
 
 

@@ -7,8 +7,14 @@ from typing import Any
 from platform_core.reasoning_models import new_id
 
 from .event_store import DomainEventStore, append_domain_event
-from .models import DomainEvent, IncidentPhase, IncidentProjection
-from .projector import Projector, rebuild_incident
+from .models import (
+    DomainEvent,
+    DomainEventType,
+    FailureDomainName,
+    IncidentPhase,
+    IncidentProjection,
+)
+from .projector import rebuild_incident
 
 
 class IncidentAggregate:
@@ -24,12 +30,12 @@ class IncidentAggregate:
 
     def _append(
         self,
-        event_type: DomainEvent.__annotations__["event_type"],  # type: ignore[name-defined]
+        event_type: DomainEventType,
         payload: dict[str, Any],
         *,
         causation_id: str | None = None,
         actor: str = "system",
-        failure_domain: DomainEvent.__annotations__["failure_domain"] = None,  # type: ignore[name-defined]
+        failure_domain: FailureDomainName | None = None,
     ) -> DomainEvent:
         return append_domain_event(
             aggregate_id=self.incident_id,

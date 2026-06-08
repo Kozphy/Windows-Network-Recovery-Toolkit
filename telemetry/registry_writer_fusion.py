@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from telemetry.models import (
@@ -88,7 +88,7 @@ def _dedupe_writers(events: list[RegistryWriteEvent]) -> list[dict[str, Any]]:
 def _event_in_window(event: RegistryWriteEvent, *, start: datetime, end: datetime) -> bool:
     ts = event.timestamp_utc
     if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
+        ts = ts.replace(tzinfo=UTC)
     return start <= ts <= end
 
 
@@ -150,7 +150,7 @@ def fuse_registry_writer_evidence(
 ) -> RegistryWriterEvidence:
     """Fuse telemetry rows with optional listener attribution into evidence summary."""
     if proxy_change_time.tzinfo is None:
-        proxy_change_time = proxy_change_time.replace(tzinfo=timezone.utc)
+        proxy_change_time = proxy_change_time.replace(tzinfo=UTC)
 
     listener = ListenerObservation.from_attribution_dict(listener_attribution)
 
@@ -243,7 +243,7 @@ def build_report_registry_writer_section(
     if not telemetry_events:
         return default_no_telemetry_evidence(listener).to_dict()
 
-    change_time = proxy_change_time or datetime.now(timezone.utc)
+    change_time = proxy_change_time or datetime.now(UTC)
     evidence = fuse_registry_writer_evidence(
         proxy_change_time=change_time,
         telemetry_events=telemetry_events,

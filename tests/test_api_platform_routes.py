@@ -6,7 +6,8 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture()
 def plat_client(monkeypatch, tmp_path):
-    target = lambda: tmp_path
+    def target():
+        return tmp_path
 
     monkeypatch.setattr("platform_core.storage.platform_data_dir", target)
     # Modules that did ``from …storage import platform_data_dir`` keep a stale binding unless patched too:

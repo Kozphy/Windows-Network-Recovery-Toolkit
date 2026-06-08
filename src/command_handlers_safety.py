@@ -17,7 +17,6 @@ import argparse
 import json
 import platform
 import subprocess
-import sys
 import uuid
 from pathlib import Path
 from typing import Any
@@ -36,12 +35,10 @@ from .proxy_guard.known_good_store import (
     snapshot_from_record,
 )
 from .proxy_guard.remediation import (
-    RESTORE_WININET_PROXY_FROM_LKG_PHRASE,
     validate_action_confirmation,
 )
 from .proxy_guard.rollback import (
     build_wininet_restore_argv_list,
-    execute_known_good_proxy_restore,
 )
 from .repair.executor import apply_reg_argv_sequences
 

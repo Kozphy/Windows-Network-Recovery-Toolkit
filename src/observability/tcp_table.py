@@ -13,6 +13,7 @@ from typing import Any
 
 from ..attribution.port_owner import netstat_listen_rows
 
+
 def capture_netstat_ano(
     *,
     run: Callable[..., Any] = subprocess.run,

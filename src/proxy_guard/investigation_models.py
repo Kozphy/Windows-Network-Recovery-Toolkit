@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 EvidenceStrength = Literal["weak", "medium", "strong", "proof"]
 
 
-class AttributionLevel(str, Enum):
+class AttributionLevel(StrEnum):
     """Epistemic ladder from observation to proven registry writer."""
 
     NONE = "NONE"

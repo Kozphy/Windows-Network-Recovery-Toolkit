@@ -28,13 +28,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 OutcomeLiteral = Literal["pass", "fail", "skipped", "error"]
 
 
-class ProofStatus(str, Enum):
+class ProofStatus(StrEnum):
     """Result of causal verification."""
 
     CONFIRMED = "confirmed"

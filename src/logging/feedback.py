@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -38,7 +38,7 @@ class FeedbackRecord:
         return {
             "type": "feedback",
             "feedback_id": str(uuid.uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "diagnosis_id": self.diagnosis_id,
             "recommended_action": self.recommended_action,
             "user_feedback_fixed": self.user_feedback_fixed,

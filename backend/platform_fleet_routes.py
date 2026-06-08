@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from backend.platform_auth import get_platform_principal
 from backend.prometheus_exporter import inc_labeled
 from backend.tracing import span
 from platform_core.fleet.ingestion import FleetIngestGateway
-from platform_core.fleet.models import FleetEventEnvelope, TenantContext
+from platform_core.fleet.models import FleetEventEnvelope
 from platform_core.fleet.observability import ingest_result_to_labels
 from platform_core.fleet.partitioning import assign_partition
 from platform_core.fleet.replay import ReplayCoordinator, ReplayJobSpec

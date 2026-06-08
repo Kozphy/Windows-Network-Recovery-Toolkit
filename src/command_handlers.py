@@ -65,33 +65,79 @@ import platform
 import subprocess
 import sys
 import uuid
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
-from .core.jsonl import append_jsonl as append_jsonl_core
-from .core.models import registry_with_parsed
-from .core.windows_cli import exit_code_if_not_windows
-from .core.time_utils import utc_now_iso
+from platform_core.event_store import record_live_diagnosis_run
+
 from .audit.replay import (
     SCHEMA_VERSION as _REPLAY_SCHEMA_VERSION,
+)
+from .audit.replay import (
     build_replay_report,
     find_decision_run,
     format_replay_flow_text,
 )
+from .core.jsonl import append_jsonl as append_jsonl_core
+from .core.models import registry_with_parsed
+from .core.time_utils import utc_now_iso
+from .core.windows_cli import exit_code_if_not_windows
 from .hypothesis.explanations import primary_explanation_paragraph
 from .hypothesis.live_scoring import ranked_dicts, score_live_snapshot
 from .hypothesis.recommendations import live_recommendation_bundle
+from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
+from .network_state.event_log import (
+    correlation_key as v2_correlation_key,
+)
+from .network_state.event_log import (
+    incident_id_from_proxy as v2_incident_id_from_proxy,
+)
+from .network_state.event_log import (
+    log_repair_attempt as v2_log_repair_attempt,
+)
+from .network_state.event_log import (
+    log_snapshot as v2_log_snapshot,
+)
+from .network_state.event_log import (
+    log_verification as v2_log_verification,
+)
+from .network_state.event_log import (
+    parse_proxy as v2_parse_observed_proxy,
+)
+from .network_state.event_log import (
+    update_or_write_incident_summary as v2_update_incident_summary,
+)
+from .network_state.snapshot_store import resolve_named_snapshot
+from .observability.snapshot import build_live_network_snapshot
 from .observation.adversarial import adversarial_hints
 from .observation.trust import assess_trust
 from .policy.hypothesis_gates import build_hypothesis_decisions
 from .proof.proxy_https import run_localhost_proxy_https_proof
-from .logging.feedback import FeedbackRecord, FeedbackState, append_feedback
-from .observability.snapshot import build_live_network_snapshot
+from .proxy_guard.config import build_service_config
 from .proxy_guard.failure_block import build_proxy_failure_blocks
+from .proxy_guard.known_good_store import get_latest_named_record, snapshot_from_record
 from .proxy_guard.localhost_attribution import build_localhost_proxy_attribution
+from .proxy_guard.models import ProxySnapshot
 from .proxy_guard.owner import attribution_payload
 from .proxy_guard.parser import parse_proxy_server, summarize_proxy_risk
+from .proxy_guard.policy import load_proxy_guard_policy
+from .proxy_guard.proxy_snapshot_commands import (
+    cmd_proxy_snapshot_diff,
+    cmd_proxy_snapshot_list,
+    cmd_proxy_snapshot_restore,
+    cmd_proxy_snapshot_save,
+    cmd_proxy_snapshot_show,
+)
+from .proxy_guard.proxy_watch import run_proxy_watch_loop
 from .proxy_guard.registry import read_proxy_registry
+from .proxy_guard.remediation import (
+    CONFIRMATION_PHRASE,
+    STOP_PROXY_LISTENER_PHRASE,
+    STOP_PROXY_REVERTER_PHRASE,
+    build_user_proxy_disable_mutations,
+    validate_action_confirmation,
+)
 from .proxy_guard.repair_snapshots import (
     append_proxy_snapshots_jsonl,
     build_restore_reg_argv,
@@ -101,18 +147,9 @@ from .proxy_guard.repair_snapshots import (
     merge_snapshot_payload,
     snapshot_confirmation_phrase,
 )
-from .proxy_guard.verification import verify_proxy_disabled
-from .proxy_guard.config import build_service_config
-from .proxy_guard.policy import load_proxy_guard_policy
-from .proxy_guard.snapshot_capture import load_lkg_snapshot
+from .proxy_guard.rollback import execute_known_good_proxy_restore
 from .proxy_guard.service import run_proxy_guard_service
-from .proxy_guard.remediation import (
-    CONFIRMATION_PHRASE,
-    STOP_PROXY_LISTENER_PHRASE,
-    STOP_PROXY_REVERTER_PHRASE,
-    build_user_proxy_disable_mutations,
-    validate_action_confirmation,
-)
+from .proxy_guard.snapshot_capture import load_lkg_snapshot
 from .proxy_guard.stop_listener import (
     LISTENER_ATTRIBUTION_LIMITATION,
     run_stop_listener_workflow,
@@ -121,36 +158,12 @@ from .proxy_guard.stop_reverter import (
     REVERTER_ATTRIBUTION_LIMITATION,
     run_stop_reverter_workflow,
 )
+from .proxy_guard.verification import verify_proxy_disabled
 from .proxy_guard.watcher import monitor_proxy_registry
-from .network_state.event_log import (
-    correlation_key as v2_correlation_key,
-    incident_id_from_proxy as v2_incident_id_from_proxy,
-    log_attribution as v2_log_attribution,
-    log_snapshot as v2_log_snapshot,
-    log_repair_attempt as v2_log_repair_attempt,
-    log_verification as v2_log_verification,
-    parse_proxy as v2_parse_observed_proxy,
-    update_or_write_incident_summary as v2_update_incident_summary,
-)
-from .network_state.snapshot_store import resolve_named_snapshot
-from .proxy_guard.known_good_store import get_latest_named_record, snapshot_from_record
-from .proxy_guard.models import ProxySnapshot
-from .proxy_guard.proxy_watch import run_proxy_watch_loop
-from .proxy_guard.rollback import execute_known_good_proxy_restore
-from .proxy_guard.proxy_snapshot_commands import (
-    cmd_proxy_snapshot_diff,
-    cmd_proxy_snapshot_list,
-    cmd_proxy_snapshot_restore,
-    cmd_proxy_snapshot_save,
-    cmd_proxy_snapshot_show,
-)
 from .repair.executor import apply_mutations, apply_reg_argv_sequences
 from .repair.policy import assert_no_firewall_reset_in_preview
 from .repair.preview import summarize_mutations_plaintext
-from platform_core.event_store import record_live_diagnosis_run
-
 from .version import SCRIPT_VERSION
-
 
 _V2_REL_INCIDENT_HELP = [
     "Identify process listening on the loopback proxy port",
@@ -198,7 +211,7 @@ def cmd_proxy_diagnose(args: argparse.Namespace) -> int:
     if (code := exit_code_if_not_windows("proxy-diagnose")) is not None:
         return code
     run = subprocess.run
-    repo = _repo_root(getattr(args, "repo_root", None))
+    _repo_root(getattr(args, "repo_root", None))
     reg = read_proxy_registry(run=run)
     parsed = parse_proxy_server(reg.proxy_server)
     merged = registry_with_parsed(reg, parsed)
@@ -259,10 +272,13 @@ def cmd_proxy_forensics(args: argparse.Namespace) -> int:
     if (code := exit_code_if_not_windows("proxy-forensics")) is not None:
         return code
 
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from .correlation.proxy_causation import analyze_from_proxy_watch_row
-    from .proxy_guard.proxy_transitions import load_recent_proxy_transitions, summarize_transition_row
+    from .proxy_guard.proxy_transitions import (
+        load_recent_proxy_transitions,
+        summarize_transition_row,
+    )
     from .reports.causation_report import render_causation_text
 
     repo = _repo_root(getattr(args, "repo_root", None))
@@ -282,8 +298,8 @@ def cmd_proxy_forensics(args: argparse.Namespace) -> int:
         try:
             anchor = datetime.fromisoformat(anchor_raw)
             if anchor.tzinfo is None:
-                anchor = anchor.replace(tzinfo=timezone.utc)
-            anchor = anchor.astimezone(timezone.utc)
+                anchor = anchor.replace(tzinfo=UTC)
+            anchor = anchor.astimezone(UTC)
         except ValueError:
             print(f"Invalid --around timestamp: {around}", file=sys.stderr)
             return 1
@@ -304,8 +320,8 @@ def cmd_proxy_forensics(args: argparse.Namespace) -> int:
                 try:
                     ts = datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
                     if ts.tzinfo is None:
-                        ts = ts.replace(tzinfo=timezone.utc)
-                    ts = ts.astimezone(timezone.utc)
+                        ts = ts.replace(tzinfo=UTC)
+                    ts = ts.astimezone(UTC)
                 except ValueError:
                     continue
                 if anchor - win <= ts <= anchor + win:
@@ -354,7 +370,10 @@ def cmd_proxy_forensics(args: argparse.Namespace) -> int:
 
 
 def _load_latest_incident(repo: Path, *, window_seconds: int = 10, run: Any = None) -> dict[str, Any] | None:
-    from .proxy_guard.incident_pipeline import analyze_incident_from_row, load_latest_proxy_transition
+    from .proxy_guard.incident_pipeline import (
+        analyze_incident_from_row,
+        load_latest_proxy_transition,
+    )
 
     row = load_latest_proxy_transition(repo)
     if row is None:
@@ -483,10 +502,14 @@ def cmd_proxy_timeline(args: argparse.Namespace) -> int:
 
 
 def cmd_proxy_report(args: argparse.Namespace) -> int:
-    """Full incident report: evidence tree + classification + policy (read-only)."""
+    """Proxy report: JSONL tail summary (--tail) or incident evidence tree (default)."""
+    if getattr(args, "proxy_report_tail", None) is not None:
+        return _cmd_proxy_guard_jsonl_summary(args)
 
-    if (code := exit_code_if_not_windows("proxy-report")) is not None:
-        return code
+    from pathlib import Path as _Path
+
+    from .proxy_guard.incident_pipeline import analyze_fixture
+    from .replay.fixture_loader import load_fixture
     from .reports.evidence_tree import (
         build_evidence_tree,
         render_evidence_tree_markdown,
@@ -494,7 +517,13 @@ def cmd_proxy_report(args: argparse.Namespace) -> int:
     )
 
     repo = _repo_root(getattr(args, "repo_root", None))
-    bundle = _load_latest_incident(repo, run=subprocess.run)
+    fixture_arg = getattr(args, "report_fixture", None)
+    if fixture_arg:
+        bundle = analyze_fixture(load_fixture(_Path(str(fixture_arg))), repo_root=repo)
+    else:
+        if (code := exit_code_if_not_windows("proxy-report")) is not None:
+            return code
+        bundle = _load_latest_incident(repo, run=subprocess.run)
     if bundle is None:
         print("No proxy-watch transitions in logs/proxy_guard.jsonl.", file=sys.stderr)
         return 0
@@ -919,25 +948,8 @@ def cmd_proxy_watch(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_proxy_report(args: argparse.Namespace) -> int:
-    """Print a human-readable tail summary or JSON bundle for ``logs/proxy_guard.jsonl``.
-
-    Args:
-        args: Namespace with ``proxy_report_tail`` (int, default 50), ``emit_json`` flag, ``repo_root``.
-
-    Returns:
-        ``0`` after printing.
-
-    Side effects:
-        Reads the entire JSONL file into memory to count rows—avoid on multi-gigabyte files.
-
-    Data handling:
-        Skips blank lines and invalid JSON quietly; summary counts apply only to successfully parsed dict rows in
-        the trailing window.
-
-    Audit Notes:
-        Use ``--json`` for machine replay; plaintext mode surfaces aggregate high/medium risk counts only.
-    """
+def _cmd_proxy_guard_jsonl_summary(args: argparse.Namespace) -> int:
+    """Print a human-readable tail summary or JSON bundle for ``logs/proxy_guard.jsonl``."""
 
     from .proxy_guard.audit import proxy_change_audit_jsonl_path
 
@@ -1148,6 +1160,22 @@ def cmd_proxy_watch_report(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _wininet_capture_values(capture: Any) -> dict[str, Any]:
+    """Extract HKCU value map from :class:`WinInetCapturedState` or test doubles."""
+
+    values = getattr(capture, "values", None)
+    if isinstance(values, dict):
+        return dict(values)
+    to_json = getattr(capture, "to_jsonable", None)
+    if callable(to_json):
+        blob = to_json()
+        if isinstance(blob, dict):
+            inner = blob.get("values")
+            if isinstance(inner, dict):
+                return dict(inner)
+    return {}
 
 
 def _reg_fields_for_proxy_disable(*, clear_server: bool, clear_autoconfig: bool) -> tuple[str, ...]:
@@ -1743,7 +1771,7 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
     validation_audit_event_id = _append_proxy_disable_audit(repo, validation_row)
 
     # Reliability events (schema 2.0) alongside v1 repair_audit
-    observed_pre = dict(capture_pre.values)
+    observed_pre = _wininet_capture_values(capture_pre)
     proxy_s_raw = observed_pre.get("ProxyServer")
     proxy_s = proxy_s_raw if isinstance(proxy_s_raw, str) else ""
     incident = v2_incident_id_from_proxy(proxy_s if proxy_s else None)
@@ -1756,7 +1784,7 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
     )
 
     repair_primary_eid = ""
-    for mutation, res in zip(mutations, results):
+    for mutation, res in zip(mutations, results, strict=False):
         argv_list = list(mutation.argv)
         action_type = "disable_wininet_hkcu_proxy"
         if argv_list[:2] == ["reg", "delete"]:
@@ -2020,7 +2048,7 @@ def cmd_diagnose_live(args: argparse.Namespace) -> int:
     diagnosis_id = str(uuid.uuid4())
     snap_dir = repo / "reports" / "snapshots"
     snap_dir.mkdir(parents=True, exist_ok=True)
-    ts_slug = utc_now_iso().replace(":", "-").replace("+00:00", "Z")
+    utc_now_iso().replace(":", "-").replace("+00:00", "Z")
     snap_path = snap_dir / f"{diagnosis_id}.json"
     snap_path.write_text(
         json.dumps(snapshot.to_dict(), indent=2, ensure_ascii=False),
@@ -2486,3 +2514,13 @@ def cmd_repair_apply(args: argparse.Namespace) -> int:
         ),
     )
     return 0
+
+
+# Re-exported for src.cli — keep in __all__ so ruff does not prune the import block.
+__all__ = [
+    "cmd_proxy_snapshot_diff",
+    "cmd_proxy_snapshot_list",
+    "cmd_proxy_snapshot_restore",
+    "cmd_proxy_snapshot_save",
+    "cmd_proxy_snapshot_show",
+]

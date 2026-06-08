@@ -39,7 +39,10 @@ from typing import Any
 from ..core.models import registry_with_parsed
 from ..proxy_guard.localhost_attribution import build_localhost_proxy_attribution
 from ..proxy_guard.parser import parse_proxy_server
-from ..proxy_guard.process_inventory import capture_process_inventory, heuristic_proxy_actor_candidates
+from ..proxy_guard.process_inventory import (
+    capture_process_inventory,
+    heuristic_proxy_actor_candidates,
+)
 from ..proxy_guard.registry import read_proxy_registry
 from ..proxy_guard.snapshot_capture import capture_proxy_snapshot
 

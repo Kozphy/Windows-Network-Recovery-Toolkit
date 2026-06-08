@@ -22,13 +22,13 @@ Output guarantees:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from platform_core.models import utc_now_iso
 
 
-class OrderState(str, Enum):
+class OrderState(StrEnum):
     """Order lifecycle states."""
 
     NEW = "NEW"
@@ -40,7 +40,7 @@ class OrderState(str, Enum):
     REJECTED = "REJECTED"
 
 
-class OrderEventType(str, Enum):
+class OrderEventType(StrEnum):
     """Inbound event types (exchange-style vocabulary)."""
 
     ORDER_SUBMITTED = "order_submitted"

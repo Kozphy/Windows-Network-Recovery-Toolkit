@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from platform_core.models import EndpointIdentity
-from platform_core.storage import append_jsonl, find_by_id, iter_jsonl, platform_data_dir, upsert_endpoint
+from platform_core.storage import (
+    append_jsonl,
+    find_by_id,
+    iter_jsonl,
+    upsert_endpoint,
+)
 
 
 def test_roundtrip(monkeypatch, tmp_path):

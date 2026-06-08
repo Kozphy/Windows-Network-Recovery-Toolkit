@@ -4,7 +4,6 @@ from pathlib import Path
 
 from src.attribution.port_owner import netstat_listen_rows, owners_for_port
 
-
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "netstat_sample_listen.txt"
 
 

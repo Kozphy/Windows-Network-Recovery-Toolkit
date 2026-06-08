@@ -6,10 +6,9 @@ classification. Does not mutate registry or firewall state.
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Callable
 from typing import Any, Literal
-
-import subprocess
 
 from ..core.models import ProxyRegistrySnapshot
 from .parser import ParsedProxy, parse_proxy_server

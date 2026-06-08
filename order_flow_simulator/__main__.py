@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-from order_flow_simulator.simulator import OrderFlowSimulator, SCENARIOS
+from order_flow_simulator.simulator import SCENARIOS, OrderFlowSimulator
 
 
 def main(argv: list[str] | None = None) -> int:

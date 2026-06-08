@@ -12,7 +12,14 @@ Key invariants:
 
 from __future__ import annotations
 
-from .schemas import DiagnosticEvidence, RankedCause, RepairPlan, RepairStep, RiskLevel, RootCauseCategory
+from .schemas import (
+    DiagnosticEvidence,
+    RankedCause,
+    RepairPlan,
+    RepairStep,
+    RiskLevel,
+    RootCauseCategory,
+)
 
 
 def _step(

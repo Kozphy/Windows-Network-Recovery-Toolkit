@@ -14,7 +14,7 @@ from src.policy.proxy_policy_engine import evaluate_proxy_policy
 from src.proxy_guard.audit import emit_proxy_change_detected_audit
 from src.proxy_guard.incident_pipeline import analyze_incident_from_row, build_incident_timeline
 from src.proxy_guard.proxy_allowlist import ProxyAllowlist
-from src.replay.proxy_timeline import build_proxy_timeline, render_timeline_json
+from src.replay.proxy_timeline import render_timeline_json
 from src.reports.evidence_tree import build_evidence_tree, render_evidence_tree_markdown
 from src.telemetry.sysmon_reader import parse_sysmon_xml_batch
 

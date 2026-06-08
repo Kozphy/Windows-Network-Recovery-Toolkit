@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 import subprocess
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from evidence.registry_writer import collect_registry_writer_evidence, parse_procmon_csv
 

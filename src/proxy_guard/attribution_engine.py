@@ -41,8 +41,8 @@ from .attribution_model import (
     ProxyActor,
 )
 from .listener_attribution import attribute_localhost_proxy_listener
-from .procmon_import import load_procmon_proxy_events
 from .process_inventory import collect_recent_process_inventory, heuristic_proxy_actor_candidates
+from .procmon_import import load_procmon_proxy_events
 from .sysmon_attribution import collect_sysmon_proxy_events
 
 _BASELINE_NOTES = (
