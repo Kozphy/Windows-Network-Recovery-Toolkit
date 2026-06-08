@@ -9,7 +9,7 @@ trusted_processes:
   - python.exe
 
 trusted_paths:
-  - C:\Users\Zixsa\AppData\Local\Programs\cursor\
+  - "%LOCALAPPDATA%\\Programs\\cursor\\"
   - C:\Program Files\Microsoft VS Code\
   - C:\Program Files\nodejs\
 
