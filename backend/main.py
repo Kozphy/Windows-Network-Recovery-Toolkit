@@ -29,12 +29,18 @@ Engineering Notes:
 """
 
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
+
+from platform_core.metrics import compute_platform_metrics
+from platform_core.settings import get_settings
+from platform_core.startup_checks import run_startup_checks, startup_state
 
 from .auth import AuthUser, get_current_user
 from .billing import create_checkout_session, verify_webhook
@@ -55,6 +61,9 @@ from .db import (
 from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 from .live_observability import router as toolkit_obs_router
 from .platform_routes import router as platform_router
+from .observability_metrics import bootstrap_labeled_metrics_from_storage
+from .prometheus_exporter import gauges_from_platform_metrics, render_prometheus_text
+from .prometheus_exporter import inc as prom_inc
 
 _SUBSCRIPTION_EVENT_TYPES = frozenset(
     {
@@ -163,28 +172,62 @@ class CheckoutRequest(BaseModel):
     cancel_url: str
 
 
-app = FastAPI(title="Windows Network Recovery Toolkit SaaS API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
+    """Load typed config, run startup checks, initialize SQLite."""
+    settings = get_settings()
+    report = run_startup_checks(settings)
+    startup_state.report = report
+    if settings.fail_fast_on_startup and not report.ok:
+        failed = [c.name for c in report.checks if c.status == "failed"]
+        raise RuntimeError(f"startup checks failed: {', '.join(failed)}")
+    bootstrap_labeled_metrics_from_storage()
+    init_db()
+    yield
+
+
+_settings = get_settings()
+app = FastAPI(
+    title="Endpoint Reliability Platform API",
+    description=(
+        "Local-first endpoint reliability platform with policy-gated remediation, "
+        "event correlation, append-only audit, and dry-run defaults. "
+        "No automatic repair — human approval required for destructive actions. "
+        "Observation != proof · correlation != causation · policy ALLOW != safety guarantee."
+    ),
+    version=_settings.service_version,
+    openapi_tags=[
+        {"name": "platform", "description": "Fleet, incidents, correlation, policy-gated remediation"},
+    ],
+    lifespan=lifespan,
+)
 
 app.include_router(toolkit_obs_router)
 app.include_router(platform_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_settings.cors_origins_list(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    """Initialize backing database schema during app startup.
+@app.middleware("http")
+async def prometheus_request_counter(request: Request, call_next):  # type: ignore[no-untyped-def]
+    """Count HTTP requests for Prometheus scrape at ``GET /metrics``."""
+    prom_inc("platform_http_requests_total")
+    return await call_next(request)
 
-    Side effects:
-        Executes schema DDL against local SQLite database.
-    """
-    init_db()
+
+@app.get("/metrics", include_in_schema=False)
+def prometheus_metrics() -> Response:
+    """Prometheus text exposition (counters + JSONL-derived gauges)."""
+    metrics = compute_platform_metrics()
+    gauges = gauges_from_platform_metrics(metrics)
+    body = render_prometheus_text(gauges)
+    return Response(content=body, media_type="text/plain; version=0.0.4; charset=utf-8")
 
 
 PLAN_LIMITS = {

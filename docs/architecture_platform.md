@@ -50,7 +50,8 @@ flowchart LR
 5. **Decide policy** — `platform_core.policy` + **`policy_engine.evaluate_route_decision`**.  
 6. **Preview remediation** — `POST /platform/remediation/preview` (always before execute).  
 7. **Audit** — append-only `audit.jsonl` (including **`execute_live_pending`** before subprocess).  
-8. **Dashboard** — `GET /platform/metrics`, `/incidents`, `/events`, attribution drill-down.
+8. **Metrics** — Prometheus `/metrics` (labeled pipeline counters; [observability_architecture.md](observability_architecture.md)).  
+9. **Dashboard** — Grafana + `GET /platform/metrics`, `/incidents`, `/events`, attribution drill-down.
 
 ## Data plane
 

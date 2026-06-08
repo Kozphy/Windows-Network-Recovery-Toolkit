@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from platform_core.models import utc_now_iso
 
@@ -72,6 +72,7 @@ class EndpointEvent(BaseModel):
     timestamp: str = Field(default_factory=utc_now_iso)
     source: str = "reasoning_engine"
     event_type: str
+    category: str = ""
     severity: EventSeverity = "info"
     status: EventStatus = "observed"
     confidence: ConfidenceScore = Field(default=1.0, ge=0.0, le=1.0)
@@ -80,6 +81,12 @@ class EndpointEvent(BaseModel):
     limitations: list[str] = Field(default_factory=list)
     recommended_next_steps: list[str] = Field(default_factory=list)
     audit_metadata: AuditMetadata = Field(default_factory=AuditMetadata)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def event_id(self) -> str:
+        """Stable external identifier (alias of ``id`` for audit/API contracts)."""
+        return self.id
 
 
 class EndpointState(BaseModel):
@@ -235,6 +242,8 @@ class ReasoningRun(BaseModel):
     normalized_signals: dict[str, Any] = Field(default_factory=dict)
     detected_events: list[EndpointEvent] = Field(default_factory=list)
     state_transitions: list[StateTransition] = Field(default_factory=list)
+    canonical_state_path: list[str] = Field(default_factory=list)
+    canonical_state_transitions: list[dict[str, Any]] = Field(default_factory=list)
     hypothesis_ranking: list[dict[str, Any]] = Field(default_factory=list)
     accepted_hypothesis: str = ""
     evidence_tree: EvidenceTree

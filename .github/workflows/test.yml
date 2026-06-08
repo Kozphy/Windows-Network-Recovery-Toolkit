@@ -1,0 +1,177 @@
+name: Test
+
+on:
+  push:
+    branches: [main, master, amd_version]
+  pull_request:
+    branches: [main, master, amd_version]
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONPATH: ${{ github.workspace }}
+
+jobs:
+  ruff:
+    name: ruff
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Ruff check
+        run: >
+          ruff check
+          platform_core backend evidence failure_system telemetry tests
+
+  mypy:
+    name: mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Mypy (scoped)
+        run: mypy
+
+  pytest-safety:
+    name: pytest (safety regression)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run safety regression suite
+        run: |
+          mkdir -p reports
+          pytest \
+            --junitxml=reports/junit-safety.xml \
+            --cov=platform_core \
+            --cov=backend \
+            --cov-report=xml:reports/coverage-safety.xml \
+            --cov-report=term-missing \
+            tests/test_policy_safety_contract.py \
+            tests/test_replay_determinism.py \
+            tests/test_audit_contract.py \
+            tests/test_api_dry_run_default.py \
+            tests/policy \
+            tests/api \
+            tests/replay \
+            tests/test_safety_regression.py \
+            tests/test_settings.py \
+            tests/test_startup_checks.py \
+            tests/test_network_diagnostics.py \
+            tests/test_os_probe.py \
+            tests/test_correlation_engine.py \
+            tests/test_prometheus_exporter.py
+            tests/test_observability_metrics.py \
+            tests/test_platform_production_routes.py
+
+      - name: Upload safety test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-safety-${{ github.sha }}
+          path: |
+            reports/junit-safety.xml
+            reports/coverage-safety.xml
+          retention-days: 14
+
+  pytest-full:
+    name: pytest (full)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run full offline test suite
+        run: |
+          mkdir -p reports
+          pytest \
+            --junitxml=reports/junit-full.xml \
+            --cov=platform_core \
+            --cov=backend \
+            --cov=evidence \
+            --cov=failure_system \
+            --cov=telemetry \
+            --cov-report=xml:reports/coverage-full.xml \
+            --cov-report=html:reports/coverage-html \
+            --cov-report=term-missing
+
+      - name: Upload full test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-full-${{ github.sha }}
+          path: |
+            reports/junit-full.xml
+            reports/coverage-full.xml
+            reports/coverage-html
+          retention-days: 14
+
+  frontend:
+    name: frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and build Next.js
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_PLATFORM_API: http://127.0.0.1:8000

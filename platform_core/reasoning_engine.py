@@ -67,6 +67,7 @@ from platform_core.failure_scenarios import (
     normalize_signals,
 )
 from platform_core.impact_score import calculate_reliability_impact
+from platform_core.state_machine import canonical_state_path, infer_canonical_transitions
 from platform_core.reasoning_models import (
     EndpointEvent,
     EvidenceTree,
@@ -533,6 +534,10 @@ def run_reasoning(
     signals = normalize_signals(observations)
     events = detect_endpoint_events(observations)
     transitions = infer_browser_proxy_transitions(events, signals)
+    canonical_transitions = infer_canonical_transitions(
+        transitions, events=events, signals=signals
+    )
+    canonical_path = canonical_state_path(canonical_transitions)
     ranking = rank_hypotheses(transitions=transitions, signals=signals, proof_result=proof)
     accepted = ranking[0]["hypothesis"] if ranking else "unknown"
     confidence = float(ranking[0]["confidence"]) if ranking else 0.0
@@ -591,6 +596,10 @@ def run_reasoning(
         normalized_signals=signals,
         detected_events=events,
         state_transitions=transitions,
+        canonical_state_path=list(canonical_path),
+        canonical_state_transitions=[
+            item.model_dump(mode="json") for item in canonical_transitions
+        ],
         hypothesis_ranking=ranking,
         accepted_hypothesis=accepted,
         evidence_tree=tree,

@@ -1,0 +1,43 @@
+{
+  "title": "Audit Volume",
+  "uid": "er-audit-volume",
+  "tags": ["endpoint-reliability", "audit"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Append-only audit rows (JSONL gauge)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "platform_audit_volume_total", "legendFormat": "audit rows", "refId": "A"}]
+    },
+    {
+      "id": 2,
+      "title": "Remediation previews",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "platform_remediation_preview_total", "refId": "A"}]
+    },
+    {
+      "id": 3,
+      "title": "Blocked actions (legacy audit rollup)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "platform_blocked_action_count", "refId": "A"}]
+    },
+    {
+      "id": 4,
+      "title": "Policy blocks (labeled counter)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(increase(policy_block_total[1h])) by (hostname)", "legendFormat": "{{hostname}}", "refId": "A"}]
+    }
+  ]
+}

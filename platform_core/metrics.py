@@ -181,6 +181,8 @@ def compute_platform_metrics(*, platform_root: Path | None = None) -> dict[str, 
         "affected_endpoint_count": len(affected_eps),
     }
     merged["signals_file"] = str(root / "platform_signals.jsonl")
+    audit_path = root / "audit.jsonl"
+    merged["audit_row_count"] = sum(1 for _ in iter_jsonl(audit_path))
     from platform_core.reliability_metrics import reliability_metrics_dict
 
     merged["reliability_metrics"] = reliability_metrics_dict(data_root=root)

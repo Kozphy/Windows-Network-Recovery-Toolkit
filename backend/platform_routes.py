@@ -68,17 +68,21 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from backend.platform_auth import get_platform_principal
+from backend.observability_metrics import bootstrap_labeled_metrics_from_storage, record_reasoning_pipeline
+from backend.prometheus_exporter import inc as prom_inc
 from evidence.attribution_engine import build_attribution, parse_sysmon_sequence
 from evidence.procmon_importer import ProcmonRegistryWrite, iter_procmon_registry_writes_from_csv
 from platform_core.agent_planner import plan_next_step
 from platform_core.audit import write_audit
+from platform_core.correlation_engine import correlate, correlate_from_probe
 from platform_core.event_bus import default_normalized_events_path, read_events
 from platform_core.fleet import linked_failure_block_payload
 from platform_core.incidents import incident_summaries
@@ -91,6 +95,9 @@ from platform_core.models import (
     RemediationPreview,
     utc_now_iso,
 )
+from platform_core.network_diagnostics import detect_os_family, get_network_diagnostics, is_wsl
+from platform_core.settings import get_settings
+from platform_core.startup_checks import run_startup_checks, startup_state
 from platform_core.policy import (
     ACTION_REGISTRY,
     PolicyDecision,
@@ -128,10 +135,16 @@ from platform_core.rbac import (
     assert_can_read_metrics,
     assert_can_read_normalized_events,
     assert_can_write_platform_payload,
-    parse_demo_principal,
 )
 from platform_core.remediation import allowlisted_script
 from platform_core.remediation_registry import get_remediation_action
+from platform_core.reasoning_audit import (
+    append_reasoning_run,
+    iter_reasoning_records,
+    replay_reasoning_record,
+)
+from platform_core.reasoning_engine import run_reasoning
+from platform_core.reasoning_models import Observation, ProofResult
 from platform_core.replay.runner import ReplaySummary, summarize_inline
 from platform_core.storage import (
     _path,
@@ -154,25 +167,7 @@ SAFE_MODE = os.environ.get("PLATFORM_SAFE_MODE", "1") != "0"
 BACKEND_VERSION = "0.5.0-endpoint-reliability-prototype"
 
 
-def get_demo_principal(
-    x_operator_id: str | None = Header(default=None),
-    x_operator_role: str | None = Header(default=None),
-) -> DemoPrincipal:
-    """FastAPI dependency that maps optional operator headers into a demo :class:`~platform_core.rbac.DemoPrincipal`.
-
-    Args:
-        x_operator_id: Optional ``X-Operator-Id`` header (portfolio demo identifier).
-        x_operator_role: Optional ``X-Operator-Role`` header controlling preview vs execute vs ingestion.
-            Strings ``security`` and ``security_auditor`` converge inside :mod:`platform_core.rbac`.
-
-    Returns:
-        Parsed principal with deterministic defaults documented in :mod:`platform_core.rbac`.
-
-    Side effects:
-        None — malformed header combinations fall back per :func:`~platform_core.rbac.parse_demo_principal`.
-    """
-
-    return parse_demo_principal(x_operator_id, x_operator_role)
+get_demo_principal = get_platform_principal
 
 
 class HealthResponse(BaseModel):
@@ -189,19 +184,34 @@ class HealthResponse(BaseModel):
 
 @router.get("/health", response_model=HealthResponse)
 def platform_health() -> dict[str, Any]:
-    """Expose process version flags, JSONL mode, ``SAFE_MODE`` snapshot, and data directory."""
-
+    """Liveness probe: process up, safety flags, data directory (always HTTP 200 when reachable)."""
+    settings = get_settings()
     return {
         "status": "ok",
         "backend_version": BACKEND_VERSION,
+        "service_name": settings.service_name,
+        "service_version": settings.service_version,
         "platform_mode": "local_jsonl",
-        "safe_mode": SAFE_MODE,
+        "safe_mode": settings.platform_safe_mode,
         "data_dir": str(platform_data_dir()),
         "audit_store_status": "available",
         "policy_mode": "safe_preview_default",
         "local_first_mode": True,
         "remediation_default": "dry_run",
+        "host_os_family": detect_os_family(),
+        "host_wsl": is_wsl(),
+        "linux_observe_only": detect_os_family() == "linux",
     }
+
+
+@router.get("/ready")
+def platform_ready() -> dict[str, Any]:
+    """Readiness probe: dependency, filesystem, and configuration validation."""
+    report = startup_state.report or run_startup_checks(get_settings())
+    body = report.to_dict()
+    if not report.ok:
+        raise HTTPException(status_code=503, detail=body)
+    return body
 
 
 class HeartbeatIn(BaseModel):
@@ -467,6 +477,19 @@ def remediation_preview(
         )
     )
     payload = preview.model_dump()
+    record_reasoning_pipeline(
+        endpoint_id=preview.endpoint_id,
+        correlation={
+            "accepted_hypothesis": preview.rationale or preview.proposed_action,
+            "confidence_score": fe.confidence,
+            "policy_decision": {"outcome": "BLOCK" if not preview.allowed_by_policy else "PREVIEW"},
+            "proof_result": {"status": "NOT_RUN"},
+            "hypothesis_ranking": [],
+            "observations": [],
+            "events": [],
+        },
+        proxy_change_detected="proxy" in preview.proposed_action.lower(),
+    )
     payload.update(
         {
             "action_id": preview.preview_id,
@@ -1197,6 +1220,170 @@ def agent_next_step(
         )
     )
     return response.model_dump(mode="json")
+
+
+class CorrelationRunRequest(BaseModel):
+    endpoint_id: str = "local"
+    requested_action: str = "inspect_proxy"
+    signals: list[dict[str, Any]] | None = None
+    use_probe: bool = False
+
+
+@router.get("/probes")
+def platform_probes(
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Return read-only OS/network observations (Linux, Debian, Ubuntu, WSL, Windows)."""
+
+    assert_can_read_metrics(principal)
+    return get_network_diagnostics().platform_payload()
+
+
+@router.post("/correlation/run")
+def correlation_run(
+    body: CorrelationRunRequest,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Run Observation → Event → State → Confidence → Evidence Tree correlation (preview-only)."""
+
+    assert_can_preview(principal)
+    prom_inc("platform_correlation_runs_total")
+    if body.use_probe:
+        result = correlate_from_probe(endpoint_id=body.endpoint_id)
+    else:
+        result = correlate(
+            signals=list(body.signals or []),
+            requested_action=body.requested_action,
+            endpoint_id=body.endpoint_id,
+        )
+    policy = result.get("policy_decision") or {}
+    outcome = str(policy.get("outcome") or "PREVIEW")
+    if outcome == "BLOCK":
+        prom_inc("platform_policy_blocked_total")
+    else:
+        prom_inc("platform_remediation_preview_total")
+    record_reasoning_pipeline(endpoint_id=body.endpoint_id, correlation=result)
+    append_contract_audit(
+        PlatformAuditEvent(
+            endpoint_id=body.endpoint_id,
+            event_kind="correlation_run",
+            observations=[{"correlation_id": result.get("correlation_id"), "dry_run_only": result.get("dry_run_only")}],
+            summary=f"Correlation run ({body.requested_action}) — policy {outcome}",
+            hypothesis=[str(result.get("accepted_hypothesis") or "")],
+            confidence=float(result.get("confidence_score") or 0.0),
+            evidence_level="inference",
+            policy_decision=outcome,
+            actor=principal.operator_id,
+            replay_ref=str(result.get("correlation_id") or ""),
+            run_id=str(result.get("correlation_id") or ""),
+        )
+    )
+    return result
+
+
+class ReasoningRunRequest(BaseModel):
+    endpoint_id: str = "local"
+    requested_action: str = "inspect_proxy"
+    observations: list[dict[str, Any]]
+    proof_result: dict[str, Any] | None = None
+    explicit_confirmation: bool = False
+
+
+@router.post("/reasoning/run")
+def reasoning_run(
+    body: ReasoningRunRequest,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Run the full Observation → Event → State → Policy pipeline (preview-only authority)."""
+
+    assert_can_preview(principal)
+    prom_inc("platform_reasoning_runs_total")
+    observations = [Observation(**item) for item in body.observations if isinstance(item, dict)]
+    proof_blob = body.proof_result or {}
+    proof = ProofResult(**proof_blob) if proof_blob else ProofResult()
+    run = run_reasoning(
+        observations,
+        proof_result=proof,
+        requested_action=body.requested_action,
+        explicit_confirmation=body.explicit_confirmation,
+        source=f"api:{principal.operator_id}",
+    )
+    append_reasoning_run(run)
+    outcome = run.policy_decision.outcome
+    if outcome == "BLOCK":
+        prom_inc("platform_policy_blocked_total")
+    else:
+        prom_inc("platform_remediation_preview_total")
+    record_reasoning_pipeline(endpoint_id=body.endpoint_id, correlation=run.model_dump(mode="json"))
+    append_contract_audit(
+        PlatformAuditEvent(
+            endpoint_id=body.endpoint_id,
+            event_kind="reasoning_run",
+            observations=[{"run_id": run.id, "canonical_state_path": run.canonical_state_path}],
+            summary=f"Reasoning run — {run.accepted_hypothesis} — policy {outcome}",
+            hypothesis=[run.accepted_hypothesis],
+            confidence=float(run.hypothesis_ranking[0]["confidence"]) if run.hypothesis_ranking else 0.0,
+            evidence_level=run.evidence_tree.root.evidence_level,
+            policy_decision=outcome,
+            actor=principal.operator_id,
+            replay_ref=run.id,
+            run_id=run.id,
+        )
+    )
+    return run.model_dump(mode="json")
+
+
+@router.get("/reasoning/replay/{run_id}")
+def reasoning_replay(
+    run_id: str,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Recompute a reasoning run from append-only audit without host probes."""
+
+    assert_can_preview(principal)
+    for record in iter_reasoning_records():
+        run_blob = record.get("run") or {}
+        if str(run_blob.get("id") or "") != run_id:
+            continue
+        replayed = replay_reasoning_record(record)
+        return {
+            "run_id": run_id,
+            "replayed": replayed.model_dump(mode="json"),
+            "policy_parity": replayed.policy_decision.outcome
+            == (run_blob.get("policy_decision") or {}).get("outcome"),
+        }
+    raise HTTPException(status_code=404, detail=f"Reasoning run {run_id} not found")
+
+
+@router.get("/events/recent")
+def events_recent(
+    limit: int = 40,
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Poll-friendly merge of normalized events and open failure events (newest first)."""
+
+    assert_can_read_normalized_events(principal)
+    safe_limit = max(1, min(limit, 200))
+    path = default_normalized_events_path()
+    norm_items, parse_errors = read_events(path, limit=safe_limit)
+    failure_path = _path("failure_events.jsonl")
+    failure_rows = list(iter_jsonl(failure_path))[-safe_limit:]
+    failure_rows.sort(key=lambda r: str(r.get("last_seen_at") or r.get("timestamp") or ""), reverse=True)
+    merged: list[dict[str, Any]] = []
+    for row in norm_items:
+        merged.append({"stream": "normalized", **row})
+    for row in failure_rows[:safe_limit]:
+        merged.append({"stream": "failure_event", **row})
+    merged.sort(
+        key=lambda r: str(r.get("timestamp") or r.get("last_seen_at") or r.get("created_at") or ""),
+        reverse=True,
+    )
+    return {
+        "items": merged[:safe_limit],
+        "normalized_count": len(norm_items),
+        "failure_event_count": len(failure_rows),
+        "parse_errors": parse_errors,
+    }
 
 
 def stable_id_from_host(os_version: str = "") -> str:

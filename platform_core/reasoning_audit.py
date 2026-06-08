@@ -58,6 +58,8 @@ def to_audit_record(run: ReasoningRun) -> dict[str, Any]:
         "state_transitions": [
             transition.model_dump(mode="json") for transition in run.state_transitions
         ],
+        "canonical_state_path": run.canonical_state_path,
+        "canonical_state_transitions": run.canonical_state_transitions,
         "hypothesis_ranking": run.hypothesis_ranking,
         "evidence_tree": run.evidence_tree.model_dump(mode="json"),
         "proof_result": run.proof_result.model_dump(mode="json"),

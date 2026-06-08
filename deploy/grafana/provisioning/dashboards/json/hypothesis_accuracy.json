@@ -1,0 +1,53 @@
+{
+  "title": "Hypothesis Accuracy",
+  "uid": "er-hypothesis-accuracy",
+  "tags": ["endpoint-reliability", "hypothesis"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "description": "Ordinal ranking metrics — not calibrated probability. CONFIRMED proof tier only for confirmed counter.",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Generated vs confirmed hypotheses",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {"expr": "sum(rate(hypothesis_generated_total[5m]))", "legendFormat": "generated", "refId": "A"},
+        {"expr": "sum(rate(hypothesis_confirmed_total[5m]))", "legendFormat": "confirmed (proof tier)", "refId": "B"}
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Proof success vs failure",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {"expr": "sum(rate(proof_success_total[5m]))", "legendFormat": "success", "refId": "A"},
+        {"expr": "sum(rate(proof_failure_total[5m]))", "legendFormat": "failure", "refId": "B"}
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Confirmation ratio (generated > 0)",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{
+        "expr": "sum(rate(hypothesis_confirmed_total[1h])) / clamp_min(sum(rate(hypothesis_generated_total[1h])), 0.001)",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "title": "By confidence bucket",
+      "type": "piechart",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(increase(hypothesis_generated_total[6h])) by (confidence)", "legendFormat": "{{confidence}}", "refId": "A"}]
+    }
+  ]
+}

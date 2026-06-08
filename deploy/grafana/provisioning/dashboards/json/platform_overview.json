@@ -1,0 +1,62 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        { "expr": "platform_http_requests_total", "legendFormat": "HTTP requests", "refId": "A" }
+      ],
+      "title": "Platform HTTP requests",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "targets": [
+        { "expr": "platform_correlation_runs_total", "legendFormat": "Correlation runs", "refId": "A" },
+        { "expr": "platform_policy_blocked_total", "legendFormat": "Policy blocked", "refId": "B" }
+      ],
+      "title": "Correlation & policy counters",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "targets": [
+        { "expr": "platform_endpoint_count", "legendFormat": "Endpoints", "refId": "A" },
+        { "expr": "platform_open_failure_events", "legendFormat": "Open failures", "refId": "B" }
+      ],
+      "title": "Fleet gauges (JSONL-derived)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "Loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "targets": [
+        { "expr": "{job=\"platform_audit\"}", "refId": "A" }
+      ],
+      "title": "Platform audit JSONL (Loki)",
+      "type": "logs"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["endpoint-reliability"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Endpoint Reliability Platform",
+  "uid": "er-platform-overview",
+  "version": 1
+}

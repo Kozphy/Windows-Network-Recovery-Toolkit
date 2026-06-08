@@ -1,0 +1,47 @@
+{
+  "title": "Policy Decisions",
+  "uid": "er-policy-decisions",
+  "tags": ["endpoint-reliability", "policy"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Policy ALLOW (not a safety guarantee)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(rate(policy_allow_total[5m])) by (policy)", "refId": "A"}]
+    },
+    {
+      "id": 2,
+      "title": "Policy PREVIEW (dry-run default)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(rate(policy_preview_total[5m])) by (hypothesis)", "legendFormat": "{{hypothesis}}", "refId": "A"}]
+    },
+    {
+      "id": 3,
+      "title": "Policy BLOCK",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(rate(policy_block_total[5m])) by (confidence)", "legendFormat": "{{confidence}}", "refId": "A"}]
+    },
+    {
+      "id": 4,
+      "title": "Decision mix (stacked)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [
+        {"expr": "sum(increase(policy_allow_total[1h]))", "legendFormat": "allow", "refId": "A"},
+        {"expr": "sum(increase(policy_preview_total[1h]))", "legendFormat": "preview", "refId": "B"},
+        {"expr": "sum(increase(policy_block_total[1h]))", "legendFormat": "block", "refId": "C"}
+      ]
+    }
+  ]
+}

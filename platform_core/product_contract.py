@@ -29,6 +29,7 @@ PolicyDecisionName = Literal["allow", "preview_only", "blocked"]
 EndpointStatus = Literal["healthy", "degraded", "drift_proxy", "unknown"]
 PlatformEventKind = Literal[
     "diagnosis_run",
+    "correlation_run",
     "remediation_preview",
     "remediation_execute_attempt",
     "remediation_blocked",

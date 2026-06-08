@@ -289,6 +289,15 @@ Phase 5:
 - Add Diagnosis-to-Text UI copy from structured evidence only.
 - Optional LLM rewrite can operate only on the structured summary.
 
+Phase 6 (complete):
+
+- Canonical state machine: `NORMAL`, `SUSPICIOUS`, `DEGRADED`, `BROKEN`, `RECOVERING`.
+- `platform_core/state_machine.py` with explicit transition rules and scenario projection.
+- `EndpointEvent.category` and `event_id` alias on the event contract.
+- `ReasoningRun.canonical_state_path` persisted in audit JSONL.
+- API: `POST /platform/reasoning/run`, `GET /platform/reasoning/replay/{run_id}`.
+- See `docs/event_state_implementation_plan.md` for Phase 7+ roadmap.
+
 ## L. Files Added / Modified
 
 Added:

@@ -19,9 +19,11 @@
 | Quick link | Doc |
 |------------|-----|
 | **3-minute demo** | [docs/demo_3_minute.md](docs/demo_3_minute.md) |
-| **Architecture** | [docs/architecture_platform.md](docs/architecture_platform.md) · [docs/event_state_reasoning_platform.md](docs/event_state_reasoning_platform.md) |
+| **Architecture** | [docs/architecture_platform.md](docs/architecture_platform.md) · [docs/architecture_service.md](docs/architecture_service.md) · [docs/event_state_reasoning_platform.md](docs/event_state_reasoning_platform.md) |
 | **Interview case study** | [docs/interview_case_study_tier1.md](docs/interview_case_study_tier1.md) |
-| **Production checklist** | [docs/production_readiness.md](docs/production_readiness.md) |
+| **Production checklist** | [docs/production_readiness.md](docs/production_readiness.md) · [docs/production_deployment.md](docs/production_deployment.md) |
+| **CI/CD** | [docs/ci_branch_protection.md](docs/ci_branch_protection.md) · workflows: `lint`, `test`, `build`, `security` |
+| **Observability** | [docs/observability_architecture.md](docs/observability_architecture.md) |
 | **API contract** | [docs/api_contract_platform.md](docs/api_contract_platform.md) |
 | **Public release** | [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md) · [SECURITY.md](SECURITY.md) |
 | **Registry writer telemetry** | [docs/telemetry_registry_writer_proof.md](docs/telemetry_registry_writer_proof.md) |
@@ -39,6 +41,8 @@ This repository is a **production-shaped, local-first** endpoint reliability pla
 | **Incidents** | `platform_core/incident_engine.py` — lifecycle + severity rules |
 | **SLO / metrics** | `platform_core/reliability_metrics.py` — JSONL-derived KPIs |
 | **API + dashboard** | `backend/platform_routes.py`, `frontend/` (optional) |
+| **Linux / WSL observe-only** | `platform_core/os_probe.py` — Ubuntu, Debian, WSL network probes |
+| **Docker + observability** | `docker-compose.yml`, Prometheus `/metrics`, Grafana, Loki |
 
 **Threat model (summary):** Malicious local processes, abused API callers, and stale telemetry are in scope; autonomous containment is explicitly out of scope. Controls: dry-run default, typed confirmation, policy allowlist, append-only audit, evidence levels. Details: [docs/threat_model.md](docs/threat_model.md).
 
@@ -75,6 +79,31 @@ pytest -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py
 ```
 
 **Full demo path:** [docs/demo_3_minute.md](docs/demo_3_minute.md) · **Safety model:** [docs/safety_model.md](docs/safety_model.md) · **ADRs:** [docs/adr/](docs/adr/)
+
+---
+
+## Deployment (Docker)
+
+Production-shaped local stack: **API + Prometheus + Grafana**, typed config, startup checks, and a multi-stage runtime image.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+| Endpoint | URL |
+|----------|-----|
+| OpenAPI | http://localhost:8000/docs |
+| Liveness | http://localhost:8000/platform/health |
+| Readiness | http://localhost:8000/platform/ready |
+| Metrics | http://localhost:8000/metrics |
+| Grafana | http://localhost:3001 |
+
+Optional dashboard + Loki: `docker compose -f docker-compose.yml -f docker-compose.full.yml up --build`.
+
+Guides: [docs/production_deployment.md](docs/production_deployment.md) · [docs/architecture_service.md](docs/architecture_service.md)
+
+**Epistemic boundaries:** observation ≠ proof · correlation ≠ causation · policy ALLOW ≠ safety guarantee.
 
 ### Understand it in 60 seconds
 
@@ -689,7 +718,11 @@ Routes below are defined in `[backend/platform_routes.py](backend/platform_route
 
 | Method | Path                                  | Notes                                             |
 | ------ | ------------------------------------- | ------------------------------------------------- |
-| GET    | `/platform/health`                    | Build metadata + data dir                         |
+| GET    | `/platform/health`                    | Liveness — build metadata + data dir              |
+| GET    | `/platform/ready`                     | Readiness — startup dependency/fs/config checks   |
+| GET    | `/platform/probes`                    | OS network diagnostics (read-only)                |
+| POST   | `/platform/correlation/run`           | Event correlation + evidence tree (preview-only)  |
+| GET    | `/platform/events/recent`             | Poll-friendly normalized + failure merge          |
 | POST   | `/platform/agent/heartbeat`           | Heartbeat ingest                                  |
 | POST   | `/platform/ingest/heartbeat`          | Alias of heartbeat                                |
 | POST   | `/platform/snapshots`                 | Snapshot ingest                                   |

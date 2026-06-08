@@ -1,0 +1,43 @@
+{
+  "title": "Event Overview",
+  "uid": "er-events-overview",
+  "tags": ["endpoint-reliability", "events"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Hypotheses generated (rate)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(rate(hypothesis_generated_total[5m])) by (hypothesis)", "legendFormat": "{{hypothesis}}", "refId": "A"}]
+    },
+    {
+      "id": 2,
+      "title": "Proxy change observations",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "sum(increase(proxy_change_total[1h])) by (hostname)", "legendFormat": "{{hostname}}", "refId": "A"}]
+    },
+    {
+      "id": 3,
+      "title": "Correlation runs (legacy counter)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "platform_correlation_runs_total", "refId": "A"}]
+    },
+    {
+      "id": 4,
+      "title": "Open failure events (JSONL gauge)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "Prometheus"},
+      "targets": [{"expr": "platform_open_failure_events", "refId": "A"}]
+    }
+  ]
+}

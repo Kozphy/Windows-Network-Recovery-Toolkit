@@ -61,6 +61,11 @@ export default function PlatformPage() {
   const [attribEventId, setAttribEventId] = useState<string>("");
   const [attribBody, setAttribBody] = useState<string>("");
   const [attribLoading, setAttribLoading] = useState<boolean>(false);
+  const [recentEvents, setRecentEvents] = useState<object | null>(null);
+  const [probesPayload, setProbesPayload] = useState<object | null>(null);
+  const [correlationPayload, setCorrelationPayload] = useState<object | null>(null);
+  const [correlationLoading, setCorrelationLoading] = useState<boolean>(false);
+  const [livePollEnabled, setLivePollEnabled] = useState<boolean>(true);
 
   const [previewBody, setPreviewBody] = useState({
     endpoint_id: "",
@@ -103,8 +108,12 @@ export default function PlatformPage() {
         ? Promise.resolve({ items: [] })
         : fetchJson("/platform/audit?limit=40"),
       fetchJson("/platform/incidents?limit=25"),
+      role === "viewer"
+        ? Promise.resolve({ items: [] })
+        : fetchJson("/platform/events/recent?limit=30").catch(() => ({ items: [] })),
+      fetchJson("/platform/probes").catch(() => null),
     ])
-      .then(([h, m, ep, ev, pol, nev, au, inc]) => {
+      .then(([h, m, ep, ev, pol, nev, au, inc, recent, probes]) => {
         setHealth(h);
         setMetrics(m);
         setEndpoints(ep);
@@ -113,6 +122,8 @@ export default function PlatformPage() {
         setNormEventsPayload(nev);
         setAudit(au);
         setIncidentsPayload(inc);
+        setRecentEvents(recent);
+        setProbesPayload(probes);
         try {
           const items = (((ev as { items?: unknown[] }).items || []) as Record<string, unknown>[]).slice(0);
           items.sort((a, b) => String(b.last_seen_at || "").localeCompare(String(a.last_seen_at || "")));
@@ -131,6 +142,34 @@ export default function PlatformPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!base || !livePollEnabled) return;
+    const id = window.setInterval(() => {
+      if (role === "viewer") return;
+      fetchJson("/platform/events/recent?limit=30")
+        .then((body) => setRecentEvents(body))
+        .catch(() => undefined);
+    }, 10000);
+    return () => window.clearInterval(id);
+  }, [base, fetchJson, livePollEnabled, role]);
+
+  async function runCorrelationProbe() {
+    setCorrelationLoading(true);
+    setCorrelationPayload(null);
+    try {
+      const body = await fetchJson("/platform/correlation/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ endpoint_id: "dashboard-local", use_probe: true, requested_action: "inspect_proxy" }),
+      });
+      setCorrelationPayload(body);
+    } catch (e: unknown) {
+      setCorrelationPayload({ error: String(e) });
+    } finally {
+      setCorrelationLoading(false);
+    }
+  }
 
   async function postReplayPreview() {
     setReplayOutput("");
@@ -240,8 +279,76 @@ export default function PlatformPage() {
       <p>
         <button type="button" onClick={() => load()}>
           Refresh dashboards
-        </button>
+        </button>{" "}
+        <label style={{ marginLeft: 12 }}>
+          <input
+            type="checkbox"
+            checked={livePollEnabled}
+            onChange={(e) => setLivePollEnabled(e.target.checked)}
+          />{" "}
+          Live poll events (10s)
+        </label>
       </p>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2>OS probe (Linux / Debian / Ubuntu / WSL / Windows)</h2>
+        <pre style={{ overflow: "auto", maxHeight: 180 }}>
+          {probesPayload ? JSON.stringify(probesPayload, null, 2) : "…loading"}
+        </pre>
+      </section>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2>Event correlation & evidence graph</h2>
+        <p style={{ fontSize: "0.85rem", opacity: 0.85 }}>
+          Runs <code>POST /platform/correlation/run</code> with probe observations — preview-only, append-only audit.
+        </p>
+        <button type="button" disabled={correlationLoading} onClick={() => runCorrelationProbe()}>
+          {correlationLoading ? "Correlating…" : "Run correlation (probe)"}
+        </button>
+        {correlationPayload ? (
+          <>
+            <EvidenceTreeView tree={(correlationPayload as { evidence_tree?: unknown }).evidence_tree} />
+            <pre style={{ overflow: "auto", maxHeight: 260, marginTop: 10 }}>
+              {JSON.stringify(correlationPayload, null, 2)}
+            </pre>
+          </>
+        ) : null}
+      </section>
+
+      <section style={{ marginTop: "1.5rem" }}>
+        <h2>Real-time event feed</h2>
+        <p style={{ fontSize: "0.85rem", opacity: 0.85 }}>
+          Merged normalized + failure events from <code>/platform/events/recent</code>.
+        </p>
+        {(() => {
+          const rows = (((recentEvents as { items?: unknown[] }) || {}).items || []) as Record<string, unknown>[];
+          if (!rows.length) {
+            return <p>{role === "viewer" ? "(viewer — no recent feed)" : "No recent events"}</p>;
+          }
+          return (
+            <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "0.82rem" }}>
+              <thead>
+                <tr style={{ textAlign: "left" }}>
+                  <th style={th}>stream</th>
+                  <th style={th}>id</th>
+                  <th style={th}>type / category</th>
+                  <th style={th}>time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(0, 20).map((row, idx) => (
+                  <tr key={`${String(row.stream)}-${String(row.event_id || idx)}`}>
+                    <td style={td}>{String(row.stream ?? "")}</td>
+                    <td style={td}>{String(row.event_id ?? row.cluster_id ?? "").slice(0, 18)}</td>
+                    <td style={td}>{String(row.event_type ?? row.category ?? "")}</td>
+                    <td style={td}>{String(row.timestamp ?? row.last_seen_at ?? "")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
+      </section>
 
       <section style={{ marginTop: "1.5rem" }}>
         <h2>Platform health</h2>
@@ -512,6 +619,43 @@ export default function PlatformPage() {
         <Link href="/">← Home</Link>
       </p>
     </main>
+  );
+}
+
+function EvidenceTreeView(props: { tree: unknown }) {
+  const tree = props.tree as Record<string, unknown> | null | undefined;
+  if (!tree) return null;
+  const root = tree.root as Record<string, unknown> | undefined;
+  const rejected = (tree.rejected_alternatives as unknown[]) || [];
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: 12,
+        border: "1px solid #334155",
+        borderRadius: 8,
+        background: "#0b1220",
+        color: "#e2e8f0",
+        fontSize: "0.85rem",
+      }}
+    >
+      <div>
+        <strong>Accepted:</strong> {String(tree.accepted_hypothesis ?? "—")}
+      </div>
+      <div>
+        <strong>State path:</strong> {((tree.state_path as string[]) || []).join(" → ") || "—"}
+      </div>
+      {root ? (
+        <div style={{ marginTop: 8 }}>
+          <strong>Root evidence:</strong> {String(root.label ?? root.kind ?? JSON.stringify(root).slice(0, 120))}
+        </div>
+      ) : null}
+      {rejected.length ? (
+        <div style={{ marginTop: 8 }}>
+          <strong>Rejected alternatives:</strong> {rejected.length}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

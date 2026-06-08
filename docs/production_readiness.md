@@ -25,7 +25,9 @@ Tests: `tests/test_policy_safety_contract.py`, `tests/test_safety_regression.py`
 |---------|------------|
 | Core CLI fixture diagnose | Cross-platform (Python 3.11+) |
 | Live Windows probes | Windows 10/11 with standard user; Admin for stop-listener/reverter paths |
+| Linux / Debian / Ubuntu / WSL | Observe-only via `platform_core/os_probe.py` — no live remediation |
 | FastAPI `/platform/*` | Any OS; JSONL storage under `PLATFORM_DATA_DIR` |
+| Docker Compose stack | See [production_deployment.md](production_deployment.md) — API, dashboard, Prometheus, Grafana, Loki |
 | Sysmon / ETW proof | Optional Windows telemetry — not required for CI |
 
 ---

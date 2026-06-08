@@ -1,0 +1,39 @@
+groups:
+  - name: endpoint_reliability_alerts
+    rules:
+      - alert: suspicious_proxy_changes
+        expr: sum(increase(proxy_change_total[15m])) > 3
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: Suspicious proxy change rate detected
+          description: >
+            More than three proxy_change_total increments in 15 minutes across the fleet.
+            This is an observation-tier signal — investigate before any remediation.
+            Correlation is not causation; metrics do not prove registry writer identity.
+
+      - alert: excessive_policy_blocks
+        expr: sum(rate(policy_block_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: Elevated policy BLOCK rate
+          description: >
+            Policy engine is blocking frequently. Review policy drift, RBAC misconfiguration,
+            or hostile inputs. BLOCK metrics measure policy outcomes, not attack confirmation.
+
+      - alert: repeated_registry_modifications
+        expr: sum(increase(proxy_change_total{hypothesis=~"proxy.*"}[1h])) > 5
+        for: 15m
+        labels:
+          severity: critical
+          team: security
+        annotations:
+          summary: Repeated proxy/registry modification signals
+          description: >
+            High count of proxy_change_total with registry-related hypothesis labels in one hour.
+            Escalate for human review — Sysmon/Procmon proof tier may still be required before attribution.

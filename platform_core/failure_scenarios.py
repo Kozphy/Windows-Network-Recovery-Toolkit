@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from platform_core.reasoning_models import EndpointEvent, FailureScenario, Observation
+from platform_core.state_machine import event_category
 
 TRUE_VALUES = {True, "true", "yes", "ok", "success", "succeeded", "enabled", "1"}
 
@@ -194,6 +195,7 @@ def detect_endpoint_events(observations: list[Observation]) -> list[EndpointEven
             EndpointEvent(
                 source=obs.source,
                 event_type=obs.signal_name,
+                category=event_category(obs.signal_name),
                 severity=severity,  # type: ignore[arg-type]
                 confidence=obs.confidence,
                 observation_ids=[obs.id],
