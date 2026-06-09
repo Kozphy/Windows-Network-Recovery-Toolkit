@@ -1,0 +1,26 @@
+# Enterprise strict profile — observe-only for dev tools, block high-risk previews without proof.
+version: "1"
+name: strict_enterprise
+description: Stricter gates for managed enterprise endpoints.
+default_gate: require_confirmation
+rules:
+  - id: known_dev_tool
+    match: known_dev_tool
+    gate: observe
+    description: Still log dev tooling; no auto-disable.
+  - id: localhost_unknown
+    match: localhost_proxy
+    gate: require_confirmation
+    description: Any localhost proxy change needs security review.
+  - id: external_proxy
+    match: external_proxy
+    gate: block
+    description: External proxy enable blocked pending investigation.
+  - id: proof_missing
+    match: proof_unavailable
+    gate: block
+    description: No execute path when writer proof unavailable.
+  - id: destructive
+    match: destructive
+    gate: block
+    description: Destructive verbs registry-blocked.

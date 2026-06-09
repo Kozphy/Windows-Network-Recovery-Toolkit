@@ -1,0 +1,17 @@
+{
+  "incident_id": "003_remediation_not_sticky",
+  "decision": "REQUIRE_CONFIRMATION",
+  "gate": "require_confirmation",
+  "severity": "high",
+  "status": "open",
+  "proof_status": "partial",
+  "root_cause": "Remediation not sticky — suspect active reverter.",
+  "requires_confirmation": true,
+  "blocked_actions": ["repeat_execute_without_preview"],
+  "allowed_actions": ["proxy-causation", "proxy_forensics", "investigation_bundle"],
+  "follow_up_actions": [
+    "Identify reverter via proxy-causation / final causation mode",
+    "Do not repeat execute until writer classified",
+    "Consider strict_enterprise policy profile"
+  ]
+}

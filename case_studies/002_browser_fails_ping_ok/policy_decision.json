@@ -1,0 +1,17 @@
+{
+  "incident_id": "002_browser_fails_ping_ok",
+  "decision": "PREVIEW",
+  "gate": "preview",
+  "severity": "medium",
+  "status": "open",
+  "proof_status": "unavailable",
+  "root_cause": "Application-layer proxy misconfiguration; L3 path healthy.",
+  "requires_confirmation": true,
+  "blocked_actions": ["kill_process", "reset_firewall"],
+  "allowed_actions": ["repair_preview", "proxy_timeline", "proxy-disable preview"],
+  "follow_up_actions": [
+    "Run repair preview with fixture or live dry-run",
+    "Collect proxy-causation bundle if writer unknown",
+    "Validate stickiness after any approved change"
+  ]
+}

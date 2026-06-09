@@ -1,0 +1,12 @@
+{
+  "name": "proxy-drift",
+  "description": "Synthetic fleet proxy drift — every Nth endpoint enables loopback proxy.",
+  "drift_every_n": 5,
+  "categories": ["proxy_drift"],
+  "incident_template": {
+    "proxy_server": "127.0.0.1:54321",
+    "severity": "medium",
+    "summary": "Synthetic proxy drift detected on fleet endpoint",
+    "evidence_level": "observation"
+  }
+}

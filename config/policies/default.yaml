@@ -1,0 +1,26 @@
+# Baseline workstation policy — preview-first, no autonomous destructive actions.
+version: "1"
+name: default
+description: Balanced policy for mixed developer workstations.
+default_gate: preview
+rules:
+  - id: known_dev_tool
+    match: known_dev_tool
+    gate: observe
+    description: Cursor/VS Code/Node dev proxies — log and timeline only.
+  - id: localhost_proxy_alert
+    match: localhost_proxy
+    gate: preview
+    description: Unknown localhost proxy — remediation preview allowed, execute gated.
+  - id: external_proxy
+    match: external_proxy
+    gate: require_confirmation
+    description: Non-loopback proxy — human confirmation before any change.
+  - id: suspicious_writer
+    match: suspicious
+    gate: require_confirmation
+    description: Suspicious writer posture — forensics before action.
+  - id: destructive_always
+    match: destructive
+    gate: block
+    description: Kill/firewall/adapter disable always blocked at policy layer.

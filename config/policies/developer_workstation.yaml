@@ -1,0 +1,26 @@
+# Developer workstation — permissive observe/preview for local tooling.
+version: "1"
+name: developer_workstation
+description: Optimized for IDE-heavy developer machines.
+default_gate: observe
+rules:
+  - id: known_dev_tool
+    match: known_dev_tool
+    gate: allow
+    description: Allowlisted dev proxy workflows.
+  - id: localhost_proxy
+    match: localhost_proxy
+    gate: observe
+    description: Log loopback proxy; preview optional.
+  - id: external_proxy
+    match: external_proxy
+    gate: preview
+    description: External proxy — preview remediation only.
+  - id: suspicious
+    match: suspicious
+    gate: require_confirmation
+    description: Suspicious writers still need confirmation.
+  - id: destructive
+    match: destructive
+    gate: block
+    description: Never auto kill/disable adapter/firewall.

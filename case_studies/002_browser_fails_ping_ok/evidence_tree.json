@@ -1,0 +1,27 @@
+{
+  "incident_id": "002_browser_fails_ping_ok",
+  "evidence_level": "observation",
+  "proof_status": "unavailable",
+  "root_cause": "Stale WinINET loopback proxy — browser path blocked while ICMP still succeeds.",
+  "impact": [
+    "User-facing HTTPS failures on affected workstation",
+    "ICMP and DNS probes healthy — narrows fault domain to application proxy stack"
+  ],
+  "limitations": [
+    "Ping OK does not prove browser path healthy",
+    "No registry writer proof collected in this scenario"
+  ],
+  "nodes": [
+    {"id": "sym_browser_fail", "kind": "symptom", "label": "Browser HTTPS fail"},
+    {"id": "probe_ping_ok", "kind": "probe", "label": "Ping 8.8.8.8 OK"},
+    {"id": "probe_proxy_on", "kind": "observation", "label": "ProxyEnable=1 stale port"},
+    {"id": "hyp_stale_proxy", "kind": "hypothesis", "label": "Stale localhost proxy"},
+    {"id": "pol_preview", "kind": "policy", "label": "PREVIEW remediation"}
+  ],
+  "edges": [
+    ["sym_browser_fail", "probe_ping_ok"],
+    ["sym_browser_fail", "probe_proxy_on"],
+    ["probe_proxy_on", "hyp_stale_proxy"],
+    ["hyp_stale_proxy", "pol_preview"]
+  ]
+}

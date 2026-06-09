@@ -1,0 +1,27 @@
+{
+  "incident_id": "001_proxy_drift_cursor_node",
+  "evidence_level": "registry_writer_correlated",
+  "proof_status": "fixture_proven",
+  "root_cause": "Local Node-based dev proxy started by Cursor extension workflow; WinINET updated to loopback listener.",
+  "impact": [
+    "Browser traffic routed through localhost proxy — expected for dev tooling",
+    "No external MITM indicator in synthetic fixture"
+  ],
+  "limitations": [
+    "Fixture Sysmon sequence — not live machine capture",
+    "Listener correlation does not alone prove registry writer without Event ID 13"
+  ],
+  "nodes": [
+    {"id": "obs_proxy_enable", "kind": "observation", "label": "ProxyEnable transition 0→1"},
+    {"id": "obs_listener", "kind": "observation", "label": "127.0.0.1:64394 listener"},
+    {"id": "proof_sysmon13", "kind": "proof", "label": "Sysmon E13 registry write (fixture)"},
+    {"id": "cls_dev_tool", "kind": "classification", "label": "KNOWN_DEV_TOOL"},
+    {"id": "pol_observe", "kind": "policy", "label": "OBSERVE"}
+  ],
+  "edges": [
+    ["obs_proxy_enable", "obs_listener"],
+    ["obs_listener", "proof_sysmon13"],
+    ["proof_sysmon13", "cls_dev_tool"],
+    ["cls_dev_tool", "pol_observe"]
+  ]
+}

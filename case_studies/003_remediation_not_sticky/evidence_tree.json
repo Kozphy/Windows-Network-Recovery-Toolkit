@@ -1,0 +1,25 @@
+{
+  "incident_id": "003_remediation_not_sticky",
+  "evidence_level": "correlation",
+  "proof_status": "partial",
+  "root_cause": "Active process or scheduled task re-applied proxy settings after remediation.",
+  "impact": [
+    "Prior remediation did not hold — user may still be proxied",
+    "Indicates active reverter; manual investigation required"
+  ],
+  "limitations": [
+    "Stickiness signal is temporal correlation, not writer re-proof",
+    "Malware vs benign dev tool requires classification pass"
+  ],
+  "nodes": [
+    {"id": "rem_execute", "kind": "remediation", "label": "Proxy disable executed"},
+    {"id": "obs_revert", "kind": "observation", "label": "Proxy re-enabled <5min"},
+    {"id": "sig_stickiness", "kind": "signal", "label": "stickiness_failed"},
+    {"id": "pol_confirm", "kind": "policy", "label": "require_confirmation"}
+  ],
+  "edges": [
+    ["rem_execute", "obs_revert"],
+    ["obs_revert", "sig_stickiness"],
+    ["sig_stickiness", "pol_confirm"]
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "incident_id": "001_proxy_drift_cursor_node",
+  "decision": "OBSERVE",
+  "gate": "observe",
+  "severity": "low",
+  "status": "acknowledged",
+  "proof_status": "fixture_proven",
+  "root_cause": "Benign developer proxy — Cursor/Node loopback listener with registry writer proof in fixture.",
+  "requires_confirmation": false,
+  "blocked_actions": ["kill_process", "reset_firewall", "disable_adapter"],
+  "allowed_actions": ["observe", "log", "export_report", "proxy_timeline", "proxy_forensics"],
+  "follow_up_actions": [
+    "Document dev proxy port in team runbook",
+    "Optional: add port to developer_workstation policy allowlist",
+    "No remediation required if behavior is expected"
+  ]
+}

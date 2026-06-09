@@ -186,6 +186,9 @@ def compute_platform_metrics(*, platform_root: Path | None = None) -> dict[str, 
     from platform_core.reliability_metrics import reliability_metrics_dict
 
     merged["reliability_metrics"] = reliability_metrics_dict(data_root=root)
+    from platform_core.reliability_metrics import slo_metrics_dict
+
+    merged["slo_metrics"] = slo_metrics_dict(data_root=root)
     try:
         from platform_core.sre.mttr import (
             compute_incident_mttr_metrics,
