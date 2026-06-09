@@ -7,15 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from src.core.audit import AuditRecord, append_audit, read_audit_tail
-from src.core.decision import DecisionOption
-from src.core.decision_engine import score_decision
-from src.core.event import NormalizedEvent
-from src.core.evidence_engine import rank_hypotheses
-from src.core.outcome_engine import compute_metrics, record_outcome
-from src.core.policy_engine import validate_decision_policy
-from src.core.replay import run_pipeline
-from src.core.serialization import content_hash, json_schema
+from src.platform.audit import AuditRecord, append_audit, read_audit_tail
+from src.platform.decision_engine import score_decision
+from src.platform.evidence_engine import rank_hypotheses
+from src.platform.models import DecisionOption, NormalizedEvent
+from src.platform.outcome_engine import compute_metrics, record_outcome
+from src.platform.policy_engine import validate_decision_policy
+from src.platform.replay import run_pipeline
+from src.platform.serialization import content_hash
 from src.domains.registry import all_adapters, get_adapter
 from src.platform_handlers import (
     clear_platform_cache,
@@ -36,7 +35,7 @@ def _reset_cache() -> None:
 
 
 def test_normalized_event_schema() -> None:
-    schema = json_schema(NormalizedEvent)
+    schema = NormalizedEvent.model_json_schema()
     assert schema["title"] == "NormalizedEvent"
     ev = NormalizedEvent(
         event_id="t-1",

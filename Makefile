@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck demo demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format
+.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format
 
 PYTHON ?= python
 PYTEST ?= $(PYTHON) -m pytest
@@ -20,8 +20,13 @@ verify-format:
 typecheck:
 	mypy
 
-# Starts API in fixture mode (requires uvicorn; blocks terminal).
+# Golden read-only demo: replay proxy_drift fixture, policy, markdown report.
 demo:
+	$(PYTHON) scripts/golden_demo.py
+	$(PYTEST) -q windows_network_toolkit/tests/test_replay.py tests/test_demo_replay_pipeline.py
+
+# Starts API in fixture mode (requires uvicorn; blocks terminal).
+demo-api:
 	PLATFORM_FIXTURE_MODE=1 $(PYTHON) -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 
 # Read-only fixture pipeline (same steps as scripts/demo_tier1.ps1).

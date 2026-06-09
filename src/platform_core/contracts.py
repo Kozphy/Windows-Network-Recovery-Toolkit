@@ -11,9 +11,9 @@ from src.platform_core import AUDIT_SCHEMA_VERSION, SCHEMA_VERSION
 
 EvidenceTierName = Literal[
     "OBSERVED_ONLY",
-    "CORRELATED_PROCESS",
-    "PATH_VALIDATED",
+    "CORRELATED",
     "PROVEN_REGISTRY_WRITER",
+    "PROVEN_NETWORK_IMPACT",
     "FINAL_CAUSATION",
 ]
 

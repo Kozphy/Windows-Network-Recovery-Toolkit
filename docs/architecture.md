@@ -1,5 +1,21 @@
 # Architecture: Endpoint Reliability Platform
 
+> **Start here:** [START_HERE.md](START_HERE.md) · **Canonical core:** `src/platform_core/`
+
+## Package map (2026 consolidation)
+
+| Package | Status | Purpose |
+|---------|--------|---------|
+| `src/platform_core/` | **Canonical** | Evidence tiers, policy, audit chain, replay, outcomes |
+| `windows_network_toolkit/` | **Mainline facade** | CLI, collectors, bad-gateway diagnose, reports |
+| `src/proxy_guard/` | **Mainline probes** | Live Windows proxy collection + remediation previews |
+| `backend/canonical_routes.py` | **Canonical API** | `/v1/*` decision pipeline |
+| `backend/platform_routes.py` | Legacy | `/platform/*` JSONL ingest |
+| `platform_core/` (root) | Legacy ops | Fleet, SRE, remediation registry — shim to canonical |
+| `src/platform/` | MDP | Multi-domain fixture demos |
+| `labs/` | Experimental | Not production mainline |
+| `frontend/` | Demo UI | Next.js operator console |
+
 Local-first **endpoint reliability and security observability** for Windows proxy/browser-path failures.
 
 > **Observation ≠ Correlation ≠ Proof** — policy is orthogonal. See [evidence_model.md](evidence_model.md) and [policy_model.md](policy_model.md).

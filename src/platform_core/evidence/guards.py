@@ -31,11 +31,11 @@ def validate_tier_upgrade(
     if tier_rank(proposed) <= tier_rank(current):
         return proposed == current, "No downgrade" if proposed != current else "unchanged"
 
-    if proposed == "CORRELATED_PROCESS":
+    if proposed == "CORRELATED":
         return proof.has_listener_correlation_only or True, "correlation observed"
 
-    if proposed == "PATH_VALIDATED":
-        return proof.has_path_validation, "PATH_VALIDATED requires path validation proof"
+    if proposed == "PROVEN_NETWORK_IMPACT":
+        return proof.has_path_validation, "PROVEN_NETWORK_IMPACT requires network path validation proof"
 
     if proposed == "PROVEN_REGISTRY_WRITER":
         return proof.has_registry_writer_telemetry, "PROVEN_REGISTRY_WRITER requires writer telemetry"

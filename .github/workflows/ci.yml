@@ -38,8 +38,7 @@ jobs:
         run: ruff check .
 
       - name: Bandit (ERP package)
-        continue-on-error: true
-        run: bandit -r windows_network_toolkit -q
+        run: bandit -r windows_network_toolkit src/platform_core -q
 
       - name: pip-audit
         continue-on-error: true

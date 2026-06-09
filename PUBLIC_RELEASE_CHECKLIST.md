@@ -37,7 +37,10 @@ pytest -q tests/test_public_release_audit.py tests/test_policy_safety_contract.p
 - [ ] Adapter disable forbidden at registry level
 - [ ] `ExecuteIn.dry_run` defaults to `True` — verified by tests
 - [ ] Arbitrary shell blocked (`tests/test_policy_safety_contract.py`)
-- [ ] High-risk actions blocked even with high confidence
+- [ ] `make demo` runs golden fixture replay without host mutation
+- [ ] `python -m toolkit audit verify logs/canonical_decision_audit.jsonl` passes on fresh chain
+- [ ] Bad-gateway diagnose is read-only (`windows_network_toolkit bad-gateway-diagnose`)
+- [ ] `docs/START_HERE.md` and `docs/safety_doctrine.md` present
 
 ---
 

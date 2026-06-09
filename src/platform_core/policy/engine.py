@@ -48,7 +48,7 @@ def evaluate_policy(
         requires_approval = True
         requires_rollback = True
 
-    elif tier_rank(tier) < tier_rank("PATH_VALIDATED"):
+    elif tier_rank(tier) < tier_rank("PROVEN_NETWORK_IMPACT"):
         outcome = "PREVIEW_ONLY"
 
     else:

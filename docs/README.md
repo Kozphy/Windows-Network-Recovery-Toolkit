@@ -1,5 +1,7 @@
 # Documentation
 
+**New here?** Start with **[START_HERE.md](START_HERE.md)**.
+
 ## Ten-minute orientation (new engineers)
 
 ### Repository map (what lives where)

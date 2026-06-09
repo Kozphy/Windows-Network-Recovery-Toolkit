@@ -86,10 +86,102 @@ See [docs/policy_model.md](docs/policy_model.md) · [docs/safety_model.md](docs/
 ## Core workflow
 
 ```text
-Evidence → Hypothesis → Proof → Policy → Remediation → Audit
+Evidence → Hypothesis → Proof → Policy → Remediation → Audit → Replay → Learning
 ```
 
+**Canonical modules** (`src/platform_core/`):
+
+| Module | Responsibility |
+|--------|----------------|
+| `evidence/` | Typed records, tiers, guards, chain of custody |
+| `attribution/` | WinINET/WinHTTP/proxy listener classification (read-only) |
+| `proof/` | DNS / TCP / HTTP direct vs proxied contrast |
+| `timeline/` | Incident timeline normalization |
+| `remediation/` | Policy-gated preview, rollback, approval tokens |
+| `policy/` | Tier gates — no silent destructive actions |
+| `audit/` | Hash-chained JSONL |
+| `governance/` | Control mapping, chain verification |
+
+**Windows portfolio** (`windows_network_toolkit/`) — collectors, CLI, reports, API. Platform logic stays in `src/platform_core/`; Windows probes stay isolated.
+
 Package: [`windows_network_toolkit/`](windows_network_toolkit/) — collectors, evidence, decision, remediation, audit, platform API.
+
+### Architecture (consolidated)
+
+```mermaid
+flowchart LR
+  subgraph Windows["Windows layer (read-only)"]
+    C[Collectors]
+    A[Attribution]
+  end
+  subgraph Core["src/platform_core"]
+    E[Evidence + tiers]
+    P[Proof engine]
+    T[Timeline]
+    Pol[Policy]
+    R[Remediation preview]
+    Aud[Audit chain]
+  end
+  subgraph Out["Outputs"]
+    CLI[toolkit CLI]
+    API[FastAPI /platform]
+    Rep[JSON/HTML report]
+  end
+  C --> E
+  A --> E
+  E --> P
+  P --> Pol
+  Pol --> R
+  R --> Aud
+  T --> Rep
+  Aud --> Rep
+  Core --> CLI
+  Core --> API
+```
+
+Implementation plan: [docs/IMPLEMENTATION_PLAN_ERP.md](docs/IMPLEMENTATION_PLAN_ERP.md)
+
+## Diagnostic CLI (read-only by default)
+
+```powershell
+pip install -e ".[dev]"
+$env:PYTHONPATH = (Get-Location).Path
+
+# Proxy state (WinINET + WinHTTP)
+python -m windows_network_toolkit proxy-status
+
+# Listener attribution + classification
+python -m windows_network_toolkit proxy-attribution
+
+# Direct vs proxied path proof
+python -m windows_network_toolkit proxy-proof --url https://example.com
+
+# Incident timeline + remediation preview
+python -m windows_network_toolkit proxy-timeline --url https://example.com
+
+# 502 / bad gateway (full ERP path)
+python -m windows_network_toolkit bad-gateway-diagnose --url https://example.com
+
+# Audit report from fixture or live URL
+python -m windows_network_toolkit report proxy_drift_incident.jsonl --format markdown
+python -m windows_network_toolkit report --url https://example.com --format html
+
+# Verify audit hash chain
+python -m windows_network_toolkit audit verify logs/canonical_decision_audit.jsonl
+```
+
+**Example `proxy-status` output:**
+
+```json
+{
+  "wininet": { "ProxyEnable": 1, "ProxyServer": "127.0.0.1:8080" },
+  "winhttp": { "direct_access": true },
+  "localhost_port": 8080,
+  "classification": "DEAD_PROXY_CONFIG"
+}
+```
+
+**Safety:** All commands above are diagnostic/preview-only. No registry write, process kill, firewall reset, or adapter disable without typed confirmation + policy gate + rollback plan + audit.
 
 ## Replay demo (non-Windows safe)
 
@@ -118,10 +210,16 @@ Guide: [docs/demo_5_min.md](docs/demo_5_min.md) · ERP package: [docs/endpoint_r
 
 ## Safety guarantees
 
+- **Observation ≠ proof** — evidence tiers gate destructive unlock
+- **Correlation ≠ causation** — listener match is not registry-writer proof
+- **Confidence is ordinal** — not probability; no false precision
+- **Policy permission ≠ safety guarantee** — approval + rollback still required
 - Preview-only remediation by default; destructive verbs registry-blocked
 - Typed confirmation for registry mutations
 - Synthetic fixtures in git; real `logs/` and `platform_data/` gitignored
 - Local-first — no default cloud upload
+
+**This platform is not:** antivirus, autonomous containment, or a destructive repair script.
 
 ## What is not guaranteed
 
@@ -187,6 +285,22 @@ Public release: [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 
 ---
 
+## Case study: browser fails but DNS/ping works (proxy drift)
+
+**Symptom:** Browser shows `ERR_PROXY_CONNECTION_FAILED` or HTTP 502; `ping` and `nslookup` succeed.
+
+**Observation:** WinINET `ProxyEnable=1`, `ProxyServer=127.0.0.1:8080`.
+
+**Correlation:** No process listening on `:8080` → `DEAD_PROXY_CONFIG`.
+
+**Proof:** `proxy-proof --url https://example.com` — direct path HTTP 200, system-proxy path HTTP 502 → `LOCAL_PROXY_UPSTREAM_FAILURE`.
+
+**Policy:** Evidence tier below `FINAL_CAUSATION` → `PREVIEW_ONLY`; disable proxy blocked until approval + rollback reviewed.
+
+**Remediation preview:** `disable_wininet_proxy` shown as registry mutation preview only — **not executed**.
+
+**Audit:** Hash-chained JSONL + report with chain of custody. Sample fixture: [tests/fixtures/erp/sample_audit_report.json](tests/fixtures/erp/sample_audit_report.json).
+
 ## Case study: ERR_PROXY_CONNECTION_FAILED
 
 WinINET `ProxyEnable=1` with `ProxyServer=127.0.0.1:PORT` can break browsers while ping/DNS succeed. The platform correlates registry, listener, and path probes, classifies `WININET_PROXY_DRIFT`, and recommends `DISABLE_WININET_PROXY_WITH_CONFIRMATION` only after policy gates pass.
@@ -209,8 +323,8 @@ STAR write-up: [docs/interview_case_study_tier1.md](docs/interview_case_study_ti
 
 ## Known limitations
 
-- Windows-first live probes; Linux CI uses fixtures
-- Multiple legacy evidence vocabularies being unified via `platform_core/evidence_model.py`
+- Windows-first live probes; Linux CI uses inject fixtures under `tests/fixtures/erp/`
+- Legacy root `platform_core/` fleet modules coexist; canonical path is `src/platform_core/`
 - Black formatting debt in some modules (CI continue-on-error)
 
 ---

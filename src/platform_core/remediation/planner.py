@@ -1,0 +1,121 @@
+"""Policy-gated remediation preview — dry-run default, never silent mutation."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+from typing import Any
+
+from src.platform_core.contracts import Decision, EvidenceBundle, EvidenceItem
+from src.platform_core.policy.approval import generate_approval_token, validate_approval_token
+from src.platform_core.policy.engine import evaluate_policy
+from src.platform_core.evidence.guards import proof_inputs_from_signals
+
+from .rollback import build_rollback_plan
+
+
+def _now() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _bundle_from_signals(signals: dict[str, Any], *, incident_id: str, tier: str = "OBSERVED_ONLY") -> EvidenceBundle:
+    items = [
+        EvidenceItem(
+            evidence_id=f"ev-{i}",
+            event_id=incident_id,
+            timestamp_utc=_now(),
+            source="remediation_planner",
+            signal=k,
+            observed_value=str(v),
+            tier=tier,  # type: ignore[arg-type]
+        )
+        for i, (k, v) in enumerate(sorted(signals.items()))
+    ]
+    return EvidenceBundle(
+        bundle_id=f"bundle-{incident_id}",
+        incident_id=incident_id,
+        created_at=_now(),
+        tier=tier,  # type: ignore[arg-type]
+        items=items,
+    )
+
+
+def plan_proxy_drift_remediation(
+    *,
+    incident_id: str,
+    recommended_action: str = "disable_wininet_proxy",
+    signals: dict[str, Any] | None = None,
+    prior_proxy_enable: int = 1,
+    prior_proxy_server: str = "",
+    dry_run: bool = True,
+    confirmation_token: str = "",
+    expected_token: str = "",
+) -> dict[str, Any]:
+    """Generate remediation plan with policy gate, rollback, and audit metadata."""
+    signals = signals or {}
+    bundle = _bundle_from_signals(signals, incident_id=incident_id, tier=str(signals.get("evidence_tier", "OBSERVED_ONLY")))
+    decision = Decision(
+        decision_id=f"dec-{uuid.uuid4().hex[:12]}",
+        incident_id=incident_id,
+        timestamp_utc=_now(),
+        incident_type=str(signals.get("incident_type", "WININET_PROXY_DRIFT")),
+        recommended_action=recommended_action,
+        confidence=float(signals.get("confidence", 0.5)),
+        risk_level="medium",
+        evidence_tier=bundle.tier,
+        requires_human_review=True,
+        reasoning="Proxy drift with direct-path success suggests disabling WinINET proxy after approval.",
+    )
+    policy = evaluate_policy(
+        decision=decision,
+        bundle=bundle,
+        requested_action=recommended_action,
+        proof=proof_inputs_from_signals(signals),
+        dry_run=dry_run,
+    )
+
+    previews: list[dict[str, Any]] = []
+    if policy.outcome != "BLOCK":
+        try:
+            from windows_network_toolkit.remediation.proxy_disable import preview_proxy_disable
+
+            previews.append(preview_proxy_disable(dry_run=True))
+        except ImportError:
+            previews.append({
+                "action_id": recommended_action,
+                "dry_run": True,
+                "mutations": [{"argv": ["reg", "add", "..."], "human": "Set ProxyEnable=0 (preview)"}],
+            })
+
+    rollback = build_rollback_plan(
+        action_id=recommended_action,
+        prior_proxy_enable=prior_proxy_enable,
+        prior_proxy_server=prior_proxy_server or "127.0.0.1:8080",
+        dry_run=True,
+    )
+
+    approval_token = expected_token or generate_approval_token()
+    approved = validate_approval_token(confirmation_token, approval_token) if confirmation_token else False
+    can_execute = approved and policy.outcome in {"ALLOW", "REQUIRE_HUMAN_APPROVAL"} and not dry_run
+
+    return {
+        "incident_id": incident_id,
+        "dry_run": dry_run,
+        "decision": decision.model_dump(mode="json"),
+        "policy_gate": policy.model_dump(mode="json"),
+        "previews": previews,
+        "rollback_plan": rollback,
+        "approval": {
+            "required": policy.requires_approval or policy.outcome == "REQUIRE_HUMAN_APPROVAL",
+            "token_expected_hint": approval_token[:8] + "…" if dry_run else "",
+            "approved": approved,
+            "can_execute": can_execute,
+        },
+        "blocked_reasons": policy.blocked_reasons,
+        "rationale": policy.rationale,
+        "safety_notes": [
+            "No registry mutation without typed confirmation.",
+            "Policy permission is not a safety guarantee.",
+            "Rollback plan must be reviewed before execution.",
+        ],
+    }

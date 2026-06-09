@@ -27,9 +27,9 @@ class EvidenceStateMachine:
         if proof.has_listener_correlation_only or any(
             k in signals for k in ("listener_on_proxy_port", "listener_process_name")
         ):
-            candidates.append("CORRELATED_PROCESS")
+            candidates.append("CORRELATED")
         if proof.has_path_validation:
-            candidates.append("PATH_VALIDATED")
+            candidates.append("PROVEN_NETWORK_IMPACT")
         if proof.has_registry_writer_telemetry:
             candidates.append("PROVEN_REGISTRY_WRITER")
         if proof.has_registry_writer_telemetry and proof.has_path_validation:
