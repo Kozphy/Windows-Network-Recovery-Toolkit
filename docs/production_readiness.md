@@ -15,7 +15,7 @@
 | No registry mutation without confirmation | Typed phrases in registry + `validate_confirmation_phrase` |
 | Listener correlation ≠ proof | [ADR-004](adr/ADR-004-heuristic-attribution-is-not-proof.md) |
 
-Tests: `tests/test_policy_safety_contract.py`, `tests/test_safety_regression.py`, `tests/policy/`, `tests/api/`.
+Tests: `tests/test_policy_safety_contract.py`, `tests/test_safety_contract_extensions.py`, `tests/test_evidence_level_contract.py`, `tests/test_fixture_regression_demo.py`, `tests/test_safety_regression.py`, `tests/policy/`, `tests/api/`.
 
 ---
 

@@ -107,6 +107,11 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 
 | Doc | Topic |
 |-----|-------|
+| `docs/evidence_model.md` | Canonical evidence levels |
+| `docs/policy_model.md` | Canonical policy decisions |
+| `docs/observability.md` | Metrics and dashboard |
+| `docs/demo_5_min.md` | 5-minute portfolio demo |
+| `labs/README.md` | Experimental modules (not mainline) |
 | `docs/decision_platform_architecture.md` | Multi-domain architecture diagram |
 | `docs/decision_platform_migration.md` | Phased adapter/API wiring plan |
 | `docs/production_shape_upgrade.md` | Production-shape portfolio upgrade |

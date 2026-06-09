@@ -1,8 +1,22 @@
 # Architecture: Endpoint Reliability Platform
 
-Local-first, **event-driven** diagnostics inspired by trading infrastructure: append-only audit, deterministic state transitions, policy gates, and replay without re-probing.
+Local-first **endpoint reliability and security observability** for Windows proxy/browser-path failures.
 
-> **Observation ≠ Inference ≠ Proof** — policy is orthogonal. See [epistemic_model.md](epistemic_model.md).
+> **Observation ≠ Correlation ≠ Proof** — policy is orthogonal. See [evidence_model.md](evidence_model.md) and [policy_model.md](policy_model.md).
+
+## Canonical pipeline
+
+```text
+probes (WinINET, WinHTTP, DNS, ping, browser path)
+  → event normalization (JSONL)
+  → evidence fusion (OBSERVED_ONLY … FINAL_CAUSATION)
+  → reasoning engine (hypothesis ranking, ordinal confidence)
+  → policy engine (ALLOW_OBSERVE … BLOCK_DESTRUCTIVE)
+  → remediation preview (dry-run default)
+  → append-only audit
+  → replay engine (deterministic)
+  → API / dashboard / Prometheus metrics
+```
 
 For the Failure Knowledge System (FailureBlocks), see [architecture_failure_knowledge.md](architecture_failure_knowledge.md).
 

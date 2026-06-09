@@ -35,10 +35,12 @@ Local-first Endpoint Reliability Platform — design constraints for portfolio a
 
 ## Non-goals
 
-- Not antivirus or EDR
-- Not autonomous containment
-- Not proof of compromise without Sysmon/Procmon-class telemetry
+- Not antivirus or malware removal
+- Not autonomous containment or EDR replacement
+- Not guaranteed attribution without Sysmon/Procmon-class telemetry
 - Not multi-tenant SaaS security in this repository
+- Not trading, crypto, or financial decision-making (see `labs/`)
+- Not generic AI agent decision-making (see `labs/decision_platform`)
 
 ## Controls summary
 
