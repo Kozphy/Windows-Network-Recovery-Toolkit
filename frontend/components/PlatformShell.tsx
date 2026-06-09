@@ -12,14 +12,14 @@ export const DEMO_ROLE_KEY = "PLATFORM_DEMO_RBAC_ROLE";
 
 const NAV = [
   { href: "/platform", label: "Overview" },
+  { href: "/platform/incidents", label: "Incidents" },
   { href: "/platform/proxy-events", label: "Proxy incidents" },
   { href: "/platform/causation", label: "Causation" },
   { href: "/platform/policy", label: "Policy" },
-  { href: "/platform/events", label: "Events" },
-  { href: "/platform/states", label: "States" },
   { href: "/platform/evidence", label: "Evidence" },
   { href: "/platform/policies", label: "Policies" },
   { href: "/platform/replay", label: "Replay" },
+  { href: "/platform/slo", label: "SLO" },
   { href: "/platform/timeline", label: "Timeline" },
   { href: "/platform/sre", label: "SRE Incidents" },
 ] as const;

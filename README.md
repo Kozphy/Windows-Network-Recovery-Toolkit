@@ -1,9 +1,9 @@
 # Endpoint Reliability Platform (Windows Network Recovery Toolkit)
 
-![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)
-![Policy gated](https://img.shields.io/badge/remediation-policy--gated-green)
-![Local first](https://img.shields.io/badge/telemetry-local--first-lightgrey)
-![CI pytest](https://img.shields.io/badge/CI-pytest%20offline-brightgreen)
+Python 3.11+
+Policy gated
+Local first
+CI pytest
 
 **One-liner:** A local-first Windows endpoint reliability platform that detects proxy drift, proves registry-writer causation, classifies process behavior, applies policy-gated decisions, and generates replayable evidence timelines.
 
@@ -16,34 +16,38 @@
 - **Before publishing** — run `python tools/public_release_audit.py --tracked-only` and follow [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md).
 - **Epistemic limits** — observation ≠ inference ≠ proof; confidence is ordinal ranking, not probability; registry-writer proof requires Sysmon/Procmon-class telemetry.
 
-| Quick link | Doc |
-|------------|-----|
-| **10-minute onboarding** | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) |
-| **3-minute demo** | [docs/demo_3_minute.md](docs/demo_3_minute.md) |
-| **Architecture** | [docs/architecture_platform.md](docs/architecture_platform.md) · [docs/architecture_service.md](docs/architecture_service.md) · [docs/event_state_reasoning_platform.md](docs/event_state_reasoning_platform.md) |
-| **Interview case study** | [docs/interview_case_study_tier1.md](docs/interview_case_study_tier1.md) |
-| **Production checklist** | [docs/production_readiness.md](docs/production_readiness.md) · [docs/production_deployment.md](docs/production_deployment.md) |
-| **CI/CD** | [docs/ci_branch_protection.md](docs/ci_branch_protection.md) · workflows: `lint`, `test`, `build`, `security` |
-| **Observability** | [docs/observability_architecture.md](docs/observability_architecture.md) |
-| **API contract** | [docs/api_contract_platform.md](docs/api_contract_platform.md) |
-| **Public release** | [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md) · [SECURITY.md](SECURITY.md) |
-| **Registry writer telemetry** | [docs/telemetry_registry_writer_proof.md](docs/telemetry_registry_writer_proof.md) |
-| **Tier-1 demo** | [docs/tier1_demo_walkthrough.md](docs/tier1_demo_walkthrough.md) · [docs/interview_script_5_min.md](docs/interview_script_5_min.md) |
-| **Threat model** | [docs/threat_model.md](docs/threat_model.md) · [docs/security_boundaries.md](docs/security_boundaries.md) |
+
+| Quick link                    | Doc                                                                                                                                                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **10-minute onboarding**      | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)                                                                                                                                                       |
+| **3-minute demo**             | [docs/demo_3_minute.md](docs/demo_3_minute.md)                                                                                                                                                                   |
+| **Architecture**              | [docs/architecture_platform.md](docs/architecture_platform.md) · [docs/architecture_service.md](docs/architecture_service.md) · [docs/event_state_reasoning_platform.md](docs/event_state_reasoning_platform.md) |
+| **Interview case study**      | [docs/interview_case_study_tier1.md](docs/interview_case_study_tier1.md)                                                                                                                                         |
+| **Production checklist**      | [docs/production_readiness.md](docs/production_readiness.md) · [docs/production_deployment.md](docs/production_deployment.md)                                                                                    |
+| **CI/CD**                     | [docs/ci_branch_protection.md](docs/ci_branch_protection.md) · workflows: `lint`, `test`, `build`, `security`                                                                                                    |
+| **Observability**             | [docs/observability_architecture.md](docs/observability_architecture.md)                                                                                                                                         |
+| **API contract**              | [docs/api_contract_platform.md](docs/api_contract_platform.md)                                                                                                                                                   |
+| **Public release**            | [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md) · [SECURITY.md](SECURITY.md)                                                                                                                          |
+| **Registry writer telemetry** | [docs/telemetry_registry_writer_proof.md](docs/telemetry_registry_writer_proof.md)                                                                                                                               |
+| **Tier-1 demo**               | [docs/tier1_demo_walkthrough.md](docs/tier1_demo_walkthrough.md) · [docs/interview_script_5_min.md](docs/interview_script_5_min.md)                                                                              |
+| **Threat model**              | [docs/threat_model.md](docs/threat_model.md) · [docs/security_boundaries.md](docs/security_boundaries.md)                                                                                                        |
+
 
 ### Endpoint Reliability Platform (Tier-1 positioning)
 
 This repository is a **production-shaped, local-first** endpoint reliability platform—not a single repair script.
 
-| Layer | Modules |
-|-------|---------|
-| **Telemetry proof** | `telemetry/` — Sysmon/EventLog fusion, evidence ladder |
-| **Fleet** | `platform_core/fleet_store.py`, `endpoint_model.py`, `agent_identity.py` |
-| **Incidents** | `platform_core/incident_engine.py` — lifecycle + severity rules |
-| **SLO / metrics** | `platform_core/reliability_metrics.py` — JSONL-derived KPIs |
-| **API + dashboard** | `backend/platform_routes.py`, `frontend/` (optional) |
-| **Linux / WSL observe-only** | `platform_core/os_probe.py` — Ubuntu, Debian, WSL network probes |
-| **Docker + observability** | `docker-compose.yml`, Prometheus `/metrics`, Grafana, Loki |
+
+| Layer                        | Modules                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| **Telemetry proof**          | `telemetry/` — Sysmon/EventLog fusion, evidence ladder                   |
+| **Fleet**                    | `platform_core/fleet_store.py`, `endpoint_model.py`, `agent_identity.py` |
+| **Incidents**                | `platform_core/incident_engine.py` — lifecycle + severity rules          |
+| **SLO / metrics**            | `platform_core/reliability_metrics.py` — JSONL-derived KPIs              |
+| **API + dashboard**          | `backend/platform_routes.py`, `frontend/` (optional)                     |
+| **Linux / WSL observe-only** | `platform_core/os_probe.py` — Ubuntu, Debian, WSL network probes         |
+| **Docker + observability**   | `docker-compose.yml`, Prometheus `/metrics`, Grafana, Loki               |
+
 
 **Threat model (summary):** Malicious local processes, abused API callers, and stale telemetry are in scope; autonomous containment is explicitly out of scope. Controls: dry-run default, typed confirmation, policy allowlist, append-only audit, evidence levels. Details: [docs/threat_model.md](docs/threat_model.md).
 
@@ -95,17 +99,33 @@ make demo-tier1
 
 Details: [docs/verified_demo.md](docs/verified_demo.md)
 
-| Capability | Command | Evidence |
-|------------|---------|----------|
-| CI lint + test | `pytest -q` | `.github/workflows/ci.yml` |
-| Safety contracts | `pytest -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py tests/test_replay_determinism.py tests/test_audit_contract.py` | 20 tests in CI job |
-| Fixture diagnosis | `python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json` | CI fixture smoke |
-| Proxy timeline replay | `python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown` | CI fixture smoke |
-| Policy decision | `python -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json` | CI fixture smoke |
-| Evidence tree report | `python -m src proxy-report --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown` | CI fixture smoke |
-| Public release audit | `python tools/public_release_audit.py --tracked-only` | CI + `tools/public_release_audit.py` |
-| API health / ready / metrics | `docker compose up` → `:8000/platform/health`, `:8000/platform/ready`, `:8000/metrics` | `tests/test_platform_health_routes.py` |
-| Trivy scan | GitHub Actions `security.yml` | SARIF artifacts (HIGH/CRITICAL; non-blocking `exit-code: 0`) |
+### 5-minute production demo
+
+Portfolio path: fleet sim → causation → policy-as-code → incident review → SLO tests.
+
+```powershell
+.\scripts\demo_production.ps1
+```
+
+```bash
+make demo-production
+```
+
+Guide: [docs/demo_production_5_min.md](docs/demo_production_5_min.md) · Upgrade notes: [docs/production_shape_upgrade.md](docs/production_shape_upgrade.md)
+
+
+| Capability                   | Command                                                                                                                                          | Evidence                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| CI lint + test               | `pytest -q`                                                                                                                                      | `.github/workflows/ci.yml`                                   |
+| Safety contracts             | `pytest -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py tests/test_replay_determinism.py tests/test_audit_contract.py` | 20 tests in CI job                                           |
+| Fixture diagnosis            | `python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json`                                                                  | CI fixture smoke                                             |
+| Proxy timeline replay        | `python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown`                     | CI fixture smoke                                             |
+| Policy decision              | `python -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json`                        | CI fixture smoke                                             |
+| Evidence tree report         | `python -m src proxy-report --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown`                       | CI fixture smoke                                             |
+| Public release audit         | `python tools/public_release_audit.py --tracked-only`                                                                                            | CI + `tools/public_release_audit.py`                         |
+| API health / ready / metrics | `docker compose up` → `:8000/platform/health`, `:8000/platform/ready`, `:8000/metrics`                                                           | `tests/test_platform_health_routes.py`                       |
+| Trivy scan                   | GitHub Actions `security.yml`                                                                                                                    | SARIF artifacts (HIGH/CRITICAL; non-blocking `exit-code: 0`) |
+
 
 ---
 
@@ -118,13 +138,15 @@ cp .env.example .env
 docker compose up --build
 ```
 
-| Endpoint | URL |
-|----------|-----|
-| OpenAPI | http://localhost:8000/docs |
-| Liveness | http://localhost:8000/platform/health |
-| Readiness | http://localhost:8000/platform/ready |
-| Metrics | http://localhost:8000/metrics |
-| Grafana | http://localhost:3001 |
+
+| Endpoint  | URL                                                                            |
+| --------- | ------------------------------------------------------------------------------ |
+| OpenAPI   | [http://localhost:8000/docs](http://localhost:8000/docs)                       |
+| Liveness  | [http://localhost:8000/platform/health](http://localhost:8000/platform/health) |
+| Readiness | [http://localhost:8000/platform/ready](http://localhost:8000/platform/ready)   |
+| Metrics   | [http://localhost:8000/metrics](http://localhost:8000/metrics)                 |
+| Grafana   | [http://localhost:3001](http://localhost:3001)                                 |
+
 
 Optional dashboard + Loki: `docker compose -f docker-compose.yml -f docker-compose.full.yml up --build`.
 
@@ -134,11 +156,13 @@ Guides: [docs/production_deployment.md](docs/production_deployment.md) · [docs/
 
 ### Understand it in 60 seconds
 
-| Audience | One sentence |
-|----------|--------------|
-| **Recruiter / manager** | Local-first Windows prototype that explains network/proxy failures, previews fixes under policy, and logs every decision — nothing repairs itself by default. |
-| **SRE / platform engineer** | Event-sourced JSONL, deterministic replay, ALLOW/PREVIEW/BLOCK gates, FastAPI `/platform/*` with dry-run execute defaults. |
-| **Security reviewer** | Heuristic attribution ≠ proof; registry writer claims require Sysmon/Procmon-class telemetry; destructive actions registry-blocked. |
+
+| Audience                    | One sentence                                                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Recruiter / manager**     | Local-first Windows prototype that explains network/proxy failures, previews fixes under policy, and logs every decision — nothing repairs itself by default. |
+| **SRE / platform engineer** | Event-sourced JSONL, deterministic replay, ALLOW/PREVIEW/BLOCK gates, FastAPI `/platform/`* with dry-run execute defaults.                                    |
+| **Security reviewer**       | Heuristic attribution ≠ proof; registry writer claims require Sysmon/Procmon-class telemetry; destructive actions registry-blocked.                           |
+
 
 ### Why this is not just a script
 
@@ -147,7 +171,7 @@ Guides: [docs/production_deployment.md](docs/production_deployment.md) · [docs/
 - **Policy-gated remediation** — registry allowlist, risk tiers, typed confirmation, operator vs admin RBAC.
 - **Explicit epistemic boundaries** — observation, inference, and proof are labeled separately in JSON outputs.
 - **Local-first design** — no default cloud upload; optional agent ingest is opt-in.
-- **API / dashboard separation** — `python -m src` and `.bat` workflows remain; `/platform/*` and Next.js are optional demos.
+- **API / dashboard separation** — `python -m src` and `.bat` workflows remain; `/platform/`* and Next.js are optional demos.
 
 ---
 
@@ -280,17 +304,19 @@ python -m src proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY --st
 
 This toolkit separates **what changed**, **what correlates**, and **what is proven**:
 
-| Layer | Meaning | Example |
-| --- | --- | --- |
-| **Observation** | Registry or network fact read from the host | `ProxyEnable=1`, `ProxyServer=127.0.0.1:64394` |
-| **Correlation** | Process/listener aligns with the configured port | `node.exe` listens on the same localhost port |
-| **Likely attribution** | Ranked candidate with parent chain (not proof) | `Cursor.exe → powershell.exe → node.exe` |
+
+| Layer                      | Meaning                                                               | Example                                                      |
+| -------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **Observation**            | Registry or network fact read from the host                           | `ProxyEnable=1`, `ProxyServer=127.0.0.1:64394`               |
+| **Correlation**            | Process/listener aligns with the configured port                      | `node.exe` listens on the same localhost port                |
+| **Likely attribution**     | Ranked candidate with parent chain (not proof)                        | `Cursor.exe → powershell.exe → node.exe`                     |
 | **Proven registry writer** | Sysmon Event ID 13 or Procmon `RegSetValue` on Internet Settings keys | Image/PID on `ProxyEnable` / `ProxyServer` / `AutoConfigURL` |
-| **Policy decision** | Preview-only recommendation — no silent repair | `PREVIEW` + typed confirmation for any mutation |
+| **Policy decision**        | Preview-only recommendation — no silent repair                        | `PREVIEW` + typed confirmation for any mutation              |
+
 
 **Key points:**
 
-- **`proxy-watch`** detects WinINET drift and captures enriched process snapshots at change time.
+- `**proxy-watch`** detects WinINET drift and captures enriched process snapshots at change time.
 - **Listener correlation is not proof** — a process can listen on the proxy port without having written the registry key.
 - **Sysmon/Procmon is required** for proven registry-writer attribution; without it the report states: *Sysmon unavailable: registry writer cannot be proven.*
 - **Localhost proxy can be normal** for developer tools (Cursor, VS Code, Node dev servers). Allowlist matches in `config/proxy_allowlist.yaml` reduce risk tier but still log the event.
@@ -320,23 +346,27 @@ python -m src proxy-attribution --procmon procmon.csv --json
 
 **Observation ≠ proof.** A localhost listener on the configured proxy port is **correlation**, not evidence that the same process wrote `HKCU\...\Internet Settings`. **node.exe** / **Cursor.exe** under PowerShell may be normal developer tooling — final proof requires registry-write telemetry (Sysmon Event ID 13, ETW, Event Log, or Procmon `RegSetValue`).
 
-| Proof level | Meaning |
-| --- | --- |
-| `OBSERVED_ONLY` | Proxy registry changed; no writer or port proof |
-| `CORRELATED` | Listener or heuristic process match only |
+
+| Proof level              | Meaning                                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `OBSERVED_ONLY`          | Proxy registry changed; no writer or port proof                                         |
+| `CORRELATED`             | Listener or heuristic process match only                                                |
 | `PROVEN_REGISTRY_WRITER` | Sysmon Event ID 13 on `ProxyEnable` / `ProxyServer` / `AutoConfigURL` / `ProxyOverride` |
-| `PROVEN_NETWORK_IMPACT` | Proxied HTTPS path fails while bypass works |
-| `FINAL_CAUSATION` | Writer proof + port owner and/or flapping/suspicious classification |
+| `PROVEN_NETWORK_IMPACT`  | Proxied HTTPS path fails while bypass works                                             |
+| `FINAL_CAUSATION`        | Writer proof + port owner and/or flapping/suspicious classification                     |
+
 
 **Modules:**
 
-| Module | Role |
-| --- | --- |
+
+| Module                                     | Role                                         |
+| ------------------------------------------ | -------------------------------------------- |
 | `src/proxy_guard/registry_writer_proof.py` | Normalize Sysmon E13 registry-write evidence |
-| `src/proxy_guard/process_tree.py` | Process → parent → grandparent lineage |
-| `src/proxy_guard/port_owner.py` | Localhost proxy port listener owner |
-| `src/proxy_guard/proxy_path_proof.py` | Read-only direct/proxied/bypass path checks |
-| `src/proxy_guard/final_causation.py` | Merge evidence → final verdict report |
+| `src/proxy_guard/process_tree.py`          | Process → parent → grandparent lineage       |
+| `src/proxy_guard/port_owner.py`            | Localhost proxy port listener owner          |
+| `src/proxy_guard/proxy_path_proof.py`      | Read-only direct/proxied/bypass path checks  |
+| `src/proxy_guard/final_causation.py`       | Merge evidence → final verdict report        |
+
 
 **How it works:**
 
@@ -348,13 +378,15 @@ python -m src proxy-attribution --procmon procmon.csv --json
 
 ### From Causation to Policy
 
-| Stage | Question answered | Module |
-| --- | --- | --- |
-| **Final causation** | Who wrote the registry key? | `src/correlation/proxy_causation.py` |
-| **Classification** | What kind of process is it? | `src/classification/process_classifier.py` |
-| **Policy** | What action is permitted? | `src/policy/proxy_policy_engine.py` |
-| **Timeline replay** | What happened, in order? | `src/replay/proxy_timeline.py` |
-| **Evidence tree** | How do observations chain to action? | `src/reports/evidence_tree.py` |
+
+| Stage               | Question answered                    | Module                                     |
+| ------------------- | ------------------------------------ | ------------------------------------------ |
+| **Final causation** | Who wrote the registry key?          | `src/correlation/proxy_causation.py`       |
+| **Classification**  | What kind of process is it?          | `src/classification/process_classifier.py` |
+| **Policy**          | What action is permitted?            | `src/policy/proxy_policy_engine.py`        |
+| **Timeline replay** | What happened, in order?             | `src/replay/proxy_timeline.py`             |
+| **Evidence tree**   | How do observations chain to action? | `src/reports/evidence_tree.py`             |
+
 
 - **Final causation proves who wrote the key** — Sysmon Event ID 13 + `ProcessGuid` join.
 - **Classification explains what kind of process it is** — Cursor, VS Code, dev server, security tool, unknown, suspicious, or possible MITM risk (never labeled malware automatically).
@@ -381,13 +413,15 @@ Observation → Event → State Transition → Sysmon Registry Writer Proof
 
 ### Demo modes
 
-| Mode | Command |
-| --- | --- |
-| **Local Windows** | `python -m src proxy-watch --interval 5` then `proxy-forensics --watch-integrated` |
-| **Fixture replay (Linux CI)** | `python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown` |
-| **Docker dashboard** | `PLATFORM_FIXTURE_MODE=1 docker compose up` → `http://localhost:8000/api/proxy/incidents` |
 
-**Engineering:** `make test` · `make lint` · `make replay-fixtures` · CI workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+| Mode                          | Command                                                                                                                      |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Local Windows**             | `python -m src proxy-watch --interval 5` then `proxy-forensics --watch-integrated`                                           |
+| **Fixture replay (Linux CI)** | `python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown` |
+| **Docker dashboard**          | `PLATFORM_FIXTURE_MODE=1 docker compose up` → `http://localhost:8000/api/proxy/incidents`                                    |
+
+
+**Engineering:** `make test` · `make lint` · `make replay-fixtures` · CI workflow `[.github/workflows/ci.yml](.github/workflows/ci.yml)`
 
 **Docs:** [docs/linkedin_post.md](docs/linkedin_post.md) · [docs/demo_video_script.md](docs/demo_video_script.md)
 
@@ -940,13 +974,15 @@ Fixtures: `fixtures/market_events/calendar.json`, `fixtures/market_events/review
 
 Five domains share one deterministic reasoning engine (`src/decision_engine`) via the `DomainAdapter` interface:
 
-| Domain | Adapter | Signals |
-|--------|---------|---------|
-| Windows | `WindowsAdapter` | Proxy drift, DNS, listener correlation |
-| Security | `SecurityAdapter` | Alert severity, IOC verification |
-| Cloud | `CloudAdapter` | Service health, error budget, failover |
+
+| Domain         | Adapter                 | Signals                                   |
+| -------------- | ----------------------- | ----------------------------------------- |
+| Windows        | `WindowsAdapter`        | Proxy drift, DNS, listener correlation    |
+| Security       | `SecurityAdapter`       | Alert severity, IOC verification          |
+| Cloud          | `CloudAdapter`          | Service health, error budget, failover    |
 | Infrastructure | `InfrastructureAdapter` | CPU saturation, circuit breaker, SLO burn |
-| Market Events | `MarketAdapter` | Calendar catalysts, volatility bias |
+| Market Events  | `MarketAdapter`         | Calendar catalysts, volatility bias       |
+
 
 Common pipeline: **Observation → Evidence → Decision → Outcome**
 
@@ -955,7 +991,7 @@ $env:PYTHONPATH = (Get-Location).Path
 pytest -q tests/decision_platform
 ```
 
-Architecture: [`docs/decision_platform_architecture.md`](docs/decision_platform_architecture.md) · Migration: [`docs/decision_platform_migration.md`](docs/decision_platform_migration.md) · Index: [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md)
+Architecture: `[docs/decision_platform_architecture.md](docs/decision_platform_architecture.md)` · Migration: `[docs/decision_platform_migration.md](docs/decision_platform_migration.md)` · Index: `[docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)`
 
 ---
 
@@ -963,12 +999,14 @@ Architecture: [`docs/decision_platform_architecture.md`](docs/decision_platform_
 
 Windows proxy drift and crypto market catalysts are the same class of problem: **fast-moving observations** that must become **structured state**, **ranked evidence**, **policy-gated decisions**, and **replayable audit** — without confusing monitoring with proof or research with permission to act.
 
-| Endpoint reliability | Market event research |
-|----------------------|------------------------|
-| Proxy registry drift | Macro / regulatory / unlock catalyst |
-| Hypothesis + evidence ladder | Evidence tree + signal score |
+
+| Endpoint reliability                | Market event research                                |
+| ----------------------------------- | ---------------------------------------------------- |
+| Proxy registry drift                | Macro / regulatory / unlock catalyst                 |
+| Hypothesis + evidence ladder        | Evidence tree + signal score                         |
 | ALLOW / PREVIEW / BLOCK remediation | ALLOW_RESEARCH / PREVIEW_ONLY / BLOCK_LOW_CONFIDENCE |
-| Post-incident replay | Post-event review + deterministic replay digest |
+| Post-incident replay                | Post-event review + deterministic replay digest      |
+
 
 This module demonstrates real-time monitoring, evidence ranking, risk gating, and forecast review for **SRE**, **platform engineering**, **quant research**, and **event-driven research** portfolios — not a trading bot.
 
@@ -1019,7 +1057,7 @@ pytest -q tests/decision_platform
 pytest -q
 ```
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs ruff, black, mypy (scoped), safety regression suite, and full pytest on Ubuntu — **no Windows admin, no destructive `.bat` scripts**.
+`[.github/workflows/ci.yml](.github/workflows/ci.yml)` runs ruff, black, mypy (scoped), safety regression suite, and full pytest on Ubuntu — **no Windows admin, no destructive `.bat` scripts**.
 
 Strategy: `[docs/test_strategy.md](docs/test_strategy.md)`.
 

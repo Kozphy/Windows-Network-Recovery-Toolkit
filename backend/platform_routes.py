@@ -942,6 +942,18 @@ def platform_metrics(
     return compute_platform_metrics()
 
 
+@router.get("/slo")
+def platform_slo(
+    principal: DemoPrincipal = Depends(get_demo_principal),
+) -> dict[str, Any]:
+    """Expose SRE-style SLO snapshot derived from append-only JSONL."""
+
+    assert_can_read_metrics(principal)
+    from platform_core.reliability_metrics import slo_metrics_dict
+
+    return slo_metrics_dict()
+
+
 @router.get("/events")
 def list_normalized_events(
     limit: int = 50,

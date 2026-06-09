@@ -522,7 +522,29 @@ def cmd_proxy_policy(args: argparse.Namespace) -> int:
     if bundle is None:
         print("No proxy incident available.", file=sys.stderr)
         return 0
-    pol = bundle["policy"]
+    pol = dict(bundle["policy"])
+    policy_yaml = getattr(args, "policy_yaml", None)
+    if policy_yaml:
+        from platform_core.policy_as_code import load_policy_document, resolve_policy_gate
+
+        doc = load_policy_document(_Path(str(policy_yaml)))
+        cls = bundle.get("classification") or {}
+        cls_label = str(cls.get("label") or cls.get("classification") or "")
+        diff = (bundle.get("transition") or {}).get("diff") or {}
+        after = diff.get("after") or {}
+        srv = str(after.get("proxy_server") or "")
+        external = bool(srv) and not (
+            srv.startswith("127.") or srv.lower().startswith("localhost")
+        )
+        gate = resolve_policy_gate(
+            doc,
+            classification=cls_label,
+            risk_level=str(diff.get("risk_level") or ""),
+            external_proxy=external,
+        )
+        pol["policy_profile"] = doc.name
+        pol["gate"] = gate
+        pol["decision"] = gate.upper()
     if emit_json:
         print(json.dumps({"policy": pol, "classification": bundle.get("classification")}, indent=2))
     else:

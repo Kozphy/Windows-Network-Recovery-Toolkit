@@ -54,6 +54,12 @@ from typing import Any
 
 from edge_device.cli_handlers import cmd_edge_diagnose, cmd_edge_replay
 
+from .production_handlers import (
+    cmd_fleet_report,
+    cmd_fleet_simulate,
+    cmd_incident_review,
+    cmd_policy_validate,
+)
 from .command_handlers import (
     cmd_diagnose_live,
     cmd_proxy_attribution,
@@ -1645,6 +1651,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="text",
         help="Output format (default text).",
     )
+    p_pxpol.add_argument(
+        "--policy",
+        dest="policy_yaml",
+        metavar="YAML",
+        help="Policy-as-code YAML profile (config/policies/*.yaml).",
+    )
     p_pxpol.set_defaults(func=cmd_proxy_policy)
 
     p_pxtl = sub.add_parser(
@@ -2224,6 +2236,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_edge_replay.add_argument("run_id", metavar="RUN_ID", help="Edge run id from a prior edge-diagnose.")
     p_edge_replay.set_defaults(func=cmd_edge_replay)
+
+    p_ir = sub.add_parser(
+        "incident-review",
+        help="Generate incident review from case study or platform JSONL (read-only).",
+    )
+    p_ir.add_argument("--incident-id", required=True, dest="incident_id", metavar="ID")
+    p_ir.add_argument(
+        "--format",
+        dest="review_format",
+        choices=("markdown", "json"),
+        default="markdown",
+    )
+    p_ir.set_defaults(func=cmd_incident_review)
+
+    p_pv = sub.add_parser("policy-validate", help="Validate a policy-as-code YAML profile.")
+    p_pv.add_argument("policy_path", metavar="policy.yaml")
+    p_pv.set_defaults(func=cmd_policy_validate)
+
+    p_fs = sub.add_parser("fleet-simulate", help="Fixture-based fleet simulation (no live mutation).")
+    p_fs.add_argument("--scenario", dest="fleet_scenario", default="proxy-drift")
+    p_fs.add_argument("--endpoints", dest="fleet_endpoints", type=int, default=25)
+    p_fs.set_defaults(func=cmd_fleet_simulate)
+
+    p_fr = sub.add_parser("fleet-report", help="Summarize last fleet simulation output.")
+    p_fr.add_argument(
+        "--format",
+        dest="fleet_report_format",
+        choices=("markdown", "json"),
+        default="markdown",
+    )
+    p_fr.set_defaults(func=cmd_fleet_report)
 
     return parser
 

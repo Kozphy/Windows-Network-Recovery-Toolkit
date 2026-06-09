@@ -120,6 +120,15 @@ def gauges_from_platform_metrics(metrics: dict[str, Any]) -> dict[str, float]:
         for rk, rv in rel.items():
             if isinstance(rv, (int, float)):
                 out[f"platform_reliability_{rk}"] = float(rv)
+    slo = metrics.get("slo_metrics")
+    if isinstance(slo, dict):
+        for sk, sv in slo.items():
+            if isinstance(sv, (int, float)):
+                out[f"platform_slo_{sk}"] = float(sv)
+            elif isinstance(sv, dict):
+                for nk, nv in sv.items():
+                    if isinstance(nv, (int, float)):
+                        out[f"platform_slo_{nk}"] = float(nv)
     audit_rows = metrics.get("audit_row_count")
     if isinstance(audit_rows, (int, float)):
         out["platform_audit_volume_total"] = float(audit_rows)

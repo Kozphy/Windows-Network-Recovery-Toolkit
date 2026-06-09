@@ -109,6 +109,11 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 |-----|-------|
 | `docs/decision_platform_architecture.md` | Multi-domain architecture diagram |
 | `docs/decision_platform_migration.md` | Phased adapter/API wiring plan |
+| `docs/production_shape_upgrade.md` | Production-shape portfolio upgrade |
+| `docs/demo_production_5_min.md` | 5-minute production demo |
+| `docs/sre_interview_walkthrough.md` | SRE portfolio narrative |
+| `docs/security_tooling_walkthrough.md` | Security / forensics narrative |
+| `docs/platform_engineering_walkthrough.md` | Platform engineering narrative |
 | `docs/production_readiness.md` | Deployment and readiness checklist |
 | `docs/test_strategy.md` | Safety regression strategy |
 | `docs/platform_engineering_gap_report.md` | README vs repo reality audit |
