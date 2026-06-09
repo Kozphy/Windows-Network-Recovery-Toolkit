@@ -1,5 +1,9 @@
 """Outcome learning — evaluate recorded decisions against ground truth.
 
+.. deprecated::
+    For new MDP code use :mod:`src.platform.outcome_engine`. This module remains
+    for Decision Intelligence API compatibility.
+
 Pipeline::
 
     DecisionOutcome → OutcomeEvaluation → LearningMetrics → replay digest

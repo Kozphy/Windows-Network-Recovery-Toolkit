@@ -37,6 +37,14 @@ jobs:
       - name: Ruff check
         run: ruff check .
 
+      - name: Bandit (ERP package)
+        continue-on-error: true
+        run: bandit -r windows_network_toolkit -q
+
+      - name: pip-audit
+        continue-on-error: true
+        run: pip-audit
+
       - name: Black check
         # Formatting debt: ~200 files pending `black .` pass — see docs/platform_engineering_gap_report.md
         continue-on-error: true
@@ -61,12 +69,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: ERP toolkit tests
+        run: pytest -q windows_network_toolkit/tests
+
+      - name: Canonical platform_core tests
+        run: pytest -q tests/platform_core tests/api/test_canonical_routes.py tests/api/test_policy_preview_approval_execute_flow.py tests/api/test_metrics_route.py
+
       - name: Safety contract tests (ordered)
         run: |
           pytest -q tests/test_policy_safety_contract.py
           pytest -q tests/test_api_dry_run_default.py
           pytest -q tests/test_replay_determinism.py
           pytest -q tests/test_audit_contract.py
+          pytest -q tests/test_evidence_level_contract.py
+          pytest -q tests/test_safety_contract_extensions.py
+          pytest -q tests/test_api_hardening_contract.py
+          pytest -q tests/test_policy_model_unit.py
+          pytest -q tests/test_fixture_regression_demo.py
 
       - name: Pytest (full suite + Linux integration)
         run: |
@@ -80,6 +99,10 @@ jobs:
           python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown
           python -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json
           python -m src proxy-report --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown
+          python -m src demo-scenario healthy --format both
+          python -m src demo-scenario proxy-drift --format json
+          python -m src demo-scenario final-causation --format markdown
+          python -m platform_core.demo_fleet --endpoints 10 --incidents 3 --output /tmp/fleet_ci_demo
           python tools/public_release_audit.py --tracked-only
 
       - name: Platform health contracts (in-process)

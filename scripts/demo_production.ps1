@@ -19,6 +19,15 @@ function Invoke-DemoStep($Name, $Cmd) {
     Write-Host ""
 }
 
+Invoke-DemoStep "Demo scenario — healthy (JSON + Markdown)" @(
+    "python", "-m", "src", "demo-scenario", "healthy", "--format", "both"
+)
+Invoke-DemoStep "Demo scenario — proxy drift (correlated only)" @(
+    "python", "-m", "src", "demo-scenario", "proxy-drift", "--format", "both"
+)
+Invoke-DemoStep "Demo scenario — final causation" @(
+    "python", "-m", "src", "demo-scenario", "final-causation", "--format", "both"
+)
 Invoke-DemoStep "Seed fleet simulation (25 endpoints)" @(
     "python", "-m", "src", "fleet-simulate", "--scenario", "proxy-drift", "--endpoints", "25"
 )
@@ -58,7 +67,9 @@ Invoke-DemoStep "Production upgrade tests" @(
     "tests/test_slo_metrics.py",
     "tests/test_fleet_simulation.py",
     "tests/test_policy_as_code.py",
-    "tests/test_demo_production_contract.py"
+    "tests/test_demo_production_contract.py",
+    "tests/test_fixture_regression_demo.py",
+    "tests/test_demo_replay_pipeline.py"
 )
 
 if ($env:START_API -eq "1") {

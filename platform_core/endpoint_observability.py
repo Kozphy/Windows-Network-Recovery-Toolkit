@@ -3,21 +3,37 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from platform_core.storage import iter_jsonl, platform_data_dir
 
 
+def _parse_iso(ts: str | None) -> datetime | None:
+    if not ts:
+        return None
+    text = ts.replace("Z", "+00:00") if ts.endswith("Z") else ts
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
 def compute_endpoint_prometheus_gauges(*, data_root: Path | None = None) -> dict[str, float]:
     root = data_root if data_root is not None else platform_data_dir()
     out: dict[str, float] = defaultdict(float)
+    diagnosis_deltas: list[float] = []
 
     for row in iter_jsonl(root / "platform_signals.jsonl"):
         out["endpoint_events_total"] += 1.0
         kind = str(row.get("kind") or row.get("signal") or "")
         if kind in ("proxy_registry_change", "proxy_change", "proxy_enable_transition"):
             out["proxy_drift_incidents_total"] += 1.0
+        occurred = _parse_iso(row.get("occurred_at"))
+        detected = _parse_iso(row.get("detected_at"))
+        if occurred and detected:
+            diagnosis_deltas.append(max(0.0, (detected - occurred).total_seconds()))
 
     for row in iter_jsonl(root / "failure_events.jsonl"):
         sev = str(row.get("severity") or "unknown").lower()
@@ -36,6 +52,8 @@ def compute_endpoint_prometheus_gauges(*, data_root: Path | None = None) -> dict
     out["audit_replay_success_total"] = float(
         sum(1 for a in iter_jsonl(root / "audit.jsonl") if a.get("action") == "replay" and a.get("decision") == "ok")
     )
+    if diagnosis_deltas:
+        out["diagnosis_duration_seconds"] = round(sum(diagnosis_deltas) / len(diagnosis_deltas), 3)
     return dict(out)
 
 

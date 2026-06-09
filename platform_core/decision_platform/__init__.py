@@ -1,5 +1,9 @@
 """Multi-domain Decision Intelligence Platform.
 
+.. deprecated::
+    Use :mod:`src.platform` as the canonical pipeline. This package remains for
+    backward compatibility; new code must not import from here.
+
 Normalizes Windows, Security, Cloud, Infrastructure, and Market Events inputs
 into a single pipeline (Observation → Evidence → Decision) backed by
 :mod:`src.decision_engine`.

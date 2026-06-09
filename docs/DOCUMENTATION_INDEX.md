@@ -30,7 +30,23 @@ python -m src proxy-causation --fixture tests/fixtures/proxy_causation/scenario1
 
 Modules: `src/proxy_guard/registry_writer_proof.py`, `final_causation.py`, `port_owner.py`, `process_tree.py`, `proxy_path_proof.py`
 
-### 2. Windows endpoint reliability (classic)
+### 2. Multi-domain decision platform (fixture-based)
+
+```text
+NormalizedEvent → Evidence → Hypotheses → Decisions → Policy → Audit → Replay → Metrics
+```
+
+Commands:
+
+```powershell
+python -m src platform events
+python -m src platform decide --event-id win-proxy-localhost-001
+python -m src platform replay
+```
+
+Modules: `src/core/`, `src/domains/`, `src/platform_handlers.py` · Doc: [multi_domain_decision_platform.md](multi_domain_decision_platform.md) · Tests: `tests/test_multi_domain_platform.py`
+
+### 3. Windows endpoint reliability (classic)
 
 ```text
 Signals → FailureBlocks → Hypothesis/Evidence → Policy (ALLOW/PREVIEW/BLOCK) → Preview (dry-run default)

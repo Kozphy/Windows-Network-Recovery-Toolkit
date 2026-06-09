@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from platform_core.policy_as_code import load_policy_document, resolve_policy_gate, validate_policy_document
+from platform_core.policy_as_code import (
+    load_policy_document,
+    resolve_policy_gate,
+    validate_policy_document,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 POLICIES = REPO / "config" / "policies"

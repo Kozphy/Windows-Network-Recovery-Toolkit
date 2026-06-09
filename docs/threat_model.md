@@ -1,6 +1,6 @@
 # Threat model
 
-Local-first Endpoint Reliability Platform — design constraints for portfolio and lab use.
+Local-first **Endpoint Reliability Platform** — security observability and safe remediation boundaries.
 
 ## Assets
 
@@ -10,6 +10,34 @@ Local-first Endpoint Reliability Platform — design constraints for portfolio a
 | Audit JSONL | Append-only decision and remediation history |
 | Operator trust | Policy/confirmation UX |
 | Privacy | Hostnames, paths, proxy ports (redact before sharing) |
+
+## Threats
+
+| Threat | Impact |
+|--------|--------|
+| Malicious local process modifies proxy settings | Browser/dev-tool traffic redirected; ping/DNS may still pass |
+| Benign developer tool creates localhost proxy | False-positive attribution if treated as malware |
+| Stale telemetry causes wrong attribution | Writer/listener mismatch; incorrect incident severity |
+| Operator over-trusts heuristic evidence | Destructive or unnecessary remediation |
+| Abused API caller attempts destructive remediation | Firewall reset, adapter disable, process kill |
+| Logs accidentally include sensitive local data | Credential/path leakage in shared artifacts |
+
+## Controls
+
+| Control | Mechanism |
+|---------|-----------|
+| Local-first design | No default cloud upload; `PLATFORM_DATA_DIR` on disk |
+| Synthetic fixtures in git | `tests/fixtures/demo/` — no real endpoint logs committed |
+| Real logs ignored | `.gitignore` for `platform_data/`, `reports/`, machine exports |
+| Evidence level separation | `OBSERVED_ONLY` → `FINAL_CAUSATION`; ordinal confidence |
+| Sysmon/Procmon proof requirement | `PROVEN_REGISTRY_WRITER` requires writer telemetry class |
+| Listener correlation is not proof | `CORRELATED` capped without upgrade guards |
+| Typed confirmation | Registry mutation paths require explicit phrase |
+| Dry-run default | API `execute` defaults `dry_run=true` |
+| Append-only audit | Preview and execute attempts logged |
+| Replayable decisions | Deterministic fixture replay + audit tail |
+| Allowlist policy | Developer tooling and proxy hosts in `config/` |
+| High-risk action blocking | `BLOCK_DESTRUCTIVE`, manual-only firewall paths |
 
 ## Attacker model
 
@@ -22,33 +50,39 @@ Local-first Endpoint Reliability Platform — design constraints for portfolio a
 | Confused operator | Skip preview | Apply wrong fix |
 | Stale telemetry | Supply outdated Sysmon export | False writer match |
 
-## Threats and mitigations
+## Explicitly out of scope
 
-| Threat | Mitigation |
-|--------|------------|
-| Silent destructive repair | Dry-run default; policy BLOCK; typed confirmation |
-| False accusation from listener correlation | Evidence ladder; ADR-004; fusion limitations |
-| JSONL tampering | Hash-chain helpers; replay from stored observations |
-| Credential leakage in logs | Redaction helpers; public-release audit script |
-| Unsigned RBAC headers | Documented demo-only; not production auth |
-| Critical incident from weak evidence | `incident_engine` caps severity |
+- Antivirus or malware removal
+- Autonomous containment
+- Enterprise EDR replacement
+- Guaranteed attribution without Sysmon/Procmon-class telemetry
+- Trading / financial decisions
+- Generic AI agent decision-making
+- Multi-tenant SaaS security in this repository
 
-## Non-goals
+Experimental modules (decision intelligence, market events, edge device simulators) live under [`labs/`](../labs/README.md) and are **not** part of the main endpoint reliability threat boundary.
 
-- Not antivirus or malware removal
-- Not autonomous containment or EDR replacement
-- Not guaranteed attribution without Sysmon/Procmon-class telemetry
-- Not multi-tenant SaaS security in this repository
-- Not trading, crypto, or financial decision-making (see `labs/`)
-- Not generic AI agent decision-making (see `labs/decision_platform`)
+## Architecture diagram (trust boundaries)
 
-## Controls summary
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Operator / API client (untrusted input)                    │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ typed confirmation + dry_run default
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Policy engine (BLOCK / PREVIEW / REQUIRE_TYPED_CONFIRM)    │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ allowed actions only
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Remediation preview (no silent kill / firewall / adapter)  │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ append-only
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Audit JSONL + replay engine (local PLATFORM_DATA_DIR)      │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- Typed confirmation on mutation paths
-- Registry allowlist
-- No arbitrary shell from API
-- Evidence levels (`NO_WRITER_EVIDENCE` … `WRITER_AND_LISTENER_MATCH`)
-- Append-only audit
-- Local-first storage (no default cloud upload)
-
-See [security_boundaries.md](security_boundaries.md), [operator_safety.md](operator_safety.md), [abuse_cases.md](abuse_cases.md).
+See also [security_boundaries.md](security_boundaries.md), [operator_safety.md](operator_safety.md), [evidence_model.md](evidence_model.md), [policy_model.md](policy_model.md).

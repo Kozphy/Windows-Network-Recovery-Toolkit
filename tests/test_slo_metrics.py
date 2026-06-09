@@ -8,7 +8,6 @@ from pathlib import Path
 
 from platform_core.reliability_metrics import compute_slo_metrics, slo_metrics_dict
 
-
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "platform_slo"
 
 

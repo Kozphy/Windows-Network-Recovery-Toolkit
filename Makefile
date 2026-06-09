@@ -31,24 +31,28 @@ demo-tier1:
 	$(PYTHON) -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json
 	$(PYTHON) -m src proxy-report --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown
 	$(PYTHON) tools/public_release_audit.py --tracked-only
-	$(PYTEST) -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py tests/test_replay_determinism.py tests/test_audit_contract.py
+	$(PYTEST) -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py tests/test_replay_determinism.py tests/test_audit_contract.py tests/test_evidence_level_contract.py tests/test_safety_contract_extensions.py tests/test_fixture_regression_demo.py
 
 # Production-shaped portfolio demo (fixtures + case studies + fleet sim; no destructive actions).
 demo-production:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/demo_production.ps1
 
 demo-healthy:
-	$(PYTHON) -m src demo-scenario healthy --format markdown
+	$(PYTHON) -m src demo-scenario healthy --format both
 
 demo-proxy-drift:
-	$(PYTHON) -m src demo-scenario proxy-drift --format markdown
+	$(PYTHON) -m src demo-scenario proxy-drift --format both
 
 demo-final-causation:
-	$(PYTHON) -m src demo-scenario final-causation --format markdown
+	$(PYTHON) -m src demo-scenario final-causation --format both
 
 demo-fleet-enterprise:
-	$(PYTHON) -m platform_core.demo_fleet --endpoints 100 --incidents 20 --data-dir platform_data_fleet_demo
+	$(PYTHON) -m platform_core.demo_fleet --endpoints 100 --incidents 20 --output platform_data_fleet_demo
 
 replay-fixtures:
+	$(PYTHON) -m src demo-scenario healthy --format both
+	$(PYTHON) -m src demo-scenario proxy-drift --format both
+	$(PYTHON) -m src demo-scenario final-causation --format both
 	$(PYTHON) -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown
 	$(PYTHON) -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json
+	$(PYTEST) -q tests/test_demo_replay_pipeline.py tests/test_replay_determinism.py

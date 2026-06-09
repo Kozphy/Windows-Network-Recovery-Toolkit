@@ -58,7 +58,8 @@ class WindowsAdapter(DomainAdapter):
     def derive_evidence(self, observations: list[Observation]) -> list[Evidence]:
         evidence: list[Evidence] = []
         for obs in observations:
-            supports = obs.signal != "no_writer_proof"
+            if obs.signal == "no_writer_proof":
+                continue
             if obs.signal == "proxy_enabled" and obs.value:
                 evidence.append(
                     Evidence(

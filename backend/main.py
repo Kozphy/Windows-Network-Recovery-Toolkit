@@ -36,6 +36,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from platform_core.metrics import compute_platform_metrics
@@ -62,6 +63,7 @@ from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 from .live_observability import router as toolkit_obs_router
 from .observability_metrics import bootstrap_labeled_metrics_from_storage
 from .platform_fleet_routes import router as platform_fleet_router
+from .platform_mdp_routes import router as platform_mdp_router
 from .platform_routes import router as platform_router
 from .platform_sre_routes import router as platform_sre_router
 from .platform_v2_routes import router as platform_v2_router
@@ -229,11 +231,29 @@ app = FastAPI(
 
 app.include_router(toolkit_obs_router)
 app.include_router(platform_router)
+app.include_router(platform_mdp_router)
 app.include_router(platform_v2_router, prefix="/platform")
 app.include_router(platform_sre_router, prefix="/platform")
 app.include_router(platform_fleet_router, prefix="/platform")
 if decision_intelligence_router is not None:
     app.include_router(decision_intelligence_router)
+
+try:
+    from backend.canonical_routes import router as canonical_router
+
+    app.include_router(canonical_router)
+except ImportError:  # pragma: no cover
+    pass
+
+try:
+    from windows_network_toolkit.platform.api import router as erp_platform_router
+
+    app.include_router(erp_platform_router)
+    _DASHBOARD_DIR = _REPO_ROOT_MAIN / "windows_network_toolkit" / "platform" / "dashboard"
+    if _DASHBOARD_DIR.is_dir():
+        app.mount("/dashboard", StaticFiles(directory=str(_DASHBOARD_DIR), html=True), name="erp-dashboard")
+except ImportError:  # pragma: no cover
+    pass
 
 try:
     from src.api.routes_evidence_tree import router as proxy_evidence_router

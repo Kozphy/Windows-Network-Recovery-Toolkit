@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -75,7 +75,7 @@ def run_fleet_simulation(
         if p.is_file():
             p.unlink()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     incident_count = 0
     drift_count = 0
     template = spec.get("incident_template") or {}
@@ -158,6 +158,17 @@ def run_fleet_simulation(
                     "timestamp": ts,
                 },
             )
+            if incident_count % 4 == 0:
+                _append_jsonl(
+                    base / "audit.jsonl",
+                    {
+                        "audit_id": str(uuid.uuid4()),
+                        "action": "replay",
+                        "decision": "ok",
+                        "endpoint_id": ep_id,
+                        "timestamp": ts,
+                    },
+                )
             incident_count += 1
 
     summary = {

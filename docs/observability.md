@@ -20,6 +20,7 @@
 - `fleet_endpoints_total`
 - `incidents_by_severity_total_{severity}`
 - `audit_replay_success_total`
+- `diagnosis_duration_seconds` (mean `detected_at − occurred_at` from signals)
 
 Source: `platform_core/endpoint_observability.py`, merged in `backend/main.py` `/metrics`.
 
@@ -28,7 +29,7 @@ Source: `platform_core/endpoint_observability.py`, merged in `backend/main.py` `
 - Fleet health overview
 - Incidents by severity (`/platform/incidents`)
 - Evidence + policy (`/platform/evidence`, `/platform/policy`)
-- SLO (`/platform/slo`)
+- SLO + evidence/policy distribution (`/platform/slo`)
 - Replay (`/platform/replay`)
 
 Docker: `docker compose up` → Grafana `:3001`, Prometheus scrapes API `:8000/metrics`.

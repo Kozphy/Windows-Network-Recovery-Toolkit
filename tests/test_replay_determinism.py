@@ -45,6 +45,18 @@ def test_replay_jsonl_fixture_offline(tmp_path: Path) -> None:
     assert summary.parse_errors == 0
 
 
+def test_demo_fixture_replay_pipeline_stable() -> None:
+    from pathlib import Path
+
+    from platform_core.demo_replay import build_replay_events, replay_summary_from_events
+
+    repo = Path(__file__).resolve().parents[1]
+    path = repo / "tests" / "fixtures" / "demo" / "final_causation_browser_path_failure.json"
+    blob = json.loads(path.read_text(encoding="utf-8"))
+    events = build_replay_events(blob)
+    assert replay_summary_from_events(events) == replay_summary_from_events(events)
+
+
 def test_replay_detects_stale_embedded_execute_allow() -> None:
     events = [
         {

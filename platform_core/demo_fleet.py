@@ -239,9 +239,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument(
         "--data-dir",
+        "--output",
         type=Path,
         default=None,
-        help="Defaults to repo ./platform_data_fleet_demo relative to cwd when unset.",
+        dest="data_dir",
+        help="Output directory (default ./platform_data_fleet_demo). Alias: --output.",
     )
     p.add_argument(
         "--reset", action="store_true", help="Delete known demo JSONL shards before appending."

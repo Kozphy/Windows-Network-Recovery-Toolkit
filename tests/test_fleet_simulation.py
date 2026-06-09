@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from platform_core.fleet_simulation import fleet_report, run_fleet_simulation
@@ -39,7 +38,7 @@ def test_cli_fleet_simulate() -> None:
 
     from src.production_handlers import cmd_fleet_simulate
 
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory():
         repo = Path(__file__).resolve().parents[1]
         code = cmd_fleet_simulate(
             argparse.Namespace(

@@ -15,10 +15,19 @@ $env:PYTHONPATH = (Get-Location).Path
 | Fleet 100×20 | `make demo-fleet-enterprise` |
 | Full portfolio | `make demo-production` |
 
-Each `demo-scenario` prints evidence level, policy decision, limitations, and next steps.
+Each `demo-scenario` emits **Markdown + JSON** (`--format both`), including:
+
+- evidence level
+- policy decision
+- recommended next step
+- explicit limitations
+- deterministic replay summary + fingerprint
 
 ```powershell
-python -m src demo-scenario final-causation --format json
+python -m src demo-scenario final-causation --format both
+python -m src demo-scenario proxy-drift --format json
 ```
+
+No admin privileges required. Fixtures only — no host mutation.
 
 Epistemic boundaries: observation ≠ proof · correlation ≠ causation · PREVIEW ≠ execute approval.

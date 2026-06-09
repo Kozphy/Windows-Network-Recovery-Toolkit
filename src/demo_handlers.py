@@ -29,6 +29,7 @@ def _fixture(name: str, repo: Path) -> Path:
 
 
 def run_demo_scenario(name: str, *, repo_root: Path | None = None) -> dict[str, Any]:
+    from platform_core.demo_replay import replay_fixture_blob, report_fingerprint
     from platform_core.evidence_model import evidence_limitations, resolve_evidence_level
     from platform_core.policy_model import evaluate_endpoint_policy
 
@@ -44,30 +45,54 @@ def run_demo_scenario(name: str, *, repo_root: Path | None = None) -> dict[str, 
         known_dev_tool=bool(ctx.get("known_dev_tool")),
         healthy_baseline=bool(ctx.get("healthy_baseline")),
     )
-    return {
+    next_steps = blob.get("recommended_next_steps") or []
+    limitations = blob.get("limitations") or evidence_limitations(level)  # type: ignore[arg-type]
+    report: dict[str, Any] = {
         "scenario_id": blob.get("scenario_id"),
         "title": blob.get("title"),
         "evidence_level": level,
         "expected_evidence_level": blob.get("expected_evidence_level"),
+        "policy_decision": policy.get("decision"),
         "policy": policy,
         "expected_policy": blob.get("expected_policy"),
-        "limitations": blob.get("limitations") or evidence_limitations(level),  # type: ignore[arg-type]
-        "recommended_next_steps": blob.get("recommended_next_steps") or [],
+        "limitations": limitations,
+        "recommended_next_step": next_steps[0] if next_steps else "Review fixture output",
+        "recommended_next_steps": next_steps,
+        "replay": replay_fixture_blob(blob),
+        "host_mutation": False,
+        "requires_admin": False,
     }
+    report["fingerprint"] = report_fingerprint(report)
+    return report
 
 
 def render_markdown(report: dict[str, Any]) -> str:
     pol = report.get("policy") or {}
+    replay = report.get("replay") or {}
     lines = [
         f"# {report.get('title')}",
         "",
-        f"**Evidence:** `{report.get('evidence_level')}` (expected `{report.get('expected_evidence_level')}`)",
-        f"**Policy:** `{pol.get('decision')}` (expected `{report.get('expected_policy')}`)",
+        f"**Evidence level:** `{report.get('evidence_level')}` (expected `{report.get('expected_evidence_level')}`)",
+        f"**Policy decision:** `{report.get('policy_decision') or pol.get('decision')}` "
+        f"(expected `{report.get('expected_policy')}`)",
+        f"**Recommended next step:** {report.get('recommended_next_step')}",
         "",
         "## Limitations",
     ]
     lines.extend(f"- {x}" for x in report.get("limitations") or [])
-    lines.extend(["", "## Next steps"])
+    lines.extend(
+        [
+            "",
+            "## Replay (deterministic)",
+            f"- Action: `{replay.get('remediation_action', '—')}`",
+            f"- Events replayed: {replay.get('event_count', 0)}",
+            f"- Changed decisions: {replay.get('changed_decisions', 0)}",
+            f"- Replay stable: {replay.get('replay_stable')}",
+            f"- Fingerprint: `{report.get('fingerprint', '—')}`",
+            "",
+            "## Next steps",
+        ]
+    )
     lines.extend(f"- {x}" for x in report.get("recommended_next_steps") or [])
     lines.append("\n_Observation ≠ proof · Correlation ≠ causation · PREVIEW ≠ execute approval._\n")
     return "\n".join(lines)
@@ -78,6 +103,10 @@ def cmd_demo_scenario(args: argparse.Namespace) -> int:
     fmt = str(getattr(args, "demo_format", "markdown")).lower()
     report = run_demo_scenario(name, repo_root=_root(getattr(args, "repo_root", None)))
     if fmt == "json":
+        print(json.dumps(report, indent=2))
+    elif fmt == "both":
+        print(render_markdown(report), end="")
+        print("\n--- JSON ---\n")
         print(json.dumps(report, indent=2))
     else:
         print(render_markdown(report), end="")

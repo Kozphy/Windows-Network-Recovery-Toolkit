@@ -54,20 +54,13 @@ from typing import Any
 
 from edge_device.cli_handlers import cmd_edge_diagnose, cmd_edge_replay
 
-from .demo_handlers import SCENARIOS, cmd_demo_scenario
-from .production_handlers import (
-    cmd_fleet_report,
-    cmd_fleet_simulate,
-    cmd_incident_review,
-    cmd_policy_validate,
-)
 from .command_handlers import (
     cmd_diagnose_live,
     cmd_proxy_attribution,
+    cmd_proxy_causation,
     cmd_proxy_classify,
     cmd_proxy_diagnose,
     cmd_proxy_disable,
-    cmd_proxy_causation,
     cmd_proxy_forensics,
     cmd_proxy_guard,
     cmd_proxy_investigate,
@@ -99,6 +92,7 @@ from .command_handlers_safety import (
     cmd_proxy_registry_writer_proof,
     cmd_proxy_restore_lkg,
 )
+from .demo_handlers import SCENARIOS, cmd_demo_scenario
 from .diagnostics.collector import collect_features, load_features_json
 from .diagnostics.features import FeatureVector
 from .hypothesis.v1_scoring import CauseScore, DecisionResult, explain_primary, score_root_causes
@@ -118,6 +112,20 @@ from .network_state.cli_handlers import (
     cmd_network_state_snapshot_save,
     cmd_network_state_snapshot_set_default,
     cmd_network_state_snapshot_show,
+)
+from .platform_handlers import (
+    cmd_platform_decide,
+    cmd_platform_events,
+    cmd_platform_evidence,
+    cmd_platform_metrics,
+    cmd_platform_outcome,
+    cmd_platform_replay,
+)
+from .production_handlers import (
+    cmd_fleet_report,
+    cmd_fleet_simulate,
+    cmd_incident_review,
+    cmd_policy_validate,
 )
 from .proof.proxy_https import run_localhost_proxy_https_proof
 from .proxy_guard.linux_proxy_commands import cmd_proxy_linux_snapshot
@@ -2263,7 +2271,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_demo = sub.add_parser("demo-scenario", help="Run deterministic evidence/policy demo fixture.")
     p_demo.add_argument("demo_scenario", choices=list(SCENARIOS.keys()))
-    p_demo.add_argument("--format", dest="demo_format", choices=("markdown", "json"), default="markdown")
+    p_demo.add_argument(
+        "--format", dest="demo_format", choices=("markdown", "json", "both"), default="markdown"
+    )
     p_demo.set_defaults(func=cmd_demo_scenario)
 
     p_fr = sub.add_parser("fleet-report", help="Summarize last fleet simulation output.")
@@ -2274,6 +2284,57 @@ def build_parser() -> argparse.ArgumentParser:
         default="markdown",
     )
     p_fr.set_defaults(func=cmd_fleet_report)
+
+    p_plat = sub.add_parser(
+        "platform",
+        help="Multi-domain decision platform (fixture-based, research/preview only).",
+    )
+    plat_sub = p_plat.add_subparsers(dest="platform_cmd", required=True)
+
+    p_pe = plat_sub.add_parser("events", help="List normalized events from domain fixtures.")
+    p_pe.add_argument(
+        "--domain",
+        dest="platform_domain",
+        choices=("windows", "security", "cloud", "infrastructure", "market"),
+        default=None,
+    )
+    p_pe.add_argument("--fixture", dest="platform_fixture", default=None)
+    p_pe.add_argument("--format", dest="platform_format", choices=("json",), default="json")
+    p_pe.set_defaults(func=cmd_platform_events)
+
+    p_pve = plat_sub.add_parser("evidence", help="Build evidence tree for an event.")
+    p_pve.add_argument("--event-id", required=True, dest="event_id")
+    p_pve.add_argument("--format", dest="platform_format", choices=("json",), default="json")
+    p_pve.add_argument("--audit-path", dest="audit_path", default=None)
+    p_pve.set_defaults(func=cmd_platform_evidence)
+
+    p_pd = plat_sub.add_parser("decide", help="Rank decisions for an event (policy-gated).")
+    p_pd.add_argument("--event-id", required=True, dest="event_id")
+    p_pd.add_argument("--format", dest="platform_format", choices=("json",), default="json")
+    p_pd.add_argument("--audit-path", dest="audit_path", default=None)
+    p_pd.set_defaults(func=cmd_platform_decide)
+
+    p_po = plat_sub.add_parser("outcome", help="Record a decision outcome (learning metrics).")
+    p_po.add_argument("--decision-id", required=True, dest="decision_id")
+    p_po.add_argument("--failure", action="store_true", help="Record unsuccessful outcome.")
+    p_po.add_argument("--observed-result", dest="observed_result", default="fixture_simulated")
+    p_po.add_argument("--cost-score", type=float, default=0.1)
+    p_po.add_argument("--time-to-resolution", type=float, default=120.0)
+    p_po.add_argument("--lessons", default="Fixture outcome recorded.")
+    p_po.add_argument("--format", dest="platform_format", choices=("json",), default="json")
+    p_po.set_defaults(func=cmd_platform_outcome)
+
+    p_pr = plat_sub.add_parser("replay", help="Replay all domain fixtures deterministically.")
+    p_pr.add_argument("--domain", dest="platform_domain", default=None)
+    p_pr.add_argument("--fixture", dest="platform_fixture", default=None)
+    p_pr.add_argument("--audit-path", dest="audit_path", default=None)
+    p_pr.add_argument("--format", dest="platform_format", choices=("json",), default="json")
+    p_pr.set_defaults(func=cmd_platform_replay)
+
+    p_pm = plat_sub.add_parser("metrics", help="Outcome and platform learning metrics.")
+    p_pm.add_argument("--audit-path", dest="audit_path", default=None)
+    p_pm.add_argument("--format", dest="platform_format", choices=("json",), default="json")
+    p_pm.set_defaults(func=cmd_platform_metrics)
 
     return parser
 

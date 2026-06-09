@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 from pathlib import Path
 
 import pytest
 
-from src.demo_handlers import SCENARIOS, cmd_demo_scenario
-import argparse
+from src.demo_handlers import SCENARIOS, cmd_demo_scenario, run_demo_scenario
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -18,6 +19,21 @@ def test_demo_scenario_cli_exits_zero(name: str) -> None:
         argparse.Namespace(demo_scenario=name, demo_format="json", repo_root=str(REPO))
     )
     assert code == 0
+
+
+@pytest.mark.parametrize("name", list(SCENARIOS.keys()))
+def test_evidence_and_policy_match_fixture_expectations(name: str) -> None:
+    report = run_demo_scenario(name, repo_root=REPO)
+    assert report["evidence_level"] == report["expected_evidence_level"]
+    assert report["policy_decision"] == report["expected_policy"]
+
+
+@pytest.mark.parametrize("name", list(SCENARIOS.keys()))
+def test_json_report_roundtrip_stable(name: str) -> None:
+    report = run_demo_scenario(name, repo_root=REPO)
+    encoded = json.dumps(report, sort_keys=True)
+    decoded = json.loads(encoded)
+    assert decoded["fingerprint"] == report["fingerprint"]
 
 
 def test_fleet_100_endpoints_20_incidents(tmp_path) -> None:

@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from platform_core.decision_platform import AdapterContext, PlatformDomain, get_adapter, list_domains
+from platform_core.decision_platform import (
+    AdapterContext,
+    PlatformDomain,
+    get_adapter,
+    list_domains,
+)
 from platform_core.decision_platform.adapters import (
     CloudAdapter,
     InfrastructureAdapter,

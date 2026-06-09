@@ -18,6 +18,15 @@ export default function PlatformSloPage() {
   }, []);
 
   const rel = (slo?.reliability || {}) as Record<string, unknown>;
+  const metricEntries = metrics
+    ? Object.entries(metrics as Record<string, unknown>).filter(
+        ([k]) =>
+          k.startsWith("evidence_level_total_") ||
+          k.startsWith("policy_decisions_total_") ||
+          k === "audit_replay_success_total" ||
+          k === "diagnosis_duration_seconds"
+      )
+    : [];
 
   return (
     <PlatformShell
@@ -47,6 +56,21 @@ export default function PlatformSloPage() {
           </tbody>
         </table>
       )}
+      {metricEntries.length > 0 ? (
+        <section style={{ marginTop: 24 }}>
+          <h3 style={{ fontSize: "1rem", marginBottom: 8 }}>Evidence & policy distribution</h3>
+          <table style={{ borderCollapse: "collapse", fontSize: "0.85rem" }}>
+            <tbody>
+              {metricEntries.map(([k, v]) => (
+                <tr key={k}>
+                  <td style={{ padding: "4px 12px 4px 0", fontWeight: 600 }}>{k}</td>
+                  <td>{String(v)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
       {metrics ? (
         <details style={{ marginTop: 24 }}>
           <summary>Raw /platform/metrics</summary>

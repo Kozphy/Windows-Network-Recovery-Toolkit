@@ -41,8 +41,9 @@ def test_unknown_incident_raises() -> None:
 
 
 def test_cli_incident_review_markdown() -> None:
-    from src.production_handlers import cmd_incident_review
     import argparse
+
+    from src.production_handlers import cmd_incident_review
 
     code = cmd_incident_review(
         argparse.Namespace(

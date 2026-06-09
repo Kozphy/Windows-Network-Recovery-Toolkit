@@ -50,8 +50,9 @@ def test_final_causation_requires_writer_and_port_or_network() -> None:
 
 @pytest.mark.parametrize("fixture", ["healthy", "proxy-drift", "final-causation", "suspicious-external"])
 def test_demo_fixtures_match_expected(fixture: str) -> None:
-    from src.demo_handlers import run_demo_scenario
     from pathlib import Path
+
+    from src.demo_handlers import run_demo_scenario
 
     report = run_demo_scenario(fixture, repo_root=Path(__file__).resolve().parents[1])
     assert report["evidence_level"] == report["expected_evidence_level"]

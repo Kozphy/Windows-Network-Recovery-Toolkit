@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-
-import pytest
 
 from src.proxy_guard.final_causation import collect_final_causation
 from src.proxy_guard.registry_writer_proof import collect_registry_writer_evidence

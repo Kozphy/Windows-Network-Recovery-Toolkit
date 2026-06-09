@@ -46,6 +46,8 @@ include = [
     "src*",
     "edge_device*",
     "endpoint_agent*",
+    "windows_network_toolkit*",
+    "toolkit*",
 ]
 exclude = ["tests*", "frontend*", "scripts*", "docs*"]
 
@@ -124,11 +126,14 @@ pretty = true
 ignore_missing_imports = true
 check_untyped_defs = false
 disallow_untyped_defs = false
+explicit_package_bases = true
 files = [
     "platform_core",
+    "src/platform_core",
     "backend",
     "evidence",
     "failure_system",
+    "windows_network_toolkit",
     "tests/policy",
     "tests/api",
     "tests/replay",
