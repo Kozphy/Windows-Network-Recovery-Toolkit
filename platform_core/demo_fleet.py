@@ -246,9 +246,24 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--reset", action="store_true", help="Delete known demo JSONL shards before appending."
     )
+    p.add_argument("--endpoints", type=int, default=None, help="Use fleet_simulation when set (e.g. 100).")
+    p.add_argument("--incidents", type=int, default=None, help="Cap incidents when using --endpoints (e.g. 20).")
     ns = p.parse_args(argv)
 
     root = ns.data_dir or (Path.cwd() / "platform_data_fleet_demo")
+    if ns.endpoints is not None:
+        from platform_core.fleet_simulation import run_fleet_simulation
+
+        os.environ["PLATFORM_DATA_DIR"] = str(root.resolve())
+        summary = run_fleet_simulation(
+            scenario="proxy-drift",
+            endpoints=ns.endpoints,
+            incidents=ns.incidents,
+            out_dir=root,
+        )
+        metrics = compute_platform_metrics(platform_root=root.resolve())
+        print(json.dumps({"fleet": summary, "metrics_excerpt": metrics}, indent=2))
+        return 0
     os.environ["PLATFORM_DATA_DIR"] = str(root.resolve())
     populate_fleet(root, reset=bool(ns.reset))
 

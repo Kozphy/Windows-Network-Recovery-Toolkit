@@ -41,10 +41,20 @@ def _append_jsonl(path: Path, row: dict[str, Any]) -> None:
         fh.write(json.dumps(row, separators=(",", ":")) + "\n")
 
 
+_INCIDENT_PROFILES: tuple[dict[str, str], ...] = (
+    {"evidence_level": "OBSERVED_ONLY", "proof_status": "observation", "severity": "low", "category": "healthy"},
+    {"evidence_level": "CORRELATED", "proof_status": "correlation", "severity": "medium", "category": "proxy_drift"},
+    {"evidence_level": "PROVEN_REGISTRY_WRITER", "proof_status": "proven", "severity": "medium", "category": "proxy_drift"},
+    {"evidence_level": "FINAL_CAUSATION", "proof_status": "final_causation", "severity": "high", "category": "proxy_drift"},
+    {"evidence_level": "OBSERVED_ONLY", "proof_status": "unavailable", "severity": "high", "category": "external_proxy"},
+)
+
+
 def run_fleet_simulation(
     *,
     scenario: str,
     endpoints: int = 25,
+    incidents: int | None = None,
     repo_root: Path | None = None,
     out_dir: Path | None = None,
 ) -> dict[str, Any]:
@@ -58,6 +68,8 @@ def run_fleet_simulation(
         "failure_events.jsonl",
         "platform_signals.jsonl",
         "incidents.jsonl",
+        "audit.jsonl",
+        "remediation_previews.jsonl",
     ):
         p = base / name
         if p.is_file():
@@ -68,6 +80,8 @@ def run_fleet_simulation(
     drift_count = 0
     template = spec.get("incident_template") or {}
     categories = spec.get("categories") or ["proxy_drift"]
+    max_incidents = incidents if incidents is not None else int(spec.get("incidents", 0) or 0)
+    drift_every = int(spec.get("drift_every_n", 5) or 5)
 
     for i in range(max(1, endpoints)):
         ep_id = f"ep-fleet-{i:04d}"
@@ -86,24 +100,29 @@ def run_fleet_simulation(
             {
                 "endpoint_id": ep_id,
                 "timestamp": ts,
-                "proxy_enable": 1 if i % int(spec.get("drift_every_n", 5) or 5) == 0 else 0,
-                "proxy_server": template.get("proxy_server") if i % 5 == 0 else None,
+                "proxy_enable": 1 if i % drift_every == 0 else 0,
+                "proxy_server": template.get("proxy_server") if i % drift_every == 0 else None,
             },
         )
-        if i % int(spec.get("drift_every_n", 5) or 5) == 0:
+        is_incident = i % drift_every == 0
+        if max_incidents and incident_count >= max_incidents:
+            is_incident = False
+        if is_incident:
             drift_count += 1
             ev_id = f"fe-{uuid.uuid4().hex[:12]}"
+            profile = _INCIDENT_PROFILES[incident_count % len(_INCIDENT_PROFILES)]
             _append_jsonl(
                 base / "failure_events.jsonl",
                 {
                     "event_id": ev_id,
                     "endpoint_id": ep_id,
-                    "category": categories[0],
-                    "severity": template.get("severity", "medium"),
+                    "category": profile.get("category", categories[0]),
+                    "severity": profile.get("severity", template.get("severity", "medium")),
                     "status": "open",
                     "timestamp": ts,
                     "summary": template.get("summary", "Synthetic proxy drift"),
-                    "evidence_level": template.get("evidence_level", "observation"),
+                    "evidence_level": profile.get("evidence_level", "observation"),
+                    "proof_status": profile.get("proof_status", "observation"),
                 },
             )
             _append_jsonl(
@@ -123,6 +142,20 @@ def run_fleet_simulation(
                     "scenario": scenario,
                     "status": "open",
                     "severity": template.get("severity", "medium"),
+                },
+            )
+            _append_jsonl(
+                base / "remediation_previews.jsonl",
+                {"preview_id": f"prev-{ev_id}", "endpoint_id": ep_id, "action": "reset_proxy", "timestamp": ts},
+            )
+            _append_jsonl(
+                base / "audit.jsonl",
+                {
+                    "audit_id": str(uuid.uuid4()),
+                    "action": "remediation_preview",
+                    "decision": "allowed",
+                    "endpoint_id": ep_id,
+                    "timestamp": ts,
                 },
             )
             incident_count += 1
