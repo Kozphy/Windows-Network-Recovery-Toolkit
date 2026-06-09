@@ -56,9 +56,12 @@ def cmd_fleet_simulate(args: argparse.Namespace) -> int:
 
     scenario = str(getattr(args, "fleet_scenario", "proxy-drift") or "proxy-drift")
     endpoints = int(getattr(args, "fleet_endpoints", 25) or 25)
+    incidents_raw = getattr(args, "fleet_incidents", None)
+    incidents = int(incidents_raw) if incidents_raw is not None else None
     summary = run_fleet_simulation(
         scenario=scenario,
         endpoints=endpoints,
+        incidents=incidents,
         repo_root=_repo_root(getattr(args, "repo_root", None)),
     )
     print(json.dumps(summary, indent=2))

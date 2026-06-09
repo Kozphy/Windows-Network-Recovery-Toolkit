@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck demo demo-tier1 demo-production replay-fixtures install verify-lint verify-format
+.PHONY: test lint typecheck demo demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format
 
 PYTHON ?= python
 PYTEST ?= $(PYTHON) -m pytest
@@ -36,6 +36,18 @@ demo-tier1:
 # Production-shaped portfolio demo (fixtures + case studies + fleet sim; no destructive actions).
 demo-production:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/demo_production.ps1
+
+demo-healthy:
+	$(PYTHON) -m src demo-scenario healthy --format markdown
+
+demo-proxy-drift:
+	$(PYTHON) -m src demo-scenario proxy-drift --format markdown
+
+demo-final-causation:
+	$(PYTHON) -m src demo-scenario final-causation --format markdown
+
+demo-fleet-enterprise:
+	$(PYTHON) -m platform_core.demo_fleet --endpoints 100 --incidents 20 --data-dir platform_data_fleet_demo
 
 replay-fixtures:
 	$(PYTHON) -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown

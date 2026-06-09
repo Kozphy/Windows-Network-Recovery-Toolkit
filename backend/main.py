@@ -265,6 +265,12 @@ def prometheus_metrics() -> Response:
     """Prometheus text exposition (counters + JSONL-derived gauges)."""
     metrics = compute_platform_metrics()
     gauges = gauges_from_platform_metrics(metrics)
+    try:
+        from platform_core.endpoint_observability import merge_endpoint_gauges
+
+        gauges.update(merge_endpoint_gauges(metrics))
+    except ImportError:  # pragma: no cover
+        pass
     body = render_prometheus_text(gauges)
     try:
         from backend.decision_intelligence.metrics import render_prometheus_lines

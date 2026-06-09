@@ -1,0 +1,12 @@
+{
+  "name": "enterprise-mix",
+  "description": "100 endpoints, 20 varied proxy incidents for fleet demo.",
+  "drift_every_n": 5,
+  "incidents": 20,
+  "categories": ["proxy_drift", "external_proxy"],
+  "incident_template": {
+    "proxy_server": "127.0.0.1:54321",
+    "severity": "medium",
+    "summary": "Synthetic fleet proxy incident"
+  }
+}

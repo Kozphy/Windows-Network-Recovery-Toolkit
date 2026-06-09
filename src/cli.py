@@ -54,6 +54,7 @@ from typing import Any
 
 from edge_device.cli_handlers import cmd_edge_diagnose, cmd_edge_replay
 
+from .demo_handlers import SCENARIOS, cmd_demo_scenario
 from .production_handlers import (
     cmd_fleet_report,
     cmd_fleet_simulate,
@@ -2257,7 +2258,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_fs = sub.add_parser("fleet-simulate", help="Fixture-based fleet simulation (no live mutation).")
     p_fs.add_argument("--scenario", dest="fleet_scenario", default="proxy-drift")
     p_fs.add_argument("--endpoints", dest="fleet_endpoints", type=int, default=25)
+    p_fs.add_argument("--incidents", dest="fleet_incidents", type=int, default=None)
     p_fs.set_defaults(func=cmd_fleet_simulate)
+
+    p_demo = sub.add_parser("demo-scenario", help="Run deterministic evidence/policy demo fixture.")
+    p_demo.add_argument("demo_scenario", choices=list(SCENARIOS.keys()))
+    p_demo.add_argument("--format", dest="demo_format", choices=("markdown", "json"), default="markdown")
+    p_demo.set_defaults(func=cmd_demo_scenario)
 
     p_fr = sub.add_parser("fleet-report", help="Summarize last fleet simulation output.")
     p_fr.add_argument(
