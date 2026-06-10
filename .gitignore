@@ -37,6 +37,8 @@ reports/
 !reports/.gitignore
 !src/reports/
 !src/reports/**
+!src/trading_research/reports/
+!src/trading_research/reports/**
 platform_data/
 platform_data_fleet_demo/
 data/failure_blocks/

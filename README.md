@@ -349,6 +349,53 @@ Full design: [docs/multi_domain_decision_platform.md](docs/multi_domain_decision
 
 ---
 
+## Event-driven Trading Research Platform (MVP)
+
+**Not a trading bot. Not financial advice.** Local-first research infrastructure for testing market hypotheses.
+
+| Principle | Meaning |
+|-----------|---------|
+| Observation != Signal | Raw OHLCV bars are not trade triggers |
+| Signal != Edge | Confluence signals require backtest validation |
+| Backtest != Proof | Historical fit does not guarantee future results |
+
+### MVP scope
+
+```text
+OHLCV CSV → PRICE_BREAKOUT + VOLUME_SPIKE → confluence LONG → next-bar backtest → policy → Markdown report
+```
+
+| Step | Behavior |
+|------|----------|
+| Events | `PRICE_BREAKOUT`, `VOLUME_SPIKE` only |
+| Signal | `LONG` only when both events share the same timestamp |
+| Backtest | Next-bar open, long-only, no leverage |
+| Metrics | Total return, Sharpe, max drawdown, trade count |
+| Policy | `<20` trades → `NEEDS_MORE_DATA`; drawdown `<-20%` → `BLOCK`; else `APPROVE_RESEARCH_ONLY` |
+
+**Not in MVP:** short selling, leverage, live trading, broker API, options, crypto, ML.
+
+Modules: `src/trading_research/` (import as `trading_research`).
+
+### Example command
+
+```powershell
+pip install -e ".[dev]"
+python -m trading_research.cli run-research `
+  --symbol SPY `
+  --data src/trading_research/examples/sample_ohlcv.csv `
+  --strategy breakout_v1 `
+  --output reports/spy_breakout_report.md
+```
+
+### Tests
+
+```powershell
+pytest tests/trading_research -q
+```
+
+---
+
 ## Labs (experimental — not mainline)
 
 Edge simulation and legacy experiments: [labs/README.md](labs/README.md)

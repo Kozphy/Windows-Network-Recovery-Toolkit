@@ -19,9 +19,16 @@ dependencies = [
     "stripe>=9.0",
 ]
 
+[project.scripts]
+trading-research = "trading_research.cli:main"
+
 [project.optional-dependencies]
 postgres = [
     "psycopg2-binary>=2.9",
+]
+research = [
+    "pandas>=2.0",
+    "numpy>=1.26",
 ]
 dev = [
     "pytest>=8.0",
@@ -33,6 +40,8 @@ dev = [
     "types-python-jose",
     "pip-audit>=2.7",
     "bandit>=1.7",
+    "pandas>=2.0",
+    "numpy>=1.26",
 ]
 
 [tool.setuptools.packages.find]
@@ -44,6 +53,7 @@ include = [
     "telemetry*",
     "failure_system*",
     "src*",
+    "trading_research*",
     "edge_device*",
     "endpoint_agent*",
     "windows_network_toolkit*",
