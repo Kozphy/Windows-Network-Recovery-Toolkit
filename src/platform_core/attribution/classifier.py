@@ -38,6 +38,14 @@ def classify_listener(
             limitations,
         )
 
+    if proxy.wininet_proxy_enable == 1 and proxy.wininet_proxy_server:
+        if not re.search(r"127(?:\.\d{1,3}){3}|localhost", proxy.wininet_proxy_server, re.I):
+            return (
+                ListenerClassification.POSSIBLE_MITM_RISK,
+                f"ProxyServer points to non-localhost endpoint: {proxy.wininet_proxy_server}.",
+                limitations + ["External proxy may be legitimate VPN or corporate gateway — verify policy."],
+            )
+
     port = proxy.localhost_port
     if port and proxy.wininet_proxy_enable == 1 and not listener_detected:
         return (

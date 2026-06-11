@@ -15,6 +15,7 @@ class ListenerClassification(StrEnum):
     KNOWN_VPN_PROXY = "KNOWN_VPN_PROXY"
     UNKNOWN_LOCAL_PROXY = "UNKNOWN_LOCAL_PROXY"
     SUSPICIOUS_PROXY = "SUSPICIOUS_PROXY"
+    POSSIBLE_MITM_RISK = "POSSIBLE_MITM_RISK"
     DEAD_PROXY_CONFIG = "DEAD_PROXY_CONFIG"
 
 
@@ -33,6 +34,7 @@ class ProcessAttribution(BaseModel):
 class ProxyStateSnapshot(BaseModel):
     wininet_proxy_enable: int = 0
     wininet_proxy_server: str = ""
+    wininet_proxy_override: str = ""
     wininet_auto_config_url: str = ""
     winhttp_raw: str = ""
     winhttp_direct_access: bool = True

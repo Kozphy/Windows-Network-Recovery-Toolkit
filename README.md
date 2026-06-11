@@ -1,6 +1,8 @@
-# Endpoint Reliability Decision Platform
+# Endpoint Network Evidence & Risk Toolkit
 
-**One-liner:** An evidence-based Windows endpoint reliability and IT risk decision platform that collects endpoint signals, builds an incident timeline, generates a risk-based decision, applies policy-gated remediation, and exports an audit-ready report.
+**One-liner:** An evidence-based Windows endpoint network evidence and IT risk toolkit that detects WinINET proxy drift, attributes registry writers, contrasts TLS paths, scores website risk heuristically, merges timelines, and exports audit-ready reports — with policy-gated remediation preview only.
+
+> **Disclaimer:** This is an **evidence and risk toolkit**, not a full antivirus, EDR, or phishing protection product. Heuristic scores are for IT/security review — not automated blocking verdicts.
 
 Python 3.11+ · Policy-gated · Local-first · 1000+ pytest (CI)
 
@@ -94,8 +96,11 @@ Evidence → Hypothesis → Proof → Policy → Remediation → Audit → Repla
 | Module | Responsibility |
 |--------|----------------|
 | `evidence/` | Typed records, tiers, guards, chain of custody |
-| `attribution/` | WinINET/WinHTTP/proxy listener classification (read-only) |
+| `attribution/` | WinINET/WinHTTP/proxy listener + **registry writer** attribution (read-only) |
 | `proof/` | DNS / TCP / HTTP direct vs proxied contrast |
+| `tls/` | TLS certificate contrast (direct vs proxied), root CA audit, MITM indicators |
+| `website_risk/` | Local heuristic URL risk + optional reputation plugins (no hard-coded API keys) |
+| `evidence_report/` | Merged timeline + confidence model reports (JSONL / Markdown / HTML) |
 | `timeline/` | Incident timeline normalization |
 | `remediation/` | Policy-gated preview, rollback, approval tokens |
 | `policy/` | Tier gates — no silent destructive actions |
@@ -153,6 +158,22 @@ python -m windows_network_toolkit proxy-status
 # Listener attribution + classification
 python -m windows_network_toolkit proxy-attribution
 
+# Registry writer attribution (Sysmon E13 when available)
+python -m windows_network_toolkit proxy-writer-attribution
+python -m windows_network_toolkit proxy-writer-attribution --fixture registry_writer_observed.json
+
+# TLS / MITM evidence (direct vs proxied certificate contrast)
+python -m windows_network_toolkit tls-proof --url https://example.com
+python -m windows_network_toolkit tls-proof --url https://example.com --fixture tls_cert_mismatch.json
+
+# Website risk scoring (local heuristics; optional VT/Safe Browsing via env keys)
+python -m windows_network_toolkit website-risk --url https://example.com
+python -m windows_network_toolkit website-risk --url https://paypa1-secure-login.tk/signin --fixture suspicious_domain.json
+
+# Merged evidence report (proxy + TLS + website risk + timeline)
+python -m windows_network_toolkit evidence-report --url https://example.com --format markdown
+python -m windows_network_toolkit evidence-report --url https://example.com --format jsonl --out reports/evidence.jsonl
+
 # Direct vs proxied path proof
 python -m windows_network_toolkit proxy-proof --url https://example.com
 
@@ -193,6 +214,54 @@ python -m toolkit report windows_network_toolkit/examples/proxy_drift_incident.j
 uvicorn backend.main:app --reload
 # Dashboard: http://127.0.0.1:8000/dashboard/
 ```
+
+## 10-minute demo — Endpoint Network Evidence & Risk (fixture-safe)
+
+All steps below are **read-only** / **preview-only**. Use fixtures on any OS; live probes require Windows + network.
+
+```powershell
+pip install -e ".[dev]"
+$env:PYTHONPATH = (Get-Location).Path
+
+# 1) Baseline — no proxy
+python -m windows_network_toolkit proxy-status
+python -m windows_network_toolkit proxy-writer-attribution --fixture no_proxy.json
+
+# 2) Known dev proxy vs unknown localhost proxy
+python -m windows_network_toolkit proxy-writer-attribution --fixture known_dev_proxy.json
+python -m windows_network_toolkit proxy-writer-attribution --fixture unknown_localhost_proxy.json
+
+# 3) Proxy writer attribution (Sysmon E13 replay)
+python -m windows_network_toolkit proxy-writer-attribution --fixture registry_writer_observed.json
+
+# 4) MITM risk — TLS certificate mismatch + suspicious root CA
+python -m windows_network_toolkit tls-proof --url https://example.com --fixture tls_cert_mismatch.json
+python -m windows_network_toolkit tls-proof --url https://example.com --fixture suspicious_root_ca.json
+
+# 5) Website risk scoring (heuristic replay)
+python -m windows_network_toolkit website-risk --url https://example.com --fixture suspicious_domain.json
+python -m windows_network_toolkit website-risk --url https://bit.ly/abc --fixture redirect_phishing.json
+
+# 6) Merged evidence report with confidence model (Observation → Hypothesis → Proof)
+python -m windows_network_toolkit evidence-report --url https://example.com `
+  --fixture registry_writer_observed.json --format markdown
+
+# 7) Golden proxy drift replay (existing ERP fixture)
+python -m toolkit replay windows_network_toolkit/examples/proxy_drift_incident.jsonl
+```
+
+**Optional reputation plugins** (never hard-coded — configure via environment only):
+
+| Plugin | Environment variable |
+|--------|---------------------|
+| VirusTotal | `VIRUSTOTAL_API_KEY` |
+| Google Safe Browsing | `GOOGLE_SAFEBROWSING_API_KEY` |
+| URLHaus | `URLHAUS_API_KEY` |
+| PhishTank | `PHISHTANK_API_KEY` |
+
+Without keys, `website-risk` falls back to **local heuristic scoring** and documents limitations in output.
+
+**Proxy risk classifications:** `NO_PROXY` · `KNOWN_DEV_PROXY` · `UNKNOWN_LOCAL_PROXY` · `SUSPICIOUS_PROXY` · `POSSIBLE_MITM_RISK` · `DEAD_PROXY_CONFIG` · `REGISTRY_WRITER_CONFIRMED` (when Sysmon E13 writer proof exists).
 
 ## 5-minute demo (no admin, no host mutation)
 

@@ -46,6 +46,7 @@ def collect_proxy_state(*, run: Callable[..., Any], timeout: float = 15.0) -> Pr
     return ProxyStateSnapshot(
         wininet_proxy_enable=int(wininet.get("proxy_enable") or 0),
         wininet_proxy_server=proxy_server,
+        wininet_proxy_override=str(wininet.get("proxy_override") or ""),
         wininet_auto_config_url=str(wininet.get("auto_config_url") or ""),
         winhttp_raw=winhttp_raw[:800] if code == 0 else "",
         winhttp_direct_access="direct access" in lower and "no proxy server" in lower,

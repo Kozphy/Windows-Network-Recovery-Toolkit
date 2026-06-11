@@ -30,6 +30,7 @@ def run_proxy_status(*, inject: dict[str, Any] | None = None, **kwargs: Any) -> 
         "wininet": {
             "ProxyEnable": ps.wininet_proxy_enable,
             "ProxyServer": ps.wininet_proxy_server,
+            "ProxyOverride": ps.wininet_proxy_override,
             "AutoConfigURL": ps.wininet_auto_config_url,
         },
         "winhttp": {

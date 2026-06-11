@@ -13,9 +13,16 @@ from windows_network_toolkit.audit.report_generator import generate_erp_report, 
 
 def _resolve_fixture(path_str: str) -> Path:
     path = Path(path_str)
-    if not path.is_file():
-        repo = Path(__file__).resolve().parents[1]
-        path = repo / "windows_network_toolkit" / "examples" / path_str
+    if path.is_file():
+        return path
+    repo = Path(__file__).resolve().parents[1]
+    for candidate in (
+        repo / "windows_network_toolkit" / "examples" / path_str,
+        repo / "tests" / "fixtures" / "enert" / path_str,
+        repo / "tests" / "fixtures" / "enert" / f"{path_str}.json",
+    ):
+        if candidate.is_file():
+            return candidate
     return path
 
 
@@ -119,6 +126,80 @@ def cmd_proxy_attribution(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_proxy_writer_attribution(args: argparse.Namespace) -> int:
+    from src.platform_core.attribution.writer_engine import run_proxy_writer_attribution
+
+    inject = None
+    inject_sysmon = None
+    if args.fixture:
+        path = _resolve_fixture(args.fixture)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        inject = data.get("writer_attribution")
+        inject_sysmon = data.get("sysmon_events")
+    payload = run_proxy_writer_attribution(inject=inject, inject_sysmon=inject_sysmon)
+    print(json.dumps(payload.to_dict(), indent=2))
+    return 0
+
+
+def cmd_tls_proof(args: argparse.Namespace) -> int:
+    from src.platform_core.tls import run_tls_proof
+
+    inject = None
+    inject_roots = None
+    if args.fixture:
+        path = _resolve_fixture(args.fixture)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        inject = data.get("tls_proof")
+        inject_roots = data.get("root_store")
+    payload = run_tls_proof(args.url, inject=inject, inject_roots=inject_roots)
+    print(json.dumps(payload.to_dict(), indent=2))
+    return 0
+
+
+def cmd_website_risk(args: argparse.Namespace) -> int:
+    from src.platform_core.website_risk import run_website_risk
+
+    inject = None
+    if args.fixture:
+        path = _resolve_fixture(args.fixture)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        inject = data.get("website_risk")
+    payload = run_website_risk(args.url, inject=inject)
+    print(json.dumps(payload.to_dict(), indent=2))
+    return 0
+
+
+def cmd_evidence_report(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.evidence import run_evidence_assessment
+    from src.platform_core.evidence_report import generate_evidence_report
+
+    inject_writer = inject_proof = inject_tls = inject_website = inject_sysmon = None
+    if args.fixture:
+        path = _resolve_fixture(args.fixture)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        inject_writer = data.get("writer_attribution")
+        inject_proof = data.get("proof_results")
+        inject_tls = data.get("tls_proof")
+        inject_website = data.get("website_risk")
+        inject_sysmon = data.get("sysmon_events")
+
+    package = run_evidence_assessment(
+        args.url,
+        inject_writer=inject_writer,
+        inject_proof=inject_proof,
+        inject_tls=inject_tls,
+        inject_website=inject_website,
+        inject_sysmon=inject_sysmon,
+    )
+    text = generate_evidence_report(package, fmt=args.format)  # type: ignore[arg-type]
+    print(text)
+    if args.out:
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+    return 0
+
+
 def cmd_proxy_proof(args: argparse.Namespace) -> int:
     from windows_network_toolkit.diagnostics.proxy import run_proxy_proof
 
@@ -205,6 +286,33 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
 
     pa = sub.add_parser("proxy-attribution", help="Read-only proxy listener attribution")
     pa.set_defaults(func=cmd_proxy_attribution)
+
+    pwa = sub.add_parser(
+        "proxy-writer-attribution",
+        help="Proxy registry writer attribution with Sysmon E13 fusion (read-only)",
+    )
+    pwa.add_argument("--fixture", default="", help="Optional fixture JSON for replay")
+    pwa.set_defaults(func=cmd_proxy_writer_attribution)
+
+    tls = sub.add_parser("tls-proof", help="TLS certificate contrast direct vs proxied path (read-only)")
+    tls.add_argument("--url", required=True, help="Target HTTPS URL")
+    tls.add_argument("--fixture", default="", help="Optional fixture JSON for replay")
+    tls.set_defaults(func=cmd_tls_proof)
+
+    wr = sub.add_parser("website-risk", help="Website risk heuristic scoring (read-only)")
+    wr.add_argument("--url", required=True, help="Target URL")
+    wr.add_argument("--fixture", default="", help="Optional fixture JSON for replay")
+    wr.set_defaults(func=cmd_website_risk)
+
+    er = sub.add_parser(
+        "evidence-report",
+        help="Merged evidence timeline report (JSONL/Markdown/HTML, preview-only)",
+    )
+    er.add_argument("--url", required=True, help="Target URL for network proof")
+    er.add_argument("--fixture", default="", help="Optional fixture JSON for replay")
+    er.add_argument("--format", choices=["json", "jsonl", "markdown", "html"], default="markdown")
+    er.add_argument("--out", default="", help="Optional output file path")
+    er.set_defaults(func=cmd_evidence_report)
 
     pp = sub.add_parser("proxy-proof", help="Direct vs proxied path proof (read-only)")
     pp.add_argument("--url", required=True, help="Target HTTPS URL")
