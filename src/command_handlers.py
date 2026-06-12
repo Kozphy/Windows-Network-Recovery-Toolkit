@@ -174,6 +174,13 @@ _V2_REL_INCIDENT_HELP = [
 ]
 
 
+def _warn_wnt_cli_migration(command: str) -> None:
+    print(
+        f"Deprecated: prefer `python -m windows_network_toolkit {command}` (JSON-first CLI).",
+        file=sys.stderr,
+    )
+
+
 def _repo_root(cli: Path | None) -> Path:
     """Resolve checkout root (``--repo-root`` or implicit parent of ``src/``).
 
@@ -974,6 +981,7 @@ def cmd_proxy_owner(args: argparse.Namespace) -> int:
     Side effects:
         Executes ``netstat``, ``tasklist``, and PowerShell CIM enrichment on Windows.
     """
+    _warn_wnt_cli_migration("proxy-owner")
     if (code := exit_code_if_not_windows("proxy-owner")) is not None:
         return code
     run = subprocess.run
@@ -1028,6 +1036,7 @@ def cmd_proxy_watch(args: argparse.Namespace) -> int:
         Missing evidence CSV paths log to stderr and continue with zero boost.
     """
 
+    _warn_wnt_cli_migration("proxy-watch")
     if (code := exit_code_if_not_windows("proxy-watch")) is not None:
         return code
     repo = _repo_root(getattr(args, "repo_root", None))
@@ -1687,6 +1696,7 @@ def cmd_proxy_disable(args: argparse.Namespace) -> int:
         Recovery guidance: rerun ``proxy-status``, use ``proxy-rollback`` snapshot flow when available,
         expect enterprise policy software to recreate keys after remediation.
     """
+    _warn_wnt_cli_migration("proxy-disable")
     if (code := exit_code_if_not_windows("proxy-disable")) is not None:
         return code
     repo = _repo_root(args.repo_root)

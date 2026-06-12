@@ -11,11 +11,14 @@ from src.platform_core.attribution.collector import (
     collect_attribution,
 )
 from src.platform_core.proof.engine import run_proof_engine
-from src.platform_core.proof.models import ProofOutcome
 from src.platform_core.remediation.planner import plan_proxy_drift_remediation
 from src.platform_core.timeline.builder import IncidentTimelineBuilder
 from src.platform_core.timeline.models import TimelineEntry
 from src.platform_core.audit.writer import append_audit
+
+from windows_network_toolkit.audit_store import append_audit_dict
+from windows_network_toolkit.proxy_classification import classify_from_live
+from windows_network_toolkit.proxy_state import collect_proxy_state_model
 
 
 def _now() -> str:
@@ -23,23 +26,40 @@ def _now() -> str:
 
 
 def run_proxy_status(*, inject: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
-    snap = collect_attribution(inject=inject, **kwargs)
-    ps = snap.proxy_state
-    return {
-        "timestamp_utc": snap.timestamp_utc,
+    if inject:
+        state = collect_proxy_state_model(inject=inject.get("proxy_state") or inject, **kwargs)
+        classification = classify_from_live(inject=inject.get("classification"), **kwargs)
+    else:
+        state = collect_proxy_state_model(**kwargs)
+        classification = classify_from_live(**kwargs)
+
+    payload = {
+        "timestamp_utc": state.timestamp_utc,
         "wininet": {
-            "ProxyEnable": ps.wininet_proxy_enable,
-            "ProxyServer": ps.wininet_proxy_server,
-            "ProxyOverride": ps.wininet_proxy_override,
-            "AutoConfigURL": ps.wininet_auto_config_url,
+            "ProxyEnable": 1 if state.wininet_proxy_enabled else 0,
+            "ProxyServer": state.wininet_proxy_server,
+            "ProxyOverride": state.wininet_proxy_override,
+            "AutoConfigURL": state.wininet_auto_config_url,
         },
         "winhttp": {
-            "direct_access": ps.winhttp_direct_access,
-            "raw_excerpt": ps.winhttp_raw[:400],
+            "direct_access": state.winhttp_direct_access,
+            "raw_excerpt": state.winhttp_raw_excerpt[:400],
         },
-        "localhost_port": ps.localhost_port,
-        "classification": snap.classification.value,
+        "localhost_port": state.localhost_port,
+        "classification": classification.primary_classification,
+        "classification_result": classification.to_dict(),
+        "errors": state.errors,
     }
+    append_audit_dict(
+        {
+            "command": "proxy-status",
+            "observation": payload,
+            "result": {"classification": classification.primary_classification},
+            "limitations": classification.limitations,
+        },
+        log_name="proxy-status.jsonl",
+    )
+    return payload
 
 
 def run_proxy_attribution(*, inject: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:
@@ -76,7 +96,15 @@ def run_proxy_timeline(
     inject_proof: dict[str, Any] | None = None,
     run: Any = None,
     timeout: float = 15.0,
+    use_audit: bool = True,
 ) -> dict[str, Any]:
+    from windows_network_toolkit.timeline import build_proxy_timeline
+
+    if use_audit and not inject_attribution:
+        audit_timeline = build_proxy_timeline()
+        if audit_timeline["event_count"] > 0:
+            return audit_timeline
+
     incident_id = f"inc-{uuid.uuid4().hex[:12]}"
     builder = IncidentTimelineBuilder(incident_id=incident_id)
     attr = collect_attribution(inject=inject_attribution, run=run, timeout=timeout)
@@ -127,12 +155,16 @@ def run_full_incident_report(
     timeout: float = 15.0,
 ) -> dict[str, Any]:
     """Build audit-ready incident package for report generation."""
+    from windows_network_toolkit.report import build_proxy_report
+
+    report = build_proxy_report(url=url, **({"run": run, "timeout": timeout} if run else {}))
     timeline_data = run_proxy_timeline(
         url,
         inject_attribution=inject_attribution,
         inject_proof=inject_proof,
         run=run,
         timeout=timeout,
+        use_audit=False,
     )
     incident_id = timeline_data["incident_id"]
     attr = timeline_data["attribution"]
@@ -182,10 +214,7 @@ def run_full_incident_report(
     return {
         "incident_id": incident_id,
         "url": url,
-        "executive_summary": (
-            f"Proxy diagnostic for {url}. Classification: {attr.get('classification')}. "
-            f"Proof outcome: {proof.get('outcome')}. Policy: {policy.get('outcome')}."
-        ),
+        "executive_summary": report["executive_summary"],
         "timeline": timeline_data["timeline"],
         "evidence_collected": chain_of_custody,
         "hypotheses_tested": [
@@ -203,4 +232,5 @@ def run_full_incident_report(
         "control_mapping": map_policy_outcome_to_controls(str(policy.get("outcome", "PREVIEW_ONLY"))),
         "audit_trail": [audit_row] if audit_row else [],
         "safety_notes": remediation.get("safety_notes", []),
+        "structured_report": report,
     }

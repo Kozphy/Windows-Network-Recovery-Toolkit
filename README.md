@@ -8,14 +8,49 @@ Python 3.11+ · Policy-gated · Local-first · 1000+ pytest (CI)
 
 > **Not an AI agent.** This is decision infrastructure: Evidence → Hypothesis → Proof → Policy → Remediation → Audit.
 
-**Canonical core:** `src/platform_core/` — proof-gated remediation, deterministic replay certification, human approval workflow, audit chain-of-custody, outcome learning, governance-ready control mapping.
+**Primary CLI:** `python -m windows_network_toolkit` (JSON-first) · **Legacy:** `python -m src` (deprecated shim with stderr notice on proxy commands)
+
+**Canonical core:** `src/platform_core/` — classification, proof, policy, audit, timeline. **Facades:** `windows_network_toolkit/` — flat modules delegating to core engines.
 
 | Principle | Enforced |
 |-----------|----------|
-| Observation != Proof | Evidence tier state machine |
+| Observation != Proof | Evidence tier state machine + proof envelope |
 | Correlation != Causation | Guards block destructive unlock |
-| Confidence != Certainty | Ordinal scores only |
+| Confidence != Certainty | 0–1 ordinal scores with limitations[] |
 | Policy Permission != Safety Guarantee | Approval + rollback required |
+
+---
+
+## Real case: dead WinINET proxy 127.0.0.1:59081
+
+Golden path used in tests, docs, and demos:
+
+```
+ProxyEnable=1, ProxyServer=127.0.0.1:59081, WinHTTP=direct, listener=false
+→ DEAD_PROXY_CONFIG + WININET_WINHTTP_MISMATCH
+→ diagnose --proof → supported (confidence ~0.92)
+→ proxy-disable allowed with --confirm DISABLE_WININET_PROXY
+→ does NOT prove malware or MITM
+```
+
+```powershell
+python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit proxy-disable --dry-run
+```
+
+Full case study: [docs/case-studies/dead-localhost-proxy.md](docs/case-studies/dead-localhost-proxy.md)
+
+---
+
+## WinINET vs WinHTTP
+
+| Stack | Used by | This toolkit |
+|-------|---------|--------------|
+| **WinINET** | Browsers, many desktop apps | Primary observation surface |
+| **WinHTTP** | Services, some CLI tools | Contrast path for mismatch detection |
+
+A common failure mode: WinINET points at a **dead localhost proxy** while WinHTTP is direct — ping/`curl` may work, browsers fail. Classification surfaces this as `DEAD_PROXY_CONFIG` with secondary `WININET_WINHTTP_MISMATCH`.
 
 ---
 
@@ -148,15 +183,33 @@ Implementation plan: [docs/IMPLEMENTATION_PLAN_ERP.md](docs/IMPLEMENTATION_PLAN_
 
 ## Diagnostic CLI (read-only by default)
 
+**Primary:** `python -m windows_network_toolkit` · All commands emit JSON.
+
 ```powershell
 pip install -e ".[dev]"
 $env:PYTHONPATH = (Get-Location).Path
 
-# Proxy state (WinINET + WinHTTP)
+# Proxy state + full classification result
 python -m windows_network_toolkit proxy-status
+python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
 
-# Listener attribution + classification
-python -m windows_network_toolkit proxy-attribution
+# Structured proof envelope
+python -m windows_network_toolkit diagnose --proof
+python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
+
+# Process owner (JSON)
+python -m windows_network_toolkit proxy-owner
+
+# Safe remediation (dry-run default)
+python -m windows_network_toolkit proxy-disable --dry-run
+python -m windows_network_toolkit proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY
+
+# Reverter watch (read-only, logs to .audit/proxy-watch.jsonl)
+python -m windows_network_toolkit proxy-watch --duration 60 --interval 2
+
+# Timeline + incident report from .audit/
+python -m windows_network_toolkit proxy-timeline --audit-only
+python -m windows_network_toolkit proxy-report --fixture tests/fixtures/enert/dead_proxy_59081.json
 
 # Registry writer attribution (Sysmon E13 when available)
 python -m windows_network_toolkit proxy-writer-attribution
@@ -177,15 +230,8 @@ python -m windows_network_toolkit evidence-report --url https://example.com --fo
 # Direct vs proxied path proof
 python -m windows_network_toolkit proxy-proof --url https://example.com
 
-# Incident timeline + remediation preview
-python -m windows_network_toolkit proxy-timeline --url https://example.com
-
 # 502 / bad gateway (full ERP path)
 python -m windows_network_toolkit bad-gateway-diagnose --url https://example.com
-
-# Audit report from fixture or live URL
-python -m windows_network_toolkit report proxy_drift_incident.jsonl --format markdown
-python -m windows_network_toolkit report --url https://example.com --format html
 
 # Verify audit hash chain
 python -m windows_network_toolkit audit verify logs/canonical_decision_audit.jsonl
@@ -195,12 +241,20 @@ python -m windows_network_toolkit audit verify logs/canonical_decision_audit.jso
 
 ```json
 {
-  "wininet": { "ProxyEnable": 1, "ProxyServer": "127.0.0.1:8080" },
+  "wininet": { "ProxyEnable": 1, "ProxyServer": "127.0.0.1:59081" },
   "winhttp": { "direct_access": true },
-  "localhost_port": 8080,
-  "classification": "DEAD_PROXY_CONFIG"
+  "localhost_port": 59081,
+  "classification": "DEAD_PROXY_CONFIG",
+  "classification_result": {
+    "primary_classification": "DEAD_PROXY_CONFIG",
+    "secondary_signals": ["WININET_WINHTTP_MISMATCH", "DEAD_LOCALHOST_PORT"],
+    "confidence": 0.92,
+    "limitations": ["Does not prove malware or MITM."]
+  }
 }
 ```
+
+**Docs:** [classification-model.md](docs/classification-model.md) · [proof-vs-observation.md](docs/proof-vs-observation.md) · [interview-case-study.md](docs/interview-case-study.md) · [three-minute-demo-script.md](docs/three-minute-demo-script.md)
 
 **Safety:** All commands above are diagnostic/preview-only. No registry write, process kill, firewall reset, or adapter disable without typed confirmation + policy gate + rollback plan + audit.
 
@@ -261,7 +315,7 @@ python -m toolkit replay windows_network_toolkit/examples/proxy_drift_incident.j
 
 Without keys, `website-risk` falls back to **local heuristic scoring** and documents limitations in output.
 
-**Proxy risk classifications:** `NO_PROXY` · `KNOWN_DEV_PROXY` · `UNKNOWN_LOCAL_PROXY` · `SUSPICIOUS_PROXY` · `POSSIBLE_MITM_RISK` · `DEAD_PROXY_CONFIG` · `REGISTRY_WRITER_CONFIRMED` (when Sysmon E13 writer proof exists).
+**Proxy risk classifications (12 primaries):** `NO_PROXY` · `DEAD_PROXY_CONFIG` · `LOCAL_PROXY_ACTIVE` · `UNKNOWN_LOCAL_PROXY` · `KNOWN_DEV_PROXY` · `KNOWN_SECURITY_TOOL` · `SUSPICIOUS_PROXY` · `POSSIBLE_MITM_RISK` · `PAC_CONFIGURED` · `WININET_WINHTTP_MISMATCH` · `REVERTER_SUSPECTED` · `ERROR_INSUFFICIENT_DATA`. See [docs/classification-model.md](docs/classification-model.md).
 
 ## 5-minute demo (no admin, no host mutation)
 
@@ -273,7 +327,41 @@ make demo-fleet-enterprise
 make demo-production
 ```
 
-Guide: [docs/demo_5_min.md](docs/demo_5_min.md) · ERP package: [docs/endpoint_reliability_platform.md](docs/endpoint_reliability_platform.md)
+## Audit model
+
+Unified append-only JSONL under **`.audit/`** (configurable via `WNT_AUDIT_DIR`):
+
+| File | Events |
+|------|--------|
+| `proxy-status.jsonl` | Status reads + classification |
+| `proxy-disable.jsonl` | Remediation before/after |
+| `proxy-watch.jsonl` | Drift + reverter suspects |
+
+Legacy `logs/repair_audit.jsonl` remains readable for backward compatibility.
+
+Timeline merge: `python -m windows_network_toolkit proxy-timeline --audit-only`
+
+---
+
+## Enterprise portfolio docs
+
+| Doc | Audience |
+|-----|----------|
+| [case-studies/dead-localhost-proxy.md](docs/case-studies/dead-localhost-proxy.md) | Golden 59081 case |
+| [interview-case-study.md](docs/interview-case-study.md) | STAR walkthrough |
+| [big4-cyber-risk-positioning.md](docs/big4-cyber-risk-positioning.md) | Audit / cyber risk |
+| [faang-platform-engineering-positioning.md](docs/faang-platform-engineering-positioning.md) | Platform eng |
+
+---
+
+## Roadmap (not yet implemented)
+
+- Sysmon/Event Log integration for writer causation
+- Windows service mode · signed packaging
+- Dashboard evidence tree · fleet aggregation
+- RBAC, SIEM export, Prometheus, policy-as-code
+
+See [production-readiness.md](docs/production_readiness.md).
 
 ---
 

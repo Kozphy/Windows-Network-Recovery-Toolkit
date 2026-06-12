@@ -11,6 +11,15 @@ from windows_network_toolkit.audit.replay import replay_to_dict
 from windows_network_toolkit.audit.report_generator import generate_erp_report, generate_report
 
 
+def _emit_json(payload: dict | list) -> None:
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
+def _load_fixture_data(path_str: str) -> dict:
+    path = _resolve_fixture(path_str)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _resolve_fixture(path_str: str) -> Path:
     path = Path(path_str)
     if path.is_file():
@@ -20,6 +29,8 @@ def _resolve_fixture(path_str: str) -> Path:
         repo / "windows_network_toolkit" / "examples" / path_str,
         repo / "tests" / "fixtures" / "enert" / path_str,
         repo / "tests" / "fixtures" / "enert" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "classification" / path_str,
+        repo / "tests" / "fixtures" / "classification" / f"{path_str}.json",
     ):
         if candidate.is_file():
             return candidate
@@ -113,8 +124,75 @@ def cmd_bad_gateway_diagnose(args: argparse.Namespace) -> int:
 def cmd_proxy_status(args: argparse.Namespace) -> int:
     from windows_network_toolkit.diagnostics.proxy import run_proxy_status
 
-    payload = run_proxy_status()
-    print(json.dumps(payload, indent=2))
+    inject = None
+    if args.fixture:
+        data = _load_fixture_data(args.fixture)
+        inject = data
+    payload = run_proxy_status(inject=inject)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_proxy_owner(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.proxy_owner import detect_proxy_owner
+
+    inject = None
+    if args.fixture:
+        inject = _load_fixture_data(args.fixture).get("proxy_owner") or _load_fixture_data(args.fixture)
+    payload = detect_proxy_owner(inject=inject)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_diagnose(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.proof import run_diagnose_proof
+
+    inject = None
+    if args.fixture:
+        data = _load_fixture_data(args.fixture)
+        inject = data.get("proof") or data
+    payload = run_diagnose_proof(args.url or None, inject=inject)
+    _emit_json(payload.to_dict())
+    return 0
+
+
+def cmd_proxy_disable(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.proxy_remediation import run_proxy_disable
+
+    dry_run = args.dry_run.lower() != "false"
+    payload = run_proxy_disable(dry_run=dry_run, confirm=args.confirm or "")
+    _emit_json(payload)
+    if payload.get("unsupported_platform"):
+        return 2
+    if not dry_run and not payload.get("action_allowed"):
+        return 1
+    return 0
+
+
+def cmd_proxy_watch(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.watch import run_proxy_watch
+
+    inject_sequence = None
+    if args.fixture:
+        data = _load_fixture_data(args.fixture)
+        inject_sequence = data.get("watch_sequence")
+    payload = run_proxy_watch(
+        duration=int(args.duration),
+        interval=float(args.interval),
+        inject_sequence=inject_sequence,
+    )
+    _emit_json(payload)
+    return 0 if not payload.get("unsupported_platform") else 2
+
+
+def cmd_proxy_report(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.report import build_proxy_report
+
+    inject = None
+    if args.fixture:
+        inject = _load_fixture_data(args.fixture).get("report") or _load_fixture_data(args.fixture)
+    payload = build_proxy_report(url=args.url or None, inject=inject)
+    _emit_json(payload)
     return 0
 
 
@@ -210,9 +288,13 @@ def cmd_proxy_proof(args: argparse.Namespace) -> int:
 
 def cmd_proxy_timeline(args: argparse.Namespace) -> int:
     from windows_network_toolkit.diagnostics.proxy import run_proxy_timeline
+    from windows_network_toolkit.timeline import build_proxy_timeline
 
-    payload = run_proxy_timeline(args.url or None)
-    print(json.dumps(payload, indent=2))
+    if args.audit_only:
+        payload = build_proxy_timeline()
+    else:
+        payload = run_proxy_timeline(args.url or None, use_audit=bool(args.audit))
+    _emit_json(payload)
     return 0
 
 
@@ -282,7 +364,40 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     bg.set_defaults(func=cmd_bad_gateway_diagnose)
 
     ps = sub.add_parser("proxy-status", help="Read-only WinINET/WinHTTP proxy status")
+    ps.add_argument("--fixture", default="", help="Optional fixture JSON")
     ps.set_defaults(func=cmd_proxy_status)
+
+    po = sub.add_parser("proxy-owner", help="Detect localhost proxy listener process (JSON)")
+    po.add_argument("--fixture", default="", help="Optional fixture JSON")
+    po.set_defaults(func=cmd_proxy_owner)
+
+    pd = sub.add_parser("proxy-disable", help="Preview/apply safe HKCU WinINET proxy disable")
+    pd.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        help="Preview only (default). Pass false to apply: --dry-run false",
+    )
+    pd.add_argument("--confirm", default="", help="Typed confirmation token")
+    pd.set_defaults(func=cmd_proxy_disable)
+
+    pw = sub.add_parser("proxy-watch", help="Poll WinINET proxy for drift (read-only)")
+    pw.add_argument("--duration", default="900", help="Watch duration seconds")
+    pw.add_argument("--interval", default="2", help="Poll interval seconds")
+    pw.add_argument("--fixture", default="", help="Optional fixture JSON")
+    pw.set_defaults(func=cmd_proxy_watch)
+
+    prpt = sub.add_parser("proxy-report", help="Structured incident-style JSON report")
+    prpt.add_argument("--url", default="", help="Optional URL for proof section")
+    prpt.add_argument("--fixture", default="", help="Optional fixture JSON")
+    prpt.set_defaults(func=cmd_proxy_report)
+
+    diag = sub.add_parser("diagnose", help="Structured proof diagnosis")
+    diag.add_argument("--proof", action="store_true", help="Run proof envelope")
+    diag.add_argument("--url", default="", help="Optional URL for network probes")
+    diag.add_argument("--fixture", default="", help="Optional fixture JSON")
+    diag.set_defaults(func=cmd_diagnose)
 
     pa = sub.add_parser("proxy-attribution", help="Read-only proxy listener attribution")
     pa.set_defaults(func=cmd_proxy_attribution)
@@ -318,8 +433,10 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     pp.add_argument("--url", required=True, help="Target HTTPS URL")
     pp.set_defaults(func=cmd_proxy_proof)
 
-    pt = sub.add_parser("proxy-timeline", help="Build incident timeline from proxy state")
+    pt = sub.add_parser("proxy-timeline", help="Build incident timeline from proxy state or audit")
     pt.add_argument("--url", default="", help="Optional URL for proof probes")
+    pt.add_argument("--audit", action="store_true", help="Prefer .audit/ timeline when available")
+    pt.add_argument("--audit-only", action="store_true", help="Read .audit/ only")
     pt.set_defaults(func=cmd_proxy_timeline)
 
     audit = sub.add_parser("audit", help="Audit chain operations")

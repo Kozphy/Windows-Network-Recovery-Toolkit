@@ -6,11 +6,21 @@
 
 A **local-first Windows endpoint reliability toolkit** with a growing **Decision Intelligence Platform**:
 
-- CLI diagnostics and policy-gated remediation previews (`python -m src`)
-- Append-only JSONL audit trails and deterministic replay
+- **Primary CLI:** JSON-first diagnostics and policy-gated remediation (`python -m windows_network_toolkit`)
+- **Legacy shim:** `python -m src` (deprecated for proxy commands)
+- Append-only JSONL audit trails (`.audit/` + legacy `logs/`) and deterministic replay
 - FastAPI platform API (`backend/`) with optional PostgreSQL
 - Multi-domain adapters (Windows, Security, Cloud, Infrastructure, Market Events)
 - Research-only market catalyst monitoring (no trade execution)
+
+## Golden case (59081)
+
+Dead WinINET localhost proxy — see [case-studies/dead-localhost-proxy.md](case-studies/dead-localhost-proxy.md).
+
+```powershell
+python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
+```
 
 ## Core flows
 
@@ -123,6 +133,13 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 
 | Doc | Topic |
 |-----|-------|
+| `docs/case-studies/dead-localhost-proxy.md` | Golden 59081 dead proxy case |
+| `docs/classification-model.md` | 12 primary labels + secondary signals |
+| `docs/proof-vs-observation.md` | Proof envelope vs observation |
+| `docs/interview-case-study.md` | Portfolio STAR narrative |
+| `docs/three-minute-demo-script.md` | 3-minute fixture demo |
+| `docs/big4-cyber-risk-positioning.md` | Cyber risk / audit framing |
+| `docs/faang-platform-engineering-positioning.md` | Platform engineering framing |
 | `docs/evidence_model.md` | Canonical evidence levels |
 | `docs/policy_model.md` | Canonical policy decisions |
 | `docs/observability.md` | Metrics and dashboard |

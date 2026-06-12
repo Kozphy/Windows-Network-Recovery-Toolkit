@@ -2,6 +2,26 @@
 
 **Status:** Local-first **prototype** with production-**inspired** controls — not deployed enterprise software.
 
+**Primary CLI:** `python -m windows_network_toolkit` (JSON-first) · Audit directory: `.audit/` (`WNT_AUDIT_DIR`)
+
+---
+
+## Deployment model
+
+| Mode | Surface | Notes |
+|------|---------|-------|
+| Operator laptop | WNT JSON CLI | Default; dry-run on mutations |
+| CI / Linux | Fixture inject (`--fixture`) | No live registry/network |
+| Windows live | WNT CLI + optional `src` shim | Shim prints deprecation stderr |
+| API (optional) | `backend/main.py` / Compose | Separate from WNT CLI path |
+
+Hardening before enterprise rollout:
+
+1. Enable RBAC on API writes (not WNT CLI alone)
+2. Configure `WNT_AUDIT_DIR` to tamper-evident storage
+3. Require Sysmon E13 for writer causation claims
+4. Sign packages / service-wrap agent (roadmap)
+
 ---
 
 ## Safety model
@@ -15,7 +35,9 @@
 | No registry mutation without confirmation | Typed phrases in registry + `validate_confirmation_phrase` |
 | Listener correlation ≠ proof | [ADR-004](adr/ADR-004-heuristic-attribution-is-not-proof.md) |
 
-Tests: `tests/test_policy_safety_contract.py`, `tests/test_safety_contract_extensions.py`, `tests/test_evidence_level_contract.py`, `tests/test_fixture_regression_demo.py`, `tests/test_safety_regression.py`, `tests/policy/`, `tests/api/`.
+Tests: `tests/test_policy_safety_contract.py`, `tests/test_safety_contract_extensions.py`, `tests/test_evidence_level_contract.py`, `tests/test_fixture_regression_demo.py`, `tests/test_safety_regression.py`, `tests/policy/`, `tests/api/`, `tests/windows_network_toolkit/test_safety_contract.py`.
+
+WNT safety contracts enforce: dry-run default, `DISABLE_WININET_PROXY` token, no kill/firewall/adapter/WinHTTP mutation.
 
 ---
 
@@ -44,7 +66,8 @@ Tests: `tests/test_policy_safety_contract.py`, `tests/test_safety_contract_exten
 
 ## Audit / replay guarantees
 
-- Append-only JSONL writes (`platform_core.audit.write_audit`, CLI `logs/*.jsonl`).
+- Append-only JSONL writes (`platform_core.audit.write_audit`, CLI `logs/*.jsonl`, WNT `.audit/*.jsonl`).
+- WNT audit soft-fail: write errors do not crash commands (`tests/windows_network_toolkit/test_audit_soft_fail.py`).
 - Replay recomputes policy from stored signals — **no live reprobe** (`GET /platform/replay/{run_id}`).
 - Determinism tested in `tests/test_replay_determinism.py`, `tests/replay/`.
 
@@ -99,6 +122,10 @@ Tests: `tests/test_policy_safety_contract.py`, `tests/test_safety_contract_exten
 
 | Area | Tests |
 |------|-------|
+| Classification matrix (12 primaries) | `tests/platform_core/classification/` |
+| WNT JSON CLI contract | `tests/windows_network_toolkit/test_cli_json_contract.py` |
+| WNT proof envelope | `tests/windows_network_toolkit/test_diagnose_proof.py` |
+| WNT audit soft-fail | `tests/windows_network_toolkit/test_audit_soft_fail.py` |
 | Policy ALLOW/PREVIEW/BLOCK | `tests/test_policy_safety_contract.py`, `tests/policy/` |
 | API dry-run default | `tests/test_api_dry_run_default.py`, `tests/api/` |
 | Audit JSONL shape | `tests/test_audit_contract.py` |
@@ -106,6 +133,25 @@ Tests: `tests/test_policy_safety_contract.py`, `tests/test_safety_contract_exten
 | Registry writer proof | `tests/test_registry_writer_proof.py` |
 | Proxy investigation | `tests/test_proxy_investigate.py` |
 | Full suite | `pytest -q` (~550+ cases) |
+
+CI smoke: `python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json`
+
+---
+
+## Roadmap
+
+| Item | Status |
+|------|--------|
+| 12-label classification + proof envelope | **Done** |
+| WNT JSON CLI + `.audit/` unification | **Done** |
+| Sysmon/Event Log writer causation | Planned |
+| Windows service mode | Planned |
+| Signed packaging | Planned |
+| Fleet aggregation / SIEM export | Planned |
+| FastAPI local API extension | Partial (`windows_network_toolkit/platform/api.py`) |
+| RBAC / Prometheus / policy-as-code | Planned |
+
+See [faang-platform-engineering-positioning.md](faang-platform-engineering-positioning.md).
 
 ---
 

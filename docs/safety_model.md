@@ -217,3 +217,13 @@ When in doubt, **redact** before publishing.
 
 Structured **`/platform/attribution/*`** payloads explain *detect → correlate → classify evidence strength* but **never** elevate registry polling alone to forensic certainty. Offline demos preload **`platform_data/attribution_context.jsonl`** so Sysmon/Procmon extracts can be exercised without transmitting raw telemetry. High-risk remediation (firewall reset, opaque shell, arbitrary adapter disables) stays **blocked** from autonomous API paths—see **`docs/rbac_and_remediation.md`**.
 
+## WNT JSON CLI enforcement (tests)
+
+Primary CLI: `python -m windows_network_toolkit`. Safety contracts are enforced in:
+
+- `tests/windows_network_toolkit/test_safety_contract.py` — dry-run default, confirmation token, blocked actions
+- `tests/windows_network_toolkit/test_cli_json_contract.py` — valid JSON on all commands
+- `tests/windows_network_toolkit/test_audit_soft_fail.py` — audit write failure does not crash commands
+
+Blocked by default: process kill, firewall reset, adapter disable, WinHTTP mutation. See [classification-model.md](classification-model.md) and [proof-vs-observation.md](proof-vs-observation.md).
+
