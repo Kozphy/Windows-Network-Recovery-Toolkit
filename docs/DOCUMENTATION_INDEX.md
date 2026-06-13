@@ -23,6 +23,10 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 | [case-study-3-endpoint-reliability-decision-engine.md](case-study-3-endpoint-reliability-decision-engine.md) | Decision engine case study |
 | [consulting-report.md](consulting-report.md) | Manager-facing risk assessment |
 | [demo-video-script.md](demo-video-script.md) | 3–5 minute demo script |
+| [ai_investigation_platform_architecture.md](ai_investigation_platform_architecture.md) | AI-assisted investigation platform design |
+| [rag_investigation_design.md](rag_investigation_design.md) | RAG retrieval system (SQLite → pgvector) |
+| [hypothesis_engine_design.md](hypothesis_engine_design.md) | Multievidence hypothesis engine |
+| [decision_intelligence_platform_design.md](decision_intelligence_platform_design.md) | Federated 5-domain DIP (IT, Security, Risk, Business, Compliance) |
 | [screenshots/README.md](screenshots/README.md) | Screenshot placeholders |
 
 ## Golden case (59081)

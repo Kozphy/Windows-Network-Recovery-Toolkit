@@ -1,0 +1,8 @@
+{
+  "primary_classification": "DEAD_PROXY_CONFIG",
+  "secondary_signals": ["WININET_WINHTTP_MISMATCH", "LOCALHOST_PROXY", "DEAD_LOCALHOST_PORT"],
+  "severity": "medium",
+  "confidence": 0.92,
+  "confidence_display": "ordinal 0.92 (heuristic score, not probability)",
+  "limitations": ["Does not prove malware or MITM."]
+}

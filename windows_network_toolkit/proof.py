@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from src.platform_core.proof.engine import run_proof_engine
+from src.platform_core.principles.report import build_principle_report_sections
+from src.platform_core.principles.validator import validate_principles
 
 from windows_network_toolkit.models import ProofAttempt, ProofResult
 from windows_network_toolkit.proxy_classification import classify_from_live
@@ -119,3 +121,33 @@ def run_diagnose_proof(
         confidence=confidence,
         limitations=limitations,
     )
+
+
+def enrich_diagnose_payload(payload: dict[str, Any], *, include_principles: bool) -> dict[str, Any]:
+    if not include_principles:
+        return payload
+
+    validation_input = {
+        "proof": payload,
+        "classification": {
+            "confidence": (payload.get("conclusion") or {}).get("confidence", 0.0),
+            "limitations": payload.get("limitations") or [],
+        },
+        "remediation_requested": False,
+    }
+    compliance = validate_principles(validation_input)
+    sections = build_principle_report_sections(
+        compliance=compliance,
+        proof=payload,
+        limitations=payload.get("limitations"),
+    )
+    enriched = dict(payload)
+    enriched.update(
+        {
+            "principle_compliance": sections["principle_compliance"],
+            "blocked_overclaims": sections["blocked_overclaims"],
+            "evidence_chain": sections["evidence_chain"],
+            "safe_remediation_controls": sections["safe_remediation_controls"],
+        }
+    )
+    return enriched

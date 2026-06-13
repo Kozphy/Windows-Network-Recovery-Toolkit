@@ -11,6 +11,9 @@ test:
 portfolio-test:
 	$(PYTEST) -q tests/test_portfolio_case_studies.py
 
+principles-test:
+	$(PYTEST) -q tests/test_observation_not_proof.py tests/test_correlation_not_causation.py tests/test_confidence_not_certainty.py tests/test_policy_not_safety.py tests/test_cs1_principle_compliance.py
+
 lint:
 	ruff check .
 

@@ -107,6 +107,12 @@ jobs:
           python -m platform_core.demo_fleet --endpoints 10 --incidents 3 --output /tmp/fleet_ci_demo
           python tools/public_release_audit.py --tracked-only
 
+      - name: Principle contract tests
+        run: |
+          pytest -q tests/test_observation_not_proof.py tests/test_correlation_not_causation.py
+          pytest -q tests/test_confidence_not_certainty.py tests/test_policy_not_safety.py
+          pytest -q tests/test_cs1_principle_compliance.py
+
       - name: Portfolio case-study tests (fixture-safe)
         run: pytest -q tests/test_portfolio_case_studies.py
 

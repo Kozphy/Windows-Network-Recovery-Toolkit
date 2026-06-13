@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.platform_core.principles.rules import format_confidence_display
+
 
 @dataclass
 class ProxyState:
@@ -117,8 +119,13 @@ class ProofResult:
             "observation": self.observation,
             "hypothesis": self.hypothesis,
             "proof_attempts": [p.to_dict() for p in self.proof_attempts],
-            "conclusion": {"status": self.conclusion_status, "confidence": round(self.confidence, 3)},
+            "conclusion": {
+                "status": self.conclusion_status,
+                "confidence": round(self.confidence, 3),
+                "confidence_display": format_confidence_display(self.confidence),
+            },
             "limitations": self.limitations,
+            "confidence_display": format_confidence_display(self.confidence),
         }
 
 

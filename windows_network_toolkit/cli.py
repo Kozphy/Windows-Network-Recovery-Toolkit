@@ -145,15 +145,37 @@ def cmd_proxy_owner(args: argparse.Namespace) -> int:
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
-    from windows_network_toolkit.proof import run_diagnose_proof
+    from windows_network_toolkit.proof import enrich_diagnose_payload, run_diagnose_proof
 
     inject = None
     if args.fixture:
         data = _load_fixture_data(args.fixture)
         inject = data.get("proof") or data
     payload = run_diagnose_proof(args.url or None, inject=inject)
-    _emit_json(payload.to_dict())
+    out = payload.to_dict()
+    if getattr(args, "principles", False):
+        out = enrich_diagnose_payload(out, include_principles=True)
+    _emit_json(out)
     return 0
+
+
+def cmd_principles_explain(_args: argparse.Namespace) -> int:
+    from src.platform_core.principles.validator import explain_principles
+
+    _emit_json(explain_principles())
+    return 0
+
+
+def cmd_principles_validate(args: argparse.Namespace) -> int:
+    from src.platform_core.principles.validator import validate_fixture_path
+
+    path = args.fixture
+    if not path:
+        repo = Path(__file__).resolve().parents[1]
+        path = str(repo / "case_studies" / "cs1_wininet_proxy_drift" / "fixture.json")
+    result = validate_fixture_path(path)
+    _emit_json(result.to_dict())
+    return 0 if result.compliant else 1
 
 
 def cmd_proxy_disable(args: argparse.Namespace) -> int:
@@ -191,7 +213,11 @@ def cmd_proxy_report(args: argparse.Namespace) -> int:
     inject = None
     if args.fixture:
         inject = _load_fixture_data(args.fixture).get("report") or _load_fixture_data(args.fixture)
-    payload = build_proxy_report(url=args.url or None, inject=inject)
+    payload = build_proxy_report(
+        url=args.url or None,
+        inject=inject,
+        include_principles=bool(getattr(args, "include_principles", False)),
+    )
     _emit_json(payload)
     return 0
 
@@ -391,10 +417,32 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     prpt = sub.add_parser("proxy-report", help="Structured incident-style JSON report")
     prpt.add_argument("--url", default="", help="Optional URL for proof section")
     prpt.add_argument("--fixture", default="", help="Optional fixture JSON")
+    prpt.add_argument(
+        "--include-principles",
+        action="store_true",
+        help="Include evidence chain, principle compliance, and safe remediation sections",
+    )
     prpt.set_defaults(func=cmd_proxy_report)
+
+    principles = sub.add_parser("principles", help="Epistemic principle contracts")
+    principles_sub = principles.add_subparsers(dest="principles_cmd", required=True)
+    p_explain = principles_sub.add_parser("explain", help="List the four epistemic principles")
+    p_explain.set_defaults(func=cmd_principles_explain)
+    p_validate = principles_sub.add_parser("validate", help="Validate fixture against principles")
+    p_validate.add_argument(
+        "--fixture",
+        default="",
+        help="Fixture JSON path (default: case_studies/cs1_wininet_proxy_drift/fixture.json)",
+    )
+    p_validate.set_defaults(func=cmd_principles_validate)
 
     diag = sub.add_parser("diagnose", help="Structured proof diagnosis")
     diag.add_argument("--proof", action="store_true", help="Run proof envelope")
+    diag.add_argument(
+        "--principles",
+        action="store_true",
+        help="Include principle compliance sections in output",
+    )
     diag.add_argument("--url", default="", help="Optional URL for network probes")
     diag.add_argument("--fixture", default="", help="Optional fixture JSON")
     diag.set_defaults(func=cmd_diagnose)
