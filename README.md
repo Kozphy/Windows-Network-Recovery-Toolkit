@@ -21,6 +21,109 @@ Python 3.11+ · Policy-gated · Local-first · 1000+ pytest (CI)
 
 ---
 
+## Who this is for
+
+| Audience | How to use this repo |
+|----------|----------------------|
+| **IT support** | `proxy-status`, `diagnose --proof`, `proxy-disable --dry-run` — fixture demos need no admin |
+| **Endpoint reliability engineers** | Decision pipeline, `proxy-watch`, replay, Prometheus metrics |
+| **Security analysts** | Listener vs writer attribution, TLS proof, `UNKNOWN_LOCAL_PROXY` triage |
+| **Risk consultants** | [consulting-report.md](docs/consulting-report.md), case studies, audit JSONL |
+| **Platform / SRE candidates** | CI safety contracts, deterministic replay, FastAPI platform API |
+
+**Portfolio pack:** [docs/portfolio-summary.md](docs/portfolio-summary.md) · [demo-video-script.md](docs/demo-video-script.md)
+
+---
+
+## Installation
+
+**Requirements:** Python 3.11+, Windows for live probes (fixtures work on any OS)
+
+```powershell
+git clone https://github.com/YOUR_ORG/Windows-Network-Recovery-Toolkit.git
+cd Windows-Network-Recovery-Toolkit
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+$env:PYTHONPATH = (Get-Location).Path
+```
+
+**Verify install:**
+
+```powershell
+pytest -q tests/test_portfolio_case_studies.py
+python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
+```
+
+**Optional — API + dashboard:**
+
+```powershell
+uvicorn backend.main:app --reload
+# http://127.0.0.1:8000/docs  ·  http://127.0.0.1:8000/dashboard/
+```
+
+---
+
+## Project structure
+
+```text
+windows_network_toolkit/   Primary JSON-first CLI (start here)
+src/platform_core/         Canonical decision engine (evidence, proof, policy, audit)
+src/proxy_guard/           Windows live probes
+backend/                   FastAPI platform API
+tests/                     Pytest + safety contracts + golden fixtures
+docs/                      Architecture, case studies, portfolio materials
+scripts/                   PowerShell/batch wrappers for operators
+frontend/                  Next.js operator console (optional)
+```
+
+Experimental labs: [labs/README.md](labs/README.md) (not mainline product).
+
+---
+
+## Screenshots
+
+Add demo captures to [docs/screenshots/](docs/screenshots/) before publishing.
+
+| Placeholder | Content |
+|-------------|---------|
+| `01-browser-proxy-error.png` | Browser error + ping OK |
+| `02-proxy-status-json.png` | Classification JSON |
+| `03-diagnose-proof.png` | Proof envelope + limitations |
+| `04-proxy-disable-dry-run.png` | Dry-run preview |
+
+See [docs/screenshots/README.md](docs/screenshots/README.md) for the full list.
+
+---
+
+## Troubleshooting
+
+| Issue | What to try |
+|-------|-------------|
+| `ModuleNotFoundError` | Set `$env:PYTHONPATH = (Get-Location).Path` and `pip install -e ".[dev]"` |
+| Live probes fail on Linux/macOS | Use `--fixture tests/fixtures/enert/dead_proxy_59081.json` |
+| `proxy-disable` does nothing | Default is `--dry-run`; add `--dry-run false --confirm DISABLE_WININET_PROXY` on Windows only after review |
+| Low writer attribution confidence | Load Sysmon E13 or use `--fixture registry_writer_observed.json` to see proof upgrade path |
+| CI failures locally | `make test` or `pytest -q tests/test_policy_safety_contract.py` first |
+| Black/ruff errors | `ruff check .` — formatting debt is non-blocking in CI |
+
+Full FAQ: [docs/faq.md](docs/faq.md)
+
+---
+
+## Safety warning
+
+This toolkit **reads** endpoint state by default. State-changing commands:
+
+- Default to **dry-run**
+- Require **typed confirmation** for registry mutations
+- **Never** silently kill processes, reset firewall, disable adapters, or modify WinHTTP
+- Surface **limitations[]** — does not prove malware, MITM, or full endpoint safety
+
+Do not use heuristic scores as automated blocking verdicts. See [docs/safety_model.md](docs/safety_model.md).
+
+---
+
 ## Real case: dead WinINET proxy 127.0.0.1:59081
 
 Golden path used in tests, docs, and demos:
@@ -347,7 +450,13 @@ Timeline merge: `python -m windows_network_toolkit proxy-timeline --audit-only`
 
 | Doc | Audience |
 |-----|----------|
-| [case-studies/dead-localhost-proxy.md](docs/case-studies/dead-localhost-proxy.md) | Golden 59081 case |
+| [portfolio-summary.md](docs/portfolio-summary.md) | LinkedIn, resume, interview pitch |
+| [case-study-1-proxy-drift.md](docs/case-study-1-proxy-drift.md) | Dead localhost proxy (59081) |
+| [case-study-2-unknown-local-proxy-listener.md](docs/case-study-2-unknown-local-proxy-listener.md) | Listener ≠ writer |
+| [case-study-3-endpoint-reliability-decision-engine.md](docs/case-study-3-endpoint-reliability-decision-engine.md) | Decision pipeline |
+| [consulting-report.md](docs/consulting-report.md) | Manager-facing risk assessment |
+| [demo-video-script.md](docs/demo-video-script.md) | 3–5 minute demo script |
+| [case-studies/dead-localhost-proxy.md](docs/case-studies/dead-localhost-proxy.md) | Golden 59081 (technical) |
 | [interview-case-study.md](docs/interview-case-study.md) | STAR walkthrough |
 | [big4-cyber-risk-positioning.md](docs/big4-cyber-risk-positioning.md) | Audit / cyber risk |
 | [faang-platform-engineering-positioning.md](docs/faang-platform-engineering-positioning.md) | Platform eng |
@@ -425,12 +534,24 @@ Dashboard: `frontend/app/platform/` — incidents, evidence, policy, replay, SLO
 ## Tests and CI
 
 ```powershell
+# Portfolio smoke (fast, fixture-safe)
+pytest -q tests/test_portfolio_case_studies.py
+
+# Safety contracts (run before any PR)
 pytest -q tests/test_policy_safety_contract.py tests/test_api_dry_run_default.py
 pytest -q tests/test_evidence_level_contract.py tests/test_fixture_regression_demo.py
+
+# Full suite
 pytest -q
+make test
+make lint
 ```
 
-CI: `.github/workflows/ci.yml` — ruff, pytest, safety contracts, fixture smoke.
+| Workflow | Purpose |
+|----------|---------|
+| [.github/workflows/ci.yml](.github/workflows/ci.yml) | ruff, bandit, pytest, safety contracts, fixture smoke, Windows zero-skip |
+| [.github/workflows/security.yml](.github/workflows/security.yml) | pip-audit, Trivy filesystem + container scan |
+| [.github/workflows/lint.yml](.github/workflows/lint.yml) | Additional lint on schedule |
 
 ---
 

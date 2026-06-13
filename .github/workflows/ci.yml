@@ -107,12 +107,16 @@ jobs:
           python -m platform_core.demo_fleet --endpoints 10 --incidents 3 --output /tmp/fleet_ci_demo
           python tools/public_release_audit.py --tracked-only
 
+      - name: Portfolio case-study tests (fixture-safe)
+        run: pytest -q tests/test_portfolio_case_studies.py
+
       - name: WNT JSON CLI smoke (fixture-based)
         run: |
           python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
           python -m windows_network_toolkit proxy-disable --dry-run
           python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
           python -m windows_network_toolkit proxy-owner --fixture tests/fixtures/enert/dead_proxy_59081.json
+          python -m windows_network_toolkit proxy-writer-attribution --fixture tests/fixtures/enert/unknown_localhost_proxy.json
 
       - name: Platform health contracts (in-process)
         run: |

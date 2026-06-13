@@ -13,6 +13,18 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 - Multi-domain adapters (Windows, Security, Cloud, Infrastructure, Market Events)
 - Research-only market catalyst monitoring (no trade execution)
 
+## Portfolio pack (recruiters, Big 4, interviews)
+
+| Doc | Purpose |
+|-----|---------|
+| [portfolio-summary.md](portfolio-summary.md) | LinkedIn, resume, interview pitch |
+| [case-study-1-proxy-drift.md](case-study-1-proxy-drift.md) | Dead proxy drift case study |
+| [case-study-2-unknown-local-proxy-listener.md](case-study-2-unknown-local-proxy-listener.md) | Unknown listener case study |
+| [case-study-3-endpoint-reliability-decision-engine.md](case-study-3-endpoint-reliability-decision-engine.md) | Decision engine case study |
+| [consulting-report.md](consulting-report.md) | Manager-facing risk assessment |
+| [demo-video-script.md](demo-video-script.md) | 3–5 minute demo script |
+| [screenshots/README.md](screenshots/README.md) | Screenshot placeholders |
+
 ## Golden case (59081)
 
 Dead WinINET localhost proxy — see [case-studies/dead-localhost-proxy.md](case-studies/dead-localhost-proxy.md).

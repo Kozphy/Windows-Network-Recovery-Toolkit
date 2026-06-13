@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format
+.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test
 
 PYTHON ?= python
 PYTEST ?= $(PYTHON) -m pytest
@@ -7,6 +7,9 @@ install:
 
 test:
 	$(PYTEST) -q
+
+portfolio-test:
+	$(PYTEST) -q tests/test_portfolio_case_studies.py
 
 lint:
 	ruff check .
