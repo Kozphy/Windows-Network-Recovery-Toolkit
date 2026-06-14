@@ -225,6 +225,10 @@ app = FastAPI(
             "name": "decision-intelligence",
             "description": "Events, evidence, decisions, outcomes, replay, and learning metrics",
         },
+        {
+            "name": "agent",
+            "description": "Evidence-gated AI agent governance — natural-language triage, RBAC, preview-only",
+        },
     ],
     lifespan=lifespan,
 )
@@ -237,6 +241,13 @@ app.include_router(platform_sre_router, prefix="/platform")
 app.include_router(platform_fleet_router, prefix="/platform")
 if decision_intelligence_router is not None:
     app.include_router(decision_intelligence_router)
+
+try:
+    from backend.agent_routes import router as agent_router
+
+    app.include_router(agent_router)
+except ImportError:  # pragma: no cover
+    pass
 
 try:
     from backend.canonical_routes import router as canonical_router

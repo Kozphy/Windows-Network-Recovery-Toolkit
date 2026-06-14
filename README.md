@@ -627,6 +627,53 @@ Full design: [docs/multi_domain_decision_platform.md](docs/multi_domain_decision
 
 ---
 
+## AI Agent Governance Layer
+
+This layer **does not** make the toolkit autonomous. It allows natural-language triage over existing evidence, proof, and policy systems. The AI agent is constrained by **RBAC**, **policy gates**, **dry-run defaults**, **audit logging**, and **evidence-tier limitations**.
+
+```text
+User Question
+     ↓
+Intent Classifier (rule-based, no external LLM required)
+     ↓
+RBAC (viewer / analyst / operator / admin)
+     ↓
+Policy Gate (blocks kill/firewall/shell/registry auto-mutation)
+     ↓
+Safe Tool Registry (proxy_status, diagnose_proxy, tls_proof, …)
+     ↓
+Evidence / Proof Engine
+     ↓
+Response Builder (limitations + safe next step)
+     ↓
+Audit Log (.audit/agent-actions.jsonl)
+```
+
+**API endpoints**
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/agent/ask` | Natural-language question → structured answer |
+| `POST` | `/agent/plan` | Proposed tool calls (no execution) |
+| `POST` | `/agent/execute-preview` | Preview-safe actions only |
+| `GET` | `/agent/audit` | Recent agent audit events (admin) |
+
+**Example**
+
+```powershell
+uvicorn backend.main:app --reload
+curl -X POST http://127.0.0.1:8000/agent/ask `
+  -H "Content-Type: application/json" `
+  -H "X-Operator-Role: viewer" `
+  -d "{\"message\":\"browser cannot connect ERR_PROXY_CONNECTION_FAILED\",\"fixture\":\"case_studies/cs1_wininet_proxy_drift/fixture.json\"}"
+```
+
+**Portfolio wording:** Built an evidence-gated AI operations platform that combines endpoint reliability diagnostics with AI-assisted triage. The system integrates proxy/TLS/website-risk evidence collection, RBAC, policy-gated remediation preview, audit logging, deterministic replay, and FastAPI platform APIs to help operators safely diagnose Windows network failures without allowing uncontrolled autonomous repair.
+
+Module: `src/platform_core/agent/` · Routes: `backend/agent_routes.py`
+
+---
+
 ## Labs (experimental — not mainline)
 
 Edge simulation and legacy experiments: [labs/README.md](labs/README.md)

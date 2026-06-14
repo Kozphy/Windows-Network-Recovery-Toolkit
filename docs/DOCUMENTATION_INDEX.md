@@ -27,6 +27,7 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 | [rag_investigation_design.md](rag_investigation_design.md) | RAG retrieval system (SQLite → pgvector) |
 | [hypothesis_engine_design.md](hypothesis_engine_design.md) | Multievidence hypothesis engine |
 | [decision_intelligence_platform_design.md](decision_intelligence_platform_design.md) | Federated 5-domain DIP (IT, Security, Risk, Business, Compliance) |
+| Agent governance | `src/platform_core/agent/` · `POST /agent/ask` · README § AI Agent Governance Layer |
 | [screenshots/README.md](screenshots/README.md) | Screenshot placeholders |
 
 ## Golden case (59081)
