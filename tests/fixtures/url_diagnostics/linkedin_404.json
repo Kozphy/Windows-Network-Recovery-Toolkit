@@ -1,0 +1,23 @@
+{
+  "body_text": "This page doesn't exist. Please check your URL or return to LinkedIn home. Go to your feed.",
+  "inject": {
+    "dns": {"status": "OK", "resolved_ips": ["13.107.42.14"]},
+    "tcp": {"status": "OK", "remote_host": "www.linkedin.com", "remote_port": 443},
+    "tls": {
+      "status": "OK",
+      "issuer": "CN=DigiCert",
+      "subject": "CN=www.linkedin.com",
+      "sni": "www.linkedin.com"
+    },
+    "http": {
+      "status": "OK",
+      "status_code": 404,
+      "final_url": "https://www.linkedin.com/in/example-profile",
+      "redirect_chain": ["https://www.linkedin.com/in/example-profile"],
+      "content_type": "text/html",
+      "title": "This page doesn't exist | LinkedIn",
+      "body_fingerprint": "abc123",
+      "body_length": 1200
+    }
+  }
+}

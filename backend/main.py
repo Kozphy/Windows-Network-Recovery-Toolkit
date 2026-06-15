@@ -239,6 +239,20 @@ if decision_intelligence_router is not None:
     app.include_router(decision_intelligence_router)
 
 try:
+    from backend.platform_demo_routes import router as platform_demo_router
+
+    app.include_router(platform_demo_router)
+except ImportError:  # pragma: no cover
+    pass
+
+try:
+    from backend.enterprise_risk_routes import router as enterprise_risk_router
+
+    app.include_router(enterprise_risk_router)
+except ImportError:  # pragma: no cover
+    pass
+
+try:
     from backend.canonical_routes import router as canonical_router
 
     app.include_router(canonical_router)

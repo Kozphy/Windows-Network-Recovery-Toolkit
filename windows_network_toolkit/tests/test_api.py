@@ -68,4 +68,5 @@ def test_remediation_confirm_preview_only() -> None:
 def test_dashboard_static() -> None:
     r = client.get("/dashboard/")
     assert r.status_code == 200
-    assert "Endpoint Reliability" in r.text
+    assert "Endpoint Network Evidence" in r.text
+    assert "Evidence" in r.text and "Audit" in r.text

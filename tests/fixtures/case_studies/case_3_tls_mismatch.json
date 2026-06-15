@@ -1,0 +1,65 @@
+{
+  "case_id": "case_3_tls_mismatch",
+  "title": "TLS certificate path mismatch — MITM risk review",
+  "symptom": "HTTPS works via curl but browser shows certificate warnings; proxy path differs",
+  "url": "https://internal.example.com",
+  "proxy_state": {
+    "wininet_proxy_enabled": true,
+    "wininet_proxy_server": "127.0.0.1:8888",
+    "localhost_port": 8888
+  },
+  "classification": {
+    "primary_classification": "TLS_PATH_MISMATCH",
+    "severity": "high",
+    "confidence": 0.78,
+    "evidence_tier": "CORRELATED",
+    "proof_level": "supported",
+    "limitations": [
+      "Certificate contrast supports path difference; it is not definitive MITM proof.",
+      "Does not identify registry writer without telemetry."
+    ]
+  },
+  "tls_proof": {
+    "target_url": "https://internal.example.com",
+    "certificate_mismatch": true,
+    "mitm_risk_level": "HIGH",
+    "direct_cert": {
+      "issuer": "CN=Corp Internal CA",
+      "fingerprint_sha256": "aaa111direct"
+    },
+    "proxied_cert": {
+      "issuer": "CN=Charles Proxy CA",
+      "fingerprint_sha256": "bbb222proxy"
+    },
+    "mismatch_fields": ["fingerprint_sha256", "issuer"],
+    "limitations": ["Certificate contrast is not definitive MITM without writer proof."]
+  },
+  "proof": {
+    "hypothesis": "TLS path through localhost proxy differs from direct path.",
+    "conclusion": {"status": "supported", "confidence": 0.78},
+    "proof_attempts": [
+      {"name": "tls_path_contrast", "status": "supported"},
+      {"name": "registry_writer_telemetry", "status": "missing"}
+    ]
+  },
+  "policy_decision": {
+    "action": "COLLECT_ADDITIONAL_EVIDENCE",
+    "outcome": "DEFER",
+    "dry_run": true,
+    "requires_confirmation": true,
+    "note": "Do not auto-disable proxy or kill process without investigation plan."
+  },
+  "remediation_preview": {
+    "dry_run": true,
+    "no_changes_made": true,
+    "recommended": "Review proxy tool approval; collect Sysmon E13 before containment decisions"
+  },
+  "audit_trail": {
+    "event_id": "evt-case3-tls",
+    "source": "tls-proof",
+    "evidence_tier": "CORRELATED",
+    "classification": "TLS_PATH_MISMATCH",
+    "policy_decision": "DEFER"
+  },
+  "dry_run": true
+}

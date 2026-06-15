@@ -19,6 +19,10 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 |-----|---------|
 | [portfolio-summary.md](portfolio-summary.md) | LinkedIn, resume, interview pitch |
 | [case-study-1-proxy-drift.md](case-study-1-proxy-drift.md) | Dead proxy drift case study |
+| [case-studies/case-1-dead-wininet-proxy.md](case-studies/case-1-dead-wininet-proxy.md) | Portfolio case 1 (fixture demo) |
+| [case-studies/case-2-proxy-reverter-node.md](case-studies/case-2-proxy-reverter-node.md) | Portfolio case 2 (reverter) |
+| [case-studies/case-3-tls-mismatch-mitm-risk.md](case-studies/case-3-tls-mismatch-mitm-risk.md) | Portfolio case 3 (TLS risk) |
+| [demo-video-script-5min.md](demo-video-script-5min.md) | 5-minute portfolio demo script |
 | [case-study-2-unknown-local-proxy-listener.md](case-study-2-unknown-local-proxy-listener.md) | Unknown listener case study |
 | [case-study-3-endpoint-reliability-decision-engine.md](case-study-3-endpoint-reliability-decision-engine.md) | Decision engine case study |
 | [consulting-report.md](consulting-report.md) | Manager-facing risk assessment |

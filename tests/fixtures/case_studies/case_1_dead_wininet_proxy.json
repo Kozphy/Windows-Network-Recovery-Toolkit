@@ -1,0 +1,54 @@
+{
+  "case_id": "case_1_dead_wininet_proxy",
+  "title": "Dead WinINET localhost proxy",
+  "symptom": "ERR_PROXY_CONNECTION_FAILED while ping and DNS succeed",
+  "proxy_state": {
+    "timestamp_utc": "2026-06-11T04:31:31Z",
+    "wininet_proxy_enabled": true,
+    "wininet_proxy_server": "127.0.0.1:59081",
+    "winhttp_direct_access": true,
+    "localhost_port": 59081
+  },
+  "proxy_owner": {
+    "listener_found": false,
+    "localhost_port": 59081,
+    "process": null
+  },
+  "classification": {
+    "primary_classification": "DEAD_PROXY_CONFIG",
+    "severity": "medium",
+    "confidence": 0.92,
+    "evidence_tier": "OBSERVED_ONLY",
+    "proof_level": "supported",
+    "limitations": ["Does not prove malware or MITM.", "Listener correlation is not registry-writer proof."]
+  },
+  "proof": {
+    "hypothesis": "Browser failure is likely caused by dead WinINET localhost proxy.",
+    "conclusion": {"status": "supported", "confidence": 0.92},
+    "proof_attempts": [
+      {"name": "localhost_listener_check", "status": "failed"},
+      {"name": "wininet_winhttp_comparison", "status": "supported"}
+    ],
+    "limitations": ["This does not prove malware.", "This does not prove MITM."]
+  },
+  "policy_decision": {
+    "action": "DISABLE_WININET_PROXY",
+    "outcome": "PREVIEW_ONLY",
+    "dry_run": true,
+    "requires_confirmation": true,
+    "confirmation_token": "DISABLE_WININET_PROXY"
+  },
+  "remediation_preview": {
+    "dry_run": true,
+    "no_changes_made": true,
+    "planned_changes": ["Set ProxyEnable=0", "Clear ProxyServer"]
+  },
+  "audit_trail": {
+    "event_id": "evt-case1-59081",
+    "source": "proxy-status",
+    "evidence_tier": "OBSERVED_ONLY",
+    "classification": "DEAD_PROXY_CONFIG",
+    "policy_decision": "PREVIEW_ONLY"
+  },
+  "dry_run": true
+}

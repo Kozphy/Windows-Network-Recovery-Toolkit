@@ -1,0 +1,59 @@
+{
+  "case_id": "case_2_proxy_reverter_node",
+  "title": "Proxy reverter — Node/local listener respawn",
+  "symptom": "Proxy disable does not stick; listener respawns within minutes",
+  "proxy_state": {
+    "timestamp_utc": "2026-06-14T02:15:00Z",
+    "wininet_proxy_enabled": true,
+    "wininet_proxy_server": "127.0.0.1:61526",
+    "winhttp_direct_access": true,
+    "localhost_port": 61526
+  },
+  "proxy_owner": {
+    "listener_found": true,
+    "localhost_port": 61526,
+    "process": {"pid": 9999, "name": "node.exe", "path": "C:\\Program Files\\nodejs\\node.exe"}
+  },
+  "classification": {
+    "primary_classification": "UNKNOWN_LOCAL_PROXY",
+    "secondary_signals": ["ACTIVE_LISTENER", "REVERTER_SUSPECTED"],
+    "severity": "medium",
+    "confidence": 0.55,
+    "evidence_tier": "CORRELATED",
+    "proof_level": "correlation",
+    "limitations": [
+      "Listener match is correlation, not registry-writer proof.",
+      "Process name alone does not prove malicious intent."
+    ]
+  },
+  "timeline": [
+    {"timestamp_utc": "2026-06-14T02:00:00Z", "signal": "PROXY_DISABLE_PREVIEW", "observed_value": "dry_run"},
+    {"timestamp_utc": "2026-06-14T02:10:00Z", "signal": "PROXY_REENABLED", "observed_value": "ProxyEnable=1"},
+    {"timestamp_utc": "2026-06-14T02:15:00Z", "signal": "LISTENER_RESPAWN", "observed_value": "127.0.0.1:61526"}
+  ],
+  "proof": {
+    "hypothesis": "Active localhost listener may be re-applying proxy settings.",
+    "conclusion": {"status": "correlation", "confidence": 0.55},
+    "limitations": ["No Sysmon E13 writer proof in fixture."]
+  },
+  "policy_decision": {
+    "action": "OBSERVE_AND_COLLECT_WRITER_TELEMETRY",
+    "outcome": "OBSERVE",
+    "dry_run": true,
+    "requires_confirmation": true,
+    "note": "No automatic process kill — monitor and collect writer proof first."
+  },
+  "remediation_preview": {
+    "dry_run": true,
+    "no_changes_made": true,
+    "blocked_reason": "REMEDIATION_NOT_STICKY — investigate reverter before repeat disable"
+  },
+  "audit_trail": {
+    "event_id": "evt-case2-reverter",
+    "source": "proxy-watch",
+    "evidence_tier": "CORRELATED",
+    "classification": "UNKNOWN_LOCAL_PROXY",
+    "policy_decision": "OBSERVE"
+  },
+  "dry_run": true
+}
