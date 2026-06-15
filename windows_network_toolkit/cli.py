@@ -31,6 +31,8 @@ def _resolve_fixture(path_str: str) -> Path:
         repo / "tests" / "fixtures" / "enert" / f"{path_str}.json",
         repo / "tests" / "fixtures" / "classification" / path_str,
         repo / "tests" / "fixtures" / "classification" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "url_diagnostics" / path_str,
+        repo / "tests" / "fixtures" / "url_diagnostics" / f"{path_str}.json",
     ):
         if candidate.is_file():
             return candidate
@@ -341,6 +343,101 @@ def cmd_audit_verify(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def cmd_fleet_simulate(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.fleet import cmd_fleet_simulate as _run
+
+    return _run(args)
+
+
+def cmd_risk_analytics(args: argparse.Namespace) -> int:
+    from src.platform_core.risk_platform.pipeline import (
+        executive_summary_markdown,
+        load_case_fixture,
+        run_risk_analytics_pipeline,
+    )
+
+    fixture = load_case_fixture(args.fixture)
+    result = run_risk_analytics_pipeline(fixture)
+    if args.format == "markdown":
+        print(executive_summary_markdown(result))
+    else:
+        print(json.dumps(result, indent=2, default=str))
+    return 0
+
+
+def cmd_url_diagnose(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.url_diagnose import diagnose_url, explain_report
+
+    inject = None
+    body_text = ""
+    if args.fixture:
+        data = _load_fixture_data(args.fixture)
+        inject = data.get("inject") or data
+        body_text = str(data.get("body_text") or (inject or {}).get("body_text") or "")
+
+    report = diagnose_url(
+        args.url,
+        domain_profile=args.domain_profile,
+        follow_redirects=bool(args.follow_redirects),
+        max_redirects=int(args.max_redirects),
+        compare_browser=bool(args.compare_browser),
+        user_agent=args.user_agent or "",
+        timeout=float(args.timeout),
+        no_body=bool(args.no_body),
+        classify_soft_404=bool(args.classify_soft_404),
+        save_evidence=bool(args.save_evidence),
+        evidence_dir=args.evidence_dir,
+        inject=inject,
+        body_text=body_text,
+    )
+    if args.explain:
+        print(explain_report(report))
+    else:
+        _emit_json(report)
+    return 0
+
+
+def cmd_evidence_case(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.evidence_case_cli import (
+        create_case,
+        export_schema,
+        report_case,
+        validate_case_file,
+    )
+
+    sub = args.evidence_case_cmd
+    if sub == "create":
+        fixture = _resolve_fixture(args.fixture)
+        if not fixture.is_file():
+            print(f"Fixture not found: {args.fixture}", file=sys.stderr)
+            return 1
+        payload = create_case(fixture=str(fixture), out=args.out, title=args.title or "")
+        if args.json:
+            _emit_json(payload)
+        else:
+            print(json.dumps({"case_id": payload["case_id"], "out": args.out}, indent=2))
+        return 0
+    if sub == "report":
+        text = report_case(args.case_file, fmt=args.format)
+        print(text)
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+        return 0
+    if sub == "validate":
+        result = validate_case_file(args.case_file)
+        _emit_json(result)
+        return 0 if result.get("valid") else 1
+    if sub == "schema":
+        payload = export_schema(args.out)
+        if args.json:
+            _emit_json({"schema_path": payload["schema_path"]})
+        else:
+            print(json.dumps({"schema_path": payload["schema_path"]}, indent=2))
+        return 0
+    print("Unknown evidence-case subcommand", file=sys.stderr)
+    return 1
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     repo = Path(__file__).resolve().parents[1]
     fixture = repo / "windows_network_toolkit" / "examples" / "proxy_drift_incident.jsonl"
@@ -495,6 +592,82 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
 
     demo = sub.add_parser("demo", help="Golden fixture demo (read-only)")
     demo.set_defaults(func=cmd_demo)
+
+    fs = sub.add_parser(
+        "fleet-simulate",
+        help="Fleet simulation summary from JSONL fixture (read-only)",
+    )
+    fs.add_argument(
+        "--fixture",
+        default="tests/fixtures/fleet/fleet_100_endpoints.jsonl",
+        help="Fleet JSONL fixture path",
+    )
+    fs.add_argument("--format", choices=["json", "markdown"], default="json")
+    fs.set_defaults(func=cmd_fleet_simulate)
+
+    ra = sub.add_parser(
+        "risk-analytics",
+        help="Technology Risk & Control Analytics assessment (fixture-safe)",
+    )
+    ra.add_argument(
+        "--fixture",
+        default="tests/fixtures/case_studies/case_1_dead_wininet_proxy.json",
+    )
+    ra.add_argument("--format", choices=["json", "markdown"], default="json")
+    ra.set_defaults(func=cmd_risk_analytics)
+
+    ud = sub.add_parser(
+        "url-diagnose",
+        help="Distinguish network failure from application/content-layer URL issues (read-only)",
+    )
+    ud.add_argument("--url", required=True, help="Target URL to diagnose")
+    ud.add_argument("--json", dest="json_output", action="store_true", help="Emit JSON (default)")
+    ud.add_argument("--fixture", default="", help="Optional fixture JSON with inject probes")
+    ud.add_argument("--follow-redirects", dest="follow_redirects", action="store_true", default=True)
+    ud.add_argument("--no-follow-redirects", dest="follow_redirects", action="store_false")
+    ud.add_argument("--max-redirects", default="10")
+    ud.add_argument("--compare-browser", action="store_true")
+    ud.add_argument("--user-agent", default="")
+    ud.add_argument("--timeout", default="10")
+    ud.add_argument("--no-body", action="store_true")
+    ud.add_argument("--save-evidence", action="store_true")
+    ud.add_argument("--evidence-dir", default="./evidence")
+    ud.add_argument("--classify-soft-404", dest="classify_soft_404", action="store_true", default=True)
+    ud.add_argument("--no-classify-soft-404", dest="classify_soft_404", action="store_false")
+    ud.add_argument("--domain-profile", default="generic", choices=["generic", "linkedin"])
+    ud.add_argument("--explain", action="store_true", help="Human-readable summary (JSON still via default)")
+    ud.set_defaults(func=cmd_url_diagnose)
+
+    ec = sub.add_parser(
+        "evidence-case",
+        help="Evidence Case pipeline model (create / report / validate / schema)",
+    )
+    ec_sub = ec.add_subparsers(dest="evidence_case_cmd", required=True)
+
+    ec_create = ec_sub.add_parser("create", help="Build case JSON from fixture (read-only)")
+    ec_create.add_argument(
+        "--fixture",
+        default="tests/fixtures/case_studies/case_1_dead_wininet_proxy.json",
+    )
+    ec_create.add_argument("--out", required=True, help="Output case JSON path")
+    ec_create.add_argument("--title", default="", help="Optional case title override")
+    ec_create.add_argument("--json", action="store_true", help="Emit full case JSON to stdout")
+    ec_create.set_defaults(func=cmd_evidence_case)
+
+    ec_report = ec_sub.add_parser("report", help="Render case report")
+    ec_report.add_argument("case_file", help="Path to evidence case JSON")
+    ec_report.add_argument("--format", choices=["json", "markdown"], default="markdown")
+    ec_report.add_argument("--out", default="", help="Optional output file")
+    ec_report.set_defaults(func=cmd_evidence_case)
+
+    ec_validate = ec_sub.add_parser("validate", help="Validate case structure and safety")
+    ec_validate.add_argument("case_file", help="Path to evidence case JSON")
+    ec_validate.set_defaults(func=cmd_evidence_case)
+
+    ec_schema = ec_sub.add_parser("schema", help="Export JSON Schema for EvidenceCase")
+    ec_schema.add_argument("--out", default="schemas/evidence_case.schema.json")
+    ec_schema.add_argument("--json", action="store_true")
+    ec_schema.set_defaults(func=cmd_evidence_case)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

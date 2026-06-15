@@ -116,6 +116,14 @@ jobs:
       - name: Portfolio case-study tests (fixture-safe)
         run: pytest -q tests/test_portfolio_case_studies.py
 
+      - name: Portfolio platform tests (case studies, fleet, dashboard)
+        run: |
+          pytest -q tests/test_case_study_fixtures.py tests/test_fleet_simulation.py
+          pytest -q tests/test_dashboard_fixture_routes.py tests/test_audit_hash_chain.py
+          pytest -q tests/test_enterprise_risk_platform.py
+          pytest -q tests/test_url_diagnose.py
+          pytest -q tests/test_evidence_case.py
+
       - name: WNT JSON CLI smoke (fixture-based)
         run: |
           python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json

@@ -1,0 +1,1157 @@
+{
+  "$defs": {
+    "AuditRecord": {
+      "properties": {
+        "audit_id": {
+          "title": "Audit Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "erp.audit.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "timestamp_utc": {
+          "title": "Timestamp Utc",
+          "type": "string"
+        },
+        "action_type": {
+          "enum": [
+            "event_received",
+            "evidence_attached",
+            "hypothesis_created",
+            "decision_created",
+            "policy_evaluated",
+            "remediation_previewed",
+            "human_approval_requested",
+            "human_approval_granted",
+            "action_executed",
+            "validation_completed",
+            "rollback_completed",
+            "outcome_recorded",
+            "replay_certified"
+          ],
+          "title": "Action Type",
+          "type": "string"
+        },
+        "trace_id": {
+          "default": "",
+          "title": "Trace Id",
+          "type": "string"
+        },
+        "decision_id": {
+          "default": "",
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "default": "",
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "actor": {
+          "default": "platform",
+          "title": "Actor",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        },
+        "previous_hash": {
+          "default": "",
+          "title": "Previous Hash",
+          "type": "string"
+        },
+        "current_hash": {
+          "default": "",
+          "title": "Current Hash",
+          "type": "string"
+        },
+        "signature_status": {
+          "default": "hash_chained",
+          "enum": [
+            "unsigned",
+            "hash_chained",
+            "signed"
+          ],
+          "title": "Signature Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "audit_id",
+        "timestamp_utc",
+        "action_type"
+      ],
+      "title": "AuditRecord",
+      "type": "object"
+    },
+    "AuditStage": {
+      "description": "Immutable audit trail references.",
+      "properties": {
+        "stage": {
+          "const": "audit",
+          "default": "audit",
+          "title": "Stage",
+          "type": "string"
+        },
+        "records": {
+          "items": {
+            "$ref": "#/$defs/AuditRecord"
+          },
+          "title": "Records",
+          "type": "array"
+        },
+        "chain_verified": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Chain Verified"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "title": "AuditStage",
+      "type": "object"
+    },
+    "Decision": {
+      "properties": {
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "trace_id": {
+          "default": "",
+          "title": "Trace Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "erp.platform.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "timestamp_utc": {
+          "title": "Timestamp Utc",
+          "type": "string"
+        },
+        "incident_type": {
+          "title": "Incident Type",
+          "type": "string"
+        },
+        "recommended_action": {
+          "title": "Recommended Action",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "risk_level": {
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Risk Level",
+          "type": "string"
+        },
+        "evidence_tier": {
+          "default": "OBSERVED_ONLY",
+          "enum": [
+            "OBSERVED_ONLY",
+            "CORRELATED",
+            "PROVEN_REGISTRY_WRITER",
+            "PROVEN_NETWORK_IMPACT",
+            "FINAL_CAUSATION"
+          ],
+          "title": "Evidence Tier",
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "reasoning": {
+          "default": "",
+          "title": "Reasoning",
+          "type": "string"
+        },
+        "requires_human_review": {
+          "default": false,
+          "title": "Requires Human Review",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "decision_id",
+        "incident_id",
+        "timestamp_utc",
+        "incident_type",
+        "recommended_action",
+        "confidence"
+      ],
+      "title": "Decision",
+      "type": "object"
+    },
+    "DecisionStage": {
+      "description": "Recommended action with human-review flags.",
+      "properties": {
+        "stage": {
+          "const": "decision",
+          "default": "decision",
+          "title": "Stage",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/Decision"
+        },
+        "policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PolicyEvaluation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "title": "DecisionStage",
+      "type": "object"
+    },
+    "EvidenceBundle": {
+      "properties": {
+        "bundle_id": {
+          "title": "Bundle Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "erp.platform.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "host_id": {
+          "default": "local",
+          "title": "Host Id",
+          "type": "string"
+        },
+        "tier": {
+          "default": "OBSERVED_ONLY",
+          "enum": [
+            "OBSERVED_ONLY",
+            "CORRELATED",
+            "PROVEN_REGISTRY_WRITER",
+            "PROVEN_NETWORK_IMPACT",
+            "FINAL_CAUSATION"
+          ],
+          "title": "Tier",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/EvidenceItem"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "summary": {
+          "default": "",
+          "title": "Summary",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "bundle_id",
+        "incident_id",
+        "created_at"
+      ],
+      "title": "EvidenceBundle",
+      "type": "object"
+    },
+    "EvidenceItem": {
+      "properties": {
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "erp.platform.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "timestamp_utc": {
+          "title": "Timestamp Utc",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "signal": {
+          "title": "Signal",
+          "type": "string"
+        },
+        "observed_value": {
+          "default": "",
+          "title": "Observed Value",
+          "type": "string"
+        },
+        "tier": {
+          "default": "OBSERVED_ONLY",
+          "enum": [
+            "OBSERVED_ONLY",
+            "CORRELATED",
+            "PROVEN_REGISTRY_WRITER",
+            "PROVEN_NETWORK_IMPACT",
+            "FINAL_CAUSATION"
+          ],
+          "title": "Tier",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 0.0,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "raw_data": {
+          "additionalProperties": true,
+          "title": "Raw Data",
+          "type": "object"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "event_id",
+        "timestamp_utc",
+        "source",
+        "signal"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "EvidenceStage": {
+      "description": "Structured evidence bundle with explicit tier.",
+      "properties": {
+        "stage": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Stage",
+          "type": "string"
+        },
+        "bundle": {
+          "$ref": "#/$defs/EvidenceBundle"
+        },
+        "tier_summary": {
+          "default": "",
+          "title": "Tier Summary",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "bundle"
+      ],
+      "title": "EvidenceStage",
+      "type": "object"
+    },
+    "ExecutionStage": {
+      "description": "Preview-first execution record \u2014 registry changes require confirmation.",
+      "properties": {
+        "stage": {
+          "const": "execution",
+          "default": "execution",
+          "title": "Stage",
+          "type": "string"
+        },
+        "execution_id": {
+          "title": "Execution Id",
+          "type": "string"
+        },
+        "timestamp_utc": {
+          "title": "Timestamp Utc",
+          "type": "string"
+        },
+        "action_id": {
+          "default": "",
+          "title": "Action Id",
+          "type": "string"
+        },
+        "dry_run": {
+          "default": true,
+          "title": "Dry Run",
+          "type": "boolean"
+        },
+        "status": {
+          "default": "preview",
+          "enum": [
+            "preview",
+            "blocked",
+            "executed",
+            "not_requested"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "registry_modified": {
+          "default": false,
+          "title": "Registry Modified",
+          "type": "boolean"
+        },
+        "confirmation_token": {
+          "default": "",
+          "title": "Confirmation Token",
+          "type": "string"
+        },
+        "policy_outcome": {
+          "default": "PREVIEW_ONLY",
+          "title": "Policy Outcome",
+          "type": "string"
+        },
+        "planned_changes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Planned Changes",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "execution_id",
+        "timestamp_utc"
+      ],
+      "title": "ExecutionStage",
+      "type": "object"
+    },
+    "Hypothesis": {
+      "properties": {
+        "hypothesis_id": {
+          "title": "Hypothesis Id",
+          "type": "string"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "erp.platform.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 0.5,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "supporting_evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Supporting Evidence Ids",
+          "type": "array"
+        },
+        "incident_type": {
+          "default": "",
+          "title": "Incident Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "hypothesis_id",
+        "event_id",
+        "title",
+        "explanation"
+      ],
+      "title": "Hypothesis",
+      "type": "object"
+    },
+    "HypothesisStage": {
+      "description": "Competing explanation \u2014 correlation is not causation.",
+      "properties": {
+        "stage": {
+          "const": "hypothesis",
+          "default": "hypothesis",
+          "title": "Stage",
+          "type": "string"
+        },
+        "hypothesis": {
+          "$ref": "#/$defs/Hypothesis"
+        },
+        "alternatives": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "hypothesis"
+      ],
+      "title": "HypothesisStage",
+      "type": "object"
+    },
+    "IncidentOutcome": {
+      "properties": {
+        "outcome_id": {
+          "title": "Outcome Id",
+          "type": "string"
+        },
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "incident_id": {
+          "title": "Incident Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "erp.platform.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "recommended_action": {
+          "title": "Recommended Action",
+          "type": "string"
+        },
+        "policy_outcome": {
+          "title": "Policy Outcome",
+          "type": "string"
+        },
+        "operator_action": {
+          "default": "",
+          "title": "Operator Action",
+          "type": "string"
+        },
+        "actual_outcome": {
+          "default": "",
+          "title": "Actual Outcome",
+          "type": "string"
+        },
+        "time_to_resolution_seconds": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time To Resolution Seconds"
+        },
+        "was_successful": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Was Successful"
+        },
+        "was_false_positive": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Was False Positive"
+        },
+        "was_blocked_by_policy": {
+          "default": false,
+          "title": "Was Blocked By Policy",
+          "type": "boolean"
+        },
+        "notes": {
+          "default": "",
+          "title": "Notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome_id",
+        "decision_id",
+        "incident_id",
+        "created_at",
+        "recommended_action",
+        "policy_outcome"
+      ],
+      "title": "IncidentOutcome",
+      "type": "object"
+    },
+    "LearningRecord": {
+      "properties": {
+        "record_id": {
+          "title": "Record Id",
+          "type": "string"
+        },
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "erp.platform.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "feedback_type": {
+          "title": "Feedback Type",
+          "type": "string"
+        },
+        "metrics_snapshot": {
+          "additionalProperties": true,
+          "title": "Metrics Snapshot",
+          "type": "object"
+        }
+      },
+      "required": [
+        "record_id",
+        "decision_id",
+        "created_at",
+        "feedback_type"
+      ],
+      "title": "LearningRecord",
+      "type": "object"
+    },
+    "LearningStage": {
+      "description": "Continuous improvement signals.",
+      "properties": {
+        "stage": {
+          "const": "learning",
+          "default": "learning",
+          "title": "Stage",
+          "type": "string"
+        },
+        "records": {
+          "items": {
+            "$ref": "#/$defs/LearningRecord"
+          },
+          "title": "Records",
+          "type": "array"
+        },
+        "recommended_controls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Recommended Controls",
+          "type": "array"
+        },
+        "recommended_tests": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Recommended Tests",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "title": "LearningStage",
+      "type": "object"
+    },
+    "ObservationStage": {
+      "description": "Raw signals \u2014 observation is not proof.",
+      "properties": {
+        "stage": {
+          "const": "observation",
+          "default": "observation",
+          "title": "Stage",
+          "type": "string"
+        },
+        "observation_id": {
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "timestamp_utc": {
+          "title": "Timestamp Utc",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "symptom": {
+          "default": "",
+          "title": "Symptom",
+          "type": "string"
+        },
+        "raw_signals": {
+          "additionalProperties": true,
+          "title": "Raw Signals",
+          "type": "object"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "observation_id",
+        "timestamp_utc",
+        "source"
+      ],
+      "title": "ObservationStage",
+      "type": "object"
+    },
+    "OutcomeStage": {
+      "description": "Recorded result after decision/execution.",
+      "properties": {
+        "stage": {
+          "const": "outcome",
+          "default": "outcome",
+          "title": "Stage",
+          "type": "string"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IncidentOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "resolution_summary": {
+          "default": "",
+          "title": "Resolution Summary",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "title": "OutcomeStage",
+      "type": "object"
+    },
+    "PolicyEvaluation": {
+      "properties": {
+        "evaluation_id": {
+          "title": "Evaluation Id",
+          "type": "string"
+        },
+        "decision_id": {
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "erp.platform.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "timestamp_utc": {
+          "title": "Timestamp Utc",
+          "type": "string"
+        },
+        "requested_action": {
+          "title": "Requested Action",
+          "type": "string"
+        },
+        "evidence_tier": {
+          "enum": [
+            "OBSERVED_ONLY",
+            "CORRELATED",
+            "PROVEN_REGISTRY_WRITER",
+            "PROVEN_NETWORK_IMPACT",
+            "FINAL_CAUSATION"
+          ],
+          "title": "Evidence Tier",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "ALLOW",
+            "PREVIEW_ONLY",
+            "REQUIRE_HUMAN_APPROVAL",
+            "BLOCK",
+            "ROLLBACK_REQUIRED"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "allowed": {
+          "title": "Allowed",
+          "type": "boolean"
+        },
+        "requires_approval": {
+          "title": "Requires Approval",
+          "type": "boolean"
+        },
+        "requires_rollback_plan": {
+          "title": "Requires Rollback Plan",
+          "type": "boolean"
+        },
+        "blocked_reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blocked Reasons",
+          "type": "array"
+        },
+        "rationale": {
+          "default": "",
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evaluation_id",
+        "decision_id",
+        "timestamp_utc",
+        "requested_action",
+        "evidence_tier",
+        "outcome",
+        "allowed",
+        "requires_approval",
+        "requires_rollback_plan"
+      ],
+      "title": "PolicyEvaluation",
+      "type": "object"
+    },
+    "RiskAssessmentStage": {
+      "description": "Ordinal risk framing for governance review.",
+      "properties": {
+        "stage": {
+          "const": "risk_assessment",
+          "default": "risk_assessment",
+          "title": "Stage",
+          "type": "string"
+        },
+        "assessment_id": {
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "severity": {
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "confidence": {
+          "default": 0.5,
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "user_impact": {
+          "default": "",
+          "title": "User Impact",
+          "type": "string"
+        },
+        "not_evidence_of": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Not Evidence Of",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "assessment_id"
+      ],
+      "title": "RiskAssessmentStage",
+      "type": "object"
+    },
+    "ValidationAttempt": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "default": "inconclusive",
+          "enum": [
+            "passed",
+            "failed",
+            "skipped",
+            "inconclusive"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ValidationAttempt",
+      "type": "object"
+    },
+    "ValidationStage": {
+      "description": "Proof envelope results \u2014 confidence is not certainty.",
+      "properties": {
+        "stage": {
+          "const": "validation",
+          "default": "validation",
+          "title": "Stage",
+          "type": "string"
+        },
+        "validation_id": {
+          "title": "Validation Id",
+          "type": "string"
+        },
+        "timestamp_utc": {
+          "title": "Timestamp Utc",
+          "type": "string"
+        },
+        "status": {
+          "default": "not_run",
+          "enum": [
+            "passed",
+            "failed",
+            "inconclusive",
+            "not_run"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "proof_level": {
+          "default": "observed",
+          "title": "Proof Level",
+          "type": "string"
+        },
+        "attempts": {
+          "items": {
+            "$ref": "#/$defs/ValidationAttempt"
+          },
+          "title": "Attempts",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "validation_id",
+        "timestamp_utc"
+      ],
+      "title": "ValidationStage",
+      "type": "object"
+    }
+  },
+  "description": "End-to-end evidence case tracing:\nObservation \u2192 Evidence \u2192 Hypothesis \u2192 Validation \u2192 Risk Assessment\n\u2192 Decision \u2192 Execution \u2192 Outcome \u2192 Audit \u2192 Learning",
+  "properties": {
+    "case_id": {
+      "title": "Case Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "evidence_case.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "fixture_source": {
+      "default": "",
+      "title": "Fixture Source",
+      "type": "string"
+    },
+    "observation": {
+      "$ref": "#/$defs/ObservationStage"
+    },
+    "evidence": {
+      "$ref": "#/$defs/EvidenceStage"
+    },
+    "hypothesis": {
+      "$ref": "#/$defs/HypothesisStage"
+    },
+    "validation": {
+      "$ref": "#/$defs/ValidationStage"
+    },
+    "risk_assessment": {
+      "$ref": "#/$defs/RiskAssessmentStage"
+    },
+    "decision": {
+      "$ref": "#/$defs/DecisionStage"
+    },
+    "execution": {
+      "$ref": "#/$defs/ExecutionStage"
+    },
+    "outcome": {
+      "$ref": "#/$defs/OutcomeStage"
+    },
+    "audit": {
+      "$ref": "#/$defs/AuditStage"
+    },
+    "learning": {
+      "$ref": "#/$defs/LearningStage"
+    },
+    "epistemic_notice": {
+      "default": "Observation \u2260 Proof \u00b7 Correlation \u2260 Causation \u00b7 Confidence \u2260 Certainty \u00b7 Policy Permission \u2260 Safety Guarantee",
+      "title": "Epistemic Notice",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "case_id",
+    "title",
+    "created_at",
+    "observation",
+    "evidence",
+    "hypothesis",
+    "validation",
+    "risk_assessment",
+    "decision",
+    "execution",
+    "outcome",
+    "audit",
+    "learning"
+  ],
+  "title": "EvidenceCase",
+  "type": "object"
+}

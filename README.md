@@ -1,8 +1,8 @@
-# Endpoint Network Evidence & Risk Toolkit
+# Technology Risk & Control Analytics Platform
 
-**One-liner:** An evidence-based Windows endpoint network evidence and IT risk toolkit that detects WinINET proxy drift, attributes registry writers, contrasts TLS paths, scores website risk heuristically, merges timelines, and exports audit-ready reports — with policy-gated remediation preview only.
+**One-liner:** An enterprise Technology Risk & Control Analytics Platform for Windows endpoints — tracing business objectives through assets, threats, controls, testing, findings, risk, remediation, governance, audit, and learning. Detects proxy drift, attributes registry writers, contrasts TLS paths, and exports audit-ready evidence with policy-gated remediation preview only.
 
-> **Disclaimer:** This is an **evidence and risk toolkit**, not a full antivirus, EDR, or phishing protection product. Heuristic scores are for IT/security review — not automated blocking verdicts.
+> **Disclaimer:** This is **governance and risk analytics infrastructure**, not antivirus, EDR, XDR, or autonomous security software. Heuristic scores support IT risk and audit review — not automated blocking verdicts.
 
 Python 3.11+ · Policy-gated · Local-first · 1000+ pytest (CI)
 
@@ -18,6 +18,35 @@ Python 3.11+ · Policy-gated · Local-first · 1000+ pytest (CI)
 | Correlation != Causation | Guards block destructive unlock |
 | Confidence != Certainty | 0–1 ordinal scores with limitations[] |
 | Policy Permission != Safety Guarantee | Approval + rollback required |
+
+---
+
+## High-level portfolio value
+
+This project is an **Enterprise Technology Risk & Control Analytics Platform** — not antivirus, EDR, XDR, or autonomous remediation.
+
+| Pillar | What it demonstrates |
+|--------|----------------------|
+| **Endpoint reliability** | WinINET proxy drift, dead localhost listeners, TLS path contrast |
+| **IT risk governance** | Evidence tiers, limitations on every output, Big 4–style audit framing |
+| **Evidence-based decisions** | Hypothesis → proof envelope → policy gate → preview-only remediation |
+| **Audit-ready review** | Hash-chained JSONL, deterministic replay, chain-of-custody fields |
+| **Platform engineering / SRE** | FastAPI platform, fleet simulation (100 endpoints), fixture-first CI, dashboard |
+
+**Audience:** Big 4 IT Risk · Platform Engineering · SRE · Security-adjacent detection design (complements SIEM/EDR).
+
+**Case studies:** [case-1](docs/case-studies/case-1-dead-wininet-proxy.md) · [case-2](docs/case-studies/case-2-proxy-reverter-node.md) · [case-3](docs/case-studies/case-3-tls-mismatch-mitm-risk.md)
+
+**5-minute demo:** [docs/demo-video-script-5min.md](docs/demo-video-script-5min.md)
+
+**Technology Risk & Control Analytics:** [docs/enterprise-risk-platform/README.md](docs/enterprise-risk-platform/README.md)
+
+- [Architecture](docs/enterprise-risk-platform/architecture.md)
+- [Control framework](docs/enterprise-risk-platform/control-framework.md)
+- [Risk register design](docs/enterprise-risk-platform/risk-register-design.md)
+- [Governance dashboard](docs/enterprise-risk-platform/governance-dashboard-design.md)
+- [Audit trail design](docs/enterprise-risk-platform/audit-trail-design.md)
+- [Executive summary](docs/enterprise-risk-platform/executive-summary.md)
 
 ---
 
@@ -336,6 +365,17 @@ python -m windows_network_toolkit proxy-proof --url https://example.com
 # 502 / bad gateway (full ERP path)
 python -m windows_network_toolkit bad-gateway-diagnose --url https://example.com
 
+# URL diagnose — network failure vs content-layer failure (LinkedIn 404, etc.)
+python -m windows_network_toolkit url-diagnose --url "https://www.linkedin.com/in/example" --domain-profile linkedin --follow-redirects --json
+python -m windows_network_toolkit url-diagnose --url "https://lnkd.in/example" --follow-redirects --domain-profile linkedin --explain
+python -m windows_network_toolkit url-diagnose --url "https://www.linkedin.com/in/example" --fixture tests/fixtures/url_diagnostics/linkedin_404.json --json
+
+# Evidence Case — full pipeline trace (Observation → … → Learning)
+python -m windows_network_toolkit evidence-case create --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json --out ./case.json --json
+python -m windows_network_toolkit evidence-case validate ./case.json
+python -m windows_network_toolkit evidence-case report ./case.json --format markdown
+python -m windows_network_toolkit evidence-case schema --out schemas/evidence_case.schema.json
+
 # Verify audit hash chain
 python -m windows_network_toolkit audit verify logs/canonical_decision_audit.jsonl
 ```
@@ -358,6 +398,28 @@ python -m windows_network_toolkit audit verify logs/canonical_decision_audit.jso
 ```
 
 **Docs:** [classification-model.md](docs/classification-model.md) · [proof-vs-observation.md](docs/proof-vs-observation.md) · [interview-case-study.md](docs/interview-case-study.md) · [three-minute-demo-script.md](docs/three-minute-demo-script.md)
+
+## URL Diagnose: Network failure vs content-layer failure
+
+When a browser shows a LinkedIn message like *“This page doesn’t exist. Please check your URL or return to LinkedIn home.”*, that is usually **not** a raw network outage. If DNS resolves, TCP connects, TLS handshakes, and HTTP returns LinkedIn HTML with a 404/403/410 (or a soft-404 body), the problem is at the **application/content layer** — deleted, private, expired, malformed, or login-gated URL — not WinINET proxy drift.
+
+`url-diagnose` separates lower-layer network evidence from application-layer resource evidence:
+
+| Layer | What it checks |
+|-------|----------------|
+| DNS | Name resolution |
+| TCP | Port connectivity |
+| TLS | Certificate handshake |
+| HTTP | Status code, redirects, title, soft-404 signals |
+| Classification | `APPLICATION_RESOURCE_NOT_FOUND`, `SOFT_404_OR_CONTENT_NOT_FOUND`, `LINKEDIN_SOFT_404`, etc. |
+
+**Key behaviors:**
+
+- A LinkedIn 404 with reachable network → `network_reachable: true`, `safe_to_auto_fix_network: false`
+- Evidence **against** DNS outage, TLS MITM, and proxy drift when lower layers succeed
+- Optional `--compare-browser` contrasts WinINET/WinHTTP/env proxy with request results
+- `--domain-profile linkedin` enables LinkedIn-specific soft-404 detection
+- Observation ≠ proof — limitations included on every report
 
 **Safety:** All commands above are diagnostic/preview-only. No registry write, process kill, firewall reset, or adapter disable without typed confirmation + policy gate + rollback plan + audit.
 
