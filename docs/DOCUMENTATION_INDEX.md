@@ -17,7 +17,20 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 
 | Doc | Purpose |
 |-----|---------|
-| [portfolio-summary.md](portfolio-summary.md) | LinkedIn, resume, interview pitch |
+| **[README_BIG4_PORTFOLIO.md](README_BIG4_PORTFOLIO.md)** | **Big 4 / Risk Advisory portfolio index (start here)** |
+| [big4_interview_positioning.md](big4_interview_positioning.md) | Core Big 4 framing and STAR story |
+| [technology_risk_control_matrix.md](technology_risk_control_matrix.md) | Control testing matrix |
+| [interview_pitch_90_seconds.md](interview_pitch_90_seconds.md) | 90-second spoken pitch |
+| [interview_pitch_5_minutes.md](interview_pitch_5_minutes.md) | 5-minute detailed pitch |
+| [big4_demo_flow.md](big4_demo_flow.md) | Live interview demo script |
+| [big4_interviewer_q_and_a.md](big4_interviewer_q_and_a.md) | Anticipated Q&A |
+| [resume_bullets_big4.md](resume_bullets_big4.md) | Resume bullets (Risk / Consulting / FinTech) |
+| [consulting_case_study.md](consulting_case_study.md) | STAR consulting case study |
+| [fintech_operational_risk_case.md](fintech_operational_risk_case.md) | FinTech operational resilience angle |
+| [linkedin_big4_portfolio_post.md](linkedin_big4_portfolio_post.md) | LinkedIn announcement draft |
+| [analytics_data_model.md](analytics_data_model.md) | **SQL warehouse schema — Data / Risk Analyst** |
+| [sql_analytics_queries.md](sql_analytics_queries.md) | **12+ KPI SQL queries with interpretation** |
+| [portfolio-summary.md](portfolio-summary.md) | General portfolio summary |
 | [case-study-1-proxy-drift.md](case-study-1-proxy-drift.md) | Dead proxy drift case study |
 | [case-study-2-unknown-local-proxy-listener.md](case-study-2-unknown-local-proxy-listener.md) | Unknown listener case study |
 | [case-study-3-endpoint-reliability-decision-engine.md](case-study-3-endpoint-reliability-decision-engine.md) | Decision engine case study |
@@ -154,7 +167,7 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 | `docs/proof-vs-observation.md` | Proof envelope vs observation |
 | `docs/interview-case-study.md` | Portfolio STAR narrative |
 | `docs/three-minute-demo-script.md` | 3-minute fixture demo |
-| `docs/big4-cyber-risk-positioning.md` | Cyber risk / audit framing |
+| `docs/big4-cyber-risk-positioning.md` | Cyber risk / audit framing (legacy — see README_BIG4_PORTFOLIO) |
 | `docs/faang-platform-engineering-positioning.md` | Platform engineering framing |
 | `docs/evidence_model.md` | Canonical evidence levels |
 | `docs/policy_model.md` | Canonical policy decisions |

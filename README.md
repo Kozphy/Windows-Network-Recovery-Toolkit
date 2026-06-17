@@ -1,16 +1,35 @@
-# Endpoint Network Evidence & Risk Toolkit
+# Technology Risk & Control Analytics Platform
 
-**One-liner:** An evidence-based Windows endpoint network evidence and IT risk toolkit that detects WinINET proxy drift, attributes registry writers, contrasts TLS paths, scores website risk heuristically, merges timelines, and exports audit-ready reports — with policy-gated remediation preview only.
+**One-liner:** Built a Technology Risk & Control Analytics Platform that transforms endpoint reliability incidents into evidence-backed risk assessments, control tests, remediation previews, audit trails, and governance reports.
 
-> **Disclaimer:** This is an **evidence and risk toolkit**, not a full antivirus, EDR, or phishing protection product. Heuristic scores are for IT/security review — not automated blocking verdicts.
+> **Disclaimer:** This is **decision infrastructure** for technology risk — not antivirus, EDR, XDR, or autonomous remediation. Heuristic scores support IT/security review; they are not automated blocking verdicts.
 
-Python 3.11+ · Policy-gated · Local-first · 1000+ pytest (CI)
+---
 
-> **Not an AI agent.** This is decision infrastructure: Evidence → Hypothesis → Proof → Policy → Remediation → Audit.
+## Big 4 / Risk Advisory / Consulting Positioning
+
+| | |
+|---|---|
+| **Who this is for** | IT Risk Advisory, Technology Consulting, Cyber/Technology Risk, Internal Audit, FinTech operational risk, Platform/SRE governance |
+| **Business problem** | Endpoint, proxy, TLS, and application-layer failures where IT, Security, Compliance, and Audit disagree on cause and remediation — and scripts change settings without evidence or audit trails |
+| **Why not just a script** | Evidence tiers, proof engine, control tests, risk ratings, policy-gated remediation, hash-chained audit, deterministic replay, and management reporting |
+
+**Portfolio pack:** [docs/README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md) · [Control matrix](docs/technology_risk_control_matrix.md) · [90-second pitch](docs/interview_pitch_90_seconds.md) · [5-minute demo](docs/big4_demo_flow.md) · [Analytics data model](docs/analytics_data_model.md) · [SQL KPI queries](docs/sql_analytics_queries.md)
+
+```powershell
+python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
+python -m windows_network_toolkit governance-report --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json --format markdown
+```
+
+---
+
+**Technical one-liner:** Evidence-based Windows endpoint network evidence and IT risk toolkit — WinINET proxy drift, registry writer attribution, TLS path contrast, policy-gated remediation preview, audit JSONL.
+
+> **Not an AI agent.** Decision infrastructure: Evidence → Hypothesis → Proof → Policy → Remediation → Audit.
 
 **Primary CLI:** `python -m windows_network_toolkit` (JSON-first) · **Legacy:** `python -m src` (deprecated shim with stderr notice on proxy commands)
 
-**Canonical core:** `src/platform_core/` — classification, proof, policy, audit, timeline. **Facades:** `windows_network_toolkit/` — flat modules delegating to core engines.
+**Canonical core:** `src/platform_core/` — classification, proof, policy, audit, timeline, risk. **Facades:** `windows_network_toolkit/` — flat modules delegating to core engines.
 
 | Principle | Enforced |
 |-----------|----------|
@@ -28,10 +47,11 @@ Python 3.11+ · Policy-gated · Local-first · 1000+ pytest (CI)
 | **IT support** | `proxy-status`, `diagnose --proof`, `proxy-disable --dry-run` — fixture demos need no admin |
 | **Endpoint reliability engineers** | Decision pipeline, `proxy-watch`, replay, Prometheus metrics |
 | **Security analysts** | Listener vs writer attribution, TLS proof, `UNKNOWN_LOCAL_PROXY` triage |
-| **Risk consultants** | [consulting-report.md](docs/consulting-report.md), case studies, audit JSONL |
+| **Risk consultants** | [README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md), [consulting-report.md](docs/consulting-report.md), `risk-assess`, `control-test`, `governance-report` |
+| **Data / Risk analysts** | [analytics_data_model.md](docs/analytics_data_model.md), [sql_analytics_queries.md](docs/sql_analytics_queries.md), `schemas/analytics_warehouse.sql` |
 | **Platform / SRE candidates** | CI safety contracts, deterministic replay, FastAPI platform API |
 
-**Portfolio pack:** [docs/portfolio-summary.md](docs/portfolio-summary.md) · [demo-video-script.md](docs/demo-video-script.md)
+**Portfolio pack:** [docs/README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md) · [docs/portfolio-summary.md](docs/portfolio-summary.md) · [demo-video-script.md](docs/demo-video-script.md)
 
 ---
 

@@ -31,6 +31,8 @@ def _resolve_fixture(path_str: str) -> Path:
         repo / "tests" / "fixtures" / "enert" / f"{path_str}.json",
         repo / "tests" / "fixtures" / "classification" / path_str,
         repo / "tests" / "fixtures" / "classification" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "case_studies" / path_str,
+        repo / "tests" / "fixtures" / "case_studies" / f"{path_str}.json",
     ):
         if candidate.is_file():
             return candidate
@@ -341,6 +343,40 @@ def cmd_audit_verify(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def cmd_risk_assess(args: argparse.Namespace) -> int:
+    from src.platform_core.risk import assess_risk, load_fixture
+
+    fixture = load_fixture(_resolve_fixture(args.fixture))
+    _emit_json(assess_risk(fixture))
+    return 0
+
+
+def cmd_control_test(args: argparse.Namespace) -> int:
+    from src.platform_core.risk import load_fixture, run_control_tests
+
+    fixture = load_fixture(_resolve_fixture(args.fixture))
+    tests = run_control_tests(fixture)
+    _emit_json({
+        "schema_version": "technology_risk_decision.v1",
+        "command": "control-test",
+        "case_id": fixture.get("case_id"),
+        "control_tests": [t.model_dump() for t in tests],
+    })
+    return 0
+
+
+def cmd_governance_report(args: argparse.Namespace) -> int:
+    from src.platform_core.risk import build_governance_report, load_fixture
+
+    fixture = load_fixture(_resolve_fixture(args.fixture))
+    result = build_governance_report(fixture, format=args.format)
+    if args.format == "markdown":
+        print(result)
+    else:
+        _emit_json(result)
+    return 0
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     repo = Path(__file__).resolve().parents[1]
     fixture = repo / "windows_network_toolkit" / "examples" / "proxy_drift_incident.jsonl"
@@ -492,6 +528,19 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     verify = audit_sub.add_parser("verify", help="Verify hash chain integrity")
     verify.add_argument("audit_file", help="Path to audit JSONL")
     verify.set_defaults(func=cmd_audit_verify)
+
+    ra = sub.add_parser("risk-assess", help="Technology risk assessment from case fixture (JSON)")
+    ra.add_argument("--fixture", required=True, help="Case study fixture JSON path or name")
+    ra.set_defaults(func=cmd_risk_assess)
+
+    ct = sub.add_parser("control-test", help="Run control tests against case fixture (JSON)")
+    ct.add_argument("--fixture", required=True, help="Case study fixture JSON path or name")
+    ct.set_defaults(func=cmd_control_test)
+
+    gr = sub.add_parser("governance-report", help="Governance / management report (JSON or markdown)")
+    gr.add_argument("--fixture", required=True, help="Case study fixture JSON path or name")
+    gr.add_argument("--format", choices=["json", "markdown"], default="json")
+    gr.set_defaults(func=cmd_governance_report)
 
     demo = sub.add_parser("demo", help="Golden fixture demo (read-only)")
     demo.set_defaults(func=cmd_demo)
