@@ -25,3 +25,11 @@ def test_api_fixture_mode_and_safe_mode() -> None:
     text = _compose_text()
     assert "PLATFORM_SAFE_MODE" in text
     assert "PLATFORM_FIXTURE_MODE" in text
+
+
+def test_prod_compose_requires_immutable_image_tag() -> None:
+    root = Path(__file__).resolve().parents[1]
+    prod = (root / "docker-compose.prod.yml").read_text(encoding="utf-8")
+    assert "IMAGE_TAG" in prod
+    assert "GHCR_IMAGE" in prod
+    assert "latest" not in prod.lower() or "never" in prod.lower()

@@ -5,6 +5,8 @@
     "observation_not_proof",
     "correlation_not_causation",
     "confidence_not_certainty",
-    "policy_not_safety"
+    "policy_not_safety",
+    "classification_not_accusation",
+    "recommendation_not_execution"
   ]
 }

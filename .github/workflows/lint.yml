@@ -2,9 +2,18 @@ name: Lint
 
 on:
   push:
-    branches: [main, master, amd_version]
+    branches:
+      - main
+      - master
+      - amd_version
+      - "feature/**"
+      - "fix/**"
+      - "ci/**"
   pull_request:
-    branches: [main, master, amd_version]
+    branches:
+      - main
+      - master
+      - amd_version
   workflow_dispatch:
 
 concurrency:

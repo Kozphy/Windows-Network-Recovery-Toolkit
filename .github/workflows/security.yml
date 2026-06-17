@@ -2,9 +2,18 @@ name: Security
 
 on:
   push:
-    branches: [main, master, amd_version]
+    branches:
+      - main
+      - master
+      - amd_version
+      - "feature/**"
+      - "fix/**"
+      - "ci/**"
   pull_request:
-    branches: [main, master, amd_version]
+    branches:
+      - main
+      - master
+      - amd_version
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:

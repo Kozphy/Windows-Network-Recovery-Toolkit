@@ -1,82 +1,26 @@
-# ERP Platform Helm chart (scaffold)
+# erp-platform Helm chart (optional)
 
-Kubernetes packaging for the Endpoint Reliability Platform API, Prometheus, and Grafana — mirrors `docker-compose.yml`.
+**Default CD path:** VM + Docker Compose (`docs/production_deployment.md`).
 
-## Prerequisites
-
-- Kubernetes 1.25+
-- Helm 3.10+
-- Container image published (see `.github/workflows/build.yml` → GHCR)
-
-## Install
+## Immutable image deploy
 
 ```bash
-# Build image locally (optional)
-docker build -t er-platform-api:local .
+export GITHUB_SHA="<full-40-char-commit-sha>"
 
-helm upgrade --install erp ./deploy/helm/erp-platform \
-  --namespace erp \
-  --create-namespace \
-  --set image.repository=er-platform-api \
-  --set image.tag=local \
-  --set image.pullPolicy=Never
+helm upgrade --install erp-platform ./deploy/helm/erp-platform \
+  --namespace erp --create-namespace \
+  --set image.repository=ghcr.io/kozphy/windows-network-recovery-toolkit \
+  --set image.tag="${GITHUB_SHA}" \
+  --set ingress.enabled=true \
+  --wait --timeout 5m
 ```
 
-## GHCR example
+Never set `image.tag=latest` in production CD.
 
-```bash
-helm upgrade --install erp ./deploy/helm/erp-platform \
-  --namespace erp \
-  --create-namespace \
-  --set image.repository=ghcr.io/YOUR_ORG/windows-network-recovery-toolkit \
-  --set image.tag=amd_version \
-  --set api.existingSecret=erp-platform-secrets \
-  --set grafana.adminPassword="$(openssl rand -hex 16)"
-```
+## Values
 
-Create the secret first:
-
-```bash
-kubectl create secret generic erp-platform-secrets \
-  --namespace erp \
-  --from-literal=PLATFORM_API_KEY='change-me'
-```
-
-## Optional: Grafana dashboards
-
-Dashboard JSON files live under `deploy/grafana/provisioning/dashboards/json/`. To mount them:
-
-```bash
-kubectl create configmap erp-grafana-dashboard-files \
-  --namespace erp \
-  --from-file=deploy/grafana/provisioning/dashboards/json/
-
-# Chart expects optional ConfigMap name: {{ release }}-grafana-dashboard-files
-# Rename to match fullname or patch grafana-deployment volume.
-```
-
-For production, prefer a `grafana-dashboard-files` subchart or `helm template` with `.Files.Glob`.
-
-## Values reference
-
-| Key | Default | Notes |
-|-----|---------|-------|
-| `image.repository` | `ghcr.io/kozphy/...` | Override for your registry |
-| `api.env.PLATFORM_FIXTURE_MODE` | `"1"` | Set `"0"` for live endpoints |
-| `api.persistence.enabled` | `true` | JSONL / platform data volume |
-| `prometheus.enabled` | `true` | Scrapes API `/metrics` |
-| `grafana.enabled` | `true` | Prometheus datasource provisioned |
-| `ingress.enabled` | `false` | Enable for external access |
-
-## Not included (see `docs/feature_inventory.md`)
-
-- Managed Postgres / Redis / Kafka (use `docker-compose.scale.yml` as reference)
-- `deploy.yml` GitHub Actions rollout
-- TLS certificates, HPA, PodDisruptionBudgets
-- Multi-tenant fleet ingest gateways
-
-## Uninstall
-
-```bash
-helm uninstall erp --namespace erp
-```
+| Key | Purpose |
+|-----|---------|
+| `image.repository` | GHCR image path (lowercase) |
+| `image.tag` | Full git SHA |
+| `ingress.enabled` | Expose API via ingress |

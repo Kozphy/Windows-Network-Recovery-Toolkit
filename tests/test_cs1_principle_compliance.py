@@ -1,4 +1,4 @@
-"""Case Study CS1 — all four principles must validate."""
+"""Case Study CS1 — all six Evidence-to-Action principles must validate."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ CS1_DIR = REPO / "case_studies" / "cs1_wininet_proxy_drift"
 def test_cs1_fixture_all_principles_compliant() -> None:
     result = validate_fixture_path(CS1_DIR / "fixture.json")
     assert result.compliant
-    assert len(result.checks) == 4
+    assert len(result.checks) == 6
     assert all(c.passed for c in result.checks)
 
 

@@ -5,7 +5,8 @@ fullnameOverride: ""
 
 image:
   repository: ghcr.io/kozphy/windows-network-recovery-toolkit
-  tag: latest
+  # Production: pin full git SHA — never deploy "latest" in CD.
+  tag: "scaffold-not-for-production"  # CD: --set image.tag=<full-git-sha>
   pullPolicy: IfNotPresent
 
 api:

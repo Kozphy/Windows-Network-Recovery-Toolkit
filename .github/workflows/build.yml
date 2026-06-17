@@ -2,9 +2,18 @@ name: Build
 
 on:
   push:
-    branches: [main, master, amd_version]
+    branches:
+      - main
+      - master
+      - amd_version
+      - "feature/**"
+      - "fix/**"
+      - "ci/**"
   pull_request:
-    branches: [main, master, amd_version]
+    branches:
+      - main
+      - master
+      - amd_version
   workflow_dispatch:
 
 concurrency:
@@ -23,6 +32,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image_tag: ${{ github.event_name != 'pull_request' && github.sha || '' }}
+      image_ref: ${{ github.event_name != 'pull_request' && format('ghcr.io/{0}:{1}', github.repository, github.sha) || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,8 +56,15 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
+            type=raw,value=${{ github.sha }},enable=${{ github.event_name != 'pull_request' }}
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
+
+      - name: Log immutable image reference
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Immutable deploy tag: ghcr.io/${{ github.repository }}:${{ github.sha }}"
+          echo "CD must use IMAGE_TAG=${{ github.sha }} — never :latest"
 
       - name: Build and push
         uses: docker/build-push-action@v6

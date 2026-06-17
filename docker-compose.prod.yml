@@ -1,0 +1,16 @@
+# Production / CD overlay — pull immutable API image from GHCR (never :latest in CD).
+# Local dev: use docker-compose.yml only (build from Dockerfile).
+#
+# Required env (set in .env or export before deploy):
+#   IMAGE_TAG=<full-git-sha>     # e.g. abc123... (40 chars)
+#   GHCR_IMAGE=ghcr.io/<owner>/<repo>   # lowercase
+#
+# Deploy:
+#   export IMAGE_TAG=<sha> GHCR_IMAGE=ghcr.io/kozphy/windows-network-recovery-toolkit
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+
+services:
+  api:
+    image: ${GHCR_IMAGE:?GHCR_IMAGE is required}:${IMAGE_TAG:?IMAGE_TAG is required for production deploy}
+    pull_policy: always

@@ -587,7 +587,7 @@ make lint
 
 ## Production readiness
 
-Checklist: [docs/production_readiness.md](docs/production_readiness.md) · Deployment: [docs/production_deployment.md](docs/production_deployment.md)
+Checklist: [docs/production_readiness.md](docs/production_readiness.md) · Deployment & CD: [docs/production_deployment.md](docs/production_deployment.md) (`Build` → GHCR SHA tag → `Deploy` workflow)
 
 Public release: [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md)
 

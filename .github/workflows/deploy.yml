@@ -1,0 +1,145 @@
+name: Deploy
+
+# CD: immutable GHCR image (IMAGE_TAG = full git SHA). Never deploy :latest.
+# Triggers after successful Build on default branches, or manual rollback/deploy.
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+    branches: [main, master, amd_version]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Full git SHA to deploy (rollback). Defaults to triggering commit on manual runs."
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-vm-compose
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: deploy-vm-compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Never auto-deploy from PR builds; workflow_run only on default branches (see `on.branches`).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       contains(fromJSON('["main","master","amd_version"]'), github.event.workflow_run.head_branch))
+    environment: production
+    steps:
+      - name: Resolve immutable IMAGE_TAG
+        id: tag
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.image_tag }}"
+            if [ -z "$TAG" ]; then
+              TAG="${{ github.sha }}"
+            fi
+          else
+            TAG="${{ github.event.workflow_run.head_sha }}"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error::IMAGE_TAG is empty — refusing to deploy."
+            exit 1
+          fi
+          echo "image_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Resolved IMAGE_TAG=${TAG}"
+
+      - name: Normalize GHCR image reference
+        id: image
+        run: |
+          set -euo pipefail
+          REF="ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')"
+          echo "ghcr_image=${REF}" >> "$GITHUB_OUTPUT"
+          echo "GHCR_IMAGE=${REF}"
+
+      - name: Validate deploy secrets present
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY DEPLOY_PATH; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::GitHub secret $name is not configured."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+
+      - name: Configure SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add deploy host to known_hosts
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH (compose pull + up + readiness)
+        id: deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          IMAGE_TAG: ${{ steps.tag.outputs.image_tag }}
+          GHCR_IMAGE: ${{ steps.image.outputs.ghcr_image }}
+        run: |
+          set -euo pipefail
+          DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "=== Deployment audit ==="
+          echo "deployed_image=${GHCR_IMAGE}:${IMAGE_TAG}"
+          echo "commit_sha=${IMAGE_TAG}"
+          echo "deployment_time=${DEPLOYED_AT}"
+          echo "deploy_path=${DEPLOY_PATH}"
+
+          REMOTE_SCRIPT=$(cat <<'EOS'
+          set -euo pipefail
+          cd "${DEPLOY_PATH}"
+          export IMAGE_TAG="${IMAGE_TAG}"
+          export GHCR_IMAGE="${GHCR_IMAGE}"
+          if [ -z "${IMAGE_TAG}" ] || [ -z "${GHCR_IMAGE}" ]; then
+            echo "IMAGE_TAG or GHCR_IMAGE empty on remote" >&2
+            exit 1
+          fi
+          echo "Pulling ${GHCR_IMAGE}:${IMAGE_TAG}"
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+          echo "Readiness check: GET /platform/ready"
+          curl -fsS http://localhost:8000/platform/ready
+          echo "Readiness check: OK"
+          EOS
+          )
+
+          ssh -o BatchMode=yes "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_PATH=$(printf '%q' "${DEPLOY_PATH}") IMAGE_TAG=$(printf '%q' "${IMAGE_TAG}") GHCR_IMAGE=$(printf '%q' "${GHCR_IMAGE}") bash -s" \
+            <<< "${REMOTE_SCRIPT}"
+
+          echo "health_check=passed" >> "$GITHUB_OUTPUT"
+          echo "deployment_time=${DEPLOYED_AT}" >> "$GITHUB_OUTPUT"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "### Deploy summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | \`${{ steps.image.outputs.ghcr_image }}:${{ steps.tag.outputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit SHA | \`${{ steps.tag.outputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Time (UTC) | ${{ steps.deploy.outputs.deployment_time || 'n/a' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Health | ${{ steps.deploy.outputs.health_check || 'failed/skipped' }} |" >> "$GITHUB_STEP_SUMMARY"
