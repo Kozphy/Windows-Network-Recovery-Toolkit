@@ -1,4 +1,8 @@
-# Endpoint Network Reliability Risk Assessment Report
+# Technology Risk & Control — Consulting Assessment Report
+
+> **Positioning:** Decision infrastructure for technology risk — not antivirus, EDR, XDR, or autonomous remediation. Heuristic scores support review; they are not automated blocking verdicts.
+
+**Related analytics:** `analytics-summary` CLI · [sql_analytics_queries.md](sql_analytics_queries.md) · Sample: [reports/sample_governance_report.md](../reports/sample_governance_report.md)
 
 **Prepared for:** IT Leadership / Risk Committee  
 **Subject:** WinINET proxy drift and localhost listener patterns on corporate endpoints  

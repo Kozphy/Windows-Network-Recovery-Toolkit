@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from src.platform_core.governance.evidence_to_action import attach_governance_envelope
 from src.platform_core.proof.engine import run_proof_engine
 from src.platform_core.principles.report import build_principle_report_sections
 from src.platform_core.principles.validator import validate_principles
@@ -150,4 +151,10 @@ def enrich_diagnose_payload(payload: dict[str, Any], *, include_principles: bool
             "safe_remediation_controls": sections["safe_remediation_controls"],
         }
     )
-    return enriched
+    conclusion = payload.get("conclusion") or {}
+    return attach_governance_envelope(
+        enriched,
+        proof_conclusion=conclusion.get("status") if isinstance(conclusion, dict) else None,
+        dry_run=True,
+        requires_confirmation=True,
+    )

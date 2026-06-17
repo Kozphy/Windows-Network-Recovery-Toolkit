@@ -4,7 +4,10 @@ SQL-ready dimensional model for **Data Analyst**, **Risk Data Analyst**, **Techn
 
 **Principles preserved in data design:** Observation ≠ Proof · Correlation ≠ Causation · Confidence ≠ Certainty · Policy Permission ≠ Safety Guarantee · Dry-run by default.
 
-**Executable DDL:** [`schemas/analytics_warehouse.sql`](../schemas/analytics_warehouse.sql)
+**Executable DDL:** [`schemas/analytics_warehouse.sql`](../schemas/analytics_warehouse.sql)  
+**CLI rollup:** `python -m windows_network_toolkit analytics-summary --audit-dir .audit`
+
+Core tables: `incidents`, `evidence_events`, `proof_results`, `policy_decisions`, `remediation_previews`, `audit_events`.
 
 ---
 

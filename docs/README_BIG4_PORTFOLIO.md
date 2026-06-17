@@ -26,6 +26,7 @@ Interview-ready materials for **IT Risk Advisory**, **Technology Consulting**, *
 | [linkedin_big4_portfolio_post.md](linkedin_big4_portfolio_post.md) | Public portfolio announcement |
 | [analytics_data_model.md](analytics_data_model.md) | SQL warehouse schema for Data / Risk Analyst roles |
 | [sql_analytics_queries.md](sql_analytics_queries.md) | 12+ analyst KPI queries with business interpretation |
+| [control-matrix.md](control-matrix.md) | Portfolio control matrix summary |
 
 **Related technical docs:** [big4-cyber-risk-positioning.md](big4-cyber-risk-positioning.md) · [consulting-report.md](consulting-report.md) · [interview-case-study.md](interview-case-study.md) · [safety_model.md](safety_model.md)
 
@@ -59,6 +60,8 @@ python -m windows_network_toolkit proxy-disable --dry-run
 ```
 
 Full script: [big4_demo_flow.md](big4_demo_flow.md)
+
+**Sample outputs:** [reports/sample_governance_report.md](../reports/sample_governance_report.md) · [reports/sample_analytics_summary.md](../reports/sample_analytics_summary.md)
 
 ---
 

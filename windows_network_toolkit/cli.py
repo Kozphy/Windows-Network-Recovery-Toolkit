@@ -377,6 +377,18 @@ def cmd_governance_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_analytics_summary(args: argparse.Namespace) -> int:
+    from src.platform_core.analytics import build_analytics_summary, format_analytics_markdown
+
+    audit_dir = Path(args.audit_dir)
+    payload = build_analytics_summary(audit_dir)
+    if args.format == "markdown":
+        print(format_analytics_markdown(payload))
+    else:
+        _emit_json(payload)
+    return 0
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     repo = Path(__file__).resolve().parents[1]
     fixture = repo / "windows_network_toolkit" / "examples" / "proxy_drift_incident.jsonl"
@@ -541,6 +553,11 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     gr.add_argument("--fixture", required=True, help="Case study fixture JSON path or name")
     gr.add_argument("--format", choices=["json", "markdown"], default="json")
     gr.set_defaults(func=cmd_governance_report)
+
+    ans = sub.add_parser("analytics-summary", help="Summarize audit JSONL KPIs (read-only)")
+    ans.add_argument("--audit-dir", default=".audit", help="Directory containing *.jsonl audit files")
+    ans.add_argument("--format", choices=["json", "markdown"], default="json")
+    ans.set_defaults(func=cmd_analytics_summary)
 
     demo = sub.add_parser("demo", help="Golden fixture demo (read-only)")
     demo.set_defaults(func=cmd_demo)

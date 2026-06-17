@@ -157,6 +157,8 @@ uvicorn backend.main:app --reload
 | 1:45–2:45 | Evidence chain | `diagnose --proof`, `proxy-timeline` or replay JSONL |
 | 2:45–3:30 | Unknown listener contrast | Brief show `unknown_localhost_proxy.json` — investigate, don't kill |
 | 3:30–4:15 | Safe remediation | `proxy-disable --dry-run`, mention confirmation token |
+| 4:15–4:45 | Analytics KPIs | `analytics-summary --audit-dir tests/fixtures/analytics/audit_sample --format markdown` |
+| 4:45–5:00 | Close | Portfolio value — risk, audit, data analyst audiences |
 | 4:15–5:00 | Business value | Report + dashboard; link to case studies and CI safety tests |
 
 **Extra command (unknown listener — 30 sec):**

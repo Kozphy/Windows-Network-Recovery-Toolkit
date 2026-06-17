@@ -28,7 +28,7 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 | [consulting_case_study.md](consulting_case_study.md) | STAR consulting case study |
 | [fintech_operational_risk_case.md](fintech_operational_risk_case.md) | FinTech operational resilience angle |
 | [linkedin_big4_portfolio_post.md](linkedin_big4_portfolio_post.md) | LinkedIn announcement draft |
-| [analytics_data_model.md](analytics_data_model.md) | **SQL warehouse schema — Data / Risk Analyst** |
+| [control-matrix.md](control-matrix.md) | Portfolio control matrix summary |
 | [sql_analytics_queries.md](sql_analytics_queries.md) | **12+ KPI SQL queries with interpretation** |
 | [portfolio-summary.md](portfolio-summary.md) | General portfolio summary |
 | [case-study-1-proxy-drift.md](case-study-1-proxy-drift.md) | Dead proxy drift case study |

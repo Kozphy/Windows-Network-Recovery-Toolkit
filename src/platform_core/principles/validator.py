@@ -14,10 +14,12 @@ from src.platform_core.principles.models import (
     RiskDecision,
 )
 from src.platform_core.principles.rules import (
+    check_classification_not_accusation,
     check_confidence_not_certainty,
     check_correlation_not_causation,
     check_observation_not_proof,
     check_policy_not_safety,
+    check_recommendation_not_execution,
     format_confidence_display,
     load_principles_config,
 )
@@ -218,6 +220,12 @@ def validate_principles(
         ),
         check_confidence_not_certainty(risk=risk, proof=proof, narrative_text=narrative),
         check_policy_not_safety(policy=policy),
+        check_classification_not_accusation(risk=risk, narrative_text=narrative),
+        check_recommendation_not_execution(
+            policy=policy,
+            remediation_requested=rem,
+            narrative_text=narrative,
+        ),
     ]
 
     blocked: list[str] = []

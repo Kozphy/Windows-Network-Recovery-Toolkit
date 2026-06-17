@@ -50,6 +50,18 @@ _DEFAULT_CONFIG: dict[str, Any] = {
             "summary": "ALLOW outcomes still require dry-run preview, confirmation, rollback, monitoring, and audit.",
             "rule": "Policy ALLOW must not bypass dry-run, typed confirmation, rollback plan, monitoring, or audit.",
         },
+        "classification_not_accusation": {
+            "id": "classification_not_accusation",
+            "title": "Classification is not accusation",
+            "summary": "Risk labels are investigative triage — not verdicts.",
+            "rule": "Classifications must not be narrated as confirmed compromise without evidence tier support.",
+        },
+        "recommendation_not_execution": {
+            "id": "recommendation_not_execution",
+            "title": "Recommendation is not execution authority",
+            "summary": "Remediation recommendations do not authorize autonomous execution.",
+            "rule": "No destructive action without human approval and typed confirmation.",
+        },
     },
     "telemetry_writer_sources": ["sysmon_e13", "procmon", "etw_registry"],
     "blocked_overclaim_terms": [
@@ -255,6 +267,67 @@ def check_policy_not_safety(*, policy: PolicyDecision | None) -> PrincipleCheck:
 
         if not policy.dry_run and not policy.confirmation_token:
             violations.append("Non-dry-run ALLOW without typed confirmation token.")
+
+    return PrincipleCheck(
+        principle_id=cfg["id"],
+        title=cfg["title"],
+        passed=not violations,
+        violations=violations,
+        guidance=[cfg["summary"]],
+    )
+
+
+def check_classification_not_accusation(
+    *,
+    risk: RiskDecision | None,
+    narrative_text: str = "",
+) -> PrincipleCheck:
+    cfg = load_principles_config()["principles"]["classification_not_accusation"]
+    violations: list[str] = []
+    combined = " ".join(
+        filter(None, [narrative_text, risk.narrative if risk else "", risk.primary_classification if risk else ""])
+    ).lower()
+    classification = (risk.primary_classification if risk else "") or ""
+
+    accusatory_terms = ("malware confirmed", "confirmed compromise", "attacker", "compromised endpoint")
+    if classification == "SUSPICIOUS_PROXY" and any(t in combined for t in ("prove malware", "proved malware", "malware confirmed")):
+        violations.append("SUSPICIOUS_PROXY must not be narrated as malware proof.")
+    if classification == "POSSIBLE_MITM_RISK" and any(
+        t in combined for t in ("confirmed mitm", "confirms mitm", "prove mitm", "proven mitm")
+    ):
+        violations.append("POSSIBLE_MITM_RISK must not be narrated as confirmed MITM.")
+    if classification in ("UNKNOWN_LOCAL_PROXY", "DEAD_PROXY_CONFIG") and any(
+        t in combined for t in accusatory_terms
+    ):
+        violations.append(f"{classification} reliability finding must not be narrated as accusation.")
+
+    return PrincipleCheck(
+        principle_id=cfg["id"],
+        title=cfg["title"],
+        passed=not violations,
+        violations=violations,
+        guidance=[cfg["summary"]],
+    )
+
+
+def check_recommendation_not_execution(
+    *,
+    policy: PolicyDecision | None,
+    remediation_requested: bool,
+    narrative_text: str = "",
+) -> PrincipleCheck:
+    cfg = load_principles_config()["principles"]["recommendation_not_execution"]
+    violations: list[str] = []
+    blob = narrative_text.lower()
+
+    if "safe to execute automatically" in blob and "not " not in blob[: blob.find("safe to execute automatically")]:
+        violations.append("Autonomous execution language is prohibited.")
+
+    if remediation_requested and policy:
+        if policy.allowed and not policy.dry_run and not policy.requires_confirmation:
+            violations.append("Remediation execution without typed confirmation is prohibited.")
+        if policy.outcome.upper() == "ALLOW" and not policy.dry_run and not policy.confirmation_token:
+            violations.append("ALLOW outcome must not bypass typed confirmation.")
 
     return PrincipleCheck(
         principle_id=cfg["id"],

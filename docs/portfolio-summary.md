@@ -1,4 +1,4 @@
-# Portfolio Summary — Windows Endpoint Network Reliability Toolkit
+# Portfolio Summary — Technology Risk & Control Analytics Platform
 
 Use this document for LinkedIn, resume, cover letters, and interview preparation.
 
@@ -6,7 +6,7 @@ Use this document for LinkedIn, resume, cover letters, and interview preparation
 
 ## One-liner
 
-Evidence-based Windows endpoint network reliability and IT risk toolkit that diagnoses browser connectivity failures, WinINET proxy drift, unknown local proxy listeners, and endpoint reliability risks using a structured evidence chain — with policy-gated remediation and append-only audit.
+**Built a Technology Risk & Control Analytics Platform that transforms endpoint reliability incidents into evidence-backed risk assessments, control tests, remediation previews, audit trails, and governance reports.**
 
 ---
 
@@ -27,6 +27,7 @@ A Python 3.11+ **endpoint reliability decision platform** with:
 - Policy engine blocking destructive actions by default
 - Dry-run remediation preview with typed confirmation tokens
 - Append-only audit JSONL with replay and hash-chain verification
+- **`analytics-summary`** — KPI rollup from audit JSONL (markdown or JSON)
 - FastAPI platform API and optional dashboard
 - 1000+ pytest cases including safety contract tests
 - GitHub Actions CI: lint, test, security scan (bandit, pip-audit, Trivy)
@@ -42,7 +43,8 @@ A Python 3.11+ **endpoint reliability decision platform** with:
 | IT support | Faster, consistent proxy triage |
 | Endpoint reliability engineers | Deterministic replay and metrics hooks |
 | Security analysts | Listener vs writer separation; no false certainty |
-| Risk consultants | Audit-ready reports with limitations |
+| Risk consultants | Control matrix, governance reports, case studies |
+| Data / risk analysts | SQL warehouse schema, KPI queries, `analytics-summary` |
 | Platform/SRE candidates | CI contracts, observability, decision infrastructure |
 
 ---
@@ -105,9 +107,24 @@ A Python 3.11+ **endpoint reliability decision platform** with:
 | Resource | Path |
 |----------|------|
 | README | [../README.md](../README.md) |
-| Case study: proxy drift | [case-study-1-proxy-drift.md](case-study-1-proxy-drift.md) |
-| Case study: unknown listener | [case-study-2-unknown-local-proxy-listener.md](case-study-2-unknown-local-proxy-listener.md) |
-| Case study: decision engine | [case-study-3-endpoint-reliability-decision-engine.md](case-study-3-endpoint-reliability-decision-engine.md) |
+| Big 4 portfolio | [README_BIG4_PORTFOLIO.md](README_BIG4_PORTFOLIO.md) |
+| Control matrix | [control-matrix.md](control-matrix.md) |
+| Case studies | [case-studies/case-study-1-dead-wininet-proxy.md](case-studies/case-study-1-dead-wininet-proxy.md) |
+| Analytics model | [analytics_data_model.md](analytics_data_model.md) |
+| SQL KPIs | [sql_analytics_queries.md](sql_analytics_queries.md) |
 | Demo script | [demo-video-script.md](demo-video-script.md) |
-| Consulting report | [consulting-report.md](consulting-report.md) |
-| Big 4 positioning | [big4-cyber-risk-positioning.md](big4-cyber-risk-positioning.md) |
+| Sample reports | [../reports/sample_governance_report.md](../reports/sample_governance_report.md) |
+
+## 5-minute demo commands
+
+```powershell
+pip install -e ".[dev]"
+$env:PYTHONPATH = (Get-Location).Path
+
+python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
+python -m windows_network_toolkit governance-report --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json --format markdown
+python -m windows_network_toolkit analytics-summary --audit-dir tests/fixtures/analytics/audit_sample --format markdown
+python -m windows_network_toolkit proxy-disable --dry-run
+```

@@ -78,6 +78,8 @@ python -m windows_network_toolkit governance-report --fixture tests/fixtures/cas
 
 ---
 
+---
+
 ## Step 7 — Policy-gated remediation (`proxy-disable --dry-run`)
 
 ```powershell
@@ -87,6 +89,16 @@ python -m windows_network_toolkit proxy-disable --dry-run
 **Say:** "No destructive action by default. Remediation is **preview-only** unless policy allows apply, operator provides typed confirmation, rollback plan is reviewed, and audit logging is enabled. Policy permission is not a safety guarantee."
 
 **Point to JSON:** `outcome`, `dry_run`, `requires_confirmation`.
+
+---
+
+## Step 8 — Analytics KPI summary (optional, 30 sec)
+
+```powershell
+python -m windows_network_toolkit analytics-summary --audit-dir tests/fixtures/analytics/audit_sample --format markdown
+```
+
+**Say:** "For data and risk analyst audiences, we can roll up audit JSONL into KPI distributions — classifications, evidence tiers, policy outcomes, blocked destructive actions — with explicit limitations."
 
 ---
 

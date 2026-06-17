@@ -32,6 +32,11 @@ ALLOWED_JSONL_PREFIXES = (
     "demo_data\\",
 )
 
+# Committed synthetic portfolio samples (see reports/.gitignore !sample_*.md).
+ALLOWED_RUNTIME_ARTIFACT_PREFIXES = (
+    "reports/sample_",
+)
+
 ALLOWED_EMAIL_DOMAINS = frozenset(
     {
         "example.com",
@@ -90,6 +95,13 @@ def _rel(path: Path, root: Path) -> str:
 
 def _is_allowed_jsonl(rel: str) -> bool:
     return any(rel.startswith(prefix.replace("\\", "/")) for prefix in ALLOWED_JSONL_PREFIXES)
+
+
+def _is_allowed_runtime_artifact(rel: str) -> bool:
+    normalized = rel.replace("\\", "/")
+    if normalized.endswith(".gitignore") or normalized.endswith(".gitkeep"):
+        return True
+    return any(normalized.startswith(prefix.replace("\\", "/")) for prefix in ALLOWED_RUNTIME_ARTIFACT_PREFIXES)
 
 
 def _should_skip_dir(name: str) -> bool:
@@ -157,7 +169,7 @@ def scan_repo(
             findings["log_files"].append(rel)
 
         for runtime_dir in HIGH_RISK_RUNTIME_DIRS:
-            if rel.startswith(f"{runtime_dir}/") and path.name not in {".gitignore", ".gitkeep"}:
+            if rel.startswith(f"{runtime_dir}/") and not _is_allowed_runtime_artifact(rel):
                 findings["runtime_artifacts"].append(rel)
                 break
 

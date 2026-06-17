@@ -26,6 +26,7 @@ from src.repair.executor import apply_mutations
 from windows_network_toolkit.audit_store import append_audit_dict
 from windows_network_toolkit.platform.decision_engine import decide
 from windows_network_toolkit.proxy_state import collect_proxy_state_model
+from src.platform_core.governance.evidence_to_action import attach_governance_envelope
 
 
 def _unsupported() -> dict[str, Any]:
@@ -93,19 +94,25 @@ def run_proxy_disable(
             },
             log_name="proxy-disable.jsonl",
         )
-        return {
-            "dry_run": True,
-            "action_allowed": False,
-            "requires_confirmation": True,
-            "confirmation_token": CONFIRMATION_PHRASE,
-            "planned_changes": human_lines,
-            "no_changes_made": True,
-            "policy_decision": policy["policy_decision"],
-            "classification": policy["classification"],
-            "before": before_view,
-            "audit_log_written": audit_ok,
-            "audit_error": audit_err,
-        }
+        return attach_governance_envelope(
+            {
+                "dry_run": True,
+                "action_allowed": False,
+                "requires_confirmation": True,
+                "confirmation_token": CONFIRMATION_PHRASE,
+                "planned_changes": human_lines,
+                "no_changes_made": True,
+                "policy_decision": policy["policy_decision"],
+                "classification": policy["classification"],
+                "before": before_view,
+                "audit_log_written": audit_ok,
+                "audit_error": audit_err,
+            },
+            primary_classification=policy["classification"].get("primary_classification"),
+            policy_outcome=policy["policy_decision"].get("outcome"),
+            dry_run=True,
+            requires_confirmation=True,
+        )
 
     if decision != "ALLOW" or confirm != CONFIRMATION_PHRASE:
         append_audit_dict(
@@ -120,14 +127,19 @@ def run_proxy_disable(
             },
             log_name="proxy-disable.jsonl",
         )
-        return {
-            "dry_run": False,
-            "action_allowed": False,
-            "requires_confirmation": True,
-            "confirmation_token": CONFIRMATION_PHRASE,
-            "reason": reason,
-            "no_changes_made": True,
-        }
+        return attach_governance_envelope(
+            {
+                "dry_run": False,
+                "action_allowed": False,
+                "requires_confirmation": True,
+                "confirmation_token": CONFIRMATION_PHRASE,
+                "reason": reason,
+                "no_changes_made": True,
+            },
+            policy_outcome="REQUIRE_TYPED_CONFIRMATION",
+            dry_run=False,
+            requires_confirmation=True,
+        )
 
     capture_pre = capture_wininet_snapshot(run=run_fn)
     rollback_plan = build_rollback_plan(capture_pre)
@@ -159,15 +171,21 @@ def run_proxy_disable(
         log_name="proxy-disable.jsonl",
     )
 
-    return {
-        "dry_run": False,
-        "action_allowed": True,
-        "confirmation_used": confirm,
-        "changes_applied": changes,
-        "before": before_view,
-        "after": after_view,
-        "verification": verification.to_dict(),
-        "audit_log_written": audit_ok,
-        "audit_error": audit_err,
-        "no_changes_made": False,
-    }
+    return attach_governance_envelope(
+        {
+            "dry_run": False,
+            "action_allowed": True,
+            "confirmation_used": confirm,
+            "changes_applied": changes,
+            "before": before_view,
+            "after": after_view,
+            "verification": verification.to_dict(),
+            "audit_log_written": audit_ok,
+            "audit_error": audit_err,
+            "no_changes_made": False,
+        },
+        policy_outcome="ALLOW",
+        dry_run=False,
+        requires_confirmation=False,
+        executed=True,
+    )

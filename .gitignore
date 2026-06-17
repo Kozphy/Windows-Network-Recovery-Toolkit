@@ -35,6 +35,7 @@ logs/
 !logs/.gitignore
 reports/
 !reports/.gitignore
+!reports/sample_*.md
 !src/reports/
 !src/reports/**
 platform_data/

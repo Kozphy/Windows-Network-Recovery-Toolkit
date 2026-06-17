@@ -6,6 +6,24 @@ Analyst-ready SQL for **Data Analyst**, **Risk Data Analyst**, **Technology Risk
 
 **Note:** Confidence scores are **ordinal (0–1)**, not probabilities. Filter dashboards with `evidence_tier` and `claim_strength` to avoid overstating proof.
 
+**CLI counterpart:** `python -m windows_network_toolkit analytics-summary --audit-dir .audit --format json`
+
+---
+
+## Portfolio query index
+
+| # | Topic | Section |
+|---|-------|---------|
+| 1 | Incident count by classification | Query 1 |
+| 2 | Percentage of total by classification | Query 1 (`pct_of_total`) |
+| 3 | Evidence tier distribution | Query 2 |
+| 4 | Policy blocked action count | Query 3 + policy_decisions table |
+| 5 | Average diagnosis duration | Query 11 |
+| 6 | Incidents by day | Query 12 (daily grain) |
+| 7 | Top proxy ports | Query 6 / evidence_events |
+| 8 | Remediation preview approval rate | Query 9 |
+| 9 | Audit chain verification failures | Query 4 + audit_events |
+
 ---
 
 ### Query 1 — Incident count by classification

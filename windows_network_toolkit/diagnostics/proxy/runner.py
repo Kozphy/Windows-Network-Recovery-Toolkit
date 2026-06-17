@@ -19,6 +19,7 @@ from src.platform_core.audit.writer import append_audit
 from windows_network_toolkit.audit_store import append_audit_dict
 from windows_network_toolkit.proxy_classification import classify_from_live
 from windows_network_toolkit.proxy_state import collect_proxy_state_model
+from src.platform_core.governance.evidence_to_action import attach_governance_envelope
 
 
 def _now() -> str:
@@ -59,7 +60,12 @@ def run_proxy_status(*, inject: dict[str, Any] | None = None, **kwargs: Any) -> 
         },
         log_name="proxy-status.jsonl",
     )
-    return payload
+    return attach_governance_envelope(
+        payload,
+        primary_classification=classification.primary_classification,
+        dry_run=True,
+        requires_confirmation=True,
+    )
 
 
 def run_proxy_attribution(*, inject: dict[str, Any] | None = None, **kwargs: Any) -> dict[str, Any]:

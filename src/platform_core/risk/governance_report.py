@@ -8,6 +8,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from src.platform_core.governance.evidence_to_action import attach_governance_envelope
+
 from .asset import asset_for_fixture
 from .business_objective import objective_for_fixture
 from .control import controls_for_fixture
@@ -60,7 +62,7 @@ def assess_risk(fixture: dict[str, Any]) -> dict[str, Any]:
     tests = run_control_tests(fixture)
     findings = findings_from_fixture(fixture, tests)
     rating = rate_risk(findings, tests, fixture)
-    return {
+    result = {
         "schema_version": "technology_risk_decision.v1",
         "command": "risk-assess",
         "case_id": fixture.get("case_id"),
@@ -77,6 +79,22 @@ def assess_risk(fixture: dict[str, Any]) -> dict[str, Any]:
             "Observation ≠ proof; correlation ≠ causation."
         ),
     }
+    classification = (fixture.get("classification") or {}).get("primary_classification")
+    policy = fixture.get("policy_decision") or {}
+    proof = fixture.get("proof") or {}
+    conclusion = proof.get("conclusion") if isinstance(proof, dict) else {}
+    evidence_tier = None
+    if findings:
+        evidence_tier = findings[0].evidence_tier
+    return attach_governance_envelope(
+        result,
+        primary_classification=classification,
+        evidence_tier=evidence_tier,
+        proof_conclusion=conclusion.get("status") if isinstance(conclusion, dict) else None,
+        policy_outcome=policy.get("outcome"),
+        dry_run=bool(fixture.get("dry_run", True) or policy.get("dry_run", True)),
+        requires_confirmation=bool(policy.get("requires_confirmation", True)),
+    )
 
 
 def build_governance_report(fixture: dict[str, Any], *, format: str = "json") -> str | dict[str, Any]:

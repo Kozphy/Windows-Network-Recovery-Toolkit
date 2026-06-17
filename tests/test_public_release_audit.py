@@ -35,6 +35,20 @@ def test_public_release_audit_allows_synthetic_fixtures(tmp_path: Path) -> None:
     assert not any(p.endswith("tests/fixtures/demo.jsonl") for p in findings.get("jsonl_outside_demo", []))
 
 
+def test_public_release_audit_allows_committed_sample_reports(tmp_path: Path) -> None:
+    audit = _load_audit_module()
+    sample = tmp_path / "reports" / "sample_governance_report.md"
+    sample.parent.mkdir(parents=True)
+    sample.write_text("# Sample governance report\n", encoding="utf-8")
+    risky = tmp_path / "reports" / "live_incident_export.md"
+    risky.write_text("# Real runtime export\n", encoding="utf-8")
+
+    findings = audit.scan_repo(tmp_path, tracked_only=False)
+    runtime = findings.get("runtime_artifacts", [])
+    assert not any(p.endswith("reports/sample_governance_report.md") for p in runtime)
+    assert any(p.endswith("reports/live_incident_export.md") for p in runtime)
+
+
 def test_public_release_audit_passes_on_tracked_files_only() -> None:
     audit = _load_audit_module()
     tracked = audit.git_tracked_files(_REPO_ROOT)

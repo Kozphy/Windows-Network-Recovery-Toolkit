@@ -6,52 +6,62 @@
 
 ---
 
+## Evidence-to-Action Governance Model
+
+Six epistemic principles govern every decision output (`evidence_to_action.v1`):
+
+1. **Observation is not proof** — snapshots until structured proof passes  
+2. **Correlation is not causation** — listener match ≠ registry writer  
+3. **Confidence is not certainty** — ordinal scores, not probabilities  
+4. **Classification is not accusation** — triage labels ≠ compromise verdicts  
+5. **Policy permission is not safety guarantee** — ALLOW still needs confirmation + rollback  
+6. **Recommendation is not execution authority** — previews ≠ autonomous remediation  
+
+JSON outputs include an optional `governance` envelope (`claim_strength`, `execution_authority`, `limitations`). Full spec: [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_governance_model.md).
+
+---
+
 ## Big 4 / Risk Advisory / Consulting Positioning
 
 | | |
 |---|---|
-| **Who this is for** | IT Risk Advisory, Technology Consulting, Cyber/Technology Risk, Internal Audit, FinTech operational risk, Platform/SRE governance |
-| **Business problem** | Endpoint, proxy, TLS, and application-layer failures where IT, Security, Compliance, and Audit disagree on cause and remediation — and scripts change settings without evidence or audit trails |
-| **Why not just a script** | Evidence tiers, proof engine, control tests, risk ratings, policy-gated remediation, hash-chained audit, deterministic replay, and management reporting |
+| **Who this is for** | IT Risk Advisory, Technology Consulting, Cyber/Technology Risk, Internal Audit, FinTech operational risk, Platform/SRE governance, Data/Risk analysts |
+| **Business problem** | Endpoint, proxy, TLS, and application-layer failures where IT, Security, Compliance, and Audit disagree on cause and remediation |
+| **Why not just a script** | Evidence tiers, proof engine, control tests, risk ratings, policy-gated remediation, hash-chained audit, analytics KPIs |
 
-**Portfolio pack:** [docs/README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md) · [Control matrix](docs/technology_risk_control_matrix.md) · [90-second pitch](docs/interview_pitch_90_seconds.md) · [5-minute demo](docs/big4_demo_flow.md) · [Analytics data model](docs/analytics_data_model.md) · [SQL KPI queries](docs/sql_analytics_queries.md)
+**Portfolio pack:** [docs/README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md) · [Control matrix](docs/control-matrix.md) · [Analytics data model](docs/analytics_data_model.md) · [5-minute demo](docs/big4_demo_flow.md)
 
 ```powershell
-python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
-python -m windows_network_toolkit governance-report --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json --format markdown
+python -m windows_network_toolkit analytics-summary --audit-dir tests/fixtures/analytics/audit_sample --format markdown
 ```
 
 ---
 
-**Technical one-liner:** Evidence-based Windows endpoint network evidence and IT risk toolkit — WinINET proxy drift, registry writer attribution, TLS path contrast, policy-gated remediation preview, audit JSONL.
-
-> **Not an AI agent.** Decision infrastructure: Evidence → Hypothesis → Proof → Policy → Remediation → Audit.
-
-**Primary CLI:** `python -m windows_network_toolkit` (JSON-first) · **Legacy:** `python -m src` (deprecated shim with stderr notice on proxy commands)
-
-**Canonical core:** `src/platform_core/` — classification, proof, policy, audit, timeline, risk. **Facades:** `windows_network_toolkit/` — flat modules delegating to core engines.
-
-| Principle | Enforced |
-|-----------|----------|
-| Observation != Proof | Evidence tier state machine + proof envelope |
-| Correlation != Causation | Guards block destructive unlock |
-| Confidence != Certainty | 0–1 ordinal scores with limitations[] |
-| Policy Permission != Safety Guarantee | Approval + rollback required |
-
----
-
-## Who this is for
+## Audience
 
 | Audience | How to use this repo |
 |----------|----------------------|
-| **IT support** | `proxy-status`, `diagnose --proof`, `proxy-disable --dry-run` — fixture demos need no admin |
-| **Endpoint reliability engineers** | Decision pipeline, `proxy-watch`, replay, Prometheus metrics |
-| **Security analysts** | Listener vs writer attribution, TLS proof, `UNKNOWN_LOCAL_PROXY` triage |
-| **Risk consultants** | [README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md), [consulting-report.md](docs/consulting-report.md), `risk-assess`, `control-test`, `governance-report` |
-| **Data / Risk analysts** | [analytics_data_model.md](docs/analytics_data_model.md), [sql_analytics_queries.md](docs/sql_analytics_queries.md), `schemas/analytics_warehouse.sql` |
-| **Platform / SRE candidates** | CI safety contracts, deterministic replay, FastAPI platform API |
+| **IT Support** | `proxy-status`, `diagnose --proof`, `proxy-disable --dry-run` |
+| **Endpoint Reliability Engineers** | Decision pipeline, `proxy-watch`, replay, Prometheus metrics |
+| **Security Analysts** | Listener vs writer attribution, TLS proof, `UNKNOWN_LOCAL_PROXY` triage |
+| **Risk Consultants** | [README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md), `risk-assess`, `governance-report` |
+| **Data / Risk Analysts** | [analytics_data_model.md](docs/analytics_data_model.md), `analytics-summary`, SQL KPIs |
+| **Platform / SRE Candidates** | CI safety contracts, deterministic replay, FastAPI platform API |
 
-**Portfolio pack:** [docs/README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md) · [docs/portfolio-summary.md](docs/portfolio-summary.md) · [demo-video-script.md](docs/demo-video-script.md)
+---
+
+> **Not an AI agent.** Decision infrastructure: Evidence → Hypothesis → Proof → Policy → Remediation Preview → Audit → Replay → Governance Report.
+
+**Primary CLI:** `python -m windows_network_toolkit` (JSON-first) · **Canonical core:** `src/platform_core/` · **Facades:** `windows_network_toolkit/`
+
+| Principle | Enforced |
+|-----------|----------|
+| Observation is not proof | Evidence tier state machine + proof envelope |
+| Correlation is not causation | Guards block destructive unlock |
+| Confidence is not certainty | Ordinal scores + `confidence_type: ordinal_not_probability` |
+| Classification is not accusation | Triage labels ≠ malware/attacker verdicts |
+| Policy permission is not safety guarantee | Approval + rollback required |
+| Recommendation is not execution authority | Dry-run default + typed confirmation |
 
 ---
 
