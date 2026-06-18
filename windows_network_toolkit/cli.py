@@ -276,8 +276,8 @@ def cmd_website_risk(args: argparse.Namespace) -> int:
 
 
 def cmd_evidence_report(args: argparse.Namespace) -> int:
-    from windows_network_toolkit.diagnostics.evidence import run_evidence_assessment
     from src.platform_core.evidence_report import generate_evidence_report
+    from windows_network_toolkit.diagnostics.evidence import run_evidence_assessment
 
     inject_writer = inject_proof = inject_tls = inject_website = inject_sysmon = None
     if args.fixture:
@@ -353,14 +353,17 @@ def cmd_risk_assess(args: argparse.Namespace) -> int:
 
 def cmd_control_test(args: argparse.Namespace) -> int:
     from src.platform_core.risk import load_fixture, run_control_tests
+    from src.platform_core.risk.control_test_mature import run_mature_control_tests
 
     fixture = load_fixture(_resolve_fixture(args.fixture))
     tests = run_control_tests(fixture)
+    mature = run_mature_control_tests(fixture)
     _emit_json({
         "schema_version": "technology_risk_decision.v1",
         "command": "control-test",
         "case_id": fixture.get("case_id"),
         "control_tests": [t.model_dump() for t in tests],
+        "mature_control_tests": [t.model_dump() for t in mature],
     })
     return 0
 
@@ -408,6 +411,36 @@ def cmd_risk_kpi_summary(args: argparse.Namespace) -> int:
         print(format_risk_kpi_markdown(payload))
     else:
         _emit_json(payload)
+    return 0
+
+
+def cmd_analytics_export_powerbi(args: argparse.Namespace) -> int:
+    from src.platform_core.analytics.powerbi_export import (
+        export_powerbi_from_audit,
+        write_portfolio_sample,
+    )
+
+    out_dir = Path(args.out_dir)
+    if getattr(args, "portfolio_sample", False):
+        counts = write_portfolio_sample(out_dir)
+        _emit_json(
+            {
+                "schema_version": "powerbi_export.v1",
+                "command": "analytics-export-powerbi",
+                "mode": "portfolio_sample",
+                "out_dir": str(out_dir.resolve()),
+                "record_counts": counts,
+            }
+        )
+        return 0
+
+    audit_dir = Path(args.audit_dir)
+    payload = export_powerbi_from_audit(
+        audit_dir,
+        out_dir,
+        include_portfolio_seed=bool(getattr(args, "include_seed", False)),
+    )
+    _emit_json(payload)
     return 0
 
 
@@ -599,6 +632,32 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     ans.add_argument("--audit-dir", default=".audit", help="Directory containing *.jsonl audit files")
     ans.add_argument("--format", choices=["json", "markdown"], default="json")
     ans.set_defaults(func=cmd_analytics_summary)
+
+    pbi = sub.add_parser(
+        "analytics-export-powerbi",
+        help="Export Power BI-ready CSV tables from audit JSONL (read-only)",
+    )
+    pbi.add_argument(
+        "--audit-dir",
+        default="tests/fixtures/risk_analytics/audit_sample",
+        help="Audit JSONL directory",
+    )
+    pbi.add_argument(
+        "--out-dir",
+        default="analytics/powerbi/data",
+        help="Output directory for CSV files",
+    )
+    pbi.add_argument(
+        "--portfolio-sample",
+        action="store_true",
+        help="Write deterministic portfolio sample CSVs (ignores audit-dir)",
+    )
+    pbi.add_argument(
+        "--include-seed",
+        action="store_true",
+        help="Merge portfolio seed rows when audit dir is sparse",
+    )
+    pbi.set_defaults(func=cmd_analytics_export_powerbi)
 
     demo = sub.add_parser("demo", help="Golden fixture demo (read-only)")
     demo.set_defaults(func=cmd_demo)

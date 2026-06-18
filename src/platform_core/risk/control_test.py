@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from .control import ControlObjective, controls_for_fixture
+from .control import controls_for_fixture
 
 
 class ControlTestResult(StrEnum):
@@ -31,7 +31,7 @@ class ControlTest(BaseModel):
 
 
 def _now_utc() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def run_control_tests(fixture: dict[str, Any]) -> list[ControlTest]:

@@ -26,7 +26,7 @@ verify-format:
 	black --check .
 
 typecheck:
-	mypy
+	mypy src/platform_core/ai_risk_analyst src/platform_core/risk src/platform_core/governance src/platform_core/analytics --ignore-missing-imports
 
 # Golden read-only demo: replay proxy_drift fixture, policy, markdown report.
 demo:

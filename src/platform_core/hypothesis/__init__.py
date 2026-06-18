@@ -4,7 +4,10 @@ from src.platform_core.hypothesis.models import (
     HypothesisEvaluation,
     MultievidenceInput,
 )
-from src.platform_core.hypothesis.multievidence_engine import evaluate_hypotheses, multievidence_from_fixture
+from src.platform_core.hypothesis.multievidence_engine import (
+    evaluate_hypotheses,
+    multievidence_from_fixture,
+)
 
 __all__ = [
     "HypothesisEngineResult",

@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import uuid
 from datetime import UTC, datetime
-from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -14,7 +12,6 @@ from pydantic import BaseModel, Field, field_validator
 from src.platform_core import SCHEMA_VERSION
 from src.platform_core.contracts import EvidenceItem, EvidenceTierName
 from src.platform_core.serialization import canonical_json, content_hash
-
 
 ConfidenceOrdinal = Literal["very_low", "low", "medium", "high", "very_high"]
 

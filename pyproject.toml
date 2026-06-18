@@ -33,6 +33,7 @@ dev = [
     "types-python-jose",
     "pip-audit>=2.7",
     "bandit>=1.7",
+    "pandas>=2.0",
 ]
 
 [tool.setuptools.packages.find]

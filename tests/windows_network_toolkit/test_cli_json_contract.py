@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from io import StringIO
 from unittest.mock import patch
 
 from windows_network_toolkit import cli
@@ -34,6 +33,6 @@ def test_diagnose_proof_fixture_json(capsys) -> None:
 
 def test_proxy_disable_dry_run_json(capsys) -> None:
     with patch("windows_network_toolkit.proxy_remediation.platform.system", return_value="Linux"):
-        rc = cli.main(["proxy-disable"])
+        cli.main(["proxy-disable"])
     payload = json.loads(capsys.readouterr().out)
     assert payload.get("unsupported_platform") or payload.get("dry_run") is True

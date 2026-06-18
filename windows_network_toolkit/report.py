@@ -7,7 +7,6 @@ from typing import Any
 from src.platform_core.principles.report import build_principle_report_sections
 from src.platform_core.principles.rules import format_confidence_display
 from src.platform_core.principles.validator import build_incident_context, validate_principles
-
 from windows_network_toolkit.audit_store import read_audit_logs
 from windows_network_toolkit.platform.risk_scoring import score_risk
 from windows_network_toolkit.proof import run_diagnose_proof

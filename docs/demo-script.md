@@ -62,27 +62,24 @@ python -m windows_network_toolkit proxy-proof --url https://example.com
 
 ---
 
-## 5. Evidence report (30 seconds)
+## 5. Risk decision record (25 seconds)
 
 ```powershell
-python -m windows_network_toolkit evidence-report --url https://example.com `
-  --fixture tests/fixtures/enert/dead_proxy_59081.json --format markdown
+python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
 ```
 
-**Show:** Executive summary, timeline, confidence model, safety disclaimer.
-
-Sample: [examples/reports/dead_proxy_config_report.md](../examples/reports/dead_proxy_config_report.md)
+**Point out:** `risk_decision_record` (proof tier, execution authority, evidence hash), `mature_control_tests`.
 
 ---
 
-## 6. Audit JSONL (20 seconds)
+## 6. Governance report for risk committee (25 seconds)
 
 ```powershell
 python -m windows_network_toolkit governance-report `
   --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
 ```
 
-**Say:** “Every step is auditable — hash-chained JSONL, KPI rollups, governance reports for risk committees.”
+**Say:** “Executive summary, incident volume by classification, human-review queue, AI transparency, audit integrity appendix.”
 
 ---
 
@@ -101,5 +98,6 @@ python -m windows_network_toolkit governance-report `
 | Scenario | Fixture |
 |----------|---------|
 | Dev proxy (not malicious) | `examples/evidence/LOCAL_PROXY_ACTIVE.json` |
-| Reverter / intermittent | `make proxy-intermittent` (Windows, 15 min soak) |
+| Reverter suspected | `tests/fixtures/case_studies/case_3_reverter_suspected.json` |
+| Risk decision record | `risk-assess --fixture` (any case study JSON) |
 | MITM triage | `examples/evidence/POSSIBLE_MITM_RISK.json` |

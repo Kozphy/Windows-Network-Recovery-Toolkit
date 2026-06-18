@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
 
-from src.decision_engine.scoring import CandidateDecision, EvidenceItem, ScoredDecision, score_candidate
+from src.decision_engine.scoring import (
+    CandidateDecision,
+    EvidenceItem,
+    ScoredDecision,
+    score_candidate,
+)
 from src.platform_core.decision_intelligence.models import (
     DecisionDomain,
     DomainRecommendation,

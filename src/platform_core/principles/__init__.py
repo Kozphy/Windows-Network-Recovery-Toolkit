@@ -3,10 +3,12 @@
 from src.platform_core.principles.models import (
     Attribution,
     Observation,
-    PolicyDecision as PrinciplePolicyDecision,
     PrincipleComplianceResult,
     ProofEnvelope,
     RiskDecision,
+)
+from src.platform_core.principles.models import (
+    PolicyDecision as PrinciplePolicyDecision,
 )
 from src.platform_core.principles.report import build_principle_report_sections
 from src.platform_core.principles.validator import (

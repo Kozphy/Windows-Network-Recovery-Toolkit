@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import platform
 import subprocess
-import sys
 import time
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from windows_network_toolkit.audit_store import append_audit_dict

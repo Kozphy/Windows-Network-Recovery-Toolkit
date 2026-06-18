@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 from typing import Any
 
 from src.platform_core.contracts import Decision, EvidenceBundle, EvidenceItem
+from src.platform_core.evidence.guards import proof_inputs_from_signals
 from src.platform_core.policy.approval import generate_approval_token, validate_approval_token
 from src.platform_core.policy.engine import evaluate_policy
-from src.platform_core.evidence.guards import proof_inputs_from_signals
 
 from .rollback import build_rollback_plan
 

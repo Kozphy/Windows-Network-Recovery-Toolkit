@@ -12,7 +12,12 @@ from typing import Any
 from src.platform_core.evidence.record import TypedEvidenceRecord
 
 from .classifier import classify_listener
-from .models import AttributionSnapshot, ListenerClassification, ProcessAttribution, ProxyStateSnapshot
+from .models import (
+    AttributionSnapshot,
+    ListenerClassification,
+    ProcessAttribution,
+    ProxyStateSnapshot,
+)
 
 
 def _now() -> str:

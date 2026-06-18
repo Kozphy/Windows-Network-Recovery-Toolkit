@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from windows_network_toolkit.models import ClassificationResult, PolicyDecision, ProofResult
+from windows_network_toolkit.models import ClassificationResult, ProofResult
 from windows_network_toolkit.platform.policy import evaluate_policy
 from windows_network_toolkit.platform.risk_scoring import score_risk
-from windows_network_toolkit.proxy_classification import classify_from_live
 from windows_network_toolkit.proof import run_diagnose_proof
+from windows_network_toolkit.proxy_classification import classify_from_live
 
 
 def decide(

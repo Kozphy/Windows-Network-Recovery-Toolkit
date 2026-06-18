@@ -18,6 +18,7 @@ def test_audit_write_failure_returns_error(tmp_path) -> None:
 
 def test_remediation_reports_audit_error_on_linux() -> None:
     from unittest.mock import patch as mp
+
     from windows_network_toolkit.proxy_remediation import run_proxy_disable
 
     with mp("windows_network_toolkit.proxy_remediation.platform.system", return_value="Linux"):

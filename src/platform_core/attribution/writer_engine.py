@@ -13,7 +13,7 @@ from src.correlation.proxy_causation import analyze_proxy_causation
 from src.telemetry.registry_targets import is_proxy_registry_target, proxy_registry_value_name
 from src.telemetry.sysmon_reader import SysmonEvent
 
-from .collector import collect_attribution, collect_proxy_state, resolve_listener_process
+from .collector import collect_attribution, resolve_listener_process
 from .models import ListenerClassification, ProcessAttribution
 from .writer_models import (
     AttributionConfidence,

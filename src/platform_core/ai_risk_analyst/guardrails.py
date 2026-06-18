@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Literal
 
 from .models import AIRecommendation, AnalystEvidenceBundle, HumanReviewRequired, RiskLevel
+
+ReviewStatus = Literal["not_required", "recommended", "required"]
 
 _KNOWN_DEV_PROCESS_HINTS = frozenset(
     {"node.exe", "node", "cursor.exe", "code.exe", "vscode.exe", "wsl.exe"}
@@ -120,9 +122,13 @@ def apply_guardrails(
         action = "Preview remediation only; require typed human confirmation and policy approval."
         review_reasons.append("Destructive action language removed by guardrails.")
 
-    review_status = "not_required"
+    review_status: ReviewStatus = "not_required"
     if review_reasons:
-        review_status = "required" if len(review_reasons) >= 2 or primary in _SUSPICIOUS_CLASSIFICATIONS else "recommended"
+        review_status = (
+            "required"
+            if len(review_reasons) >= 2 or primary in _SUSPICIOUS_CLASSIFICATIONS
+            else "recommended"
+        )
 
     human_review = HumanReviewRequired(
         required=review_status == "required",
@@ -168,3 +174,21 @@ def recommendation_passes_safety(recommendation: AIRecommendation) -> bool:
         "modify registry without",
     )
     return not any(p in text for p in forbidden_phrases)
+
+
+_ALLOWED_EXECUTION_AUTHORITY = frozenset({"preview_only", "human_required", "blocked"})
+
+
+def enforce_advisory_only(payload: dict) -> dict:
+    """Strip or downgrade AI fields that attempt to grant execution authority."""
+    out = dict(payload)
+    authority = str(out.get("execution_authority", "preview_only")).lower()
+    if authority not in _ALLOWED_EXECUTION_AUTHORITY:
+        out["execution_authority"] = "human_required"
+    narrative = str(out.get("narrative", out.get("summary", "")))
+    if any(p in narrative.lower() for p in ("execute automatically", "safe to execute", "full_auto")):
+        out["narrative"] = "Preview remediation only; human confirmation required."
+        out["summary"] = out.get("summary", out["narrative"])
+    if "automated" in authority or "auto" in authority:
+        out["execution_authority"] = "human_required"
+    return out

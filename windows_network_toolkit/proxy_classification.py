@@ -7,10 +7,8 @@ from typing import Any
 from src.platform_core.attribution.collector import collect_attribution
 from src.platform_core.attribution.models import ProcessAttribution, ProxyStateSnapshot
 from src.platform_core.classification.engine import classify_proxy
-
 from windows_network_toolkit.models import ClassificationResult
 from windows_network_toolkit.proxy_owner import detect_proxy_owner
-from windows_network_toolkit.proxy_state import collect_proxy_state_model
 
 
 def classify_from_live(

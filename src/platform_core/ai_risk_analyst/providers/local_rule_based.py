@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from src.platform_core.ai_risk_analyst.models import AIRecommendation, AnalystEvidenceBundle, RiskHypothesis
+from src.platform_core.ai_risk_analyst.models import (
+    AIRecommendation,
+    AnalystEvidenceBundle,
+    RiskHypothesis,
+)
 from src.platform_core.ai_risk_analyst.providers.base import AnalystProvider
 
 _SCENARIO_TABLE: dict[str, dict[str, str]] = {

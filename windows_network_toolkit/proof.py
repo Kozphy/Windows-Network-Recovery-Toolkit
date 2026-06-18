@@ -5,10 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from src.platform_core.governance.evidence_to_action import attach_governance_envelope
-from src.platform_core.proof.engine import run_proof_engine
 from src.platform_core.principles.report import build_principle_report_sections
 from src.platform_core.principles.validator import validate_principles
-
+from src.platform_core.proof.engine import run_proof_engine
 from windows_network_toolkit.models import ProofAttempt, ProofResult
 from windows_network_toolkit.proxy_classification import classify_from_live
 from windows_network_toolkit.proxy_owner import detect_proxy_owner

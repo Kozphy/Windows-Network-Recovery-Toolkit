@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Protocol
+from typing import Protocol
 
 from .models import WebsiteRiskEvidence
 

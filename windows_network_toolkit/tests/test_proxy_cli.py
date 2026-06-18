@@ -9,8 +9,8 @@ from unittest.mock import patch
 from windows_network_toolkit import cli
 from windows_network_toolkit.audit.report_generator import generate_erp_report
 from windows_network_toolkit.diagnostics.proxy.runner import (
-    run_proxy_timeline,
     run_full_incident_report,
+    run_proxy_timeline,
 )
 
 FIXTURES = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "erp"

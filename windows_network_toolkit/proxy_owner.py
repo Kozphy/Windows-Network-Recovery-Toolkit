@@ -9,7 +9,6 @@ from typing import Any
 
 from src.platform_core.attribution.collector import resolve_listener_process
 from src.platform_core.attribution.models import ProcessAttribution
-
 from windows_network_toolkit.models import ProcessOwner
 from windows_network_toolkit.proxy_state import collect_proxy_state_model
 

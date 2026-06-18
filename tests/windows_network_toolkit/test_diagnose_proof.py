@@ -7,7 +7,6 @@ from pathlib import Path
 
 from windows_network_toolkit.proof import run_diagnose_proof
 
-
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "enert" / "dead_proxy_59081.json"
 
 

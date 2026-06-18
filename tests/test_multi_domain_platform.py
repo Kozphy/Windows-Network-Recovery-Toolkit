@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from src.domains.registry import all_adapters, get_adapter
 from src.platform.audit import AuditRecord, append_audit, read_audit_tail
 from src.platform.decision_engine import score_decision
 from src.platform.evidence_engine import rank_hypotheses
@@ -15,7 +16,6 @@ from src.platform.outcome_engine import compute_metrics, record_outcome
 from src.platform.policy_engine import validate_decision_policy
 from src.platform.replay import run_pipeline
 from src.platform.serialization import content_hash
-from src.domains.registry import all_adapters, get_adapter
 from src.platform_handlers import (
     clear_platform_cache,
     cmd_platform_decide,

@@ -12,7 +12,6 @@ from src.platform_core.evidence.record import (
     records_from_fixture,
     records_to_bundle,
 )
-from src.platform_core.serialization import content_hash
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "erp"
 

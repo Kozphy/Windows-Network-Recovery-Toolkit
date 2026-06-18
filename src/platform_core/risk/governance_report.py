@@ -9,6 +9,11 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from src.platform_core.governance.evidence_to_action import attach_governance_envelope
+from src.platform_core.governance.proof_tier import resolve_proof_tier
+from src.platform_core.governance.report_sections import AI_TRANSPARENCY_SECTION, NON_CLAIMS
+from src.platform_core.governance.risk_decision_record import build_risk_decision_record
+from src.platform_core.risk.business_impact_mapping import map_business_impact
+from src.platform_core.risk.control_test_mature import run_mature_control_tests
 
 from .asset import asset_for_fixture
 from .business_objective import objective_for_fixture
@@ -60,12 +65,22 @@ def _governance_decision(fixture: dict[str, Any]) -> GovernanceDecision:
 
 def assess_risk(fixture: dict[str, Any]) -> dict[str, Any]:
     tests = run_control_tests(fixture)
+    mature_tests = run_mature_control_tests(fixture)
     findings = findings_from_fixture(fixture, tests)
     rating = rate_risk(findings, tests, fixture)
+    decision_record = build_risk_decision_record(fixture)
+    proof_tier_result = resolve_proof_tier(fixture)
+    impact_map = map_business_impact(
+        str((fixture.get("classification") or {}).get("primary_classification") or "")
+    )
     result = {
         "schema_version": "technology_risk_decision.v1",
         "command": "risk-assess",
         "case_id": fixture.get("case_id"),
+        "risk_decision_record": decision_record.model_dump(mode="json"),
+        "proof_tier": proof_tier_result.model_dump(),
+        "business_impact_forum": impact_map.model_dump(),
+        "mature_control_tests": [t.model_dump() for t in mature_tests],
         "business_objective": objective_for_fixture(fixture).model_dump(),
         "asset": asset_for_fixture(fixture).model_dump(),
         "threat": threat_for_fixture(fixture).model_dump(),
@@ -81,11 +96,9 @@ def assess_risk(fixture: dict[str, Any]) -> dict[str, Any]:
     }
     classification = (fixture.get("classification") or {}).get("primary_classification")
     policy = fixture.get("policy_decision") or {}
-    proof = fixture.get("proof") or {}
-    conclusion = proof.get("conclusion") if isinstance(proof, dict) else {}
-    evidence_tier = None
-    if findings:
-        evidence_tier = findings[0].evidence_tier
+    proof_block = fixture.get("proof") or {}
+    conclusion = proof_block.get("conclusion") if isinstance(proof_block, dict) else {}
+    evidence_tier = proof_tier_result.proof_tier.value
     return attach_governance_envelope(
         result,
         primary_classification=classification,
@@ -100,7 +113,9 @@ def assess_risk(fixture: dict[str, Any]) -> dict[str, Any]:
 def build_governance_report(fixture: dict[str, Any], *, format: str = "json") -> str | dict[str, Any]:
     assessment = assess_risk(fixture)
     tests = run_control_tests(fixture)
+    mature = run_mature_control_tests(fixture)
     assessment["control_tests"] = [t.model_dump() for t in tests]
+    assessment["mature_control_tests"] = [t.model_dump() for t in mature]
 
     if format == "json":
         return assessment
@@ -111,6 +126,8 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
     rating = assessment["risk_rating"]
     gov = assessment["governance_decision"]
     findings = assessment["findings"]
+    rdr = assessment.get("risk_decision_record") or {}
+    proof = assessment.get("proof_tier") or {}
 
     lines = [
         "# Technology Risk & Control Governance Report",
@@ -122,7 +139,18 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
         "",
         assessment["disclaimer"],
         "",
+        f"**Proof tier:** {rdr.get('proof_tier', proof.get('proof_tier', 'n/a'))} — "
+        f"**Risk rating:** {rdr.get('risk_rating', rating.get('residual_level'))}",
+        "",
         rating["summary"],
+        "",
+        "## Risk Decision Record",
+        "",
+        f"- Incident: {rdr.get('incident_id')}",
+        f"- Classification: {rdr.get('classification')}",
+        f"- Human review required: {rdr.get('human_review_required')}",
+        f"- Execution authority: {rdr.get('execution_authority')}",
+        f"- Evidence hash: `{rdr.get('evidence_hash', '')[:16]}...`",
         "",
         "## Business Objective",
         "",
@@ -147,8 +175,8 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
             "",
             "## Risk Rating",
             "",
-            f"| Inherent | Residual | Likelihood | Impact | Control effectiveness |",
-            f"|----------|----------|------------|--------|----------------------|",
+            "| Inherent | Residual | Likelihood | Impact | Control effectiveness |",
+            "|----------|----------|------------|--------|----------------------|",
             f"| {rating['inherent_level']} | {rating['residual_level']} | {rating['likelihood']} | "
             f"{rating['impact']} | {rating['control_effectiveness']} |",
             "",
@@ -158,8 +186,15 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
     )
     for t in tests:
         lines.append(f"- **{t.control_name}**: {t.result.value} — {t.finding_summary}")
+    lines.extend(["", "## Mature control tests", ""])
+    for mt in mature:
+        lines.append(f"- **{mt.control_name}** ({mt.test_result.value}): {mt.control_objective}")
     lines.extend(
         [
+            "",
+            "## AI usage transparency",
+            "",
+            AI_TRANSPARENCY_SECTION["human_review_required"],
             "",
             "## Governance Decision",
             "",
@@ -173,5 +208,8 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
         ]
     )
     for lim in assessment.get("limitations", []):
+        lines.append(f"- {lim}")
+    lines.extend(["", "## Non-claims", ""])
+    for lim in NON_CLAIMS:
         lines.append(f"- {lim}")
     return "\n".join(lines)

@@ -6,14 +6,15 @@ import platform
 import subprocess
 from typing import Any
 
+from src.core.models import registry_with_parsed
+from src.platform_core.governance.evidence_to_action import attach_governance_envelope
+from src.proxy_guard.parser import parse_proxy_server
 from src.proxy_guard.registry import read_proxy_registry
 from src.proxy_guard.remediation import (
     CONFIRMATION_PHRASE,
     build_user_proxy_disable_mutations,
     validate_action_confirmation,
 )
-from src.core.models import registry_with_parsed
-from src.proxy_guard.parser import parse_proxy_server
 from src.proxy_guard.repair_snapshots import (
     append_proxy_snapshots_jsonl,
     build_rollback_plan,
@@ -22,11 +23,9 @@ from src.proxy_guard.repair_snapshots import (
 )
 from src.proxy_guard.verification import verify_proxy_disabled
 from src.repair.executor import apply_mutations
-
 from windows_network_toolkit.audit_store import append_audit_dict
 from windows_network_toolkit.platform.decision_engine import decide
 from windows_network_toolkit.proxy_state import collect_proxy_state_model
-from src.platform_core.governance.evidence_to_action import attach_governance_envelope
 
 
 def _unsupported() -> dict[str, Any]:

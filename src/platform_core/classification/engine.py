@@ -90,7 +90,7 @@ def classify_proxy(
 
     if winhttp_mismatch:
         secondary.append(SecondarySignal.WININET_WINHTTP_MISMATCH.value)
-        evidence.append(f"WinINET enabled while WinHTTP reports direct access.")
+        evidence.append("WinINET enabled while WinHTTP reports direct access.")
 
     if has_pac:
         secondary.append(SecondarySignal.PAC_PRESENT.value)

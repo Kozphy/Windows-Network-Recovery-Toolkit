@@ -65,7 +65,7 @@ def test_case_study_2_unknown_listener_low_confidence() -> None:
 
 def test_proxy_disable_defaults_to_dry_run(capsys) -> None:
     with patch("windows_network_toolkit.proxy_remediation.platform.system", return_value="Linux"):
-        rc = cli.main(["proxy-disable"])
+        cli.main(["proxy-disable"])
         out = capsys.readouterr().out
     payload = json.loads(out)
     assert payload.get("unsupported_platform") or payload.get("dry_run") is True

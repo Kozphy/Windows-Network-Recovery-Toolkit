@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from src.platform_core.attribution.collector import collect_proxy_state
-
 from windows_network_toolkit.models import ProxyState
 
 

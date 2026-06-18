@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -80,7 +79,7 @@ def build_risk_kpi_summary(
     control_failures = 0
     repeat_keys: Counter[str] = Counter()
 
-    for key, rows in by_incident.items():
+    for _key, rows in by_incident.items():
         sorted_rows = sorted(rows, key=lambda r: str(r.get("timestamp") or ""))
         first_ts = _parse_ts(sorted_rows[0].get("timestamp"))
         classified_ts = None

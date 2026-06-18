@@ -10,7 +10,8 @@ from typing import Any
 from platform_core.models import utc_now_iso
 from src.decision_engine.decision_engine import content_digest
 from src.decision_engine.scoring import EvidenceItem
-from src.platform_core.contracts import EvidenceBundle, EvidenceItem as ContractEvidenceItem
+from src.platform_core.contracts import EvidenceBundle
+from src.platform_core.contracts import EvidenceItem as ContractEvidenceItem
 from src.platform_core.decision_intelligence.adapters import ADAPTERS
 from src.platform_core.decision_intelligence.models import (
     AuditRecord,

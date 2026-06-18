@@ -1,10 +1,24 @@
 # Technology Risk & Control Analytics Platform
 
+This project demonstrates how **endpoint reliability evidence** can be converted into **technology risk decisions**. It diagnoses proxy drift and TLS path issues, classifies incidents with **proof tiers (T0–T4)**, blocks unsafe remediation by default, and generates **audit-ready governance reports** with replay verification.
+
 **One-line summary:** An AI-assisted Technology Risk & Control Analytics Platform that transforms endpoint reliability evidence into risk hypotheses, explainable recommendations, human-reviewed decisions, and auditable governance reports.
 
 > **Not** antivirus · **Not** EDR/XDR · **Not** autonomous remediation · **Not** malware detection or intrusion prevention.
 
-**Portfolio:** [PORTFOLIO.md](PORTFOLIO.md) · **3-min demo:** [docs/demo-script.md](docs/demo-script.md) · **Architecture:** [docs/architecture.md](docs/architecture.md)
+**Portfolio:** [PORTFOLIO.md](PORTFOLIO.md) · **3-min demo:** [docs/demo-script.md](docs/demo-script.md) · **Architecture:** [docs/architecture.md](docs/architecture.md) · **Case studies:** [docs/portfolio-case-study-1-dead-wininet-proxy.md](docs/portfolio-case-study-1-dead-wininet-proxy.md)
+
+---
+
+## What this proves in an interview
+
+- **Evidence-based diagnosis** — WinINET/WinHTTP/TLS evidence with explicit limitations  
+- **Control testing** — mature control tests (PASS/FAIL/PARTIAL/NOT_TESTED) per incident class  
+- **Policy-gated automation** — dry-run default, typed confirmation for registry paths  
+- **Auditability** — append-only hash-chained JSONL + tamper detection  
+- **Human-in-the-loop governance** — `RiskDecisionRecord`, human-review queue, proof tiers  
+- **Responsible AI boundary** — AI assists explanation; does not authorize execution  
+- **Platform engineering discipline** — fixtures, CI safety contracts, deterministic replay  
 
 ---
 
@@ -28,6 +42,31 @@ Windows endpoints often appear “online” while browsers and business apps fai
 | Compliance / Audit | Hash-chained JSONL + governance reports |
 | Risk committees | KPI rollups, control tests, risk ratings with limitations |
 | Platform / SRE | Deterministic replay, CI safety contracts |
+
+---
+
+## PL-300 / Power BI Analytics Layer
+
+This repository includes a **Power BI-ready portfolio layer** aligned with Microsoft PL-300 skills. It is a semantic model and dashboard **specification** with sample CSV data — not a published enterprise Power BI Service deployment.
+
+| PL-300 skill | Repository evidence |
+|--------------|---------------------|
+| **Prepare the data** | `analytics-export-powerbi` CLI; JSONL → CSV normalization ([data_preparation.md](analytics/powerbi/model/data_preparation.md)) |
+| **Model the data** | Star schema: facts + dimensions ([star_schema.md](analytics/powerbi/model/star_schema.md)) |
+| **Visualize and analyze** | DAX measures + 4-page dashboard spec ([dax_measures.md](analytics/powerbi/model/dax_measures.md), [technology_risk_dashboard_spec.md](analytics/powerbi/reports/technology_risk_dashboard_spec.md)) |
+| **Manage and secure** | RLS design, refresh assumptions, AI boundaries ([governance_and_security.md](analytics/powerbi/model/governance_and_security.md)) |
+
+```powershell
+# Regenerate sample CSVs
+python -m windows_network_toolkit analytics-export-powerbi --portfolio-sample --out-dir analytics/powerbi/data
+
+# Export from audit JSONL
+python -m windows_network_toolkit analytics-export-powerbi `
+  --audit-dir tests/fixtures/risk_analytics/audit_sample `
+  --out-dir analytics/powerbi/exports --include-seed
+```
+
+Sample datasets: [analytics/powerbi/data/](analytics/powerbi/data/) · Overview: [analytics/powerbi/README.md](analytics/powerbi/README.md)
 
 ---
 
@@ -235,7 +274,7 @@ pytest -q tests/test_portfolio_case_studies.py tests/test_portfolio_evidence_sui
 src/platform_core/         Canonical decision engine
 windows_network_toolkit/   Primary JSON-first CLI
 examples/evidence/         Portfolio evidence fixtures
-examples/reports/          Sample governance reports
+analytics/powerbi/         PL-300 Power BI CSV layer + model docs
 tests/                     Safety contracts + portfolio tests
 docs/                      Architecture, demos, case studies
 backend/                   FastAPI platform API
@@ -248,9 +287,10 @@ backend/                   FastAPI platform API
 ```powershell
 make test          # Full pytest suite
 make lint          # Ruff
-make typecheck     # Mypy (platform_core subset)
+make typecheck     # Mypy (portfolio modules: ai_risk_analyst, risk, governance, analytics)
 pytest -q tests/test_policy_safety_contract.py
 pytest -q tests/test_portfolio_evidence_suite.py
+pytest -q tests/test_powerbi_analytics.py
 ```
 
 GitHub Actions: lint · test · typecheck · build-smoke · Windows zero-skip — [.github/workflows/ci.yml](.github/workflows/ci.yml)
@@ -265,6 +305,7 @@ GitHub Actions: lint · test · typecheck · build-smoke · Windows zero-skip �
 | [docs/architecture.md](docs/architecture.md) | Layered architecture |
 | [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md) | AI usage & guardrails |
 | [docs/demo-script.md](docs/demo-script.md) | 3-minute demo |
+| [analytics/powerbi/README.md](analytics/powerbi/README.md) | PL-300 / Power BI layer |
 | [docs/control-matrix.md](docs/control-matrix.md) | Control mapping |
 | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) | Full index |
 

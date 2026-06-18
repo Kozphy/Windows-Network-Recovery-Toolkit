@@ -12,7 +12,6 @@ from src.platform_core.evidence_report.timeline_merger import merge_evidence_tim
 from src.platform_core.proof.engine import run_proof_engine
 from src.platform_core.tls.engine import run_tls_proof
 from src.platform_core.website_risk.engine import run_website_risk
-
 from windows_network_toolkit.diagnostics.proxy.runner import run_proxy_timeline
 
 

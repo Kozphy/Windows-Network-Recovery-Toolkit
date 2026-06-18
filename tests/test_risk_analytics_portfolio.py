@@ -7,8 +7,6 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from src.platform_core.analytics import build_risk_kpi_summary
 from src.platform_core.controls.control_test import ControlTestOutcome, run_control_test_suite
 from src.platform_core.governance.audit_report import build_audit_governance_report

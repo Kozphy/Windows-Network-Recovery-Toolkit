@@ -54,6 +54,18 @@ AI narratives are **decision support** — appended to audit with `provider` met
 
 ---
 
+## AI usage transparency (reports and docs)
+
+Generated governance reports include an explicit section stating:
+
+- AI may assist with **explanation, summarization, and report drafting**
+- AI does **not** authorize registry changes, process termination, firewall reset, adapter disable, malware verdicts, MITM claims, or control effectiveness attestation
+- **Final decisions** require evidence, policy gates, and human review
+
+See `src/platform_core/governance/report_sections.py` and `ai_usage_transparency` in `governance-report` JSON output.
+
+---
+
 ## How tests and audit logs validate outputs
 
 ```powershell

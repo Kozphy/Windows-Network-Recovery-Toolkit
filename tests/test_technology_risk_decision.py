@@ -9,7 +9,12 @@ from unittest.mock import patch
 
 import pytest
 
-from src.platform_core.risk import assess_risk, build_governance_report, load_fixture, run_control_tests
+from src.platform_core.risk import (
+    assess_risk,
+    build_governance_report,
+    load_fixture,
+    run_control_tests,
+)
 from windows_network_toolkit import cli
 
 REPO = Path(__file__).resolve().parents[1]

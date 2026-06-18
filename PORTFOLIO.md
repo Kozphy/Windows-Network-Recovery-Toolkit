@@ -1,5 +1,7 @@
 # Portfolio: AI-Assisted Technology Risk & Control Analytics Platform
 
+This project demonstrates how **endpoint reliability evidence** can be converted into **technology risk decisions**. It diagnoses proxy drift and TLS path issues, classifies incidents with proof tiers, blocks unsafe remediation by default, and generates audit-ready governance reports with replay verification.
+
 ## Project title
 
 **Technology Risk & Control Analytics Platform** — evidence-backed endpoint reliability decision infrastructure with AI-assisted explanation and governance reporting.
@@ -54,6 +56,20 @@ This platform standardizes **Evidence → Risk → Decision → Audit** with pol
 
 ---
 
+## What this proves in an interview
+
+| Theme | Demonstration in this repo |
+|-------|---------------------------|
+| Evidence-based diagnosis | `proxy-status`, `diagnose --proof`, proof tiers T0–T4 |
+| Control testing | `control-test` mature records per classification |
+| Policy-gated automation | Preview-only remediation, typed confirmation |
+| Auditability | Hash-chained JSONL, `audit verify`, governance appendix |
+| Human-in-the-loop | `RiskDecisionRecord`, human-review queue in reports |
+| Responsible AI | `ai_risk_analyst` guardrails + report transparency section |
+| Platform discipline | 1200+ tests, fixture replay, CI safety contracts |
+
+---
+
 ## What I personally learned
 
 - How to separate **triage classification** from **security verdicts**  
@@ -80,6 +96,24 @@ This platform standardizes **Evidence → Risk → Decision → Audit** with pol
 
 ---
 
+## Power BI / PL-300 Portfolio Evidence
+
+| Topic | Artifact |
+|-------|----------|
+| **Dataset prepared** | Six CSV tables in `analytics/powerbi/data/` — incidents, control tests, audit events, remediation previews, risk decisions, date dimension |
+| **Star schema designed** | Five fact tables + seven dimensions — [star_schema.md](analytics/powerbi/model/star_schema.md) |
+| **DAX measures defined** | 18 KPI measures — High Risk Rate, Control Pass Rate, T3+ Coverage, Preview Only Rate, etc. — [dax_measures.md](analytics/powerbi/model/dax_measures.md) |
+| **Dashboard pages specified** | Executive Risk · Evidence & Proof Tier · Control Testing · Auditability — [technology_risk_dashboard_spec.md](analytics/powerbi/reports/technology_risk_dashboard_spec.md) |
+| **Technology Risk → business reporting** | Connects endpoint reliability classifications to committee KPIs without malware verdict language |
+
+```powershell
+python -m windows_network_toolkit analytics-export-powerbi --portfolio-sample --out-dir analytics/powerbi/data
+```
+
+**Interview angle:** “I built the governance engine in Python, then modeled the same incidents in Power BI to show how technology risk data reaches executive dashboards — with explicit proof-tier and preview-only boundaries.”
+
+---
+
 ## Quick demo
 
 ```powershell
@@ -102,7 +136,10 @@ Full walkthrough: [docs/demo-script.md](docs/demo-script.md)
 | AI delivery notes | [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md) |
 | Sample evidence | [examples/evidence/](examples/evidence/) |
 | Sample reports | [examples/reports/](examples/reports/) |
-| Case study | [docs/case-study-1-proxy-drift.md](docs/case-study-1-proxy-drift.md) |
+| Case study | [docs/portfolio-case-study-1-dead-wininet-proxy.md](docs/portfolio-case-study-1-dead-wininet-proxy.md) |
+| Case study 2 | [docs/portfolio-case-study-2-wininet-winhttp-mismatch.md](docs/portfolio-case-study-2-wininet-winhttp-mismatch.md) |
+| Case study 3 | [docs/portfolio-case-study-3-reverter-suspected.md](docs/portfolio-case-study-3-reverter-suspected.md) |
+| Power BI layer | [analytics/powerbi/](analytics/powerbi/) |
 
 ---
 

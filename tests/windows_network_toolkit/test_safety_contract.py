@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from windows_network_toolkit.models import ClassificationResult
 from windows_network_toolkit.platform.policy import evaluate_policy
-from windows_network_toolkit.models import ClassificationResult, ProofResult
 from windows_network_toolkit.proxy_remediation import run_proxy_disable
 from windows_network_toolkit.safety import is_blocked_action
 

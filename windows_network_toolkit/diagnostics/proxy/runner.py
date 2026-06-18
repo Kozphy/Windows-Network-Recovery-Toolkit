@@ -10,16 +10,15 @@ from src.platform_core.attribution.collector import (
     attribution_to_evidence_records,
     collect_attribution,
 )
+from src.platform_core.audit.writer import append_audit
+from src.platform_core.governance.evidence_to_action import attach_governance_envelope
 from src.platform_core.proof.engine import run_proof_engine
 from src.platform_core.remediation.planner import plan_proxy_drift_remediation
 from src.platform_core.timeline.builder import IncidentTimelineBuilder
 from src.platform_core.timeline.models import TimelineEntry
-from src.platform_core.audit.writer import append_audit
-
 from windows_network_toolkit.audit_store import append_audit_dict
 from windows_network_toolkit.proxy_classification import classify_from_live
 from windows_network_toolkit.proxy_state import collect_proxy_state_model
-from src.platform_core.governance.evidence_to_action import attach_governance_envelope
 
 
 def _now() -> str:

@@ -14,7 +14,11 @@ from src.platform_core.hypothesis.models import (
     RegistryEvidence,
 )
 from src.platform_core.hypothesis.scenarios import SCENARIOS, ScenarioTemplate
-from src.platform_core.hypothesis.scorer import compute_confidence, format_confidence_display, tier_is_proof
+from src.platform_core.hypothesis.scorer import (
+    compute_confidence,
+    format_confidence_display,
+    tier_is_proof,
+)
 
 
 def _truthy(value: Any) -> bool:
@@ -324,7 +328,11 @@ def multievidence_from_fixture(payload: dict[str, Any], *, incident_id: str | No
             }
         )
 
-    from src.platform_core.hypothesis.models import NetworkEvidence, ProcessEvidence, TimelineEvidence, TimelineEvent
+    from src.platform_core.hypothesis.models import (
+        NetworkEvidence,
+        ProcessEvidence,
+        TimelineEvidence,
+    )
 
     process = ProcessEvidence(
         evidence_id="ev-process",

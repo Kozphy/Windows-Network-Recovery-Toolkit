@@ -90,8 +90,9 @@ def test_mitm_without_tls_proof_stays_medium_or_lower_inherent() -> None:
 
 
 def test_audit_chain_verify_roundtrip(tmp_path: Path) -> None:
-    from src.platform_core.audit.writer import append_audit
+    from src.platform_core.audit.writer import append_audit, reset_chain_for_tests
 
+    reset_chain_for_tests()
     audit_path = tmp_path / "chain.jsonl"
     append_audit("event_received", incident_id="INC-1", path=audit_path)
     append_audit("policy_evaluated", incident_id="INC-1", path=audit_path)

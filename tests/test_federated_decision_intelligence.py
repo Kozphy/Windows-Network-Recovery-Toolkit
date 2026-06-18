@@ -9,7 +9,6 @@ from src.platform_core.decision_intelligence import (
     DecisionDomain,
     build_evidence_input_from_fixture,
     evaluate_federated,
-    replay_verify,
 )
 
 REPO = Path(__file__).resolve().parents[1]

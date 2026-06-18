@@ -25,7 +25,6 @@ def merge_evidence_timeline(
             builder.add_entry(TimelineEntry.model_validate(row))
 
     if proxy_writer:
-        snap = proxy_writer.get("snapshot") or {}
         ts = proxy_writer.get("timestamp_utc", "")
         builder.add_entry(
             TimelineEntry(
