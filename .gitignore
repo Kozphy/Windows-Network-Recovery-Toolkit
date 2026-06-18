@@ -38,6 +38,8 @@ reports/
 !reports/sample_*.md
 !src/reports/
 !src/reports/**
+!analytics/powerbi/reports/
+!analytics/powerbi/reports/**
 platform_data/
 platform_data_fleet_demo/
 data/failure_blocks/
