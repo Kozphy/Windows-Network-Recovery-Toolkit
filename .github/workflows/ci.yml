@@ -58,6 +58,29 @@ jobs:
         continue-on-error: true
         run: black --check .
 
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Mypy (platform_core + ai_risk_analyst)
+        continue-on-error: true
+        run: mypy src/platform_core/ai_risk_analyst src/platform_core/risk src/platform_core/governance --ignore-missing-imports
+
   test:
     name: test
     runs-on: ubuntu-latest
@@ -124,6 +147,11 @@ jobs:
 
       - name: Portfolio case-study tests (fixture-safe)
         run: pytest -q tests/test_portfolio_case_studies.py
+
+      - name: Portfolio evidence + AI analyst tests
+        run: |
+          pytest -q tests/test_portfolio_evidence_suite.py tests/test_ai_risk_analyst.py
+          python -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_PROXY_CONFIG.json
 
       - name: Portfolio risk analytics smoke
         run: |
