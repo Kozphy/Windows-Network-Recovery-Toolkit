@@ -1,8 +1,12 @@
 # Technology Risk & Control Analytics Platform
 
-**One-liner:** Built a Technology Risk & Control Analytics Platform that transforms endpoint reliability incidents into evidence-backed risk assessments, control tests, remediation previews, audit trails, and governance reports.
+Transforms endpoint reliability and network incidents into **evidence-backed risk assessments**, control tests, remediation previews, audit trails, and governance reports.
 
-> **Disclaimer:** This is **decision infrastructure** for technology risk — not antivirus, EDR, XDR, or autonomous remediation. Heuristic scores support IT/security review; they are not automated blocking verdicts.
+> **Not** antivirus, EDR, XDR, SIEM replacement, or autonomous remediation. Heuristic scores and ordinal KPIs support review — they are not automated blocking verdicts or statistical probabilities.
+
+**Suitable for:** Cyber Risk Consultant · IT Risk Advisory · Technology Risk Consultant · Data / Risk Analyst · Platform / SRE governance
+
+**One-liner (portfolio):** Built a Technology Risk & Control Analytics Platform that transforms endpoint reliability incidents into evidence-backed risk assessments, control tests, remediation previews, audit trails, and governance reports.
 
 ---
 
@@ -29,10 +33,16 @@ JSON outputs include an optional `governance` envelope (`claim_strength`, `execu
 | **Business problem** | Endpoint, proxy, TLS, and application-layer failures where IT, Security, Compliance, and Audit disagree on cause and remediation |
 | **Why not just a script** | Evidence tiers, proof engine, control tests, risk ratings, policy-gated remediation, hash-chained audit, analytics KPIs |
 
-**Portfolio pack:** [docs/README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md) · [Control matrix](docs/control-matrix.md) · [Analytics data model](docs/analytics_data_model.md) · [5-minute demo](docs/big4_demo_flow.md)
+**Portfolio pack:** [README_BIG4_PORTFOLIO.md](docs/README_BIG4_PORTFOLIO.md) · [Framework mapping](docs/framework_mapping.md) · [Control matrix](docs/control-matrix.md) · [Risk register](docs/risk_register.md) · [Analytics data model](docs/analytics_data_model.md)
+
+**Demos:** [Cyber Risk Consultant](docs/cyber_risk_consultant_demo.md) · [Data Risk Analyst](docs/data_risk_analyst_demo.md) · [Big 4 pitch](docs/big4_interview_pitch.md)
 
 ```powershell
-python -m windows_network_toolkit analytics-summary --audit-dir tests/fixtures/analytics/audit_sample --format markdown
+python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit risk-kpi-summary --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+python -m windows_network_toolkit audit verify tests/fixtures/analytics/audit_sample/incidents.jsonl
 ```
 
 ---

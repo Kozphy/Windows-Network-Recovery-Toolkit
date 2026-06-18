@@ -1,0 +1,60 @@
+{
+  "schema_version": "risk_register.v1",
+  "limitations": [
+    "Ordinal likelihood and impact scores — not statistical probabilities.",
+    "Risk register supports governance triage, not regulatory attestation."
+  ],
+  "risks": [
+    {
+      "risk_id": "RISK-001",
+      "risk_title": "Dead WinINET localhost proxy blocks browser access",
+      "asset_or_process": "WinINET proxy configuration / browser egress",
+      "risk_scenario": "ProxyServer points to localhost port with no listener; browsers fail while ICMP may succeed.",
+      "evidence_sources": ["proxy-status", "diagnose --proof", "audit JSONL"],
+      "likelihood_score": 4,
+      "impact_score": 3,
+      "inherent_risk": "medium",
+      "control_effectiveness": "partial",
+      "residual_risk": "medium",
+      "risk_owner": "IT Operations",
+      "remediation_action": "Preview proxy-disable with typed confirmation and rollback snapshot",
+      "due_date": "2026-07-01",
+      "status": "open",
+      "limitations": ["Reliability finding — not malware verdict."]
+    },
+    {
+      "risk_id": "RISK-002",
+      "risk_title": "Unknown localhost proxy listener without writer attribution",
+      "asset_or_process": "Endpoint proxy path / process attribution",
+      "risk_scenario": "Listener present on proxy port; registry writer unknown without Sysmon E13.",
+      "evidence_sources": ["proxy-owner", "writer attribution", "correlation tier"],
+      "likelihood_score": 3,
+      "impact_score": 3,
+      "inherent_risk": "medium",
+      "control_effectiveness": "partial",
+      "residual_risk": "medium",
+      "risk_owner": "Security / IT Risk",
+      "remediation_action": "Further attribution; policy-gated preview only",
+      "due_date": "2026-07-15",
+      "status": "open",
+      "limitations": ["Classification is not accusation."]
+    },
+    {
+      "risk_id": "RISK-003",
+      "risk_title": "TLS path mismatch — possible interception context",
+      "asset_or_process": "HTTPS certificate path / browser trust",
+      "risk_scenario": "Proxied TLS chain differs from direct path; requires investigation with limitations.",
+      "evidence_sources": ["tls-proof", "path contrast"],
+      "likelihood_score": 2,
+      "impact_score": 4,
+      "inherent_risk": "high",
+      "control_effectiveness": "partial",
+      "residual_risk": "high",
+      "risk_owner": "Cyber Risk / GRC",
+      "remediation_action": "Document path delta; escalate with evidence tier — not confirmed MITM",
+      "due_date": "2026-06-30",
+      "status": "open",
+      "limitations": ["POSSIBLE_MITM_RISK is triage — not confirmed interception."]
+    }
+  ]
+}

@@ -366,14 +366,48 @@ def cmd_control_test(args: argparse.Namespace) -> int:
 
 
 def cmd_governance_report(args: argparse.Namespace) -> int:
+    from src.platform_core.governance.audit_report import build_audit_governance_report
     from src.platform_core.risk import build_governance_report, load_fixture
 
+    if getattr(args, "audit_dir", None):
+        audit_dir = Path(args.audit_dir)
+        result = build_audit_governance_report(
+            audit_dir,
+            risk_register_path=Path(args.risk_register) if getattr(args, "risk_register", None) else None,
+            format=args.format,
+        )
+        if args.format in ("markdown", "html"):
+            print(result)
+        else:
+            _emit_json(result)
+        return 0
+
+    if not getattr(args, "fixture", None):
+        print("governance-report requires --fixture or --audit-dir", file=sys.stderr)
+        return 2
+
     fixture = load_fixture(_resolve_fixture(args.fixture))
-    result = build_governance_report(fixture, format=args.format)
+    result = build_governance_report(fixture, format=args.format if args.format != "html" else "markdown")
     if args.format == "markdown":
         print(result)
+    elif args.format == "html":
+        from src.platform_core.governance.audit_report import _markdown_to_html
+
+        print(_markdown_to_html(str(result)))
     else:
         _emit_json(result)
+    return 0
+
+
+def cmd_risk_kpi_summary(args: argparse.Namespace) -> int:
+    from src.platform_core.analytics import build_risk_kpi_summary, format_risk_kpi_markdown
+
+    audit_dir = Path(args.audit_dir)
+    payload = build_risk_kpi_summary(audit_dir)
+    if args.format == "markdown":
+        print(format_risk_kpi_markdown(payload))
+    else:
+        _emit_json(payload)
     return 0
 
 
@@ -549,10 +583,17 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     ct.add_argument("--fixture", required=True, help="Case study fixture JSON path or name")
     ct.set_defaults(func=cmd_control_test)
 
-    gr = sub.add_parser("governance-report", help="Governance / management report (JSON or markdown)")
-    gr.add_argument("--fixture", required=True, help="Case study fixture JSON path or name")
-    gr.add_argument("--format", choices=["json", "markdown"], default="json")
+    gr = sub.add_parser("governance-report", help="Governance / management report (fixture or audit-dir)")
+    gr.add_argument("--fixture", default="", help="Case study fixture JSON path or name")
+    gr.add_argument("--audit-dir", default="", help="Audit JSONL directory for audit-backed report")
+    gr.add_argument("--risk-register", default="", help="Optional risk register JSON path")
+    gr.add_argument("--format", choices=["json", "markdown", "html"], default="json")
     gr.set_defaults(func=cmd_governance_report)
+
+    rks = sub.add_parser("risk-kpi-summary", help="Risk KPI rollup from audit JSONL (read-only)")
+    rks.add_argument("--audit-dir", default="tests/fixtures/risk_analytics/audit_sample", help="Audit directory")
+    rks.add_argument("--format", choices=["json", "markdown"], default="json")
+    rks.set_defaults(func=cmd_risk_kpi_summary)
 
     ans = sub.add_parser("analytics-summary", help="Summarize audit JSONL KPIs (read-only)")
     ans.add_argument("--audit-dir", default=".audit", help="Directory containing *.jsonl audit files")

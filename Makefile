@@ -1,4 +1,6 @@
-.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test
+.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent
+
+WATCH_MINUTES ?= 15
 
 PYTHON ?= python
 PYTEST ?= $(PYTHON) -m pytest
@@ -53,6 +55,10 @@ demo-healthy:
 
 demo-proxy-drift:
 	$(PYTHON) -m src demo-scenario proxy-drift --format both
+
+# Live Windows soak: baseline -> timed proxy-watch -> report/investigate/attribution (read-only).
+proxy-intermittent:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/proxy_guard/run_intermittent_check.ps1 -WatchMinutes $(WATCH_MINUTES)
 
 demo-final-causation:
 	$(PYTHON) -m src demo-scenario final-causation --format both

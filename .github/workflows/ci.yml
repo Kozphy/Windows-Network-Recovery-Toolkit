@@ -125,6 +125,12 @@ jobs:
       - name: Portfolio case-study tests (fixture-safe)
         run: pytest -q tests/test_portfolio_case_studies.py
 
+      - name: Portfolio risk analytics smoke
+        run: |
+          python -m windows_network_toolkit risk-kpi-summary --audit-dir tests/fixtures/risk_analytics/audit_sample --format json
+          python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+          pytest -q tests/test_risk_analytics_portfolio.py tests/test_business_impact.py tests/test_control_test_engine.py
+
       - name: WNT JSON CLI smoke (fixture-based)
         run: |
           python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json

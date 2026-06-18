@@ -23,9 +23,11 @@ Portfolio-friendly control mapping for Big 4, Internal Audit, Cyber Risk, and Fi
 ## Analytics commands
 
 ```powershell
-python -m windows_network_toolkit analytics-summary --audit-dir .audit --format markdown
+python -m windows_network_toolkit analytics-summary --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+python -m windows_network_toolkit risk-kpi-summary --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
 python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
 python -m windows_network_toolkit control-test --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
 ```
 
-**SQL KPIs:** [sql_analytics_queries.md](sql_analytics_queries.md) · **Warehouse:** [analytics_data_model.md](analytics_data_model.md)
+**Framework:** [framework_mapping.md](framework_mapping.md) · **SQL KPIs:** [sql_kpi_examples.md](sql_kpi_examples.md) · **Warehouse:** [analytics_data_model.md](analytics_data_model.md)
