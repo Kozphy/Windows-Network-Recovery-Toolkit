@@ -1,0 +1,12 @@
+{
+  "_notice": "SAMPLE — sanitized portfolio evidence",
+  "probe": "proxy",
+  "proxy": "127.0.0.1:59081",
+  "url": "https://www.msftconnecttest.com/connecttest.txt",
+  "ok": false,
+  "error": "connection refused",
+  "limitations": [
+    "Proxy path failure supports dead-proxy triage — not MITM confirmation.",
+    "Does not prove malware."
+  ]
+}

@@ -1,4 +1,18 @@
-"""Process owner detection for localhost proxy port."""
+"""Process owner detection for localhost proxy port.
+
+Module responsibility:
+    Resolve which process listens on the WinINET localhost proxy port (correlation only).
+
+System placement:
+    Used by ``proxy-owner`` CLI, ``proxy-health``, and ``watch`` change events.
+
+Key invariants:
+    * Listener attribution is not registry writer proof — document in downstream limitations.
+    * Returns JSON envelope dict (not ``ProcessOwner`` dataclass) for CLI compatibility.
+
+Side effects:
+    Live mode may invoke ``netstat``/process resolution via platform collector.
+"""
 
 from __future__ import annotations
 
@@ -24,7 +38,20 @@ def detect_proxy_owner(
     inject: dict[str, Any] | None = None,
     inject_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Return proxy-owner JSON envelope per spec."""
+    """Return proxy-owner JSON envelope for a localhost listener.
+
+    Args:
+        run: Injectable subprocess runner.
+        timeout: Resolution timeout seconds.
+        inject: Return this dict verbatim (fixture mode).
+        inject_state: Fixture proxy state passed to ``collect_proxy_state_model``.
+
+    Returns:
+        Dict with ``listener_found``, ``process``, ``localhost_port``, ``errors``.
+
+    Side effects:
+        Read-only process/port inspection when not using inject.
+    """
     if inject:
         return inject
 

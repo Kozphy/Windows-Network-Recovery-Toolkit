@@ -1,4 +1,17 @@
-"""Unified WNT data models — JSON-serializable at CLI boundary."""
+"""Unified WNT data models — JSON-serializable at CLI boundary.
+
+Module responsibility:
+    Define dataclasses converted to dicts at CLI/API boundaries: proxy state, process owner,
+    classification, proof, audit events, and policy decisions.
+
+System placement:
+    Shared contract between collectors (``proxy_state``), reporters, and ``audit_store``.
+
+Key invariants:
+    * All ``to_dict()`` methods produce JSON-serializable primitives.
+    * ``ProofResult`` includes ``confidence_display`` for human-readable ordinal confidence.
+    * Timestamps are caller-supplied UTC strings — this module does not generate them.
+"""
 
 from __future__ import annotations
 

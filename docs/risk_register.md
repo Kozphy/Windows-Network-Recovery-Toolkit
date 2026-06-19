@@ -1,28 +1,64 @@
-# Risk Register
+# Risk Register — Technology Risk Portfolio
 
-Ordinal risk register for portfolio demonstrations. **Not** a production GRC system export.
+Ordinal risk register for demonstrations. **Not** a production GRC export or formal risk acceptance record.
 
-**Sample fixture:** `tests/fixtures/risk_register/sample_risk_register.json`
+**Fixture:** `tests/fixtures/risk_register/sample_risk_register.json`
 
-## Fields
+---
 
-| Field | Description |
-|-------|-------------|
-| `risk_id` | Unique identifier |
-| `risk_title` | Short risk name |
-| `asset_or_process` | Affected asset or process |
-| `risk_scenario` | Scenario narrative (evidence-backed language) |
-| `evidence_sources` | CLI commands / audit sources |
-| `likelihood_score` | Ordinal 1–5 (not probability) |
-| `impact_score` | Ordinal 1–5 |
-| `inherent_risk` | low / medium / high |
-| `control_effectiveness` | partial / effective / ineffective |
-| `residual_risk` | After controls |
-| `risk_owner` | Remediation owner |
-| `remediation_action` | Policy-gated next step |
-| `due_date` | Target date |
-| `status` | open / mitigated / accepted |
-| `limitations` | Epistemic and scope limits |
+## Register (summary)
+
+| Risk ID | Title | Likelihood (1–5) | Impact (1–5) | Inherent | Residual | Controls | Limitation |
+|---------|-------|------------------|--------------|----------|----------|----------|------------|
+| RISK-001 | Dead WinINET localhost proxy | 4 | 3 | Medium | Medium | CTRL-001, CTRL-008, CTRL-009 | Reliability — not malware |
+| RISK-002 | Unknown listener without writer proof | 3 | 3 | Medium | Medium | CTRL-004, CTRL-006 | Correlation ≠ registry writer |
+| RISK-003 | TLS path mismatch (triage) | 2 | 4 | High | High | CTRL-008, path proof | Not confirmed MITM |
+
+**Likelihood and impact are ordinal ranks — not probabilities.**
+
+---
+
+## RISK-001 — Dead WinINET localhost proxy
+
+| Field | Value |
+|-------|-------|
+| Asset | WinINET proxy / browser egress |
+| Scenario | ProxyServer points to localhost with no listener |
+| Evidence | `proxy-status`, `diagnose --proof`, audit JSONL |
+| Controls | CTRL-001, CTRL-008, CTRL-009 |
+| Owner | IT Operations |
+| Action | Preview `proxy-disable` with typed confirmation |
+| Status | Open |
+
+---
+
+## RISK-002 — Unknown localhost listener
+
+| Field | Value |
+|-------|-------|
+| Asset | Process attribution / proxy path |
+| Scenario | Listener on port; registry writer unknown without Sysmon |
+| Evidence | `proxy-owner`, writer attribution tier |
+| Controls | CTRL-004, CTRL-006 |
+| Owner | Security / IT Risk |
+| Action | Collect E13; human review — no malware narrative |
+| Status | Open |
+
+---
+
+## RISK-003 — TLS path mismatch (triage)
+
+| Field | Value |
+|-------|-------|
+| Asset | HTTPS certificate path |
+| Scenario | Proxied vs direct TLS chain differs |
+| Evidence | `tls-proof`, path contrast |
+| Controls | CTRL-008 |
+| Owner | Cyber Risk / GRC |
+| Action | Investigate with proof tier — not confirmed interception |
+| Status | Open |
+
+---
 
 ## Usage
 
@@ -30,4 +66,6 @@ Ordinal risk register for portfolio demonstrations. **Not** a production GRC sys
 python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
 ```
 
-Risk register summary is embedded when sample fixture is present.
+Embedded in governance report when sample fixture is present.
+
+**Related:** [risk-control-framework.md](risk-control-framework.md) · [control-matrix.md](control-matrix.md)

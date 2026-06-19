@@ -56,7 +56,17 @@ This platform standardizes **Evidence → Risk → Decision → Audit** with pol
 
 ---
 
-## What this proves in an interview
+## What this deliberately does not solve
+
+Not antivirus, EDR, autonomous remediation, malware verdicts, guaranteed MITM detection, regulatory certification, or AI-authorized execution.
+
+**Defense against “AI code paste”:** [docs/anti-code-paste-defense.md](docs/anti-code-paste-defense.md)
+
+**Production prototype pack:** [real_evidence/case-001-dead-proxy/](real_evidence/case-001-dead-proxy/) · [docs/production-readiness-gap.md](docs/production-readiness-gap.md) · [docs/threat-model.md](docs/threat-model.md) · [docs/docker-demo.md](docs/docker-demo.md) · `reviewer-demo` · `fleet-simulate`
+
+**FAANG + Big 4 demo:** [docs/demo-faang-big4-review.md](docs/demo-faang-big4-review.md)
+
+---
 
 | Theme | Demonstration in this repo |
 |-------|---------------------------|
@@ -100,17 +110,20 @@ This platform standardizes **Evidence → Risk → Decision → Audit** with pol
 
 | Topic | Artifact |
 |-------|----------|
-| **Dataset prepared** | Six CSV tables in `analytics/powerbi/data/` — incidents, control tests, audit events, remediation previews, risk decisions, date dimension |
-| **Star schema designed** | Five fact tables + seven dimensions — [star_schema.md](analytics/powerbi/model/star_schema.md) |
-| **DAX measures defined** | 18 KPI measures — High Risk Rate, Control Pass Rate, T3+ Coverage, Preview Only Rate, etc. — [dax_measures.md](analytics/powerbi/model/dax_measures.md) |
-| **Dashboard pages specified** | Executive Risk · Evidence & Proof Tier · Control Testing · Auditability — [technology_risk_dashboard_spec.md](analytics/powerbi/reports/technology_risk_dashboard_spec.md) |
-| **Technology Risk → business reporting** | Connects endpoint reliability classifications to committee KPIs without malware verdict language |
+| **Dataset prepared** | Star schema CSVs via `powerbi-export` — [examples/powerbi/export/](examples/powerbi/export/) |
+| **Star schema designed** | `fact_incidents`, `fact_control_tests`, `fact_policy_decisions` + `dim_*` tables |
+| **DAX measures defined** | Total Incidents, Control Failure Rate, Security Accusation Count (expect 0), etc. — [dax/measures.md](examples/powerbi/dax/measures.md) |
+| **Dashboard pages specified** | Executive · Control Effectiveness · Policy Gate · Proof Tier — [report_blueprint.md](examples/powerbi/report_blueprint.md) |
+| **RLS design** | IT Support, Security, Audit, Risk Committee roles — [rls_design.md](examples/powerbi/rls_design.md) |
+| **Technology Risk → business reporting** | Connects endpoint reliability evidence to committee KPIs without malware accusation language |
 
 ```powershell
-python -m windows_network_toolkit analytics-export-powerbi --portfolio-sample --out-dir analytics/powerbi/data
+python -m windows_network_toolkit powerbi-export `
+  --audit-dir tests/fixtures/risk_analytics/audit_sample `
+  --out-dir examples/powerbi/export
 ```
 
-**Interview angle:** “I built the governance engine in Python, then modeled the same incidents in Power BI to show how technology risk data reaches executive dashboards — with explicit proof-tier and preview-only boundaries.”
+**Interview angle:** “I built the governance engine in Python, exported a star schema for Power BI, and designed DAX KPIs plus RLS roles so technology risk evidence reaches executives with preview-only safety boundaries.”
 
 ---
 
@@ -139,7 +152,7 @@ Full walkthrough: [docs/demo-script.md](docs/demo-script.md)
 | Case study | [docs/portfolio-case-study-1-dead-wininet-proxy.md](docs/portfolio-case-study-1-dead-wininet-proxy.md) |
 | Case study 2 | [docs/portfolio-case-study-2-wininet-winhttp-mismatch.md](docs/portfolio-case-study-2-wininet-winhttp-mismatch.md) |
 | Case study 3 | [docs/portfolio-case-study-3-reverter-suspected.md](docs/portfolio-case-study-3-reverter-suspected.md) |
-| Power BI layer | [analytics/powerbi/](analytics/powerbi/) |
+| Power BI layer | [examples/powerbi/](examples/powerbi/) · [analytics/powerbi/](analytics/powerbi/) |
 
 ---
 

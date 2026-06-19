@@ -1,0 +1,33 @@
+# Reviewer Docker Demo — minimal API stack (Option C)
+# No Postgres, Prometheus, or Grafana — fixture-backed read-only API for hiring panels.
+# Safety: DEMO_MODE=true · PLATFORM_SAFE_MODE=1 · PLATFORM_FIXTURE_MODE=1
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DEMO_MODE: "true"
+      PLATFORM_SAFE_MODE: "1"
+      PLATFORM_FIXTURE_MODE: "1"
+      PLATFORM_REPO_ROOT: /app
+      PLATFORM_DATA_DIR: /app/demo-output
+      FAIL_FAST_ON_STARTUP: "0"
+    volumes:
+      - ./fixtures:/app/fixtures:ro
+      - ./demo-output:/app/demo-output
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

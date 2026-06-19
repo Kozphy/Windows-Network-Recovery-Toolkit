@@ -68,3 +68,16 @@ Thumbs.db
 *.msi
 
 # Tests and committed synthetic fixtures remain visible (see negated *.jsonl above).
+
+# Demo output artifacts (keep directory structure via .gitkeep)
+demo-output/*
+!demo-output/.gitkeep
+!demo-output/audit/
+demo-output/audit/*
+!demo-output/audit/.gitkeep
+!demo-output/reports/
+demo-output/reports/*
+!demo-output/reports/.gitkeep
+!demo-output/timelines/
+demo-output/timelines/*
+!demo-output/timelines/.gitkeep

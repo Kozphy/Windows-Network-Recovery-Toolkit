@@ -62,13 +62,22 @@ python -m windows_network_toolkit proxy-proof --url https://example.com
 
 ---
 
-## 5. Risk decision record (25 seconds)
+## 5. Risk scoring + analytics pipeline (25 seconds)
 
 ```powershell
-python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
+python -m windows_network_toolkit analytics-summary --fixture tests/fixtures/analytics_pipeline_fixture.json --json
 ```
 
-**Point out:** `risk_decision_record` (proof tier, execution authority, evidence hash), `mature_control_tests`.
+**Point out:** `risk_scores[]` with `likelihood`, `impact`, `risk_score`, `limitations`, `human_review_recommended`.
+
+Optional API (with `uvicorn backend.main:app`):
+
+```powershell
+curl http://127.0.0.1:8000/reports/executive
+curl http://127.0.0.1:8000/risks
+```
+
+**Say:** “Scores are ordinal governance input — not malware verdicts; human review still required.”
 
 ---
 

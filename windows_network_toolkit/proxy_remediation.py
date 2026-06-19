@@ -1,4 +1,35 @@
-"""Safe proxy-disable remediation — dry-run default, JSON structured output."""
+"""Safe proxy-disable remediation — dry-run default, JSON structured output.
+
+Module responsibility:
+    Gate WinINET proxy disable behind policy evaluation, typed confirmation, snapshot/
+    rollback capture, and append-only audit logging.
+
+System placement:
+    Invoked by ``cli.cmd_proxy_disable`` and ``latest_evidence_report`` (preview only).
+
+Key invariants:
+    * ``dry_run=True`` by default — no registry mutation.
+    * Live apply requires ``confirm`` matching ``CONFIRMATION_PHRASE``.
+    * Windows-only — returns ``unsupported_platform`` on other OSes.
+
+Side effects:
+    * Dry-run: append audit row only.
+    * Live apply: HKCU registry mutations, optional snapshot JSONL, verification read.
+
+Idempotency:
+    Dry-run is idempotent. Live apply is not — second apply may be no-op if already disabled.
+
+Failure modes:
+    Blocked apply when confirmation missing or policy denies; returns ``action_allowed: false``.
+
+Audit Notes:
+    * What could go wrong: operator applies on managed machine with required corporate proxy.
+    * Detection: ``proxy-disable.jsonl`` rows with ``action_taken`` and ``before``/``after`` views.
+    * Recovery: use rollback plan from snapshot JSONL or restore registry from backup.
+
+Engineering Notes:
+    Delegates mutation building to ``src.proxy_guard.remediation`` to keep one registry write path.
+"""
 
 from __future__ import annotations
 
@@ -46,8 +77,30 @@ def run_proxy_disable(
     repo_root: Any = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
+    """Preview or apply gated WinINET proxy disable.
+
+    Args:
+        dry_run: When True (default), return planned changes without registry writes.
+        confirm: Typed confirmation token required for live apply.
+        clear_server: When True, clear ProxyServer value on apply.
+        clear_autoconfig: When True, clear AutoConfigURL on apply.
+        run: Injectable subprocess runner for tests.
+        repo_root: When set, append pre-apply snapshot JSONL under repo logs.
+        **kwargs: Forwarded to policy ``decide`` and state collection.
+
+    Returns:
+        Governance-enveloped dict with policy, classification, before/after views, and audit flags.
+
+    Side effects:
+        See module docstring — registry mutation only when dry_run=False and confirmation valid.
+    """
     if platform.system() != "Windows":
         return _unsupported()
+
+    from windows_network_toolkit.safety import is_demo_mode
+
+    if is_demo_mode():
+        dry_run = True
 
     run_fn = run or subprocess.run
     state = collect_proxy_state_model(run=run_fn, **kwargs)

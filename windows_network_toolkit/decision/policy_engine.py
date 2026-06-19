@@ -1,4 +1,20 @@
-"""Policy engine — vocabulary adapter over existing guardrails."""
+"""Policy engine — vocabulary adapter over existing guardrails.
+
+Module responsibility:
+    Map ``DecisionResult`` incident types to allowed/blocked action lists for API and
+    analytics layers — preview-first, confirmation for destructive paths.
+
+System placement:
+    Used by decision platform adapters; complements ``run_proxy_disable`` policy in
+    ``platform.decision_engine``.
+
+Key invariants:
+    * ``dry_run=True`` keeps disable actions blocked even when incident allows preview.
+    * ``HUMAN_REVIEW_REQUIRED`` blocks disable/stop for suspicious/MITM triage labels.
+
+Side effects:
+    None — pure policy evaluation.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +37,8 @@ CONFIRMATION_REQUIRED_ACTIONS = frozenset(
 
 
 class PolicyOutcome(StrEnum):
+    """High-level policy gate outcome for decision platform consumers."""
+
     ALLOW_PREVIEW = "ALLOW_PREVIEW"
     ALLOW_WITH_CONFIRMATION = "ALLOW_WITH_CONFIRMATION"
     BLOCK_UNSAFE_ACTION = "BLOCK_UNSAFE_ACTION"
@@ -36,6 +54,24 @@ def evaluate_policy(
     has_admin: bool = False,
     evidence_level: str | None = None,
 ) -> dict[str, Any]:
+    """Evaluate allowed and blocked actions for a decision under dry-run posture.
+
+    Args:
+        decision: Structured decision with incident type and recommended action.
+        dry_run: When True, destructive apply paths remain blocked/preview-only.
+        has_admin: Whether operator has admin elevation for listener stop actions.
+        evidence_level: Optional evidence tier hint (e.g. ``OBSERVED_ONLY``).
+
+    Returns:
+        Dict with ``outcome``, ``allowed_actions``, ``blocked_actions``, and ``rationale``.
+
+    Side effects:
+        None.
+
+    Audit Notes:
+        ``ALLOW_PREVIEW`` does not authorize live registry mutation — typed confirmation
+        still required in ``proxy_remediation``.
+    """
     outcome = PolicyOutcome.ALLOW_PREVIEW
     blocked: list[str] = []
     allowed: list[str] = ["observe", "export_report", "replay"]

@@ -1,0 +1,9 @@
+SAMPLE — sanitized portfolio evidence
+Synthetic netstat excerpt — no listener on configured proxy port
+
+Active Connections
+
+  Proto  Local Address          Foreign Address        State
+  TCP    127.0.0.1:59081        (not listening)        -
+
+Note: WinINET ProxyServer references 127.0.0.1:59081 but no process accepts connections on that port.

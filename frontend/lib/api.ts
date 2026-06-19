@@ -22,6 +22,10 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:80
  *
  * @remarks
  * Side effects: one network call to `API_BASE`. Idempotency depends on the target endpoint.
+ *
+ * Technology risk analytics (read-only, typically unauthenticated in local demo):
+ * - `GET /trisk/health`
+ * - `GET /incidents`, `GET /risks`, `GET /controls`, `GET /reports/executive`
  */
 export async function authFetch(path: string, token: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers || {});

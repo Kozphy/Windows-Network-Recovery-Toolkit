@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * @file Shared layout shell for optional Next.js platform demo pages (`frontend/app/platform/*`).
+ *
+ * @remarks
+ * Read-only UI over local FastAPI `/platform/*` routes when `NEXT_PUBLIC_PLATFORM_API` is set.
+ * Not required to run the Python CLI or technology risk API (`/incidents`, `/risks`, etc.).
+ *
+ * **Audit notes:** Demo RBAC role is stored in `localStorage` only — not production auth.
+ */
+
 import Link from "next/link";
 import { ReactNode } from "react";
 

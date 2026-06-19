@@ -28,6 +28,7 @@ Engineering Notes:
     loopback interfaces.
 """
 
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -225,12 +226,40 @@ app = FastAPI(
             "name": "decision-intelligence",
             "description": "Events, evidence, decisions, outcomes, replay, and learning metrics",
         },
+        {
+            "name": "technology-risk-analytics",
+            "description": "Read-only incidents, risk scores, control tests, executive reports",
+        },
     ],
     lifespan=lifespan,
 )
 
 app.include_router(toolkit_obs_router)
 app.include_router(platform_router)
+
+
+@app.get("/health", tags=["health"])
+def root_health() -> dict[str, str]:
+    """Root liveness probe — ERP health fields plus demo vs standard mode."""
+    try:
+        from windows_network_toolkit import SERVICE_NAME, __version__
+        from windows_network_toolkit.safety import is_demo_mode
+    except ImportError:  # pragma: no cover
+        demo = os.environ.get("DEMO_MODE", "").lower() in ("1", "true", "yes")
+        service = "endpoint-reliability-decision-platform"
+        version = "0.0.0"
+    else:
+        demo = is_demo_mode()
+        service = SERVICE_NAME
+        version = __version__
+    return {
+        "status": "ok",
+        "service": service,
+        "version": version,
+        "mode": "demo" if demo else "standard",
+    }
+
+
 app.include_router(platform_mdp_router)
 app.include_router(platform_v2_router, prefix="/platform")
 app.include_router(platform_sre_router, prefix="/platform")
@@ -261,6 +290,13 @@ try:
 
     app.include_router(proxy_incidents_router)
     app.include_router(proxy_evidence_router)
+except ImportError:  # pragma: no cover
+    pass
+
+try:
+    from backend.technology_risk_routes import router as technology_risk_router
+
+    app.include_router(technology_risk_router)
 except ImportError:  # pragma: no cover
     pass
 

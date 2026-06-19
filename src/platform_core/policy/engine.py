@@ -1,4 +1,20 @@
-"""Canonical policy engine."""
+"""Canonical policy engine for platform_core decision pipeline.
+
+Module responsibility:
+    Evaluate whether a requested action is allowed given evidence tier, proof inputs,
+    and human-review flags — returns structured ``PolicyEvaluation``.
+
+System placement:
+    Invoked by platform decision routes and governance replay.
+
+Key invariants:
+    * Destructive actions require ``can_unlock_destructive_remediation``.
+    * ``dry_run=True`` forces ``PREVIEW_ONLY`` when tier would otherwise allow apply.
+    * Policy ALLOW is not a safety guarantee.
+
+Side effects:
+    None.
+"""
 
 from __future__ import annotations
 
@@ -25,6 +41,26 @@ def evaluate_policy(
     operator_context: dict[str, Any] | None = None,
     dry_run: bool = True,
 ) -> PolicyEvaluation:
+    """Evaluate policy for a requested action against evidence and decision state.
+
+    Args:
+        decision: Platform decision record with review flags.
+        bundle: Evidence bundle with tier and normalized signal items.
+        requested_action: Normalized action id (e.g. registry disable).
+        proof: Optional proof inputs; inferred from bundle signals when None.
+        operator_context: Optional operator metadata (unused in core logic).
+        dry_run: When True, non-destructive preview only unless explicitly allowed path.
+
+    Returns:
+        ``PolicyEvaluation`` with outcome, blocked_reasons, and approval requirements.
+
+    Side effects:
+        None.
+
+    Audit Notes:
+        ``BLOCK`` outcome must not be overridden by UI — re-collect proof tier evidence.
+        Recovery: increase evidence tier or set ``dry_run=True`` for preview-only path.
+    """
     operator_context = operator_context or {}
     proof = proof or proof_inputs_from_signals(
         {item.signal: item.observed_value for item in bundle.items}

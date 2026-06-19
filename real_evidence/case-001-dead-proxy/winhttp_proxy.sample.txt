@@ -1,0 +1,8 @@
+SAMPLE — sanitized portfolio evidence
+Synthetic WinHTTP proxy configuration excerpt
+
+Current WinHTTP proxy settings:
+
+    Direct access (no proxy server) = Yes
+
+Interpretation: WinHTTP stack uses direct path while WinINET points to localhost proxy.

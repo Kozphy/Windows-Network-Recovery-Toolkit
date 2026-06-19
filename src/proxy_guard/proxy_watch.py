@@ -150,11 +150,58 @@ def _decide_action(policy: dict[str, Any], diff: dict[str, Any]) -> dict[str, st
     return {"action": "observe", "reason": diff.get("reason") or "low_risk_transition"}
 
 
+def _localhost_health_for_watch(
+    *,
+    now_state: dict[str, Any],
+    port_int: int | None,
+    attribution: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Read-only localhost proxy health envelope for audit JSON (stdlib probes)."""
+    parsed = now_state.get("parsed_proxy_server") or {}
+    if not parsed.get("is_localhost_proxy") or port_int is None:
+        return None
+    from windows_network_toolkit.proxy_health import (
+        build_proxy_health_audit_payload,
+        check_localhost_proxy_health,
+        classify_incident_from_health,
+    )
+
+    host = str(parsed.get("localhost_host") or "127.0.0.1")
+    suspect = attribution.get("primary_suspect") if isinstance(attribution, dict) else None
+    proc = None
+    if isinstance(suspect, dict) and suspect.get("pid"):
+        proc = {
+            "pid": suspect.get("pid"),
+            "name": suspect.get("name"),
+            "exe_path": suspect.get("exe"),
+            "cmdline": suspect.get("cmdline"),
+        }
+    owner = {"listener_found": proc is not None, "process": proc}
+    wininet_state = {
+        "wininet_proxy_enabled": bool(now_state.get("proxy_enable")),
+        "wininet_proxy_server": now_state.get("proxy_server"),
+        "winhttp_direct_access": now_state.get("winhttp_direct_access"),
+    }
+    health = check_localhost_proxy_health(host, port_int, listener_info=owner, timeout_seconds=5.0)
+    classification = classify_incident_from_health(
+        health,
+        wininet_enabled=bool(now_state.get("proxy_enable")),
+        winhttp_mismatch=bool(now_state.get("proxy_enable") and now_state.get("winhttp_direct_access")),
+    )
+    return build_proxy_health_audit_payload(
+        wininet=wininet_state,
+        health=health,
+        classification=classification,
+        extra_evidence=["Health check via proxy-watch localhost transition"],
+    )
+
+
 def _print_human_banner(
     *,
     diff: dict[str, Any],
     attribution: dict[str, Any],
     decision: dict[str, str],
+    health_audit: dict[str, Any] | None = None,
 ) -> None:
     """Format drift, attribution envelope, and policy decision onto stderr for terminal operators.
 
@@ -182,9 +229,25 @@ def _print_human_banner(
     msg.append("")
     msg.append(f"Risk: {str(diff.get('risk_level') or 'unknown').upper()}")
 
+    health = (health_audit or {}).get("health") if health_audit else None
+    if health:
+        msg.append("")
+        msg.append("Proxy health:")
+        msg.append(f"  Status: {health.get('proxy_status', 'INSUFFICIENT_DATA')}")
+        msg.append(f"  TCP listener: {'yes' if health.get('tcp_listening') else 'no'}")
+        if health.get("listener_name"):
+            msg.append(f"  Listener process: {health.get('listener_name')} PID {health.get('listener_pid')}")
+        msg.append(
+            f"  Proxy HTTPS CONNECT: {'ok' if health.get('proxy_https_connect_ok') else 'failed'}"
+        )
+        msg.append(f"  Direct HTTPS: {'ok' if health.get('direct_probe_ok') else 'failed'}")
+        cls = (health_audit or {}).get("classification") or {}
+        if cls.get("human_interpretation"):
+            msg.append(f"  Interpretation: {cls.get('human_interpretation')}")
+
     suspect = attribution.get("primary_suspect") if isinstance(attribution, dict) else None
     msg.append("")
-    msg.append("Likely process:")
+    msg.append("Likely process / correlation only:")
     if isinstance(suspect, dict):
         msg.append(f"  PID: {suspect.get('pid')}")
         msg.append(f"  Name: {suspect.get('name')}")
@@ -468,6 +531,13 @@ def run_proxy_watch_loop(
                     policy=policy,
                     evidence_confidence_boost=evidence_boost,
                 )
+                health_audit = _localhost_health_for_watch(
+                    now_state=now_state,
+                    port_int=port_int,
+                    attribution=attribution,
+                )
+                if health_audit:
+                    attribution = {**attribution, "health_audit": health_audit}
 
                 decision = _decide_action(policy, diff)
                 causation_blob = _run_causation_and_print(
@@ -492,7 +562,7 @@ def run_proxy_watch_loop(
                     final_causation=final_blob,
                 )
                 _emit_v2_watch_events(repo_root, diff=diff, attribution=attribution)
-                _print_human_banner(diff=diff, attribution=attribution, decision=decision)
+                _print_human_banner(diff=diff, attribution=attribution, decision=decision, health_audit=health_audit)
 
                 if bool(policy.get("auto_rollback")):
                     banner = "[policy] auto_rollback=true but proxy-watch never executes live rollback here — use proxy-guard or typed restores."

@@ -1,0 +1,10 @@
+{
+  "_notice": "SAMPLE — sanitized portfolio evidence",
+  "timestamp_utc": "2026-06-11T04:31:31Z",
+  "wininet_proxy_enabled": true,
+  "wininet_proxy_server": "127.0.0.1:59081",
+  "wininet_auto_config_url": "",
+  "winhttp_direct_access": true,
+  "localhost_port": 59081,
+  "source": "sample_fixture"
+}

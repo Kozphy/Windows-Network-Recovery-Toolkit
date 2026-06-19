@@ -73,3 +73,31 @@ replay-fixtures:
 	$(PYTHON) -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown
 	$(PYTHON) -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json
 	$(PYTEST) -q tests/test_demo_replay_pipeline.py tests/test_replay_determinism.py
+
+# Reviewer Docker Demo (Option C) — minimal API, DEMO_MODE, fixture-backed
+demo-up:
+	docker compose -f docker-compose.demo.yml up --build -d
+
+demo-down:
+	docker compose -f docker-compose.demo.yml down
+
+demo-health:
+	curl -sf http://127.0.0.1:8000/health
+
+demo-dead-proxy:
+	$(PYTHON) -m windows_network_toolkit proxy-status --fixture fixtures/proxy/dead-localhost-proxy.json
+
+demo-mismatch:
+	$(PYTHON) -m windows_network_toolkit proxy-status --fixture fixtures/proxy/wininet-winhttp-mismatch.json
+
+demo-toggle-loop:
+	$(PYTHON) -m windows_network_toolkit analytics-summary --fixture fixtures/proxy/localhost-toggle-loop.json --format human
+
+demo-suspicious-proxy:
+	$(PYTHON) -m windows_network_toolkit proxy-status --fixture fixtures/proxy/suspicious-remote-proxy.json
+
+demo-report:
+	$(PYTHON) -m windows_network_toolkit reviewer-demo --mode mixed --out demo-output/reports
+
+demo-audit-verify:
+	$(PYTHON) -m windows_network_toolkit audit verify tests/fixtures/risk_analytics/audit_sample/incidents.jsonl || echo "Sample audit is illustrative — hash chain may not verify"

@@ -252,6 +252,13 @@ def build_audit_governance_report(
             "Verify audit hash chain integrity before exporting to risk warehouse.",
             "Keep remediation preview-only until typed confirmation and rollback plan.",
         ],
+        "unsafe_inferences_blocked": [
+            "Malware or compromise verdict blocked without registry writer proof tier.",
+            "MITM accusation blocked without path proof contrast and limitations.",
+            "Process listener correlation blocked from registry writer attribution.",
+            "Remote proxy configured inference blocked when after_proxy_server is empty.",
+            "AI output does not authorize execution — policy gate and human review required.",
+        ],
         "appendix": {
             "audit_integrity_verification": {
                 "verified": chain_ok,
@@ -346,6 +353,9 @@ def _format_markdown(payload: dict[str, Any], kpi_payload: dict[str, Any]) -> st
     appendix = (payload.get("appendix") or {}).get("audit_integrity_verification") or {}
     lines.append(f"- Verified: **{appendix.get('verified')}**")
     lines.append(f"- Procedure: {appendix.get('procedure')}")
+    lines.extend(["", "## Unsafe inferences blocked", ""])
+    for item in payload.get("unsafe_inferences_blocked") or []:
+        lines.append(f"- {item}")
     lines.extend(["", "## Limitations and non-claims", ""])
     for lim in payload.get("limitations_and_non_claims") or payload.get("limitations") or []:
         lines.append(f"- {lim}")

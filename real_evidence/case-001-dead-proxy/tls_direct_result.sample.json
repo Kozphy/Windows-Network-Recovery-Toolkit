@@ -1,0 +1,11 @@
+{
+  "_notice": "SAMPLE — sanitized portfolio evidence",
+  "probe": "direct",
+  "url": "https://www.msftconnecttest.com/connecttest.txt",
+  "ok": true,
+  "status_code": 200,
+  "limitations": [
+    "Direct path success does not prove proxy path health.",
+    "Does not prove malware or MITM."
+  ]
+}

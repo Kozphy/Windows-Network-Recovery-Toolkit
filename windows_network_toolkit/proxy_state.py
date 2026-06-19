@@ -1,4 +1,19 @@
-"""Proxy state collection facade."""
+"""Proxy state collection facade.
+
+Module responsibility:
+    Collect WinINET registry and WinHTTP ``netsh`` excerpt into ``ProxyState`` for CLI/API.
+
+System placement:
+    Upstream of ``proxy-health``, ``proxy-owner``, ``watch``, and ``proxy_remediation``.
+
+Key invariants:
+    * ``inject`` dict bypasses live collection for fixtures/CI.
+    * Errors captured in ``ProxyState.errors`` — collection returns partial state, not raise.
+    * Timestamps UTC when generated live.
+
+Side effects:
+    Live mode reads registry and runs ``netsh`` via injectable ``run`` callable.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +36,19 @@ def collect_proxy_state_model(
     timeout: float = 15.0,
     inject: dict[str, Any] | None = None,
 ) -> ProxyState:
+    """Collect current proxy state or return fixture-injected ``ProxyState``.
+
+    Args:
+        run: Subprocess runner for tests; defaults to ``subprocess.run``.
+        timeout: Collection timeout passed to platform collector.
+        inject: When set, skip live reads and build state from dict fields.
+
+    Returns:
+        ``ProxyState`` with WinINET/WinHTTP fields and optional ``errors`` list.
+
+    Side effects:
+        Live collection reads HKCU registry and WinHTTP settings (read-only).
+    """
     if inject:
         return ProxyState(
             timestamp_utc=str(inject.get("timestamp_utc") or _now()),

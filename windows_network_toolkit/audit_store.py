@@ -1,4 +1,30 @@
-"""Unified JSONL audit logging under .audit/ — soft-fail on write errors."""
+"""Unified JSONL audit logging under ``.audit/`` — soft-fail on write errors.
+
+Module responsibility:
+    Append-only audit rows for CLI commands and read merged JSONL for analytics/timeline.
+
+System placement:
+    Used by ``proxy_remediation``, ``watch``, ``analytics_pipeline``, and governance exports.
+    Directory override via ``WNT_AUDIT_DIR`` environment variable (default ``.audit``).
+
+Key invariants:
+    * Append-only — no in-place updates or deletes.
+    * Timestamps use UTC ISO-8601 with ``Z`` suffix.
+    * Write failures return ``(False, error_message)`` — callers must not assume success.
+
+Side effects:
+    Creates ``.audit/`` directory and appends JSONL lines on successful writes.
+
+Idempotency:
+    Each append adds a new line — repeated calls create distinct audit events.
+
+Failure modes:
+    ``OSError`` on write returns soft-fail tuple; ``read_audit_logs`` skips malformed JSON lines.
+
+Audit Notes:
+    * Soft-fail writes may leave operators without audit evidence — check ``audit_error`` fields.
+    * Recovery: verify disk permissions on ``WNT_AUDIT_DIR`` and re-run command.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +42,7 @@ def _now() -> str:
 
 
 def audit_dir() -> Path:
+    """Return audit directory from ``WNT_AUDIT_DIR`` or default ``.audit``."""
     raw = os.environ.get("WNT_AUDIT_DIR", ".audit")
     return Path(raw)
 
@@ -25,7 +52,18 @@ def append_audit_event(
     *,
     log_name: str = "events.jsonl",
 ) -> tuple[bool, str | None]:
-    """Append audit event; return (success, error_message)."""
+    """Append a typed audit event to JSONL.
+
+    Args:
+        event: Structured ``AuditEvent`` to serialize.
+        log_name: Filename under audit dir (e.g. ``proxy-disable.jsonl``).
+
+    Returns:
+        ``(True, None)`` on success; ``(False, error_message)`` on ``OSError``.
+
+    Side effects:
+        Creates parent directory and appends one JSON line.
+    """
     path = audit_dir() / log_name
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,6 +79,15 @@ def append_audit_dict(
     *,
     log_name: str = "events.jsonl",
 ) -> tuple[bool, str | None]:
+    """Append a dict payload with auto ``timestamp_utc`` to JSONL.
+
+    Args:
+        payload: Audit fields without timestamp (added automatically).
+        log_name: Target JSONL filename under audit dir.
+
+    Returns:
+        Same tuple contract as ``append_audit_event``.
+    """
     path = audit_dir() / log_name
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -53,6 +100,17 @@ def append_audit_dict(
 
 
 def read_audit_logs(*, pattern: str = "*.jsonl") -> list[dict[str, Any]]:
+    """Read and merge JSONL audit files matching ``pattern``.
+
+    Args:
+        pattern: Glob under audit dir (default all ``*.jsonl``).
+
+    Returns:
+        Parsed rows in sorted file order; skips blank lines and invalid JSON lines.
+
+    Side effects:
+        Read-only filesystem access.
+    """
     base = audit_dir()
     if not base.is_dir():
         return []

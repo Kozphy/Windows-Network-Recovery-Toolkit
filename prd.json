@@ -1,0 +1,807 @@
+{
+  "project": "Windows-Network-Recovery-Toolkit",
+  "branchName": "ralph/technology-risk-platform",
+  "description": "Technology Risk & Control Analytics Platform — unify evidence→classification→control-tests→analytics pipeline, warehouse persistence, risk API, and executive dashboard while preserving governance boundaries (no autonomous remediation, dry-run default, proof tiers T0–T4).",
+  "workflow": {
+    "engine": "ralph",
+    "version": "1.0",
+    "safetyBoundaries": [
+      "No process kill or silent registry mutation",
+      "proxy-disable and remediation remain dry-run by default",
+      "Listener/process attribution is correlation-only unless T4 writer proof",
+      "Classification is not accusation — no malware verdicts"
+    ],
+    "verificationCommands": [
+      "python -m pytest -q",
+      "python -m ruff check ."
+    ],
+    "progressFile": "progress.txt",
+    "agentsFile": "AGENTS.md"
+  },
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Ralph workflow bootstrap (AGENTS.md + progress.txt)",
+      "description": "As a platform engineer, I want Ralph workflow documentation and a progress log template so autonomous iterations preserve governance context across fresh agent sessions.",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "AGENTS.md includes Ralph loop instructions, safety boundaries, and verification commands",
+        "progress.txt exists with header: branch, date, story checklist",
+        "Documents that each story must not expand scope beyond its acceptance criteria",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "Manual: verify AGENTS.md references prd.json and progress.txt paths",
+        "CI unchanged: full pytest suite still green"
+      ],
+      "rollbackStrategy": "Revert AGENTS.md and delete progress.txt; no runtime impact.",
+      "auditRequirements": [
+        "No audit trail mutation — documentation-only story",
+        "Record story completion in progress.txt with date and agent notes"
+      ],
+      "riskImpact": "None — docs only.",
+      "governanceImpact": "Positive — encodes non-negotiable safety boundaries for autonomous agents.",
+      "estimatedComplexity": "S",
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create platform_kernel package scaffold",
+      "description": "As a platform engineer, I want a dedicated platform_kernel package so pipeline orchestration has one canonical home separate from CLI and API adapters.",
+      "dependencies": ["US-001"],
+      "acceptanceCriteria": [
+        "platform_kernel/__init__.py exports public API surface",
+        "platform_kernel/README.md documents purpose and non-goals (not remediation executor)",
+        "Package importable without side effects: python -c \"import platform_kernel\"",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/platform_kernel/test_package_import.py — import smoke test"
+      ],
+      "rollbackStrategy": "Remove platform_kernel/ directory entirely.",
+      "auditRequirements": [
+        "No production audit JSONL changes",
+        "Document package boundary in progress.txt"
+      ],
+      "riskImpact": "Low — empty scaffold, no behavior change.",
+      "governanceImpact": "Establishes canonical orchestration namespace for future consolidation.",
+      "estimatedComplexity": "S",
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Unified PipelineResult dataclass in platform_kernel",
+      "description": "As an API consumer, I want a single typed PipelineResult so CLI, FastAPI, and analytics export share identical incident pipeline output shape.",
+      "dependencies": ["US-002"],
+      "acceptanceCriteria": [
+        "platform_kernel/models.py defines PipelineResult with evidence, classification, control_tests, policy, limitations fields",
+        "Fields are JSON-serializable via .to_dict() or dataclass asdict",
+        "Includes explicit limitations[] on every result",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/platform_kernel/test_models.py — serialize/deserialize round-trip",
+        "Assert limitations key always present (may be empty list)"
+      ],
+      "rollbackStrategy": "Delete platform_kernel/models.py and revert __init__ exports.",
+      "auditRequirements": [
+        "PipelineResult must not embed execution authority flags without policy_decision field",
+        "limitations[] required for governance traceability"
+      ],
+      "riskImpact": "Low — types only, no runtime pipeline change yet.",
+      "governanceImpact": "Standardizes decision output for audit export and human review queues.",
+      "estimatedComplexity": "S",
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Implement run_incident_pipeline in platform_kernel",
+      "description": "As a risk analyst, I want one orchestrator that chains evidence normalization, incident classification, control tests, and dashboard dataset building from fixture or audit JSONL input.",
+      "dependencies": ["US-003"],
+      "acceptanceCriteria": [
+        "platform_kernel/pipeline.py exposes run_incident_pipeline(*, fixture, audit_path, dry_run=True)",
+        "Delegates to windows_network_toolkit.analytics_pipeline.run_endpoint_analytics_pipeline without duplicating logic",
+        "Returns platform_kernel.models.PipelineResult",
+        "dry_run=True is default; no registry or proxy mutation",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/platform_kernel/test_pipeline.py using tests/fixtures/analytics_pipeline_fixture.json",
+        "Assert incident count, control test IDs, and KPI keys match existing analytics_pipeline tests"
+      ],
+      "rollbackStrategy": "Remove platform_kernel/pipeline.py; existing analytics_pipeline CLI paths unchanged.",
+      "auditRequirements": [
+        "Pipeline must not append audit records when dry_run=True unless explicitly passed audit_path for read-only ingest",
+        "Output includes proof_tier and limitations from classifier"
+      ],
+      "riskImpact": "Low — read-only orchestration wrapper.",
+      "governanceImpact": "Single entry point reduces divergent pipeline interpretations across teams.",
+      "estimatedComplexity": "M",
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Golden fixture contract test for unified pipeline",
+      "description": "As an SRE, I want a CI golden-file test so pipeline output schema cannot drift silently between releases.",
+      "dependencies": ["US-004"],
+      "acceptanceCriteria": [
+        "tests/fixtures/golden/platform_kernel_pipeline_v1.json committed",
+        "tests/platform_kernel/test_pipeline_golden.py compares stable subset of PipelineResult JSON",
+        "Test documents which keys are intentionally excluded (timestamps, host-specific)",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "pytest tests/platform_kernel/test_pipeline_golden.py",
+        "Update golden only with explicit reviewer approval noted in PR"
+      ],
+      "rollbackStrategy": "Delete golden fixture and test file; pipeline wrapper remains.",
+      "auditRequirements": [
+        "Golden file must not contain real hostnames, registry paths, or PII",
+        "Use tests/fixtures/ synthetic data only"
+      ],
+      "riskImpact": "Low — test infrastructure.",
+      "governanceImpact": "Prevents regression in control-test mapping and incident classification labels.",
+      "estimatedComplexity": "S",
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Warehouse DDL — control_tests table",
+      "description": "As a data engineer, I want a control_tests table in the analytics warehouse so mature control test results persist for Power BI and executive dashboards.",
+      "dependencies": ["US-001"],
+      "acceptanceCriteria": [
+        "schemas/analytics_warehouse.sql adds control_tests table with: test_id, incident_id, control_id, status, evidence_tier, tested_at, limitations",
+        "Foreign key to incidents(incident_id)",
+        "Index on (incident_id, control_id)",
+        "docs/analytics_data_model.md updated with table description",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/schemas/test_warehouse_ddl.py — parse SQL and assert control_tests exists",
+        "Optional: apply DDL to in-memory SQLite in test"
+      ],
+      "rollbackStrategy": "Revert schemas/analytics_warehouse.sql and docs change; no data loss if table was never populated.",
+      "auditRequirements": [
+        "control_tests.status must use enum values: PASS, FAIL, PARTIAL, NOT_TESTED, INSUFFICIENT_EVIDENCE",
+        "limitations column required (TEXT, nullable)"
+      ],
+      "riskImpact": "None until loader populates data.",
+      "governanceImpact": "Enables durable control-maturity reporting for risk committees.",
+      "estimatedComplexity": "S",
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Warehouse DDL — risk_decisions and risk_register tables",
+      "description": "As a compliance officer, I want risk_decisions and risk_register tables so human-reviewed RiskDecisionRecord entries can be queried without parsing JSONL.",
+      "dependencies": ["US-006"],
+      "acceptanceCriteria": [
+        "schemas/analytics_warehouse.sql adds risk_decisions (decision_id, incident_id, risk_rating, reviewer, decided_at, rollback_required, limitations)",
+        "schemas/analytics_warehouse.sql adds risk_register (register_id, domain, risk_statement, owner, review_due, status)",
+        "docs/analytics_data_model.md documents both tables",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/schemas/test_warehouse_ddl.py extended for new tables and indexes"
+      ],
+      "rollbackStrategy": "Revert DDL additions; existing incidents/evidence tables unaffected.",
+      "auditRequirements": [
+        "risk_decisions.rollback_required defaults TRUE",
+        "No autonomous approval fields — reviewer must be nullable TEXT for pending decisions"
+      ],
+      "riskImpact": "Low — schema only.",
+      "governanceImpact": "Supports human-in-the-loop risk register workflows.",
+      "estimatedComplexity": "S",
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Warehouse DDL — dashboard_snapshots table",
+      "description": "As an executive stakeholder, I want point-in-time dashboard snapshots stored so KPI trends can be compared across audit periods.",
+      "dependencies": ["US-007"],
+      "acceptanceCriteria": [
+        "schemas/analytics_warehouse.sql adds dashboard_snapshots (snapshot_id, captured_at, kpi_json, source_audit_dir, hash_chain_valid)",
+        "Index on captured_at DESC",
+        "docs/analytics_data_model.md updated",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/schemas/test_warehouse_ddl.py asserts dashboard_snapshots table"
+      ],
+      "rollbackStrategy": "Revert DDL; snapshots table unused until loader implemented.",
+      "auditRequirements": [
+        "kpi_json stored as TEXT (JSON); hash_chain_valid BOOLEAN for tamper awareness",
+        "source_audit_dir records provenance path, not file contents"
+      ],
+      "riskImpact": "None — schema only.",
+      "governanceImpact": "Enables audit-period KPI comparison for committees.",
+      "estimatedComplexity": "S",
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Warehouse migration runner script",
+      "description": "As a platform engineer, I want a repeatable migration script so warehouse schema can be applied to local SQLite or portfolio demo DB without manual SQL.",
+      "dependencies": ["US-008"],
+      "acceptanceCriteria": [
+        "scripts/warehouse_migrate.py applies schemas/analytics_warehouse.sql to --db path (default: data/analytics_warehouse.db)",
+        "Idempotent: CREATE IF NOT EXISTS only; safe to re-run",
+        "CLI prints applied statement count and final schema version marker",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/scripts/test_warehouse_migrate.py — temp DB, run twice, assert tables exist",
+        "Assert second run does not error"
+      ],
+      "rollbackStrategy": "Delete target DB file or run from backup; script is additive only.",
+      "auditRequirements": [
+        "Script must not delete or truncate existing tables",
+        "Log migration timestamp to stdout for operator audit"
+      ],
+      "riskImpact": "Low — local/portfolio DB only by default.",
+      "governanceImpact": "Reproducible schema for demo and CI environments.",
+      "estimatedComplexity": "M",
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "JSONL audit to warehouse loader",
+      "description": "As a data analyst, I want to load hash-chained audit JSONL into the analytics warehouse so incidents, evidence, and control tests are queryable via SQL.",
+      "dependencies": ["US-009", "US-004"],
+      "acceptanceCriteria": [
+        "scripts/warehouse_load_audit.py accepts --audit-dir and --db",
+        "Maps analytics pipeline output to incidents, evidence_events, control_tests rows",
+        "Upserts by incident_id / event_id (idempotent re-load)",
+        "CLI subcommand or documented invocation in README analytics section",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/scripts/test_warehouse_load_audit.py with tests/fixtures/risk_analytics/audit_sample",
+        "Assert row counts match expected fixture manifest",
+        "Re-run loader; assert no duplicate primary keys"
+      ],
+      "rollbackStrategy": "DELETE FROM affected tables for loaded audit_dir or restore DB backup; loader does not modify source JSONL.",
+      "auditRequirements": [
+        "Preserve hash_chain_valid flag from source audit metadata when available",
+        "Log load batch_id and row counts to stdout",
+        "Never modify source JSONL files"
+      ],
+      "riskImpact": "Medium — incorrect mapping could misrepresent incident KPIs; mitigated by fixture tests.",
+      "governanceImpact": "Enables SQL-based governance reporting without altering evidence chain.",
+      "estimatedComplexity": "M",
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "EvidenceEvent shim between evidence_schema and platform_core",
+      "description": "As a developer, I want a compatibility shim so windows_network_toolkit EvidenceEvent and platform_core evidence models convert bidirectionally without duplicate normalizers.",
+      "dependencies": ["US-004"],
+      "acceptanceCriteria": [
+        "platform_kernel/evidence_shim.py provides to_platform_core(event) and from_platform_core(record)",
+        "Preserves tier (T0–T5), signal_type, limitation, and event_id",
+        "No changes to existing public CLI output schemas",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/platform_kernel/test_evidence_shim.py — round-trip on fixture events",
+        "Assert unknown fields do not raise; stored in raw_data or dropped per documented rules"
+      ],
+      "rollbackStrategy": "Remove shim module; callers continue using evidence_schema directly.",
+      "auditRequirements": [
+        "Shim must not upgrade claim_strength during conversion",
+        "Log dropped fields at DEBUG only, not in audit JSONL"
+      ],
+      "riskImpact": "Low — adapter layer.",
+      "governanceImpact": "Reduces dual-model drift that could cause inconsistent proof tiers.",
+      "estimatedComplexity": "M",
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Incident classifier adapter in platform_kernel",
+      "description": "As a risk analyst, I want classify_incidents exposed through platform_kernel so API and CLI use the same incident_class and risk_rating mapping.",
+      "dependencies": ["US-011"],
+      "acceptanceCriteria": [
+        "platform_kernel/classifier.py wraps windows_network_toolkit.incident_classifier.classify_incidents_from_events",
+        "Returns list of IncidentRecord-compatible dicts with standard limitations block",
+        "Includes proxy_health_status and reverter_suspected when present in events",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/platform_kernel/test_classifier.py — parity with tests/windows_network_toolkit/test_analytics_pipeline.py incident labels"
+      ],
+      "rollbackStrategy": "Remove classifier.py; analytics_pipeline unchanged.",
+      "auditRequirements": [
+        "Every IncidentRecord includes limitations[] citing correlation≠causation where listener attribution used",
+        "No malware or threat-actor labels in output"
+      ],
+      "riskImpact": "Low — wrapper with parity tests.",
+      "governanceImpact": "Consistent incident taxonomy for committee reporting.",
+      "estimatedComplexity": "S",
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "PROXY_REVERTER_DETECTION control test hardening",
+      "description": "As a control owner, I want PROXY_REVERTER_DETECTION control tests to have explicit edge-case coverage for flapping and insufficient-history scenarios.",
+      "dependencies": ["US-012"],
+      "acceptanceCriteria": [
+        "tests/windows_network_toolkit/test_control_tests.py adds cases: flapping history, single-sample insufficient, clean disable",
+        "map_control_tests_from_incident returns NOT_TESTED or INSUFFICIENT_EVIDENCE when history < 2 transitions",
+        "README control tests section mentions PROXY_REVERTER_DETECTION limitations",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "pytest tests/windows_network_toolkit/test_control_tests.py -k REVERTER",
+        "Fixture: tests/fixtures/proxy_watch_localhost.json"
+      ],
+      "rollbackStrategy": "Revert test additions and README; production control_tests.py behavior unchanged if only tests added.",
+      "auditRequirements": [
+        "Control test output must state evidence window size used",
+        "FAIL requires explicit criterion, not heuristic malware inference"
+      ],
+      "riskImpact": "Low — strengthens test contract.",
+      "governanceImpact": "Clearer control maturity signals for proxy reverter incidents.",
+      "estimatedComplexity": "S",
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Proxy health JSON schema stability contract",
+      "description": "As an integrator, I want proxy-health CLI JSON output to follow a versioned schema so downstream monitors do not break on patch releases.",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "proxy-health --format json includes schema_version: \"proxy_health.v1\"",
+        "tests/windows_network_toolkit/test_proxy_health.py asserts required keys: status, probes, limitations, listener",
+        "Breaking changes require schema_version bump documented in CHANGELOG or README",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "pytest tests/windows_network_toolkit/test_proxy_health.py -k schema",
+        "Compare against tests/fixtures/proxy_health_dead.json structure"
+      ],
+      "rollbackStrategy": "Remove schema_version field if consumers not ready; keep required keys test.",
+      "auditRequirements": [
+        "status enum values documented: HEALTHY, DEAD, LISTENER_NOT_PROXY, DIRECT_ONLY_WORKS, UNKNOWN",
+        "limitations[] always present in JSON output"
+      ],
+      "riskImpact": "Low — additive schema_version field.",
+      "governanceImpact": "Stable health contract for read-only monitoring integrations.",
+      "estimatedComplexity": "S",
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Risk API v1 router scaffold",
+      "description": "As a frontend developer, I want a versioned /v1/risk API namespace so executive dashboard endpoints are isolated from legacy /platform/* routes.",
+      "dependencies": ["US-004"],
+      "acceptanceCriteria": [
+        "backend/risk_v1_routes.py with APIRouter prefix /v1/risk",
+        "Mounted in backend/main.py without breaking existing routes",
+        "GET /v1/risk/health returns {status: ok, version: v1}",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/backend/test_risk_v1_routes.py — TestClient health endpoint",
+        "Assert existing /platform/decision routes still respond"
+      ],
+      "rollbackStrategy": "Remove router mount from main.py and delete risk_v1_routes.py.",
+      "auditRequirements": [
+        "Health endpoint is read-only",
+        "No auth bypass introduced — document auth requirements in OpenAPI"
+      ],
+      "riskImpact": "Low — scaffold endpoint only.",
+      "governanceImpact": "Clean API surface for risk analytics consumers.",
+      "estimatedComplexity": "S",
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "GET /v1/risk/summary endpoint",
+      "description": "As an executive viewer, I want a summary endpoint returning KPI rollups from the analytics pipeline so the dashboard can render without client-side JSONL parsing.",
+      "dependencies": ["US-015", "US-004"],
+      "acceptanceCriteria": [
+        "GET /v1/risk/summary returns build_dashboard_dataset() KPIs as JSON",
+        "Supports ?fixture= path for demo mode and ?audit_dir= for live ingest (read-only)",
+        "Response includes limitations[] and generated_at timestamp",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/backend/test_risk_v1_summary.py — fixture mode matches analytics-summary --json output keys"
+      ],
+      "rollbackStrategy": "Remove endpoint handler; CLI analytics-summary remains available.",
+      "auditRequirements": [
+        "audit_dir parameter must reject paths outside allowed data/ and tests/fixtures/ roots",
+        "Response must not include raw registry values or secrets"
+      ],
+      "riskImpact": "Medium — path traversal if audit_dir not sandboxed; mitigated by path allowlist.",
+      "governanceImpact": "Executive KPIs served from same pipeline as CLI for consistency.",
+      "estimatedComplexity": "M",
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "GET /v1/risk/incidents endpoint with pagination",
+      "description": "As a risk analyst, I want paginated incident records from the pipeline so large audit directories do not overwhelm the browser.",
+      "dependencies": ["US-016"],
+      "acceptanceCriteria": [
+        "GET /v1/risk/incidents supports limit (default 50, max 200) and offset",
+        "Returns {items, total, limit, offset} with IncidentRecord fields",
+        "Sorted by incident severity then created_at descending",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/backend/test_risk_v1_incidents.py — pagination boundaries, empty audit dir"
+      ],
+      "rollbackStrategy": "Remove endpoint; no data mutation.",
+      "auditRequirements": [
+        "Each item includes incident_class, risk_rating, proof_tier, limitations",
+        "No PII beyond endpoint_id already in audit fixtures"
+      ],
+      "riskImpact": "Low — read-only list.",
+      "governanceImpact": "Scalable incident review for human analysts.",
+      "estimatedComplexity": "M",
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "GET /v1/risk/control-tests endpoint",
+      "description": "As a control owner, I want control test results per incident exposed via API for dashboard heatmaps and Power BI live connections.",
+      "dependencies": ["US-017"],
+      "acceptanceCriteria": [
+        "GET /v1/risk/control-tests returns flat list of control test results",
+        "Optional ?incident_id= filter",
+        "Includes control_id, status, evidence_tier, limitations",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/backend/test_risk_v1_control_tests.py — filter by incident_id, assert PROXY_REVERTER_DETECTION present in fixture"
+      ],
+      "rollbackStrategy": "Remove endpoint handler only.",
+      "auditRequirements": [
+        "status values match control_tests warehouse enum",
+        "limitations propagated from map_control_tests_from_incident"
+      ],
+      "riskImpact": "Low — read-only.",
+      "governanceImpact": "API access to control maturity metrics.",
+      "estimatedComplexity": "S",
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Wire platform_kernel pipeline to windows_network_toolkit CLI",
+      "description": "As a CLI user, I want analytics-summary and evidence-report --analytics to optionally use platform_kernel orchestrator so behavior matches the risk API.",
+      "dependencies": ["US-004", "US-016"],
+      "acceptanceCriteria": [
+        "analytics-summary --kernel flag uses platform_kernel.run_incident_pipeline",
+        "Default path unchanged (backward compatible) when flag omitted",
+        "evidence-report --analytics --kernel same behavior",
+        "Help text documents --kernel as preview/unified path",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/windows_network_toolkit/test_cli_kernel_flag.py — output parity with default on fixture"
+      ],
+      "rollbackStrategy": "Remove --kernel flag; default CLI paths unaffected.",
+      "auditRequirements": [
+        "Flag is read-only; no change to proxy-disable or remediation commands",
+        "Deprecation not enabled in this story"
+      ],
+      "riskImpact": "Low — opt-in flag.",
+      "governanceImpact": "CLI/API convergence without breaking existing scripts.",
+      "estimatedComplexity": "M",
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Executive risk dashboard route scaffold",
+      "description": "As an executive user, I want a dedicated /risk/executive page so technology risk KPIs are separated from operator-focused /platform views.",
+      "dependencies": ["US-016"],
+      "acceptanceCriteria": [
+        "frontend/app/risk/executive/page.tsx created with layout shell",
+        "Page fetches /v1/risk/summary from configurable NEXT_PUBLIC_API_BASE",
+        "Loading and error states implemented",
+        "Ruff lint passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "testPlan": [
+        "frontend: manual or playwright smoke if present",
+        "Backend running with fixture query param for local demo"
+      ],
+      "rollbackStrategy": "Delete frontend/app/risk/ directory.",
+      "auditRequirements": [
+        "Page displays limitations disclaimer banner",
+        "No remediation action buttons on executive page"
+      ],
+      "riskImpact": "Low — read-only UI.",
+      "governanceImpact": "Executive-appropriate view without execution controls.",
+      "estimatedComplexity": "M",
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Executive KPI cards component",
+      "description": "As an executive user, I want KPI cards (incident count, control pass rate, high-risk count) on the executive dashboard so I can assess posture at a glance.",
+      "dependencies": ["US-020"],
+      "acceptanceCriteria": [
+        "KPI cards render total_incidents, control_pass_rate, high_risk_incidents from summary API",
+        "Cards show last updated timestamp",
+        "Responsive grid for desktop and tablet widths",
+        "Ruff lint passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "testPlan": [
+        "Visual check against tests/fixtures/analytics_pipeline_fixture.json expected KPIs",
+        "Component unit test if project uses React Testing Library"
+      ],
+      "rollbackStrategy": "Revert component; page shell remains.",
+      "auditRequirements": [
+        "KPI definitions match docs/analytics_data_model.md",
+        "Tooltip or footnote cites data source (audit_dir/fixture)"
+      ],
+      "riskImpact": "Low — display only.",
+      "governanceImpact": "Consistent executive metrics definitions.",
+      "estimatedComplexity": "M",
+      "priority": 21,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Incident classification breakdown chart",
+      "description": "As a risk committee member, I want a breakdown chart of incident classes so I can see whether proxy drift dominates the portfolio.",
+      "dependencies": ["US-021"],
+      "acceptanceCriteria": [
+        "Chart displays incident_class counts from /v1/risk/summary or incidents aggregate",
+        "Uses accessible colors with legend",
+        "Empty state when no incidents",
+        "Ruff lint passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "testPlan": [
+        "Browser verify with analytics_pipeline_fixture",
+        "Assert DEAD_PROXY_CONFIG and similar labels appear per fixture"
+      ],
+      "rollbackStrategy": "Remove chart component from executive page.",
+      "auditRequirements": [
+        "Chart title includes 'Classification — not accusation' subtitle or footnote",
+        "No threat actor or malware categories displayed"
+      ],
+      "riskImpact": "Low — visualization.",
+      "governanceImpact": "Supports committee narrative without over-claiming causation.",
+      "estimatedComplexity": "M",
+      "priority": 22,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Control test status heatmap",
+      "description": "As a control owner, I want a heatmap of control_id × status so I can spot systematically failing controls across incidents.",
+      "dependencies": ["US-018", "US-021"],
+      "acceptanceCriteria": [
+        "Heatmap or matrix renders from /v1/risk/control-tests",
+        "Rows: control_id; columns: PASS/FAIL/PARTIAL/NOT_TESTED counts",
+        "Cell click shows limitations tooltip",
+        "Ruff lint passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "testPlan": [
+        "Browser verify with fixture data",
+        "API test data includes at least 2 control_ids"
+      ],
+      "rollbackStrategy": "Remove heatmap component.",
+      "auditRequirements": [
+        "Tooltip shows evidence_tier and limitations",
+        "FAIL cells do not imply security incident without human review flag"
+      ],
+      "riskImpact": "Low — read-only visualization.",
+      "governanceImpact": "Control maturity visibility for GRC stakeholders.",
+      "estimatedComplexity": "M",
+      "priority": 23,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Dashboard snapshot export to warehouse",
+      "description": "As an auditor, I want executive dashboard KPIs snapshotted into dashboard_snapshots after each analytics-export so point-in-time committee reports are reproducible.",
+      "dependencies": ["US-010", "US-016"],
+      "acceptanceCriteria": [
+        "analytics-export --snapshot-db path writes row to dashboard_snapshots",
+        "Snapshot includes kpi_json from build_dashboard_dataset and hash_chain_valid from audit ingest",
+        "Documented in README Evidence to analytics pipeline section",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/windows_network_toolkit/test_analytics_snapshot.py — export then query SQLite for snapshot row"
+      ],
+      "rollbackStrategy": "Remove --snapshot-db flag; analytics-export CSV behavior unchanged.",
+      "auditRequirements": [
+        "Each snapshot records source_audit_dir and captured_at UTC",
+        "Snapshots are append-only; no update of prior snapshot_id"
+      ],
+      "riskImpact": "Low — optional append-only write.",
+      "governanceImpact": "Reproducible committee reporting artifacts.",
+      "estimatedComplexity": "M",
+      "priority": 24,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Deprecate legacy analytics-summary platform path",
+      "description": "As a maintainer, I want --legacy-platform flag documented as deprecated with a stderr warning so users migrate to the unified kernel pipeline.",
+      "dependencies": ["US-019"],
+      "acceptanceCriteria": [
+        "analytics-summary --legacy-platform emits DeprecationWarning or stderr notice pointing to default/--kernel path",
+        "tests/test_analytics_summary.py still passes for legacy path",
+        "README notes deprecation timeline (next minor release)",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "pytest tests/test_analytics_summary.py",
+        "Assert warning captured in test when legacy flag used"
+      ],
+      "rollbackStrategy": "Remove warning text; legacy flag behavior unchanged.",
+      "auditRequirements": [
+        "Deprecation must not remove legacy path in this story",
+        "Warning cites governance reason: single pipeline for audit consistency"
+      ],
+      "riskImpact": "Low — warning only.",
+      "governanceImpact": "Reduces dual-pipeline audit divergence over time.",
+      "estimatedComplexity": "S",
+      "priority": 25,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "CI workflow — Ralph story verification job",
+      "description": "As a release engineer, I want CI to validate prd.json schema and run pytest markers for completed stories so autonomous merges do not skip verification.",
+      "dependencies": ["US-005"],
+      "acceptanceCriteria": [
+        ".github/workflows/ci.yml includes job step: python scripts/validate_prd.py",
+        "validate_prd.py checks required fields on each userStory and priority ordering",
+        "Fails if duplicate story IDs or non-monotonic priority with dependency violations",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "tests/scripts/test_validate_prd.py — valid prd passes, intentionally broken prd fails"
+      ],
+      "rollbackStrategy": "Remove CI step and validate_prd.py.",
+      "auditRequirements": [
+        "CI logs story count and branchName",
+        "No secrets in prd.json validation output"
+      ],
+      "riskImpact": "Low — CI guardrail.",
+      "governanceImpact": "Enforces story quality for autonomous engineering loops.",
+      "estimatedComplexity": "S",
+      "priority": 26,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "platform_kernel documentation and README integration",
+      "description": "As a new contributor, I want platform_kernel documented in README and docs/architecture.md so the unified pipeline location is discoverable.",
+      "dependencies": ["US-019", "US-024"],
+      "acceptanceCriteria": [
+        "docs/platform-kernel.md describes run_incident_pipeline, models, and safety boundaries",
+        "README architecture section links to platform_kernel and warehouse loader",
+        "Mermaid or text diagram shows Evidence → Classify → Control tests → Analytics → Warehouse",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "Manual: follow README commands end-to-end on fixture",
+        "Link check: no broken relative links"
+      ],
+      "rollbackStrategy": "Revert doc files only.",
+      "auditRequirements": [
+        "Docs must state observation≠proof and dry-run default",
+        "No documentation implying autonomous remediation"
+      ],
+      "riskImpact": "None — documentation.",
+      "governanceImpact": "Onboarding aligned with governance model.",
+      "estimatedComplexity": "S",
+      "priority": 27,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-028",
+      "title": "End-to-end Ralph demo script",
+      "description": "As a portfolio reviewer, I want a single scripts/ralph_demo.ps1 that runs the full risk pipeline, loads warehouse, and prints API URLs so Ralph iterations can smoke-test the platform.",
+      "dependencies": ["US-027"],
+      "acceptanceCriteria": [
+        "scripts/ralph_demo.ps1 runs: warehouse_migrate, analytics-export with fixture, warehouse_load_audit, curl /v1/risk/summary",
+        "Exits non-zero on any step failure",
+        "docs/demo-script.md references ralph_demo.ps1 as optional automation path",
+        "Ruff lint passes",
+        "Tests pass"
+      ],
+      "testPlan": [
+        "Run scripts/ralph_demo.ps1 locally in CI-compatible mode",
+        "Optional: tests/scripts/test_ralph_demo.py mocks subprocess calls"
+      ],
+      "rollbackStrategy": "Delete script; manual demo steps in docs/demo-script.md remain.",
+      "auditRequirements": [
+        "Script uses tests/fixtures only by default",
+        "Prints limitations disclaimer before KPI output"
+      ],
+      "riskImpact": "Low — demo automation.",
+      "governanceImpact": "Repeatable portfolio demonstration of governance pipeline.",
+      "estimatedComplexity": "M",
+      "priority": 28,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

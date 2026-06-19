@@ -64,6 +64,7 @@ def test_markdown_output_sections() -> None:
 def test_cli_json_cross_platform() -> None:
     rc, out = _run([
         "analytics-summary",
+        "--legacy-platform",
         "--audit-dir",
         str(SAMPLE_AUDIT),
         "--format",
@@ -78,6 +79,7 @@ def test_cli_json_cross_platform() -> None:
 def test_cli_markdown_cross_platform() -> None:
     rc, out = _run([
         "analytics-summary",
+        "--legacy-platform",
         "--audit-dir",
         str(EMPTY_DIR),
         "--format",
@@ -90,6 +92,6 @@ def test_cli_markdown_cross_platform() -> None:
 def test_no_destructive_action_performed() -> None:
     """Summarizer is read-only; blocked actions remain policy-blocked constants only."""
     before = set(BLOCKED_ACTIONS)
-    _run(["analytics-summary", "--audit-dir", str(SAMPLE_AUDIT)])
+    _run(["analytics-summary", "--legacy-platform", "--audit-dir", str(SAMPLE_AUDIT)])
     after = set(BLOCKED_ACTIONS)
     assert before == after

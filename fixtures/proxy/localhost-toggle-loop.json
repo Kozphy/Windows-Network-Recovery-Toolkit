@@ -1,0 +1,19 @@
+{
+  "_fixture": "localhost-toggle-loop",
+  "timeline": [
+    {
+      "timestamp_utc": "2026-06-10T12:00:00Z",
+      "old_state": {"wininet_proxy_enabled": false, "wininet_proxy_server": ""},
+      "new_state": {"wininet_proxy_enabled": true, "wininet_proxy_server": "127.0.0.1:62285"},
+      "reverter_suspected": true,
+      "reverter_diagnosis": {"status": "REVERTER_SUSPECTED", "enable_disable_cycle_count": 2}
+    }
+  ],
+  "classification": {
+    "primary_classification": "REVERTER_SUSPECTED"
+  },
+  "limitations": [
+    "Enable/disable cycle suggests reverter — investigate before remediation.",
+    "Does not prove malware."
+  ]
+}

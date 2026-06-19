@@ -100,14 +100,25 @@ Canonical implementation: `src/platform_core/` · Windows probes: `src/proxy_gua
 
 **Purpose:** Audit-ready narratives for risk, compliance, and operations.
 
-| Output | Command |
-|--------|---------|
+| Output | Command / API |
+|--------|----------------|
 | Evidence timeline report | `evidence-report` |
 | Governance report | `governance-report` |
 | Risk KPI rollup | `risk-kpi-summary` |
 | Technology risk assessment | `risk-assess` |
+| Endpoint analytics + risk scores | `analytics-summary`, `analytics-export` |
+| Executive JSON report | `GET /reports/executive` |
+| Risk scores API | `GET /risks` |
 
-**Modules:** `src/platform_core/evidence_report/`, `src/platform_core/governance/`, `src/platform_core/risk/`
+**Modules:** `windows_network_toolkit/reporting.py`, `windows_network_toolkit/risk_scoring_engine.py`, `src/platform_core/evidence_report/`, `src/platform_core/governance/`, `src/platform_core/risk/`
+
+**Phase 1 flow:**
+
+```text
+analytics_pipeline → risk_scoring_engine → reporting → JSON/CSV/Power BI
+```
+
+See: [risk-model.md](risk-model.md) · [powerbi-schema.md](powerbi-schema.md)
 
 ---
 

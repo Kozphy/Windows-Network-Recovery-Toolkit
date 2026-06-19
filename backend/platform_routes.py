@@ -168,6 +168,13 @@ router = APIRouter(prefix="/platform", tags=["platform"])
 SAFE_MODE = os.environ.get("PLATFORM_SAFE_MODE", "1") != "0"
 BACKEND_VERSION = "0.5.0-endpoint-reliability-prototype"
 
+try:
+    from windows_network_toolkit.safety import is_demo_mode
+except ImportError:  # pragma: no cover
+
+    def is_demo_mode() -> bool:
+        return os.environ.get("DEMO_MODE", "").lower() in ("1", "true", "yes")
+
 
 get_demo_principal = get_platform_principal
 
@@ -577,6 +584,8 @@ def remediation_execute(
         privacy review (:mod:`platform_core.privacy`).
     """
     assert_can_execute(principal, dry_run=body.dry_run)
+    if is_demo_mode() and not body.dry_run:
+        raise HTTPException(status_code=403, detail="DEMO_MODE blocks live remediation execute")
     if not SAFE_MODE and os.environ.get("ALLOW_PLATFORM_EXECUTE") != "1":
         pass  # still enforce policy
     prev_row = find_by_id(_path("remediation_previews.jsonl"), "preview_id", body.preview_id)

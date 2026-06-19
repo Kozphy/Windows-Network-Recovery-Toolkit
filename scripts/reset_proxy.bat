@@ -4,9 +4,13 @@ setlocal
 REM Windows Network Recovery Toolkit
 REM Proxy-only repair script for broken WinHTTP or user-level proxy settings.
 REM --
-REM Purpose: Clear WinHTTP proxy and HKCU proxy toggles consistent with toolkit policy.
-REM Privileges: Administrator required.
-REM Side effects: Mutates proxy configuration; Managed environments may revert via GPO.
+REM SAFETY — Mutates WinHTTP and HKCU WinINET proxy settings. Not policy-gated like
+REM   `python -m windows_network_toolkit proxy-disable` (typed confirmation + audit).
+REM PRIVILEGES — Administrator required.
+REM SIDE EFFECTS — registry writes, netsh winhttp reset; GPO may revert changes.
+REM IDEMPOTENCY — Re-running is safe but may repeat no-op deletes.
+REM RECOVERY — Restore from backup/GPO or use toolkit snapshot JSONL if available.
+REM PREFERRED PATH — Preview first: python -m windows_network_toolkit proxy-disable --dry-run
 
 title Windows Network Recovery Toolkit - Reset Proxy
 

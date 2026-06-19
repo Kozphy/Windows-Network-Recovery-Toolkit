@@ -1,4 +1,23 @@
-"""End-to-end incident pipeline: evidence → decision → policy → remediation preview."""
+"""End-to-end incident pipeline: evidence → decision → policy → remediation preview.
+
+Module responsibility:
+    Orchestrate ERP-style incident evaluation for FastAPI diagnose/replay paths. Bridges
+    ``src.platform_core.pipeline`` (canonical) and legacy WNT decision modules.
+
+System placement:
+    Used by ``windows_network_toolkit.platform.api`` and ``audit.replay`` — distinct from
+    batch analytics in ``analytics_pipeline``.
+
+Key invariants:
+    * ``dry_run=True`` by default on remediation planning.
+    * ``PipelineResult.audit_record`` captures decision/policy metadata for replay.
+
+Side effects:
+    Legacy branch may append audit via ``append_audit``; canonical branch returns audit_ids.
+
+Audit Notes:
+    Verify ``dry_run`` in ``audit_record`` before inferring remediation was executed.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +35,8 @@ from windows_network_toolkit.evidence.timeline_builder import TimelineBuilder
 
 @dataclass
 class PipelineResult:
+    """Container for one incident pipeline run."""
+
     bundle: Any
     decision: Any
     policy: dict[str, Any]
@@ -65,6 +86,21 @@ def run_incident_pipeline(
     dry_run: bool = True,
     use_canonical: bool = True,
 ) -> PipelineResult:
+    """Run evidence → decision → policy → remediation preview pipeline.
+
+    Args:
+        signals: Optional signal dict for live evaluation.
+        jsonl_path: Fixture JSONL for replay ingestion.
+        incident_id: Optional incident id override for timeline builder.
+        dry_run: When True, remediation plan is preview-only (default).
+        use_canonical: When True (default), delegate to ``src.platform_core.pipeline``.
+
+    Returns:
+        PipelineResult with bundle, decision, policy, remediation, timeline, audit_record.
+
+    Side effects:
+        Legacy path may append audit JSONL; canonical path returns audit_ids in audit_record.
+    """
     if use_canonical:
         from src.platform_core.pipeline import run_decision_pipeline as canonical_run
 

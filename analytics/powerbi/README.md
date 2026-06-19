@@ -8,13 +8,14 @@ This folder contains a **Power BI-ready analytics layer** for the Technology Ris
 
 | Path | Purpose |
 |------|---------|
-| `data/` | Sample CSV fact and dimension tables |
-| `model/star_schema.md` | Star schema design (facts + dimensions) |
-| `model/dax_measures.md` | KPI measures for executive reporting |
-| `model/data_preparation.md` | JSONL → CSV normalization pipeline |
-| `model/governance_and_security.md` | RLS, refresh, AI boundaries |
-| `reports/technology_risk_dashboard_spec.md` | Four-page dashboard specification |
-| `exports/` | Target folder for CLI export output |
+| [report_blueprint.md](report_blueprint.md) | Four-page report spec (Executive, Risk Trend, Control Testing, Drilldown) |
+| [dax/measures.md](dax/measures.md) | KPI DAX measures |
+| [rls_design.md](rls_design.md) | Row-level security roles |
+| `data/` | Legacy sample CSV fact and dimension tables |
+| `model/` | Earlier star schema design notes |
+| `exports/` | Target folder for legacy `analytics-export-powerbi` |
+
+**Canonical star schema export:** `examples/powerbi/export/` via `powerbi-export` (recommended for portfolio demos).
 
 ## Quick start
 
@@ -22,23 +23,25 @@ This folder contains a **Power BI-ready analytics layer** for the Technology Ris
 pip install -e ".[dev]"
 $env:PYTHONPATH = (Get-Location).Path
 
-# Regenerate portfolio sample CSVs
-python -m windows_network_toolkit analytics-export-powerbi --portfolio-sample --out-dir analytics/powerbi/data
-
-# Export from audit JSONL (merges seed when sparse)
-python -m windows_network_toolkit analytics-export-powerbi `
+# Primary — star schema from fixture audit (deterministic)
+python -m windows_network_toolkit powerbi-export `
   --audit-dir tests/fixtures/risk_analytics/audit_sample `
-  --out-dir analytics/powerbi/exports `
-  --include-seed
+  --out-dir examples/powerbi/export
+
+# Legacy flat CSV export (still supported)
+python -m windows_network_toolkit analytics-export-powerbi --portfolio-sample --out-dir analytics/powerbi/data
 ```
 
 ## Import into Power BI Desktop
 
 1. Open Power BI Desktop → **Get data** → **Text/CSV**
-2. Load all files from `data/` (or `exports/` after CLI run)
-3. Apply relationships per `model/star_schema.md`
-4. Create measures from `model/dax_measures.md`
-5. Build pages per `reports/technology_risk_dashboard_spec.md`
+2. Load all files from `examples/powerbi/export/` (after `powerbi-export`)
+3. Apply relationships per [docs/powerbi-semantic-model-explained.md](../../docs/powerbi-semantic-model-explained.md)
+4. Create measures from [dax/measures.md](dax/measures.md)
+5. Build pages per [report_blueprint.md](report_blueprint.md)
+6. Configure RLS per [rls_design.md](rls_design.md)
+
+**Interview script:** [docs/powerbi-interview-story.md](../../docs/powerbi-interview-story.md)
 
 ## Governance reminders
 

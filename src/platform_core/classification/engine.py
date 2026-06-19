@@ -37,6 +37,7 @@ def classify_proxy(
     repeated_reappearance: bool = False,
     reverter_suspected: bool = False,
     insufficient_data: bool = False,
+    proxy_health_status: str | None = None,
 ) -> dict[str, Any]:
     """Return ClassificationResult-compatible dict."""
     limitations = [
@@ -125,6 +126,46 @@ def classify_proxy(
         )
 
     port = ps.localhost_port
+    if port and wininet_enabled and proxy_health_status:
+        if proxy_health_status in ("DEAD_LOCALHOST_PROXY", "DIRECT_ONLY_WORKS"):
+            secondary.append(SecondarySignal.DEAD_LOCALHOST_PORT.value)
+            return _result(
+                PrimaryClassification.DEAD_PROXY_CONFIG,
+                secondary,
+                "high",
+                0.92,
+                "Localhost proxy configured but health probes show dead or non-forwarding path.",
+                evidence + [f"proxy_health_status={proxy_health_status}"],
+                ["Run proxy-health", "Preview proxy-disable with typed confirmation"],
+                limitations + ["Dead localhost proxy often causes ERR_PROXY_CONNECTION_FAILED."],
+            )
+        if proxy_health_status in ("LISTENER_NOT_PROXY", "PROXY_FORWARDING_FAILED"):
+            secondary.append(SecondarySignal.UNKNOWN_LISTENER.value)
+            return _result(
+                PrimaryClassification.UNKNOWN_LOCAL_PROXY,
+                secondary,
+                "high",
+                0.85,
+                f"Listener on localhost:{port} does not behave as a working HTTP proxy.",
+                evidence + [f"proxy_health_status={proxy_health_status}"],
+                ["Run proxy-health", "Human review — correlation only"],
+                limitations,
+            )
+        if proxy_health_status in ("HEALTHY_LOCALHOST_PROXY", "BOTH_DIRECT_AND_PROXY_WORK"):
+            secondary.append(SecondarySignal.LOCALHOST_PROXY.value)
+            name = (proc.process_name or "").lower()
+            sev = "low" if name in _DEV_NAMES else "medium"
+            return _result(
+                PrimaryClassification.LOCAL_PROXY_ACTIVE,
+                secondary,
+                sev,
+                0.78,
+                f"Localhost proxy on port {port} forwards traffic per health probe.",
+                evidence + [f"proxy_health_status={proxy_health_status}"],
+                ["Run proxy-watch if change was unexpected"],
+                limitations,
+            )
+
     if port and wininet_enabled and not listener_detected:
         secondary.append(SecondarySignal.DEAD_LOCALHOST_PORT.value)
         conf = 0.92 if not has_pac else 0.85

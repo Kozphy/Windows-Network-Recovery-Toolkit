@@ -13,11 +13,36 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 - Multi-domain adapters (Windows, Security, Cloud, Infrastructure, Market Events)
 - Research-only market catalyst monitoring (no trade execution)
 
-## Portfolio pack (recruiters, Big 4, interviews)
+## Portfolio pack (recruiters, Big 4, FAANG, PL-300)
 
 | Doc | Purpose |
 |-----|---------|
-| **[README_BIG4_PORTFOLIO.md](README_BIG4_PORTFOLIO.md)** | **Big 4 / Risk Advisory portfolio index (start here)** |
+| **[README.md](../README.md)** | **30-second positioning + non-claims (start here)** |
+| [production-readiness-gap.md](production-readiness-gap.md) | Honest 15-row production gap table |
+| [threat-model.md](threat-model.md) | 10 abuse scenarios + test mapping |
+| [docker-demo.md](docker-demo.md) | Reviewer Docker Demo (Option C) |
+| [../real_evidence/case-001-dead-proxy/](../real_evidence/case-001-dead-proxy/) | Sanitized evidence case pack |
+| [architecture-infographic.md](architecture-infographic.md) | Mermaid evidence pipeline |
+| [interview-demo-3min.md](interview-demo-3min.md) | FAANG / Big 4 / mixed panel demo paths |
+| [one-page-case-study-dead-proxy.md](one-page-case-study-dead-proxy.md) | Dead proxy case study |
+| [replay-demo.md](replay-demo.md) | Deterministic proxy replay |
+| [test-strategy.md](test-strategy.md) | Fixtures, safety contracts, tamper detection |
+| [faang-platform-review.md](faang-platform-review.md) | Platform / SRE reviewer pack |
+| [state-machine.md](state-machine.md) | Proxy transition state diagram |
+| [api-trisk-examples.md](api-trisk-examples.md) | FastAPI read-only `/trisk/*` examples |
+| [adr/ADR-portfolio-positioning.md](adr/ADR-portfolio-positioning.md) | Evidence pipeline ADR |
+| [big4-interview-defense.md](big4-interview-defense.md) | Technology risk / audit defense |
+| [control-matrix.md](control-matrix.md) | CTRL-001–010 with failure interpretation |
+| [risk_register.md](risk_register.md) | Risk register with controls & limitations |
+| [powerbi-interview-story.md](powerbi-interview-story.md) | PL-300 skill mapping |
+| [../reports/sample_governance_report.md](../reports/sample_governance_report.md) | Sample management governance report |
+| [../analytics/powerbi/report_blueprint.md](../analytics/powerbi/report_blueprint.md) | Power BI four-page blueprint |
+
+## Portfolio pack (legacy index)
+
+| Doc | Purpose |
+|-----|---------|
+| **[README_BIG4_PORTFOLIO.md](README_BIG4_PORTFOLIO.md)** | **Big 4 / Risk Advisory portfolio index** |
 | [big4_interview_positioning.md](big4_interview_positioning.md) | Core Big 4 framing and STAR story |
 | [technology_risk_control_matrix.md](technology_risk_control_matrix.md) | Control testing matrix |
 | [interview_pitch_90_seconds.md](interview_pitch_90_seconds.md) | 90-second spoken pitch |

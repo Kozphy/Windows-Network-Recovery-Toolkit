@@ -125,7 +125,7 @@ def diff_wininet_states(
     # Normal disable transitions
     if enabled_before and not enabled_after and not pac_after_nonempty:
         risk = "low"
-        reasons.append("Proxy manually disabled")
+        reasons.append("Proxy disabled during developer/tool session")
 
     elif not enabled_before and enabled_after:
         reasons.append("Proxy enabled")
@@ -150,7 +150,13 @@ def diff_wininet_states(
     elif changed and risk == "low":
         reasons.append("Proxy-related registry fields changed")
 
-    remote_added = enabled_after and not localhost_after and (not enabled_before or "ProxyServer" in changed_fields)
+    remote_added = (
+        enabled_after
+        and not localhost_after
+        and not _norm_str(after.get("proxy_server")) == ""
+        and after.get("proxy_server") is not None
+        and (not enabled_before or "ProxyServer" in changed_fields)
+    )
     allowed_names = {str(x).lower() for x in (pol.get("allowed_process_names") or []) if isinstance(x, str)}
     if remote_added:
         rs = str(after.get("proxy_server") or "").strip().lower()
