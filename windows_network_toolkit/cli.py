@@ -205,27 +205,45 @@ def cmd_proxy_owner(args: argparse.Namespace) -> int:
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
-    """Emit structured proof diagnosis JSON for a URL or fixture.
+    """Emit structured diagnosis JSON for a URL or fixture.
 
-    Args:
-        args: Namespace with ``url``, optional ``fixture``, optional ``principles`` flag.
-
-    Returns:
-        0 on success.
-
-    Side effects:
-        Read-only network/registry evidence collection when not using fixture.
+    With ``--proof``, runs the full proof envelope (signals, attempts, conclusion).
+    Without ``--proof``, emits read-only proxy status summary from fixture or live probes.
     """
+    inject = None
+    fixture_data: dict | None = None
+    if args.fixture:
+        fixture_data = _load_fixture_data(args.fixture)
+        inject = fixture_data.get("proof") or fixture_data
+
+    if not getattr(args, "proof", False):
+        from windows_network_toolkit.diagnostics.proxy import run_proxy_status
+
+        payload = run_proxy_status(inject=inject or fixture_data)
+        if fixture_data and fixture_data.get("classification"):
+            payload["classification"] = fixture_data["classification"]
+        payload["proof_mode"] = "summary"
+        payload["recommended_next_step"] = "Re-run with --proof for full proof envelope"
+        _emit_json(payload)
+        return 0
+
+    from src.platform_core.governance.proof_tier import resolve_proof_tier
+    from src.platform_core.policy.outcome_normalizer import normalize_policy_outcome
     from windows_network_toolkit.proof import enrich_diagnose_payload, run_diagnose_proof
 
-    inject = None
-    if args.fixture:
-        data = _load_fixture_data(args.fixture)
-        inject = data.get("proof") or data
     payload = run_diagnose_proof(args.url or None, inject=inject)
     out = payload.to_dict()
+    if fixture_data:
+        tier = resolve_proof_tier(fixture_data)
+        out["proof_tier"] = tier.proof_tier.value
+        out["proof_tier_label"] = tier.proof_tier_label
+        pol = fixture_data.get("policy_decision") or {}
+        gate = normalize_policy_outcome(str(pol.get("outcome", "PREVIEW_ONLY")))
+        out["policy_gate"] = gate.value
+        out["recommended_next_step"] = f"Policy gate: {gate.value}; preview remediation before apply"
     if getattr(args, "principles", False):
         out = enrich_diagnose_payload(out, include_principles=True)
+    out["proof_mode"] = "full"
     _emit_json(out)
     return 0
 
@@ -926,6 +944,100 @@ def cmd_fleet_simulate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fleet_benchmark(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.fleet_benchmark import (
+        render_fleet_benchmark_markdown,
+        run_fleet_benchmark,
+    )
+
+    out_dir = Path(args.out).parent if args.out else Path("reports/benchmarks/run")
+    if args.out and args.format != "markdown":
+        out_dir = Path(args.out)
+    summary = run_fleet_benchmark(
+        scenario=args.scenario,
+        endpoints=int(args.endpoints),
+        seed=int(args.seed),
+        out_dir=out_dir,
+    )
+    if args.format == "markdown":
+        md = render_fleet_benchmark_markdown(summary)
+        if args.out:
+            Path(args.out).write_text(md, encoding="utf-8")
+        else:
+            print(md)
+    else:
+        _emit_json(summary)
+    return 0
+
+
+def cmd_browser_evidence(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from windows_network_toolkit.browser_evidence import load_browser_package_from_fixture
+    from windows_network_toolkit.collectors.playwright_collector import collect_browser_evidence
+
+    out_dir = Path(args.out)
+    if args.fixture:
+        pkg = load_browser_package_from_fixture(Path(args.fixture))
+    elif args.url:
+        pkg = collect_browser_evidence(args.url, out_dir, headless=not args.headed)
+        manifest = out_dir / "browser_package.json"
+        manifest.write_text(pkg.model_dump_json(indent=2), encoding="utf-8")
+    else:
+        print("Provide --url or --fixture", file=sys.stderr)
+        return 2
+    payload = {"browser_evidence": pkg.model_dump(), "raw_snapshot": pkg.to_raw_snapshot()}
+    if args.format == "json":
+        _emit_json(payload)
+    else:
+        print(pkg.model_dump_json(indent=2))
+    return 0
+
+
+def cmd_classifier_benchmark(args: argparse.Namespace) -> int:
+    from src.platform_core.evaluation.classifier_benchmark import (
+        load_benchmark_cases,
+        render_classifier_benchmark_markdown,
+        run_classifier_benchmark,
+    )
+
+    cases = load_benchmark_cases(Path(args.cases))
+    summary = run_classifier_benchmark(cases)
+    if args.format == "markdown":
+        print(render_classifier_benchmark_markdown(summary))
+    else:
+        _emit_json(summary.model_dump())
+    return 0
+
+
+def cmd_replay_benchmark(args: argparse.Namespace) -> int:
+    from src.platform_core.evaluation.replay_benchmark import (
+        load_replay_cases,
+        render_replay_benchmark_markdown,
+        run_replay_benchmark,
+    )
+
+    cases = load_replay_cases(Path(args.cases))
+    summary = run_replay_benchmark(cases, replay_count=int(args.replay_count))
+    if args.format == "markdown":
+        print(render_replay_benchmark_markdown(summary))
+    else:
+        _emit_json(summary.model_dump())
+    return 0
+
+
+def cmd_ai_eval(args: argparse.Namespace) -> int:
+    from src.platform_core.ai_evals import load_eval_cases, render_eval_markdown, run_eval_suite
+
+    cases = load_eval_cases(Path(args.cases))
+    report = run_eval_suite(cases)
+    if args.format == "markdown":
+        print(render_eval_markdown(report))
+    else:
+        _emit_json(report.model_dump(mode="json"))
+    return 0
+
+
 def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     """Parse CLI arguments and dispatch to the selected subcommand handler.
 
@@ -1012,6 +1124,20 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     preplay.add_argument("--format", choices=("json", "human"), default="json", help="Output format")
     preplay.add_argument("--json-also", action="store_true", help="With --format human, also emit JSON")
     preplay.set_defaults(func=cmd_proxy_replay)
+
+    replay_demo = sub.add_parser(
+        "replay-demo",
+        help="Alias for proxy-replay — deterministic fixture replay demo",
+    )
+    replay_demo.add_argument("--input", required=True, help="JSONL fixture or audit log path")
+    replay_demo.add_argument(
+        "--coalesce-ms",
+        default="1000",
+        help="Coalescing window in milliseconds (200-5000)",
+    )
+    replay_demo.add_argument("--format", choices=("json", "human"), default="json", help="Output format")
+    replay_demo.add_argument("--json-also", action="store_true", help="With --format human, also emit JSON")
+    replay_demo.set_defaults(func=cmd_proxy_replay)
 
     ph = sub.add_parser("proxy-health", help="Localhost proxy health check (read-only)")
     ph.add_argument("--host", default="", help="Override localhost host")
@@ -1174,6 +1300,16 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     )
     pbi.set_defaults(func=cmd_analytics_export_powerbi)
 
+    export_pbi = sub.add_parser(
+        "export-powerbi",
+        help="Alias for analytics-export-powerbi (star-schema CSV export)",
+    )
+    export_pbi.add_argument("--audit-dir", default="tests/fixtures/risk_analytics/audit_sample")
+    export_pbi.add_argument("--out-dir", default="analytics/powerbi/sample_csv")
+    export_pbi.add_argument("--portfolio-sample", action="store_true")
+    export_pbi.add_argument("--include-seed", action="store_true")
+    export_pbi.set_defaults(func=cmd_analytics_export_powerbi)
+
     star = sub.add_parser(
         "powerbi-export",
         help="Export Power BI star schema semantic model pack (read-only)",
@@ -1210,6 +1346,38 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     fs.add_argument("--seed", default="42")
     fs.add_argument("--out", default="examples/fleet/audit_sample")
     fs.set_defaults(func=cmd_fleet_simulate)
+
+    fb = sub.add_parser("fleet-benchmark", help="Fleet performance and classification benchmark")
+    fb.add_argument("--scenario", default="mixed_proxy_failures")
+    fb.add_argument("--endpoints", default="100")
+    fb.add_argument("--seed", default="42")
+    fb.add_argument("--format", choices=["json", "markdown"], default="json")
+    fb.add_argument("--out", default="", help="Output markdown path when --format markdown")
+    fb.set_defaults(func=cmd_fleet_benchmark)
+
+    be = sub.add_parser("browser-evidence", help="Playwright browser evidence package (screenshot + HAR)")
+    be.add_argument("--url", default="", help="URL to capture")
+    be.add_argument("--fixture", default="", help="Load fixture package JSON instead of live browser")
+    be.add_argument("--out", default="browser_evidence_out", help="Output directory for captures")
+    be.add_argument("--headed", action="store_true", help="Run browser headed (not headless)")
+    be.add_argument("--format", choices=["json", "package"], default="json")
+    be.set_defaults(func=cmd_browser_evidence)
+
+    cb = sub.add_parser("classifier-benchmark", help="Offline classifier evaluation harness")
+    cb.add_argument("--cases", default="examples/evaluation/classifier_benchmark_sample.json")
+    cb.add_argument("--format", choices=["json", "markdown"], default="json")
+    cb.set_defaults(func=cmd_classifier_benchmark)
+
+    rb = sub.add_parser("replay-benchmark", help="Evidence replay determinism benchmark")
+    rb.add_argument("--cases", default="tests/fixtures/evaluation/replay_cases.jsonl")
+    rb.add_argument("--replay-count", default="2")
+    rb.add_argument("--format", choices=["json", "markdown"], default="json")
+    rb.set_defaults(func=cmd_replay_benchmark)
+
+    ae = sub.add_parser("ai-eval", help="Fixture-based AI evals feedback loop (no live model calls)")
+    ae.add_argument("--cases", default="examples/ai_evals/support_bot_cases.json")
+    ae.add_argument("--format", choices=["json", "markdown"], default="markdown")
+    ae.set_defaults(func=cmd_ai_eval)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

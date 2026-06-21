@@ -13,7 +13,23 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 - Multi-domain adapters (Windows, Security, Cloud, Infrastructure, Market Events)
 - Research-only market catalyst monitoring (no trade execution)
 
-## Portfolio pack (recruiters, Big 4, FAANG, PL-300)
+## Portfolio pack (recruiters, Big 4, FAANG, PL-300, MSc)
+
+### Canonical research pack
+
+| Doc | Purpose |
+|-----|---------|
+| [research-framing.md](research-framing.md) | Research question, methodology, contribution |
+| [evidence-model.md](evidence-model.md) | Signal → governance pipeline |
+| [classification-taxonomy.md](classification-taxonomy.md) | Twelve primary labels + FP/FN |
+| [proof-tiers.md](proof-tiers.md) | T0–T5 ladder + remediation permissions |
+| [policy-gates.md](policy-gates.md) | ALLOW / PREVIEW / BLOCK mapping |
+| [evaluation.md](evaluation.md) | 15-scenario evaluation plan |
+| [limitations.md](limitations.md) | Limitations register |
+| [safety-model.md](safety-model.md) | Safety doctrine |
+| [msc-application-summary.md](msc-application-summary.md) | MSc / SOP application text |
+| [test-control-matrix.md](test-control-matrix.md) | CTRL-001–010 → pytest anchors |
+| [ai-evals-feedback-loop.md](ai-evals-feedback-loop.md) | GenAI eval harness — fixture-only feedback loop |
 
 | Doc | Purpose |
 |-----|---------|
@@ -23,6 +39,8 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 | [docker-demo.md](docker-demo.md) | Reviewer Docker Demo (Option C) |
 | [../real_evidence/case-001-dead-proxy/](../real_evidence/case-001-dead-proxy/) | Sanitized evidence case pack |
 | [architecture-infographic.md](architecture-infographic.md) | Mermaid evidence pipeline |
+| [enterprise-technology-risk-platform-blueprint.md](enterprise-technology-risk-platform-blueprint.md) | **Principal blueprint** — target enterprise architecture, schema, API, roadmap |
+| [decision-intelligence-platform-foundry-blueprint.md](decision-intelligence-platform-foundry-blueprint.md) | **Foundry-grade DIP** — Evidence Graph, copilot, 12-month roadmap |
 | [interview-demo-3min.md](interview-demo-3min.md) | FAANG / Big 4 / mixed panel demo paths |
 | [one-page-case-study-dead-proxy.md](one-page-case-study-dead-proxy.md) | Dead proxy case study |
 | [replay-demo.md](replay-demo.md) | Deterministic proxy replay |
@@ -187,7 +205,18 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 
 | Doc | Topic |
 |-----|-------|
-| `docs/case-studies/dead-localhost-proxy.md` | Golden 59081 dead proxy case |
+| `SYSTEM_DESIGN.md` | Unified system design — evidence pipeline, policy gates, audit, API, gaps |
+| `docs/case-studies/case-001-dead-localhost-proxy.md` | Case 001 — dead localhost proxy |
+| `docs/case-studies/case-002-wininet-winhttp-mismatch.md` | Case 002 — WinINET/WinHTTP mismatch |
+| `docs/case-studies/case-003-healthy-local-proxy.md` | Case 003 — healthy local proxy (negative case) |
+| `docs/case-studies/case-004-reverter-suspected.md` | Case 004 — reverter suspected |
+| `docs/case-studies/case-005-tls-path-mismatch.md` | Case 005 — TLS path mismatch |
+| `docs/case-studies/dead-localhost-proxy.md` | Legacy golden 59081 dead proxy case |
+| `docs/classifier-evaluation-report.md` | Classifier benchmark methodology |
+| `docs/evidence-replay-benchmark.md` | Replay benchmark methodology |
+| `docs/human-review-workflow.md` | Human review queue workflow |
+| `docs/ai-risk-analyst-guardrails.md` | AI explanation guardrails |
+| `docs/production-readiness-gap.md` | Production gap matrix (expanded) |
 | `docs/classification-model.md` | 12 primary labels + secondary signals |
 | `docs/proof-vs-observation.md` | Proof envelope vs observation |
 | `docs/interview-case-study.md` | Portfolio STAR narrative |

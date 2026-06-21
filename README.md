@@ -1,178 +1,98 @@
 # Technology Risk & Control Analytics Platform
 
-**In 30 seconds:** Windows endpoints often fail while still “online” — dead localhost proxies, WinINET/WinHTTP drift, TLS path mismatches. This repository **collects deterministic evidence**, **classifies incidents** with proof tiers (T0–T5), **runs control tests**, **gates remediation** (preview-only by default), and **exports audit-backed governance reports** and Power BI star-schema CSVs. It is an **evidence pipeline for technology risk** — not a repair bot or security product.
+**One-line summary:** An evidence-backed platform that turns Windows endpoint reliability signals into explainable classifications, control test results, policy-gated remediation previews, hash-chained audit trails, and analytics-ready governance exports.
 
-| If you are… | Start here |
+---
+
+## 30-second overview
+
+Windows endpoints often fail while still appearing “online.” Browsers show proxy errors; ping and DNS succeed; WinINET points at a dead localhost port; WinHTTP stays direct; TLS paths diverge; or an unknown process owns a local proxy listener.
+
+This repository is **not** a network repair script or autonomous AI agent. It is a **Technology Risk & Control Analytics Platform** that:
+
+1. Collects **deterministic, read-only evidence**
+2. Classifies incidents with **proof tiers (T0–T5)** and explicit **limitations**
+3. Runs **control tests** and **policy gates** (preview-only by default)
+4. Produces **audit logs**, **replayable reports**, and **Power BI–ready exports**
+
+Use it for operational decision support, internal audit evidence, technology risk committees, and platform/SRE reliability workflows — not as EDR, SIEM, malware detection, or a formal audit opinion engine.
+
+---
+
+## Who this is for
+
+| Audience | Why it matters |
+|----------|----------------|
+| **Big 4 / technology risk / IT audit** | Control testing, proof tiers, governance reports, CTRL-001–010 mapping |
+| **Platform / SRE / reliability engineering** | Deterministic classifiers, state-machine replay, CI safety contracts |
+| **FinTech / operational risk** | Policy-gated remediation, audit trail, management reporting |
+| **Internal audit / IT governance** | Hash-chained JSONL, replay verification, non-accusatory classifications |
+| **Data / BI / PL-300** | Star-schema CSV export, KPI rollups, report blueprint |
+| **AI governance / decision intelligence** | Advisory-only AI boundaries; humans authorize execution |
+| **MSc / research portfolio** | Reproducible evaluation harness, research framing, limitations register |
+
+**Start here by role**
+
+| If you are… | Read first |
 |-------------|------------|
-| **FAANG / platform / SRE** | [docs/faang-platform-review.md](docs/faang-platform-review.md) · [docs/state-machine.md](docs/state-machine.md) · [docs/api-trisk-examples.md](docs/api-trisk-examples.md) |
-| **Big 4 / technology risk / audit** | [docs/big4-interview-defense.md](docs/big4-interview-defense.md) · [docs/control-matrix.md](docs/control-matrix.md) · [reports/sample_governance_report.md](reports/sample_governance_report.md) |
-| **Power BI / PL-300** | [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) · [analytics/powerbi/report_blueprint.md](analytics/powerbi/report_blueprint.md) |
-| **3-minute live demo** | [docs/interview-demo-3min.md](docs/interview-demo-3min.md) · [docs/replay-demo.md](docs/replay-demo.md) |
+| Big 4 / audit | [docs/big4-interview-defense.md](docs/big4-interview-defense.md) · [docs/control-matrix.md](docs/control-matrix.md) · [reports/sample_governance_report.md](reports/sample_governance_report.md) |
+| Platform / SRE | [docs/faang-platform-review.md](docs/faang-platform-review.md) · [docs/state-machine.md](docs/state-machine.md) |
+| Power BI / analytics | [analytics/powerbi/report_blueprint.md](analytics/powerbi/report_blueprint.md) · [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) |
+| Research / MSc | [docs/research-framing.md](docs/research-framing.md) · [docs/evaluation.md](docs/evaluation.md) |
+| 3-minute demo | [docs/interview-demo-3min.md](docs/interview-demo-3min.md) |
 
-**One-line summary:** An evidence-backed platform that turns Windows endpoint reliability signals into explainable classifications, control test results, policy-gated remediation previews, hash-chained audit trails, and committee-ready analytics.
-
-**Portfolio:** [PORTFOLIO.md](PORTFOLIO.md) · **Architecture (Mermaid):** [docs/architecture-infographic.md](docs/architecture-infographic.md) · **Case study:** [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md) · **Onboarding:** [docs/ONBOARDING.md](docs/ONBOARDING.md)
-
----
-
-## Non-claims and boundaries
-
-This project **does not** and **must not** be presented as:
-
-| We do **not** claim | What we **do** instead |
-|---------------------|-------------------------|
-| Antivirus, EDR, XDR, or MITM detection | Path/listener/TLS **evidence** with explicit `limitations[]` |
-| Malware or compromise verdicts | Reliability triage labels (`DEAD_PROXY_CONFIG`, not `MALWARE_DETECTED`) |
-| Autonomous remediation | Dry-run default; typed confirmation for registry mutations |
-| AI-authorized execution | AI assists **explanation only** — humans authorize apply |
-| Formal audit opinions | Governance reports are **management information** for committees |
-| Process kill / firewall reset / adapter disable by default | Blocked in policy registry; not default CLI behavior |
-
-Safety contracts are enforced in CI: `tests/test_proxy_classifier_safety_contract.py`, `tests/test_policy_safety_contract.py`. ADR: [docs/adr/ADR-portfolio-positioning.md](docs/adr/ADR-portfolio-positioning.md).
+**Deep references:** [PORTFOLIO.md](PORTFOLIO.md) · [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) · [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
 
 ---
 
-## Production-like prototype upgrades
+## The problem
 
-Reviewer-facing artifacts for a **production-shaped platform prototype** (still portfolio scope — not shipped enterprise software):
+Teams lose time and audit defensibility when endpoint failures are handled ad hoc:
 
-| Artifact | Path |
-|----------|------|
-| Real evidence case pack | [real_evidence/case-001-dead-proxy/](real_evidence/case-001-dead-proxy/) |
-| Production readiness gap table | [docs/production-readiness-gap.md](docs/production-readiness-gap.md) |
-| Threat model (10 abuse scenarios) | [docs/threat-model.md](docs/threat-model.md) |
-| Reviewer demo CLI | `python -m windows_network_toolkit reviewer-demo --mode big4\|faang\|mixed` |
-| Fleet simulate (primary CLI) | `python -m windows_network_toolkit fleet-simulate --scenario mixed_proxy_failures --endpoints 100 --seed 42` |
-| Docker reviewer demo | [docs/docker-demo.md](docs/docker-demo.md) |
+- **Symptom vs root cause:** Browser fails; network “looks fine” on ping/DNS
+- **Stack drift:** WinINET proxy enabled; WinHTTP direct; paths disagree
+- **Dead localhost proxy:** `ProxyServer=127.0.0.1:PORT` with no listener
+- **Ambiguous ownership:** Unknown process on proxy port — escalated as “malware” without proof
+- **Reverter behavior:** Proxy disabled, then silently re-enabled
+- **TLS path mismatch:** Browser TLS fails while curl/system path succeeds
 
-### Reviewer Docker Demo (Option C)
-
-| Stack | Compose file | Services | Use case |
-|-------|--------------|----------|----------|
-| **Full platform** | `docker-compose.yml` | API + Postgres + Prometheus + Grafana | Production-shaped local stack |
-| **Reviewer demo** | `docker-compose.demo.yml` | API only (`DEMO_MODE=true`, fixture volumes) | Hiring panels, read-only `/trisk/*` |
-
-```bash
-docker compose -f docker-compose.demo.yml up --build
-curl -s http://127.0.0.1:8000/health   # {"status":"ok","mode":"demo"}
-make demo-up demo-health demo-report
-```
-
-Legacy `python -m src fleet-simulate` remains unchanged.
+Without structured evidence, operators reset registry settings without logs, security over-escalates, and risk committees lack reproducible incident data.
 
 ---
 
-## What this proves in an interview
+## What this platform does
 
-- **Evidence-based diagnosis** — WinINET/WinHTTP/TLS evidence with explicit limitations  
-- **Control testing** — mature control tests (PASS/FAIL/PARTIAL/NOT_TESTED) per incident class  
-- **Policy-gated automation** — dry-run default, typed confirmation for registry paths  
-- **Auditability** — append-only hash-chained JSONL + tamper detection  
-- **Human-in-the-loop governance** — `RiskDecisionRecord`, human-review queue, proof tiers  
-- **Responsible AI boundary** — AI assists explanation; does not authorize execution  
-- **Platform engineering discipline** — fixtures, CI safety contracts, deterministic replay  
+| Capability | Description |
+|------------|-------------|
+| **Evidence collection** | Read-only WinINET/WinHTTP, listener, TLS, and optional browser signals |
+| **Classification** | Twelve primary labels (e.g. `DEAD_PROXY_CONFIG`, `REVERTER_SUSPECTED`) with confidence and limitations |
+| **Proof tiers** | T0–T5 claim-strength ladder; governs language and remediation permissions |
+| **Control tests** | PASS / FAIL / PARTIAL / NOT_TESTED per incident class |
+| **Policy gates** | ALLOW, PREVIEW, BLOCK, REQUIRE_CONFIRMATION, REQUIRE_HUMAN_REVIEW |
+| **Remediation preview** | Dry-run by default; typed confirmation for live registry apply |
+| **Audit trail** | Append-only hash-chained JSONL; `audit verify` |
+| **Replay & reporting** | Deterministic fixture replay; governance markdown/JSON |
+| **Analytics export** | Power BI star-schema and flat CSV layers |
 
-Deterministic classifiers (`proxy_state_machine.py`), fixture replay tests, safety contract CI, hash-chained audit verification, and explicit `limitations[]` on every classification output. See [docs/anti-code-paste-defense.md](docs/anti-code-paste-defense.md) · [docs/test-strategy.md](docs/test-strategy.md).
-
----
-
-## FAANG engineering review checklist
-
-| Check | Evidence |
-|-------|----------|
-| Deterministic classifiers | `pytest tests/test_proxy_state_transitions.py` |
-| Safety contracts | `pytest tests/test_proxy_classifier_safety_contract.py` |
-| Full test suite | `pytest -q` |
-| Audit hash chain | `tests/platform_core/governance/test_audit_tamper_detection.py` |
-| Replay determinism | [docs/replay-demo.md](docs/replay-demo.md) |
-| State machine | [docs/state-machine.md](docs/state-machine.md) |
-| Platform review pack | [docs/faang-platform-review.md](docs/faang-platform-review.md) |
-| API examples | [docs/api-trisk-examples.md](docs/api-trisk-examples.md) |
+This is **portfolio- and prototype-grade** engineering with production-shaped components (FastAPI `/v1`, Postgres option, Docker demo). It is **not** marketed as enterprise-certified, production-hardened, or a replacement for EDR/SIEM/ITSM.
 
 ---
 
-## Big 4 audit review checklist
+## Important distinction
 
-| Check | Evidence |
-|-------|----------|
-| Control matrix CTRL-001–010 | [docs/control-matrix.md](docs/control-matrix.md) |
-| Control methodology | [docs/control-testing-methodology.md](docs/control-testing-methodology.md) |
-| Proof ladder T0–T5 | [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md) |
-| Governance report sample | [reports/sample_governance_report.md](reports/sample_governance_report.md) |
-| Risk register | [docs/risk_register.md](docs/risk_register.md) |
-| Interview defense | [docs/big4-interview-defense.md](docs/big4-interview-defense.md) |
-| 3-min demo paths | [docs/interview-demo-3min.md](docs/interview-demo-3min.md) |
+**This system does not let AI blindly decide or repair endpoints.**
 
----
+AI (when enabled) assists **explanation drafting only**. Execution authority stays with:
 
-## Problem statement
+- Deterministic classifiers and proof rules
+- Policy gates and safety contracts
+- Human review and typed confirmation
 
-Windows endpoints often appear “online” while browsers and business apps fail. Common causes include WinINET/WinHTTP proxy drift, dead localhost proxy ports, and TLS path differences. Teams waste cycles when:
-
-- IT resets settings without evidence  
-- Security escalates without proof tier  
-- Audit cannot reconstruct who decided what  
-- Risk committees lack incident KPIs
+The platform’s job is to produce **structured, auditable evidence** so humans, policy rules, and approved workflows can make better operational and risk decisions.
 
 ---
 
-## Why this matters for technology risk
-
-
-| Stakeholder           | Value                                                     |
-| --------------------- | --------------------------------------------------------- |
-| IT / Endpoint support | Structured diagnosis instead of ad-hoc registry edits     |
-| Security              | Triage without false malware accusations                  |
-| Compliance / Audit    | Hash-chained JSONL + governance reports                   |
-| Risk committees       | KPI rollups, control tests, risk ratings with limitations |
-| Platform / SRE        | Deterministic replay, CI safety contracts                 |
-
-
----
-
-## Known limitations
-
-- Portfolio-ready semantic model export — not a deployed Power BI Service tenant  
-- Registry writer proof requires Sysmon/Procmon/EventLog — not bundled by default  
-- Windows-focused WinINET/WinHTTP scope — not cross-platform EDR  
-- Confidence values are ordinal ranking weights, not calibrated probabilities  
-- Governance reports are management information — not formal audit opinions  
-
-See [docs/risk-control-framework.md](docs/risk-control-framework.md) and [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md).
-
----
-
-## Power BI / PL-300 portfolio layer
-
-This feature converts governance audit evidence into **Power BI-ready star schema tables**. It demonstrates data preparation, semantic modeling, DAX KPI design, report storytelling, and RLS design for technology risk reporting — **without** autonomous security decisions or malware verdicts.
-
-
-| PL-300 skill              | Repository evidence                                                                                                                                |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Prepare the data**      | `powerbi-export` CLI — JSONL → CSV ([power_query_guidance.md](examples/powerbi/power_query_guidance.md))                                           |
-| **Model the data**        | Star schema pack: `fact_`* + `dim_*` in [examples/powerbi/export/](examples/powerbi/export/)                                                       |
-| **Visualize and analyze** | DAX measures + 4-page blueprint ([analytics/powerbi/dax/measures.md](analytics/powerbi/dax/measures.md), [analytics/powerbi/report_blueprint.md](analytics/powerbi/report_blueprint.md)) |
-| **Manage and secure**     | RLS role design ([analytics/powerbi/rls_design.md](analytics/powerbi/rls_design.md)) · [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) |
-
-
-```powershell
-# Primary command — star schema semantic model pack
-python -m windows_network_toolkit powerbi-export `
-  --audit-dir tests/fixtures/risk_analytics/audit_sample `
-  --out-dir examples/powerbi/export
-
-# Legacy flat CSV export (still supported)
-python -m windows_network_toolkit analytics-export-powerbi --portfolio-sample --out-dir analytics/powerbi/data
-```
-
-**Feature name:** Power BI Risk Analytics Export + Semantic Model Pack  
-**Honest scope:** Portfolio-ready layer — not a published Power BI Service deployment.
-
-See also: [analytics/powerbi/README.md](analytics/powerbi/README.md) (earlier portfolio iteration)
-
----
-
-## Architecture overview
+## Architecture
 
 ```text
 Evidence collection → Classification → Proof / control tests → Policy gates
@@ -181,349 +101,353 @@ Evidence collection → Classification → Proof / control tests → Policy gate
 
 ```mermaid
 flowchart LR
-  E[Evidence] --> C[Classify]
-  C --> P[Proof]
-  P --> R[Risk rate]
-  R --> Pol[Policy]
-  Pol --> Prev[Preview]
-  Prev --> Aud[Audit]
-  Aud --> Rep[Report]
+  Obs[Observation] --> Hyp[Hypothesis]
+  Hyp --> Prf[Proof]
+  Prf --> Cls[Classification]
+  Cls --> Pol[Policy decision]
+  Pol --> Prev[Previewed action]
+  Prev --> Aud[Audit log]
+  Aud --> Rep[Report / replay]
 ```
 
+**Code layout**
 
+| Layer | Location |
+|-------|----------|
+| Canonical engine | `src/platform_core/` — classification, policy, audit, governance |
+| Primary CLI | `windows_network_toolkit/` — JSON-first operator commands |
+| Platform API | `backend/` — FastAPI, optional Postgres, `/v1` enterprise routes |
+| Fixtures & tests | `tests/`, `fixtures/`, `examples/evidence/` |
 
-Details: [docs/architecture.md](docs/architecture.md) · [docs/architecture-infographic.md](docs/architecture-infographic.md)
+Details: [docs/architecture-infographic.md](docs/architecture-infographic.md) · [docs/architecture.md](docs/architecture.md) · [windows_network_toolkit/architecture.py](windows_network_toolkit/architecture.py)
 
 ---
 
-## Evidence-to-action workflow
+## Evidence model
 
-Six principles (`evidence_to_action.v1`):
+**Pipeline:** Observation → Hypothesis → Proof → Classification → Policy Decision → Previewed Action → Audit Log → Replay / Report
 
-1. **Observation is not proof**
-2. **Correlation is not causation**
-3. **Confidence is not certainty** (ordinal, not probability)
-4. **Classification is not accusation**
-5. **Policy permission is not safety guarantee**
-6. **Recommendation is not execution authority**
+| Stage | Output | Audit value |
+|-------|--------|-------------|
+| Observation | Raw proxy/TLS/listener reads | Timestamped signal |
+| Proof | Path contrast, listener checks | Separates observation from claim |
+| Classification | Primary label + `limitations[]` | Explainable triage |
+| Policy | Gate outcome | Shows why action was blocked or previewed |
+| Audit | Hash-chained JSONL | Tamper detection, replay |
 
-```text
-Collect → Classify → Prove → Rate risk → Policy → Preview → Audit → Report → Replay
-```
+Canonical doc: [docs/evidence-model.md](docs/evidence-model.md) · Principles: [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_governance_model.md)
 
-Spec: [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_governance_model.md)
+Six epistemic rules enforced in CI:
+
+1. Observation is not proof  
+2. Correlation is not causation  
+3. Confidence is not certainty (ordinal, not probability)  
+4. Classification is not accusation  
+5. Policy permission is not a safety guarantee  
+6. Recommendation is not execution authority  
 
 ---
 
-## Core commands
+## Classification model
+
+Primary labels include:
+
+`NO_PROXY` · `DEAD_PROXY_CONFIG` · `LOCAL_PROXY_ACTIVE` · `UNKNOWN_LOCAL_PROXY` · `KNOWN_DEV_PROXY` · `KNOWN_SECURITY_TOOL` · `SUSPICIOUS_PROXY` · `POSSIBLE_MITM_RISK` · `PAC_CONFIGURED` · `WININET_WINHTTP_MISMATCH` · `REVERTER_SUSPECTED` · `ERROR_INSUFFICIENT_DATA`
+
+Every classification carries **secondary signals**, **ordinal confidence**, and mandatory **`limitations[]`**. Labels are reliability triage — never `MALWARE_DETECTED` or `MITM_CONFIRMED`.
+
+Full taxonomy: [docs/classification-taxonomy.md](docs/classification-taxonomy.md) · Engine: `src/platform_core/classification/engine.py`
+
+---
+
+## Policy-gated remediation
+
+| Default | Requires explicit human confirmation |
+|---------|--------------------------------------|
+| Read registry / netstat | Registry mutation |
+| Classify & prove | Process kill |
+| Preview remediation (`--dry-run`) | Firewall reset |
+| Append audit logs | Adapter disable |
+| Fixture replay | Autonomous remediation |
+
+**`proxy-disable` defaults to dry-run.** Live apply requires `--dry-run false --confirm DISABLE_WININET_PROXY`.
+
+Proof tiers constrain what remediation language is permitted. See [docs/proof-tiers.md](docs/proof-tiers.md) and [docs/policy-gates.md](docs/policy-gates.md).
+
+---
+
+## Audit and replay
+
+| Artifact | Purpose |
+|----------|---------|
+| `.audit/*.jsonl` | Operator actions (status, preview, watch) |
+| `tests/fixtures/risk_analytics/audit_sample_chained/` | Valid hash-chain demo data |
+| `audit verify <file>` | Integrity check from genesis hash |
+| `proxy-replay` / `replay-demo` | State-machine replay from JSONL |
+| `replay-benchmark` | Deterministic regression harness |
+
+Governance sample: [reports/sample_governance_report.md](reports/sample_governance_report.md)
+
+---
+
+## Analytics, Power BI, and governance reporting
+
+Convert audit evidence into committee-ready outputs:
 
 ```powershell
-pip install -e ".[dev]"
+# Star-schema semantic model pack
+python -m windows_network_toolkit powerbi-export `
+  --audit-dir tests/fixtures/risk_analytics/audit_sample_chained `
+  --out-dir examples/powerbi/export
+
+# Flat CSV export (alias also available)
+python -m windows_network_toolkit export-powerbi `
+  --audit-dir tests/fixtures/risk_analytics/audit_sample_chained `
+  --out-dir analytics/powerbi/sample_csv
+
+# Governance report from audit directory
+python -m windows_network_toolkit governance-report `
+  --audit-dir tests/fixtures/risk_analytics/audit_sample `
+  --format markdown
+```
+
+**Honest scope:** Portfolio-ready semantic model and CSV layers — not a deployed Power BI Service tenant or formal SOC 2 attestation.
+
+Docs: [analytics/powerbi/schema.md](analytics/powerbi/schema.md) · [analytics/powerbi/report_blueprint.md](analytics/powerbi/report_blueprint.md) · [docs/control-matrix.md](docs/control-matrix.md) (CTRL-001–010)
+
+---
+
+## AI Evals Feedback Loop
+
+Optional parallel module showing how the same **evidence → classification → policy gate → audit/report** architecture applies to **GenAI model evaluation** (support-bot / RAG fixtures). It does not replace endpoint risk workflows and makes **no live LLM API calls**.
+
+```powershell
+python -m windows_network_toolkit ai-eval `
+  --cases examples/ai_evals/support_bot_cases.json `
+  --format markdown
+```
+
+Produces pass/fail/partial results, failure taxonomy labels, policy decisions, and a governance-style model quality report. **Not a formal model safety certification.**
+
+Full doc: [docs/ai-evals-feedback-loop.md](docs/ai-evals-feedback-loop.md)
+
+---
+
+## Example incident walkthrough
+
+**Narrative:** Browser fails with `ERR_PROXY_CONNECTION_FAILED`. Ping and DNS work. WinINET shows proxy enabled toward `127.0.0.1:59081`. No listener on that port. WinHTTP is direct. Process owner unclear.
+
+| Step | Action | Result |
+|------|--------|--------|
+| 1 | `proxy-status` | Structured WinINET/WinHTTP state |
+| 2 | `proxy-owner` | Listener check; owner unknown or absent |
+| 3 | `diagnose --proof` | Path contrast; proof envelope with limitations |
+| 4 | Classifier | `DEAD_PROXY_CONFIG` (+ mismatch secondary) |
+| 5 | Policy | `PREVIEW_ONLY` — no silent registry edit |
+| 6 | `proxy-disable --dry-run` | Remediation preview only |
+| 7 | Audit + report | JSONL row; governance markdown export |
+
+Fixture pack: [fixtures/dead_proxy_config/](fixtures/dead_proxy_config/) · Case study: [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md)
+
+---
+
+## Demo commands (fixture-safe)
+
+Works on any OS with fixtures — no live registry changes required.
+
+```powershell
+pip install -r requirements.txt
 $env:PYTHONPATH = (Get-Location).Path
 
-# Evidence & classification
-python -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_PROXY_CONFIG.json
+# Golden path (3-minute panel demo)
+python -m windows_network_toolkit proxy-status --fixture fixtures/dead_proxy_config/raw_signals.json
+python -m windows_network_toolkit diagnose --proof --fixture fixtures/dead_proxy_config/raw_signals.json
+python -m windows_network_toolkit proxy-disable --dry-run --fixture fixtures/dead_proxy_config/raw_signals.json
+python -m windows_network_toolkit audit verify tests/fixtures/risk_analytics/audit_sample_chained/incidents.jsonl
+python -m windows_network_toolkit governance-report --fixture fixtures/dead_proxy_config/raw_signals.json --format markdown
+
+# Evidence & monitoring (read-only)
+python -m windows_network_toolkit proxy-watch --fixture tests/fixtures/enert/dead_proxy_59081.json --format json
 python -m windows_network_toolkit proxy-health --fixture tests/fixtures/proxy_health_dead.json --json
-python -m windows_network_toolkit analytics-summary --fixture tests/fixtures/analytics_pipeline_fixture.json --json
-python -m windows_network_toolkit analytics-export --fixture tests/fixtures/analytics_pipeline_fixture.json --out reports/analytics
-python -m windows_network_toolkit evidence-report --analytics --fixture tests/fixtures/analytics_pipeline_fixture.json
-python -m windows_network_toolkit diagnose --proof --fixture examples/evidence/DEAD_PROXY_CONFIG.json
+python -m windows_network_toolkit tls-proof --url https://example.com --fixture tests/fixtures/enert/tls_cert_mismatch.json
+python -m windows_network_toolkit website-risk --url https://example.com
+python -m windows_network_toolkit evidence-report --fixture fixtures/dead_proxy_config/raw_signals.json --format markdown
+python -m windows_network_toolkit proxy-timeline --audit
 
-# Risk & governance
-python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
+# Risk & controls
 python -m windows_network_toolkit control-test --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
-python -m windows_network_toolkit risk-kpi-summary --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
-python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
 
-# Evidence report & audit
-python -m windows_network_toolkit evidence-report --url https://example.com --fixture tests/fixtures/enert/dead_proxy_59081.json --format markdown
-python -m windows_network_toolkit audit verify tests/fixtures/analytics/audit_sample/incidents.jsonl
+# Replay
+python -m windows_network_toolkit replay-demo --input tests/fixtures/proxy_transitions/proxy_enable_flapping_loop.jsonl
 
-# Intermittent proxy soak (Windows)
-make proxy-intermittent
+# AI evals (fixture-only, no API keys)
+python -m windows_network_toolkit ai-eval --cases examples/ai_evals/support_bot_cases.json --format markdown
+
+# Evaluation
+python -m windows_network_toolkit classifier-benchmark --cases examples/evaluation/classifier_benchmark_sample.json
+pytest -q tests/evaluation/
 ```
 
-Legacy / extended CLI: `python -m src` · Full reference: [docs/cli_reference.md](docs/cli_reference.md)
-
-### FastAPI — Technology Risk Analytics (read-only)
+**API (optional, read-only demo):**
 
 ```powershell
-uvicorn backend.main:app --reload
-# GET /trisk/health        — technology risk API health
-# GET /incidents           — classified incidents from pipeline
-# GET /risks               — typed risk scores
-# GET /controls            — control tests + incident→control map
-# GET /reports/executive   — executive governance JSON
+uvicorn backend.main:app --host 127.0.0.1 --port 8000
+# GET /trisk/health  ·  GET /incidents  ·  GET /reports/executive
 ```
 
-Docs: [docs/risk-model.md](docs/risk-model.md) · [docs/powerbi-schema.md](docs/powerbi-schema.md) · [docs/architecture.md](docs/architecture.md)
+Full CLI reference: [docs/cli_reference.md](docs/cli_reference.md)
 
 ---
 
 ## Safety boundaries
 
+This project **must not** be presented as antivirus, EDR, XDR, autonomous repair, or formal audit sign-off.
 
-| Allowed by default      | Blocked without explicit human confirmation |
-| ----------------------- | ------------------------------------------- |
-| Read registry / netstat | Registry mutation                           |
-| Classify & prove        | Process kill                                |
-| Preview remediation     | Firewall reset                              |
-| Append audit logs       | Adapter disable                             |
-| Fixture replay          | Autonomous remediation                      |
+| We do **not** claim | What we **do** instead |
+|---------------------|-------------------------|
+| Malware or compromise verdicts | Reliability labels with `limitations[]` |
+| Confirmed MITM | `POSSIBLE_MITM_RISK` triage only |
+| Autonomous remediation | Preview-only default; typed confirmation |
+| AI-authorized execution | AI assists explanation; humans authorize apply |
+| Silent registry / firewall / adapter changes | Blocked by policy and CI safety contracts |
+| Enterprise production certification | Production-**shaped** prototype with documented gaps |
 
+Enforced in CI: `tests/test_policy_safety_contract.py` · `tests/test_proxy_classifier_safety_contract.py`
 
-`proxy-disable` defaults to **dry-run**. Live apply requires `--dry-run false --confirm DISABLE_WININET_PROXY`.
-
-See [docs/safety_model.md](docs/safety_model.md) · [SECURITY.md](SECURITY.md)
+Canonical safety doc: [docs/safety-model.md](docs/safety-model.md) · Limitations: [docs/limitations.md](docs/limitations.md)
 
 ---
 
-## Demo scenario
+## Portfolio positioning
 
-**Symptom:** Browser `ERR_PROXY_CONNECTION_FAILED`; ping/DNS OK.  
-**Evidence:** WinINET `127.0.0.1:59081`, no listener, WinHTTP direct.  
-**Classification:** `DEAD_PROXY_CONFIG` + `WININET_WINHTTP_MISMATCH`.  
-**Policy:** `PREVIEW_ONLY` until typed confirmation.  
+### Big 4 technology risk / IT audit
 
-Step-by-step: [docs/demo-script.md](docs/demo-script.md)
+- CTRL-001–010 control matrix with pass/fail interpretation  
+- Proof ladder T0–T5 and governance report sample  
+- Management information framing — not a formal audit opinion  
+- [docs/big4-interview-defense.md](docs/big4-interview-defense.md)
+
+### Platform / SRE
+
+- Deterministic classifiers and proxy state machine  
+- Replay benchmarks and fleet simulate  
+- Observability-shaped metrics and Docker demo stack  
+- [docs/faang-platform-review.md](docs/faang-platform-review.md)
+
+### FinTech risk and controls
+
+- Policy-gated remediation previews  
+- Ordinal risk ratings with limitations  
+- Audit hash chain before committee export  
+
+### Data / BI analytics
+
+- `powerbi-export` / `export-powerbi` star-schema and flat CSV  
+- DAX blueprint and RLS design docs  
+- [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md)
+
+### AI governance / decision intelligence
+
+- Advisory-only AI analyst with guardrails  
+- Human review queue and proof-tier caps  
+- [docs/ai-risk-analyst-guardrails.md](docs/ai-risk-analyst-guardrails.md)
+
+**Interview talking points**
+
+1. **Why not a PowerShell fix script?** — Audit trail, proof tiers, policy gates, replay.  
+2. **How do you avoid false malware accusations?** — Classification is not accusation; limitations on every output.  
+3. **How do you prevent autonomous damage?** — Dry-run default, typed tokens, CI safety contracts.  
+4. **Where does AI fit?** — Explanation acceleration only; decisions stay evidence-backed.  
+5. **Show auditability.** — `audit verify` + governance report from audit directory.
+
+---
+
+## Production-shaped prototype (optional depth)
+
+For reviewers who want infrastructure depth beyond the CLI:
+
+| Artifact | Path |
+|----------|------|
+| Docker full stack | `make prod-demo-up` · [docs/docker-production-shaped-demo.md](docs/docker-production-shaped-demo.md) |
+| `/v1` RBAC API | [docs/rbac-model.md](docs/rbac-model.md) |
+| Fleet benchmark | `make prod-demo-benchmark` |
+| Readiness gaps (honest) | [docs/production-readiness-gap.md](docs/production-readiness-gap.md) |
+| Threat model | [docs/threat-model.md](docs/threat-model.md) |
 
 ```powershell
-python -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_PROXY_CONFIG.json
-python -m windows_network_toolkit proxy-health --fixture examples/evidence/DEAD_PROXY_CONFIG.json --json
-python -m windows_network_toolkit diagnose --proof --fixture examples/evidence/DEAD_PROXY_CONFIG.json
+docker compose -f docker-compose.demo.yml up --build
+python -m windows_network_toolkit reviewer-demo --mode mixed
 ```
 
 ---
 
-## How to tell whether a localhost proxy is healthy
+## Roadmap (planned / not yet complete)
 
-**localhost** means *this computer* (`127.0.0.1` or `localhost`). A **port** is the service “door number” Windows uses in WinINET `ProxyServer` (for example `127.0.0.1:62285`).
+Items documented in blueprints but **not** fully implemented:
 
-A process **listening** on that port is **not** enough for a healthy proxy:
+- Postgres multi-tenant row-level security  
+- Microsoft Entra ID RBAC for enterprise routes  
+- Evidence graph module (`/v1/graph/*`)  
+- Calibrated confidence (beyond ordinal tiers)  
+- Unified enum vocabulary across all legacy classifiers (adapters exist at boundaries)  
+- Published Power BI Service deployment  
 
-| Signal | Meaning |
-| ------ | ------- |
-| No listener / TCP connect fails | **Dead proxy** — browsers may show `ERR_PROXY_CONNECTION_FAILED` |
-| Listener exists, proxy probe fails | **Not a proxy** or **forwarding failed** — may be the wrong service on that port |
-| Proxy forwards HTTPS, direct also works | **Functional but auditable** — traffic routes through a local process |
-| Direct works, proxy fails | **High reliability risk** — WinINET points at a broken path |
-| ProxyEnable flips `0 → 1 → 0 → 1` quickly | **Reverter suspected** — something may be restoring proxy settings (correlation only) |
-
-**Read-only checks** (no registry changes):
-
-```powershell
-# Current WinINET proxy + health probes
-python -m windows_network_toolkit proxy-health
-python -m windows_network_toolkit proxy-health --host 127.0.0.1 --port 62285 --json
-
-# Watch for drift; human summary on localhost transitions
-python -m windows_network_toolkit proxy-watch --interval 5 --format human --coalesce-ms 1000
-
-# Replay JSONL audit fixtures through the state machine + control tests
-python -m windows_network_toolkit proxy-replay --input tests/fixtures/proxy_loop.jsonl
-```
-
-Classifications use full before/after state (not single-field diffs). See [docs/proxy-state-transitions.md](docs/proxy-state-transitions.md).
-
-```powershell
-# Latest proxy-path evidence report (markdown)
-python -m windows_network_toolkit evidence-report --latest --fixture tests/fixtures/evidence_report_latest.json
-```
-
-**Troubleshooting patterns**
-
-- **Dead localhost proxy:** `proxy_status` = `DEAD_LOCALHOST_PROXY` or `DIRECT_ONLY_WORKS`; policy suggests preview disable, not auto-fix.
-- **Active local proxy:** `HEALTHY_LOCALHOST_PROXY` / `BOTH_DIRECT_AND_PROXY_WORK`; review whether `node.exe` or dev tooling is expected.
-- **Reverter suspected:** `proxy-watch` reports `REVERTER_SUSPECTED`; registry writer proof still requires Sysmon/Procmon/EventLog.
-- **WinINET vs WinHTTP mismatch:** compare `proxy-status` WinINET block with WinHTTP direct-access flag.
-
-Listener and process names are **correlation only** unless registry writer evidence exists. See [docs/case-study-1-proxy-drift.md](docs/case-study-1-proxy-drift.md).
+See [docs/upgrade-deliverables.md](docs/upgrade-deliverables.md) · [docs/enterprise-technology-risk-platform-blueprint.md](docs/enterprise-technology-risk-platform-blueprint.md)
 
 ---
 
-## Evidence to analytics pipeline
-
-This toolkit is **not** malware detection, EDR/XDR, or autonomous remediation. It is an evidence-based endpoint reliability and technology risk analytics toolkit.
-
-```
-proxy-watch / proxy-health
-        ↓
-EvidenceEvent (normalized, raw snapshot preserved)
-        ↓
-IncidentRecord (class + risk + limitations)
-        ↓
-ControlTestResult (PASS / FAIL / PARTIAL / NOT_TESTED)
-        ↓
-dashboard_dataset.json + CSV exports
-        ↓
-Power BI / governance dashboards / evidence-report --analytics
-```
-
-| Stage | Module | Output |
-| ----- | ------ | ------ |
-| Normalize | `evidence_schema.py` | `EvidenceEvent` with tiers T0–T5 |
-| Classify | `incident_classifier.py` | `IncidentRecord` |
-| Control map | `control_tests.py` | Six endpoint controls |
-| Aggregate | `analytics.py` | Chart-ready counts |
-| Orchestrate | `analytics_pipeline.py` | JSON + CSV export |
-
-Legacy platform risk rollup (incidents.jsonl KPIs) remains available via `analytics-summary --legacy-platform --audit-dir <dir>`.
-
----
-
-## Example outputs
-
-**Classification JSON** (abbreviated):
-
-```json
-{
-  "classification": "DEAD_PROXY_CONFIG",
-  "classification_result": {
-    "primary_classification": "DEAD_PROXY_CONFIG",
-    "secondary_signals": ["WININET_WINHTTP_MISMATCH"],
-    "confidence": 0.92,
-    "limitations": ["Does not prove malware or MITM."]
-  },
-  "governance": { "execution_authority": "preview_only" }
-}
-```
-
-**Sample reports:** [examples/reports/](examples/reports/) · **Sample evidence:** [examples/evidence/](examples/evidence/)
-
----
-
-## Audit trail design
-
-
-| Store                                         | Purpose                                           |
-| --------------------------------------------- | ------------------------------------------------- |
-| `.audit/*.jsonl`                              | Operator actions (status, disable preview, watch) |
-| `tests/fixtures/risk_analytics/audit_sample/` | KPI / governance demo data                        |
-| Hash chain                                    | `audit verify` integrity check                    |
-
-
-Every decision output can include `governance` envelope + limitations. AI reasoning (when used) logs `provider` and `audit_id` — advisory metadata only.
-
----
-
-## What AI assisted with
-
-Documented in [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md):
-
-- README and portfolio narrative structure  
-- Markdown report templates  
-- Test case scaffolding ideas  
-- Demo script drafting
-
-Implementation: `src/platform_core/ai_risk_analyst/` — rule-based analyst with guardrails; optional LLM provider when API key present.
-
----
-
-## What AI does not decide
-
-- Proxy disable / registry changes  
-- Process termination  
-- Malware or compromise verdicts  
-- Confirmed MITM claims  
-- Control effectiveness attestation  
-- Regulatory sign-off
-
-Final decisions require **evidence + policy + human review**.
-
----
-
-## Business value
-
-- **Faster MTTR** with evidence-first diagnosis  
-- **Reduced false escalations** to security  
-- **Audit-ready artifacts** for technology risk forums  
-- **Teachable platform patterns** — event sourcing, policy gates, replay  
-- **Portfolio credibility** for risk and platform roles
-
-Framework mapping: [docs/framework_mapping.md](docs/framework_mapping.md) · Risk register: [docs/risk_register.md](docs/risk_register.md)
-
----
-
-## Interview talking points
-
-1. **“Why not just a PowerShell fix script?”** — Audit trail, proof tiers, policy gates, replay.
-2. **“How do you avoid accusing users of malware?”** — Classification is not accusation; limitations on every output.
-3. **“How do you prevent autonomous damage?”** — Dry-run default, typed tokens, CI safety contracts.
-4. **“Where does AI fit?”** — Explanation and documentation acceleration; decisions stay evidence-backed.
-5. **“Show me auditability.”** — JSONL hash chain + governance-report from audit dir.
-
-Extended materials: [PORTFOLIO.md](PORTFOLIO.md) · [docs/big4_interview_pitch.md](docs/big4_interview_pitch.md) · [docs/cyber_risk_consultant_demo.md](docs/cyber_risk_consultant_demo.md)
-
----
-
-## Installation
+## Installation and tests
 
 ```powershell
 git clone <repo-url>
 cd Windows-Network-Recovery-Toolkit
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
+pip install -r requirements.txt          # runtime + dev (editable install)
 $env:PYTHONPATH = (Get-Location).Path
-pytest -q tests/test_portfolio_case_studies.py tests/test_portfolio_evidence_suite.py
+
+pytest -q                                 # full suite (~1500+ tests)
+pytest -q tests/evaluation/               # 15-scenario matrix
+ruff check .
+make test                                 # Makefile wrapper
 ```
+
+CI: [.github/workflows/ci.yml](.github/workflows/ci.yml) — lint, test, typecheck, build-smoke
 
 ---
 
 ## Project structure
 
 ```text
-src/platform_core/         Canonical decision engine
-windows_network_toolkit/   Primary JSON-first CLI
-examples/evidence/         Portfolio evidence fixtures
-analytics/powerbi/         PL-300 Power BI CSV layer + model docs
-tests/                     Safety contracts + portfolio tests
-docs/                      Architecture, demos, case studies
-backend/                   FastAPI platform API
+src/platform_core/           Classification, policy, audit, governance engine
+src/platform_core/ai_evals/  Optional GenAI eval harness (fixture-only)
+windows_network_toolkit/     Primary CLI and analytics pipeline
+backend/                     FastAPI platform API
+fixtures/                    Demo incident packs (dead proxy, reverter, TLS, …)
+examples/evidence/           Portfolio evidence schema fixtures
+analytics/powerbi/           Schema docs and sample CSV exports
+tests/                       Safety contracts, evaluation matrix, replay tests
+docs/                        Architecture, case studies, interview packs
+reports/                     Sample governance report
 ```
-
----
-
-## Tests and CI
-
-```powershell
-make test          # Full pytest suite
-make lint          # Ruff
-make typecheck     # Mypy (portfolio modules: ai_risk_analyst, risk, governance, analytics)
-pytest -q tests/test_policy_safety_contract.py
-pytest -q tests/test_portfolio_evidence_suite.py
-pytest -q tests/test_powerbi_analytics.py
-```
-
-GitHub Actions: lint · test · typecheck · build-smoke · Windows zero-skip — [.github/workflows/ci.yml](.github/workflows/ci.yml)
 
 ---
 
 ## Documentation index
 
-
-| Doc                                                          | Purpose                 |
-| ------------------------------------------------------------ | ----------------------- |
-| [PORTFOLIO.md](PORTFOLIO.md)                                 | Interview pack          |
-| [docs/architecture-infographic.md](docs/architecture-infographic.md) | Mermaid evidence pipeline |
-| [docs/interview-demo-3min.md](docs/interview-demo-3min.md)   | FAANG / Big 4 / mixed demo |
-| [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md) | Dead proxy case study |
-| [docs/replay-demo.md](docs/replay-demo.md)                   | Deterministic replay walkthrough |
-| [docs/test-strategy.md](docs/test-strategy.md)               | Fixtures, safety contracts, tamper detection |
-| [docs/faang-platform-review.md](docs/faang-platform-review.md) | Platform / SRE reviewer pack |
-| [docs/big4-interview-defense.md](docs/big4-interview-defense.md) | Technology risk / audit defense |
-| [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) | PL-300 skill mapping |
-| [docs/adr/ADR-portfolio-positioning.md](docs/adr/ADR-portfolio-positioning.md) | Evidence pipeline ADR |
-| [docs/architecture.md](docs/architecture.md)                 | Layered architecture    |
-| [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md) | AI usage & guardrails   |
-| [analytics/powerbi/README.md](analytics/powerbi/README.md)   | PL-300 / Power BI layer |
-| [docs/control-matrix.md](docs/control-matrix.md)             | Control mapping (CTRL-001–010) |
-| [docs/domain-model.md](docs/domain-model.md)                 | Core domain entities    |
-| [docs/anti-code-paste-defense.md](docs/anti-code-paste-defense.md) | Reviewer defense guide  |
-| [docs/demo-faang-big4-review.md](docs/demo-faang-big4-review.md) | FAANG + Big 4 demo paths |
-| [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md)     | Proof tiers T0–T5       |
-| [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)   | Full index              |
-
+| Document | Purpose |
+|----------|---------|
+| [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) | Full index |
+| [docs/evidence-model.md](docs/evidence-model.md) | Evidence pipeline |
+| [docs/proof-tiers.md](docs/proof-tiers.md) | T0–T5 ladder |
+| [docs/classification-taxonomy.md](docs/classification-taxonomy.md) | Label definitions |
+| [docs/policy-gates.md](docs/policy-gates.md) | Gate mapping |
+| [docs/evaluation.md](docs/evaluation.md) | 15-scenario evaluation plan |
+| [docs/test-control-matrix.md](docs/test-control-matrix.md) | CTRL → pytest mapping |
+| [docs/interview-demo-3min.md](docs/interview-demo-3min.md) | Timed demo script |
+| [docs/ai-evals-feedback-loop.md](docs/ai-evals-feedback-loop.md) | GenAI eval harness (optional module) |
+| [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md) | Release hygiene |
 
 ---
 
