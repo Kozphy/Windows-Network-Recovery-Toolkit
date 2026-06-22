@@ -25,10 +25,8 @@ from typing import Any
 from windows_network_toolkit.proxy_state_machine import (
     TransitionClass,
     build_proxy_evidence_event,
-    classify_transition,
     coalesce_proxy_events,
     detect_reverter_loop_pattern,
-    normalize_proxy_state,
 )
 
 

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from src.platform_core.ai_risk_analyst.explanation_guardrails import (
+    ExplanationValidationResult,
+    sanitize_explanation_text,
+    validate_explanation_text,
+)
+
 from .guardrails import apply_guardrails, recommendation_passes_safety
 from .models import (
     AIRecommendation,
@@ -26,4 +32,7 @@ __all__ = [
     "RiskHypothesis",
     "apply_guardrails",
     "recommendation_passes_safety",
+    "ExplanationValidationResult",
+    "sanitize_explanation_text",
+    "validate_explanation_text",
 ]

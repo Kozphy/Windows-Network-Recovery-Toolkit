@@ -249,6 +249,18 @@ Full doc: [docs/ai-evals-feedback-loop.md](docs/ai-evals-feedback-loop.md)
 
 Fixture pack: [fixtures/dead_proxy_config/](fixtures/dead_proxy_config/) · Case study: [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md)
 
+### 3-layer recovery (Cursor / stale localhost proxy)
+
+For recurring `ERR_PROXY_CONNECTION_FAILED` when WinINET points at a dead `127.0.0.1:PORT`:
+
+```powershell
+.\scripts\configure-cursor-no-proxy.ps1          # root cause — restart Cursor after
+.\scripts\install-dead-proxy-guardian.ps1        # startup guardian (no admin)
+.\scripts\fix-wininet-proxy.cmd                  # emergency manual reset
+```
+
+Full guide: [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md)
+
 ---
 
 ## Demo commands (fixture-safe)

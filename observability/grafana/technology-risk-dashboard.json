@@ -1,0 +1,37 @@
+{
+  "title": "Technology Risk Pipeline",
+  "tags": ["trisk", "portfolio"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "title": "Evidence ingested",
+      "type": "stat",
+      "targets": [{ "expr": "evidence_events_ingested_total" }]
+    },
+    {
+      "title": "Incidents classified",
+      "type": "graph",
+      "targets": [{ "expr": "incidents_classified_total" }]
+    },
+    {
+      "title": "Classification latency (sum/count)",
+      "type": "graph",
+      "targets": [
+        { "expr": "classification_latency_seconds_sum" },
+        { "expr": "classification_latency_seconds_count" }
+      ]
+    },
+    {
+      "title": "Human review queue depth",
+      "type": "stat",
+      "targets": [{ "expr": "human_review_queue_depth" }]
+    },
+    {
+      "title": "Worker jobs",
+      "type": "graph",
+      "targets": [{ "expr": "worker_jobs_total" }]
+    }
+  ],
+  "schemaVersion": 38,
+  "version": 1
+}

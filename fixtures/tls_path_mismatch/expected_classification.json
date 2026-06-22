@@ -1,0 +1,10 @@
+{
+  "primary_classification": "POSSIBLE_MITM_RISK",
+  "secondary_signals": [
+    "LOCALHOST_PROXY",
+    "TLS_PATH_DIVERGENCE"
+  ],
+  "proof_tier": "T3",
+  "confidence_min": 0.3,
+  "limitations_required": true
+}

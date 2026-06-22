@@ -267,6 +267,20 @@ def cmd_principles_validate(args: argparse.Namespace) -> int:
     return 0 if result.compliant else 1
 
 
+def cmd_proxy_guardian(args: argparse.Namespace) -> int:
+    """Auto-clear dead localhost WinINET proxy when no listener is bound."""
+    from windows_network_toolkit.proxy_guardian import run_proxy_guardian_once
+
+    dry_run = args.dry_run.lower() != "false"
+    payload = run_proxy_guardian_once(dry_run=dry_run)
+    _emit_json(payload)
+    if payload.get("unsupported_platform"):
+        return 2
+    if payload.get("action_taken") == "blocked":
+        return 1
+    return 0
+
+
 def cmd_proxy_disable(args: argparse.Namespace) -> int:
     """Run gated WinINET proxy disable (preview by default).
 
@@ -1097,6 +1111,24 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     )
     pd.add_argument("--confirm", default="", help="Typed confirmation token")
     pd.set_defaults(func=cmd_proxy_disable)
+
+    pg = sub.add_parser(
+        "proxy-guardian",
+        help="Auto-clear dead localhost WinINET proxy (for scheduled guardian)",
+    )
+    pg.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="false",
+        help="Preview only (default false for --once guardian runs)",
+    )
+    pg.add_argument(
+        "--once",
+        action="store_true",
+        help="Run one guardian check (default behavior)",
+    )
+    pg.set_defaults(func=cmd_proxy_guardian)
 
     pw = sub.add_parser("proxy-watch", help="Poll WinINET proxy for drift (read-only)")
     pw.add_argument("--duration", default="900", help="Watch duration seconds")

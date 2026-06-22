@@ -1,7 +1,3 @@
-# Developer tooling — prefer: pip install -e ".[dev]"
-pytest>=8.0
-ruff>=0.8.0
-black>=24.0
-mypy>=1.13
-pre-commit>=4.0
-types-python-jose
+# Prefer editable install so pyproject.toml runtime deps (sqlmodel, fastapi, …) are included.
+#   pip install -r requirements-dev.txt
+-e ".[dev]"

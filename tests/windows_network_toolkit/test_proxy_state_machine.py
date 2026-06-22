@@ -96,7 +96,6 @@ def test_remote_proxy_configured_high_risk() -> None:
 
 
 def test_reverter_loop_detection() -> None:
-    base = "2026-01-01T00:00:00Z"
     transitions = []
     states = [
         (False, None),

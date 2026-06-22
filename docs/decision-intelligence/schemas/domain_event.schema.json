@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kozphy.github.io/trisk/domain_event.schema.json",
+  "title": "TriskDomainEvent",
+  "description": "Append-only domain event for the Decision Intelligence Platform. Observation ≠ proof.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "aggregate_id",
+    "sequence",
+    "timestamp_utc",
+    "actor",
+    "limitations"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "pattern": "^devt-" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "ObservationRecorded",
+        "EvidenceCollected",
+        "IncidentDetected",
+        "HypothesisProposed",
+        "RiskClassified",
+        "ControlTestCompleted",
+        "PolicyEvaluated",
+        "DecisionRecorded",
+        "InvestigationOpened",
+        "ValidationCompleted",
+        "HumanReviewRequired",
+        "HumanApprovalGranted",
+        "HumanApprovalRejected",
+        "AIExplanationGenerated",
+        "AuditAppended",
+        "GovernanceReportGenerated",
+        "ReplayCertified",
+        "McpToolInvoked"
+      ]
+    },
+    "aggregate_id": { "type": "string" },
+    "aggregate_type": {
+      "type": "string",
+      "enum": ["endpoint", "evidence", "incident", "hypothesis", "decision", "report", "mcp"]
+    },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "tenant_id": { "type": "string" },
+    "actor": { "type": "string" },
+    "correlation_id": { "type": "string" },
+    "payload": { "type": "object", "additionalProperties": true },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "epistemic_tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "observation_only",
+          "correlation_only",
+          "proof_supported",
+          "ordinal_confidence",
+          "not_malware_verdict",
+          "not_causation_proof"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

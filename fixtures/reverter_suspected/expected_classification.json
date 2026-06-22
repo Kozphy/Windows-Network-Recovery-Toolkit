@@ -1,0 +1,9 @@
+{
+  "primary_classification": "REVERTER_SUSPECTED",
+  "secondary_signals": [
+    "REPEATED_PROXY_REAPPEARANCE"
+  ],
+  "proof_tier": "T2",
+  "confidence_min": 0.3,
+  "limitations_required": true
+}

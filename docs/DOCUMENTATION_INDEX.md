@@ -87,7 +87,7 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 
 ## Golden case (59081)
 
-Dead WinINET localhost proxy — see [case-studies/dead-localhost-proxy.md](case-studies/dead-localhost-proxy.md).
+Dead WinINET localhost proxy — see [case-studies/dead-localhost-proxy.md](case-studies/dead-localhost-proxy.md) and [dead-proxy-guardian.md](dead-proxy-guardian.md) (3-layer install: Cursor + guardian + emergency `.cmd`).
 
 ```powershell
 python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json

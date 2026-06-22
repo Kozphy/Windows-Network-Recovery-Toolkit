@@ -4,6 +4,38 @@ Answers for reviewers who ask **“Is this security software?”** or **“Can t
 
 ---
 
+## 60-second Big 4 pitch
+
+> "This platform translates endpoint proxy failure modes into control tests, evidence tiers, risk KPIs, and a governance report with explicit non-claims. Classifier and replay benchmarks run offline on fixtures — management information for committees, not a formal audit opinion. Human review gates accusatory-adjacent labels; remediation stays preview-only until typed confirmation."
+
+---
+
+## Evaluation harness (offline)
+
+| Harness | Command | Governance value |
+|---------|---------|------------------|
+| Classifier benchmark | `classifier-benchmark --cases examples/evaluation/classifier_benchmark_sample.json` | Measures label accuracy + forbidden phrase rate |
+| Replay benchmark | `replay-benchmark --cases tests/fixtures/evaluation/replay_cases.jsonl` | Proves deterministic pipeline for audit reproduction |
+
+See [classifier-evaluation-report.md](classifier-evaluation-report.md) · [evidence-replay-benchmark.md](evidence-replay-benchmark.md).
+
+---
+
+## Human review workflow
+
+Persistent queue in `human_review.jsonl` — AI cannot approve remediation or override policy. See [human-review-workflow.md](human-review-workflow.md).
+
+---
+
+## Management-information boundary
+
+- Governance reports are **committee-ready management information**
+- Not a formal audit opinion or SOC 2 attestation
+- `limitations[]` on every classification
+- `explanation_guardrails` blocks malware/MITM confirmed language
+
+---
+
 ## Why this is not antivirus
 
 - No signature engine, no quarantine, no threat hunting  
@@ -69,4 +101,10 @@ See [powerbi-interview-story.md](powerbi-interview-story.md).
 
 ## Demo
 
-[interview-demo-3min.md](interview-demo-3min.md) Path B · [one-page-case-study-dead-proxy.md](one-page-case-study-dead-proxy.md)
+```powershell
+python -m windows_network_toolkit classifier-benchmark --cases examples/evaluation/classifier_benchmark_sample.json --format markdown
+python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+pytest -q tests/platform_core/evaluation tests/platform_core/governance/test_human_review.py
+```
+
+[interview-demo-3min.md](interview-demo-3min.md) Path B · [case-studies/case-001-dead-localhost-proxy.md](case-studies/case-001-dead-localhost-proxy.md) · [human-review-workflow.md](human-review-workflow.md)

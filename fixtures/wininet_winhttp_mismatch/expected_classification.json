@@ -1,0 +1,10 @@
+{
+  "primary_classification": "DEAD_PROXY_CONFIG",
+  "secondary_signals": [
+    "WININET_WINHTTP_MISMATCH",
+    "LOCALHOST_PROXY"
+  ],
+  "proof_tier": "T2",
+  "confidence_min": 0.3,
+  "limitations_required": true
+}

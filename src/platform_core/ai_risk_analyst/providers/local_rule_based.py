@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from src.platform_core.ai_risk_analyst.explanation_guardrails import sanitize_explanation_text
 from src.platform_core.ai_risk_analyst.models import (
     AIRecommendation,
     AnalystEvidenceBundle,
@@ -88,12 +89,12 @@ class LocalRuleBasedAnalyst(AnalystProvider):
 
         return AIRecommendation(
             provider=self.name,
-            incident_summary=scenario["summary"],
-            likely_hypothesis=scenario["hypothesis"],
+            incident_summary=sanitize_explanation_text(scenario["summary"]),
+            likely_hypothesis=sanitize_explanation_text(scenario["hypothesis"]),
             missing_evidence=missing,
             risk_level=scenario["risk"],  # type: ignore[arg-type]
             confidence_level=scenario["confidence"],  # type: ignore[arg-type]
-            recommended_action=scenario["action"],
+            recommended_action=sanitize_explanation_text(scenario["action"]),
             human_review_notes="Rule-based analyst output; human review required for suspicious classes.",
             evidence_used=evidence_used,
             assumptions=[

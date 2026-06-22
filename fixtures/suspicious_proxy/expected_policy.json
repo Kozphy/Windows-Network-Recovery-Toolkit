@@ -1,0 +1,6 @@
+{
+  "policy_gate": "REQUIRE_HUMAN_REVIEW",
+  "outcome": "REQUIRE_HUMAN_REVIEW",
+  "dry_run_default": true,
+  "destructive_actions_blocked": true
+}

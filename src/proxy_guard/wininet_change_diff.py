@@ -35,6 +35,13 @@ from __future__ import annotations
 from typing import Any
 
 
+def _norm_str(value: object) -> str:
+    """Normalize optional string-like values for safe comparison."""
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
 def _field_label(key: str) -> str:
     mapping = {
         "proxy_enable": "ProxyEnable",
@@ -153,7 +160,7 @@ def diff_wininet_states(
     remote_added = (
         enabled_after
         and not localhost_after
-        and not _norm_str(after.get("proxy_server")) == ""
+        and _norm_str(after.get("proxy_server")) != ""
         and after.get("proxy_server") is not None
         and (not enabled_before or "ProxyServer" in changed_fields)
     )

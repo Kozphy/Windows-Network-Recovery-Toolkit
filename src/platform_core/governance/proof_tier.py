@@ -14,6 +14,7 @@ class ProofTier(StrEnum):
     T2_RUNTIME_CORROBORATION = "T2_RUNTIME_CORROBORATION"
     T3_BEHAVIORAL_REPRODUCTION = "T3_BEHAVIORAL_REPRODUCTION"
     T4_OPERATOR_CONFIRMED = "T4_OPERATOR_CONFIRMED"
+    T5_GOVERNANCE_PROOF = "T5_GOVERNANCE_PROOF"
 
 
 _TIER_ORDER = [
@@ -22,6 +23,7 @@ _TIER_ORDER = [
     ProofTier.T2_RUNTIME_CORROBORATION,
     ProofTier.T3_BEHAVIORAL_REPRODUCTION,
     ProofTier.T4_OPERATOR_CONFIRMED,
+    ProofTier.T5_GOVERNANCE_PROOF,
 ]
 
 _DEFAULT_LIMITATIONS = [
@@ -87,12 +89,48 @@ def _operator_confirmed(fixture: dict[str, Any]) -> bool:
     return False
 
 
+def _governance_proof(fixture: dict[str, Any]) -> bool:
+    """T5: human-confirmed apply with verified audit chain reference."""
+    if not _operator_confirmed(fixture):
+        return False
+    chain = fixture.get("audit_chain_verification") or {}
+    if chain.get("verified") is True:
+        return True
+    for row in fixture.get("audit_log_entries") or []:
+        if row.get("replay_certified") or row.get("chain_verified"):
+            return True
+    return bool(fixture.get("governance_proof"))
+
+
+def map_proof_tier_to_evidence_tier(tier: ProofTier | str) -> str:
+    """Map T0–T5 proof tier labels to canonical evidence tier vocabulary."""
+    key = tier if isinstance(tier, ProofTier) else ProofTier(str(tier))
+    mapping = {
+        ProofTier.T0_OBSERVATION_ONLY: "OBSERVED_ONLY",
+        ProofTier.T1_LOCAL_CONFIG_EVIDENCE: "OBSERVED_ONLY",
+        ProofTier.T2_RUNTIME_CORROBORATION: "CORRELATED",
+        ProofTier.T3_BEHAVIORAL_REPRODUCTION: "PROVEN_NETWORK_IMPACT",
+        ProofTier.T4_OPERATOR_CONFIRMED: "PROVEN_REGISTRY_WRITER",
+        ProofTier.T5_GOVERNANCE_PROOF: "FINAL_CAUSATION",
+    }
+    return mapping.get(key, "OBSERVED_ONLY")
+
+
 def resolve_proof_tier(fixture: dict[str, Any]) -> ProofTierResult:
     """Map fixture evidence to proof tier with conservative caps."""
     primary = _classification(fixture)
     listener = _listener_found(fixture)
     limitations = list(_DEFAULT_LIMITATIONS)
     rationale_parts: list[str] = []
+
+    if _governance_proof(fixture):
+        return ProofTierResult(
+            proof_tier=ProofTier.T5_GOVERNANCE_PROOF,
+            proof_tier_label="Governance-confirmed reproducible evidence chain",
+            rationale="Human-confirmed action with audit chain verification.",
+            limitations=limitations
+            + ["Governance proof supports committee reporting — not formal audit opinion."],
+        )
 
     if _operator_confirmed(fixture):
         return ProofTierResult(

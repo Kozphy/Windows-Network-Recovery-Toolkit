@@ -50,7 +50,7 @@ RUN apt-get update \
     && useradd --uid 10001 --gid app --create-home app
 
 COPY --from=builder /wheels /wheels
-RUN pip install --no-cache-dir /wheels/*.whl "psycopg2-binary>=2.9" \
+RUN pip install --no-cache-dir /wheels/*.whl "psycopg2-binary>=2.9" "redis>=5" "rq>=1.16" \
     && rm -rf /wheels \
     && mkdir -p /data/platform \
     && chown -R app:app /data/platform /app

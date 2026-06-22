@@ -41,9 +41,24 @@ _EVIDENCE_TIERS = ("observation", "correlation", "proof")
 _POLICY_OUTCOMES = ("PREVIEW_ONLY", "REQUIRE_TYPED_CONFIRMATION")
 
 
-def _weighted_classes(rng: random.Random) -> list[str]:
+_SCENARIOS: dict[str, list[tuple[str, int]]] = {
+    "mixed_proxy_failures": _INCIDENT_WEIGHTS,
+    "dead_localhost_proxy_spike": [("DEAD_PROXY_CONFIG", 80), ("WININET_WINHTTP_MISMATCH", 20)],
+    "wininet_winhttp_drift": [("WININET_WINHTTP_MISMATCH", 70), ("DEAD_PROXY_CONFIG", 30)],
+    "known_dev_proxy_noise": [("HEALTHY_LOCALHOST_PROXY", 60), ("KNOWN_DEV_PROXY", 40)],
+    "reverter_suspected_loop": [("REVERTER_SUSPECTED", 70), ("DEAD_PROXY_CONFIG", 30)],
+    "tls_path_mismatch": [("POSSIBLE_MITM_RISK", 50), ("DEAD_PROXY_CONFIG", 50)],
+    "malformed_evidence_burst": _INCIDENT_WEIGHTS,
+    "duplicate_event_replay": _INCIDENT_WEIGHTS,
+}
+
+
+def _classes_for_scenario(scenario: str, rng: random.Random) -> list[str]:
+    weights = _SCENARIOS.get(scenario)
+    if not weights:
+        raise ValueError(f"unsupported scenario: {scenario}")
     pool: list[str] = []
-    for cls, weight in _INCIDENT_WEIGHTS:
+    for cls, weight in weights:
         pool.extend([cls] * weight)
     rng.shuffle(pool)
     return pool
@@ -95,7 +110,7 @@ def run_fleet_simulate(
     out_dir: Path,
 ) -> dict[str, Any]:
     """Generate synthetic incidents.jsonl compatible with analytics pipeline."""
-    if scenario != "mixed_proxy_failures":
+    if scenario not in _SCENARIOS:
         raise ValueError(f"unsupported scenario: {scenario}")
 
     rng = random.Random(seed)
@@ -104,7 +119,7 @@ def run_fleet_simulate(
     if incidents_path.is_file():
         incidents_path.unlink()
 
-    classes = _weighted_classes(rng)
+    classes = _classes_for_scenario(scenario, rng)
     base_time = datetime(2026, 6, 12, 8, 0, 0, tzinfo=UTC)
     endpoint_ids: list[str] = []
     rows_written = 0

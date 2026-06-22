@@ -63,6 +63,9 @@ Thumbs.db
 
 # Large / binary artifacts
 *.sqlite
+trisk_local.db
+schemathesis-junit.xml
+schemathesis-run.log
 *.zip
 *.exe
 *.msi

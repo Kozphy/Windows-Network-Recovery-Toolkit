@@ -11,7 +11,7 @@ System placement:
 
 Key invariants:
     * User-scoped access flows through ``get_current_user`` for SaaS-ish endpoints.
-    * Diagnosis ingestion paths honor plan quotas via ``backend.db.try_increment_usage_with_limit``.
+    * Diagnosis ingestion paths honor plan quotas via ``backend.legacy_sqlite.try_increment_usage_with_limit``.
     * Billing webhook duplication is tolerated idempotently (see `/webhook` handler docstrings).
     * Platform JSONL ingestion remains orthogonal to SQLite — mixed deployments still separate state.
 
@@ -36,7 +36,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -44,9 +44,22 @@ from platform_core.metrics import compute_platform_metrics
 from platform_core.settings import get_settings
 from platform_core.startup_checks import run_startup_checks, startup_state
 
-from .auth import AuthUser, get_current_user
-from .billing import create_checkout_session, verify_webhook
-from .db import (
+try:
+    from .billing import create_checkout_session, verify_webhook
+
+    _BILLING_AVAILABLE = True
+except ImportError:  # pragma: no cover - optional Stripe SDK for SaaS demo routes
+    _BILLING_AVAILABLE = False
+
+    def create_checkout_session(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("stripe package not installed")
+
+    def verify_webhook(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("stripe package not installed")
+
+from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
+from .jwt_auth import AuthUser, get_current_user
+from .legacy_sqlite import (
     ensure_user_org_project,
     get_history,
     get_project_for_user,
@@ -60,7 +73,6 @@ from .db import (
     try_increment_usage_with_limit,
     update_subscription,
 )
-from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 from .live_observability import router as toolkit_obs_router
 from .observability_metrics import bootstrap_labeled_metrics_from_storage
 from .platform_fleet_routes import router as platform_fleet_router
@@ -238,6 +250,18 @@ app.include_router(toolkit_obs_router)
 app.include_router(platform_router)
 
 
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    """Browser landing — OpenAPI Swagger UI."""
+    return RedirectResponse(url="/docs")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> Response:
+    """Avoid noisy 404 when browsers request a favicon on the API host."""
+    return Response(status_code=204)
+
+
 @app.get("/health", tags=["health"])
 def root_health() -> dict[str, str]:
     """Root liveness probe — ERP health fields plus demo vs standard mode."""
@@ -300,6 +324,20 @@ try:
 except ImportError:  # pragma: no cover
     pass
 
+try:
+    from backend.v1_routes import router as trisk_v1_router
+
+    app.include_router(trisk_v1_router)
+except ImportError:  # pragma: no cover
+    pass
+
+try:
+    from backend.decision_platform_routes import router as enterprise_router
+
+    app.include_router(enterprise_router)
+except ImportError:  # pragma: no cover
+    pass
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_settings.cors_origins_list(),
@@ -332,6 +370,14 @@ def prometheus_metrics() -> Response:
         from backend.decision_intelligence.metrics import render_prometheus_lines
 
         body = body.rstrip() + "\n" + render_prometheus_lines()
+    except ImportError:  # pragma: no cover
+        pass
+    try:
+        from backend.trisk_metrics import render_trisk_prometheus_lines
+
+        extra = render_trisk_prometheus_lines()
+        if extra:
+            body = body.rstrip() + "\n" + "\n".join(extra) + "\n"
     except ImportError:  # pragma: no cover
         pass
     return Response(content=body, media_type="text/plain; version=0.0.4; charset=utf-8")
@@ -515,6 +561,14 @@ def create_checkout(
     Side effects:
         Outbound API call to Stripe checkout endpoint.
     """
+    if not _BILLING_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Billing unavailable: install project dependencies "
+                "(pip install -e .) so the stripe package is present."
+            ),
+        )
     project = _resolve_project(user, None)
     if project["org_id"] != req.org_id:
         raise HTTPException(
@@ -549,6 +603,14 @@ async def webhook(request: Request) -> dict:
         - Detection: 400 invalid webhook responses and subscription mismatch.
         - Recovery: replay webhook after correcting secret/config metadata.
     """
+    if not _BILLING_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Billing unavailable: install project dependencies "
+                "(pip install -e .) so the stripe package is present."
+            ),
+        )
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     try:
