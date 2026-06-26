@@ -42,7 +42,7 @@ Deterministic read-only evidence, proof-tier classification with `limitations[]`
 
 Fixture-safe golden replay (~3 min): `make demo`
 
-→ [docs/demo_5_min.md](docs/demo_5_min.md) · [docs/demo-commands-reference.md](docs/demo-commands-reference.md) · [docs/interview-demo-3min.md](docs/interview-demo-3min.md)
+→ [docs/demo_5_min.md](docs/demo_5_min.md) · [docs/demo-commands-reference.md](docs/demo-commands-reference.md) · [docs/interview-demo-3min.md](docs/interview-demo-3min.md) · [Reviewer Docker Demo](docs/docker-demo.md) (`docker-compose.demo.yml`)
 
 ---
 

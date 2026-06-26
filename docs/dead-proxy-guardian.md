@@ -14,6 +14,7 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 
 | Layer | Script | Role |
 |-------|--------|------|
+| **0. One-shot auto** | `scripts/auto-fix-proxy.ps1` | Cursor fix + live guardian apply + 1-minute background guardian |
 | **1. Root cause** | `scripts/configure-cursor-no-proxy.ps1` | Stops Cursor from managing system proxy (`http.proxySupport: off`) |
 | **2. Startup guardian** | `scripts/install-dead-proxy-guardian.ps1` | At logon, runs a background loop every 5 minutes that clears **dead** proxy only |
 | **3. Emergency button** | `scripts/fix-wininet-proxy.cmd` | One-click manual HKCU disable when the browser is broken right now |
@@ -31,7 +32,13 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 
 ## Install (no admin required)
 
-From the repository root:
+**Fastest — automatic fix (recommended):**
+
+```powershell
+.\scripts\auto-fix-proxy.ps1
+```
+
+Or step by step from the repository root:
 
 ```powershell
 .\scripts\configure-cursor-no-proxy.ps1

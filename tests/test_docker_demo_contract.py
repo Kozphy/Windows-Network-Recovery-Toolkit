@@ -70,5 +70,13 @@ def test_favicon_returns_no_content() -> None:
 
 
 def test_readme_contains_reviewer_docker_demo_section() -> None:
+    """README is a navigation hub; Docker demo depth lives in docs/docker-demo.md."""
     readme = _read("README.md")
-    assert "Reviewer Docker Demo" in readme or "docker-compose.demo.yml" in readme
+    docker_doc = _read("docs/docker-demo.md")
+    readme_navigates = (
+        "Reviewer Docker Demo" in readme
+        or "docker-compose.demo.yml" in readme
+        or "docker-demo.md" in readme
+    )
+    assert readme_navigates
+    assert "docker-compose.demo.yml" in docker_doc

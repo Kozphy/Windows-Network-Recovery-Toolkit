@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report
+.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report fix-proxy
 
 WATCH_MINUTES ?= 15
 
@@ -41,6 +41,10 @@ typecheck:
 demo:
 	$(PYTHON) scripts/golden_demo.py
 	$(PYTEST) -q windows_network_toolkit/tests/test_replay.py tests/test_demo_replay_pipeline.py
+
+# Auto-fix dead localhost WinINET proxy (Windows, no prompts)
+fix-proxy:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/auto-fix-proxy.ps1
 
 # Starts API in fixture mode (requires uvicorn; blocks terminal).
 demo-api:
