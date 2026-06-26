@@ -30,4 +30,9 @@ MODULE_MAP = {
         "windows_network_toolkit/analytics_pipeline.py",
     ],
     "cli": ["windows_network_toolkit/cli.py"],
+    "lan_privacy": [
+        "windows_network_toolkit/diagnostics/lan_privacy/",
+        "windows_network_toolkit/lan_control_tests.py",
+    ],
+    "router_evidence": ["windows_network_toolkit/diagnostics/router_evidence/"],
 }

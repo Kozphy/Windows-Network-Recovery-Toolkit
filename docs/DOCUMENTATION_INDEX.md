@@ -13,6 +13,18 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 - Multi-domain adapters (Windows, Security, Cloud, Infrastructure, Market Events)
 - Research-only market catalyst monitoring (no trade execution)
 
+## Entry points (first visit)
+
+| Doc | Purpose |
+|-----|---------|
+| **[README.md](../README.md)** | **Navigation hub — summaries and links only** |
+| [quick-start.md](quick-start.md) | Clone, install, verify (`make demo`, `pytest`) |
+| [START_HERE.md](START_HERE.md) | Operator onboarding and safety guarantees |
+| [portfolio-positioning.md](portfolio-positioning.md) | Audience guides, interview talking points (moved from README) |
+| [demo-commands-reference.md](demo-commands-reference.md) | Full fixture-safe command catalog (moved from README) |
+| [incident-walkthrough-dead-proxy.md](incident-walkthrough-dead-proxy.md) | Step-by-step dead-proxy narrative (moved from README) |
+| [analytics-powerbi-quickstart.md](analytics-powerbi-quickstart.md) | Power BI export and governance reporting (moved from README) |
+
 ## Portfolio pack (recruiters, Big 4, FAANG, PL-300, MSc)
 
 ### Canonical research pack
@@ -30,10 +42,15 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 | [msc-application-summary.md](msc-application-summary.md) | MSc / SOP application text |
 | [test-control-matrix.md](test-control-matrix.md) | CTRL-001–010 → pytest anchors |
 | [ai-evals-feedback-loop.md](ai-evals-feedback-loop.md) | GenAI eval harness — fixture-only feedback loop |
+| [lan-privacy-monitor.md](lan-privacy-monitor.md) | Home/SOHO LAN discovery monitor + CLI |
+| [evidence-boundaries.md](evidence-boundaries.md) | HOST vs ROUTER vs PCAP evidence boundaries |
+| [privacy-risk-score.md](privacy-risk-score.md) | Transparent LAN privacy risk formula |
+| [lan-control-matrix.md](lan-control-matrix.md) | CTRL-LAN-001..008 |
+| [router-evidence-mode.md](router-evidence-mode.md) | Router log import and correlation |
+| [executive-report-template.md](executive-report-template.md) | `risk-executive-report` sections |
 
 | Doc | Purpose |
 |-----|---------|
-| **[README.md](../README.md)** | **30-second positioning + non-claims (start here)** |
 | [production-readiness-gap.md](production-readiness-gap.md) | Honest 15-row production gap table |
 | [threat-model.md](threat-model.md) | 10 abuse scenarios + test mapping |
 | [docker-demo.md](docker-demo.md) | Reviewer Docker Demo (Option C) |

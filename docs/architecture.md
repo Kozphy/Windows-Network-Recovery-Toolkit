@@ -2,6 +2,43 @@
 
 > **Positioning:** Decision infrastructure for endpoint reliability and technology risk — not antivirus, EDR, XDR, or autonomous remediation.
 
+## Executive pipeline
+
+```text
+Evidence → Classification → Proof / controls → Policy → Preview → Audit → Report → Replay
+```
+
+```mermaid
+flowchart LR
+  Obs[Observation] --> Cls[Classification]
+  Cls --> Pol[Policy]
+  Pol --> Aud[Audit]
+  Aud --> Rep[Report]
+```
+
+## Repository map
+
+| Layer | Location |
+|-------|----------|
+| Canonical engine | `src/platform_core/` |
+| Primary CLI | `windows_network_toolkit/` |
+| Platform API | `backend/` (FastAPI `/v1`, legacy `/platform`) |
+| LAN / router evidence | `windows_network_toolkit/diagnostics/lan_privacy/`, `router_evidence/` |
+| Fixtures & tests | `fixtures/`, `examples/`, `tests/` |
+
+```text
+src/platform_core/     Decision engine (evidence, policy, audit, governance)
+windows_network_toolkit/ Primary CLI, analytics, LAN modules
+backend/               FastAPI platform API
+frontend/              Demo dashboard (optional)
+fixtures/ examples/    Demo incident and evaluation packs
+analytics/powerbi/     Schema docs and sample exports
+tests/                 Safety contracts, evaluation matrix, replay tests
+docs/                  Architecture, case studies, runbooks, interview packs
+```
+
+---
+
 ## Layered design
 
 ```text

@@ -66,6 +66,13 @@ def _resolve_fixture(path_str: str) -> Path:
         repo / "tests" / "fixtures" / "classification" / f"{path_str}.json",
         repo / "tests" / "fixtures" / "case_studies" / path_str,
         repo / "tests" / "fixtures" / "case_studies" / f"{path_str}.json",
+        repo / "examples" / "lan" / path_str,
+        repo / "examples" / "lan" / f"{path_str}.json",
+        repo / "examples" / "lan" / f"{path_str}.jsonl",
+        repo / "examples" / "router" / path_str,
+        repo / "tests" / "fixtures" / "lan" / path_str,
+        repo / "tests" / "fixtures" / "lan" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "router" / path_str,
     ):
         if candidate.is_file():
             return candidate
@@ -1040,6 +1047,182 @@ def cmd_replay_benchmark(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_lan_inventory(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.collectors import collect_inventory
+
+    inject = None
+    if args.fixture:
+        data = _load_fixture_data(args.fixture)
+        inject = data if "devices" in data else data
+    payload = collect_inventory(subnet_override=args.subnet or "", inject=inject)
+    _emit_json(payload)
+    return 0 if payload.get("ok", True) else 1
+
+
+def cmd_lan_watch(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.watch import run_lan_watch
+
+    inject_sequence = None
+    if args.fixture:
+        data = _load_fixture_data(args.fixture)
+        inject_sequence = data.get("watch_sequence") or data.get("events")
+    payload = run_lan_watch(
+        duration=int(args.duration),
+        interval=float(args.interval),
+        audit_path=args.audit_path,
+        inject_sequence=inject_sequence,
+        include_mdns=args.mdns,
+    )
+    if payload.get("unsupported_platform"):
+        _emit_json(payload)
+        return 2
+    _emit_json(payload)
+    return 0
+
+
+def cmd_lan_mdns_summary(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.collectors import collect_mdns_summary
+
+    inject = _load_fixture_data(args.fixture) if args.fixture else None
+    payload = collect_mdns_summary(duration_seconds=float(args.duration), inject=inject)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_lan_ssdp_summary(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.collectors import collect_ssdp_summary
+
+    inject = _load_fixture_data(args.fixture) if args.fixture else None
+    payload = collect_ssdp_summary(duration_seconds=float(args.duration), inject=inject)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_lan_privacy_report(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.runner import (
+        load_bundle,
+        run_lan_privacy_report_pipeline,
+    )
+
+    if args.fixture:
+        bundle = load_bundle(_resolve_fixture(args.fixture))
+    elif args.watch_log:
+        bundle = {"host_log": args.watch_log}
+    else:
+        bundle = {"host_log": ".audit/lan-watch.jsonl"}
+    result = run_lan_privacy_report_pipeline(
+        bundle, fmt=args.format, out_dir=args.out_dir or ""
+    )
+    if args.format == "markdown":
+        print(result.get("markdown", ""))
+    elif args.format == "both":
+        if result.get("markdown"):
+            print(result["markdown"])
+        if not args.out_dir:
+            _emit_json(result["report"])
+    else:
+        _emit_json(result["report"])
+    return 0
+
+
+def cmd_lan_risk_score(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.runner import (
+        load_bundle,
+        run_lan_risk_score_pipeline,
+    )
+
+    if not args.fixture:
+        print("lan-risk-score requires --fixture", file=sys.stderr)
+        return 1
+    bundle = load_bundle(_resolve_fixture(args.fixture))
+    _emit_json(run_lan_risk_score_pipeline(bundle))
+    return 0
+
+
+def cmd_lan_control_test(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.classifier import classify_lan_behavior
+    from windows_network_toolkit.diagnostics.lan_privacy.privacy_risk_score import (
+        compute_privacy_risk_score,
+    )
+    from windows_network_toolkit.diagnostics.lan_privacy.runner import (
+        _resolve_observations,
+        load_bundle,
+    )
+    from windows_network_toolkit.lan_control_tests import run_lan_control_tests
+
+    if not args.fixture:
+        print("lan-control-test requires --fixture", file=sys.stderr)
+        return 1
+    bundle = load_bundle(_resolve_fixture(args.fixture))
+    observations, inventory, router_events = _resolve_observations(bundle)
+    devices = inventory.get("devices") or []
+    classification = classify_lan_behavior(observations=observations, devices=devices)
+    score = compute_privacy_risk_score(
+        observations=observations,
+        devices=devices,
+        router_events=router_events,
+        classification=classification.primary_classification,
+    )
+    results = run_lan_control_tests(
+        inventory=inventory,
+        observations=observations,
+        router_events=router_events,
+        score_result={
+            **score.to_dict(),
+            "primary_classification": classification.primary_classification,
+        },
+    )
+    _emit_json({"controls": [r.to_dict() for r in results]})
+    return 0
+
+
+def cmd_router_import(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.router_evidence.runner import run_router_import
+
+    inject = None
+    if args.fixture:
+        inject = _load_fixture_data(args.fixture).get("events")
+    payload = run_router_import(
+        import_type=args.type,
+        input_path=str(_resolve_fixture(args.input)),
+        out_path=args.out,
+        inject=inject,
+    )
+    _emit_json(payload)
+    return 0 if payload.get("ok") else 1
+
+
+def cmd_router_correlate(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.router_evidence.runner import run_router_correlation
+
+    payload = run_router_correlation(host_log=args.host_log, router_log=args.router_log)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_risk_executive_report(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.executive_report import (
+        render_executive_markdown,
+    )
+    from windows_network_toolkit.diagnostics.lan_privacy.runner import (
+        load_bundle,
+        run_executive_report_pipeline,
+    )
+
+    if not args.fixture:
+        print("risk-executive-report requires --fixture", file=sys.stderr)
+        return 1
+    bundle = load_bundle(_resolve_fixture(args.fixture))
+    result = run_executive_report_pipeline(
+        bundle, fmt=args.format, out_dir=args.out_dir or ""
+    )
+    if args.format == "markdown" and not args.out_dir:
+        print(render_executive_markdown(result["report"]))
+    elif not args.out_dir:
+        _emit_json(result["report"])
+    return 0
+
+
 def cmd_ai_eval(args: argparse.Namespace) -> int:
     from src.platform_core.ai_evals import load_eval_cases, render_eval_markdown, run_eval_suite
 
@@ -1410,6 +1593,63 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     ae.add_argument("--cases", default="examples/ai_evals/support_bot_cases.json")
     ae.add_argument("--format", choices=["json", "markdown"], default="markdown")
     ae.set_defaults(func=cmd_ai_eval)
+
+    li = sub.add_parser("lan-inventory", help="LAN asset inventory (read-only)")
+    li.add_argument("--fixture", default="", help="Fixture JSON for offline inventory")
+    li.add_argument("--subnet", default="", help="Subnet override for display")
+    li.add_argument("--json-only", action="store_true", help="JSON output only")
+    li.set_defaults(func=cmd_lan_inventory)
+
+    lw = sub.add_parser("lan-watch", help="Poll LAN neighbors and append JSONL (read-only)")
+    lw.add_argument("--duration", default="60", help="Watch duration seconds")
+    lw.add_argument("--interval", default="10", help="Poll interval seconds")
+    lw.add_argument("--fixture", default="", help="Fixture with watch_sequence")
+    lw.add_argument("--audit-path", default=".audit/lan-watch.jsonl", help="JSONL output path")
+    lw.add_argument("--mdns", action="store_true", help="Include brief mDNS sample each tick")
+    lw.set_defaults(func=cmd_lan_watch)
+
+    lms = sub.add_parser("lan-mdns-summary", help="mDNS discovery summary (read-only)")
+    lms.add_argument("--duration", default="5", help="Listen duration seconds")
+    lms.add_argument("--fixture", default="", help="Fixture inject")
+    lms.set_defaults(func=cmd_lan_mdns_summary)
+
+    lss = sub.add_parser("lan-ssdp-summary", help="SSDP/UPnP discovery summary (read-only)")
+    lss.add_argument("--duration", default="5", help="Probe duration seconds")
+    lss.add_argument("--fixture", default="", help="Fixture inject")
+    lss.set_defaults(func=cmd_lan_ssdp_summary)
+
+    lpr = sub.add_parser("lan-privacy-report", help="LAN privacy evidence report")
+    lpr.add_argument("--fixture", default="", help="Bundle or scenario fixture")
+    lpr.add_argument("--watch-log", default="", help="lan-watch JSONL path")
+    lpr.add_argument("--format", choices=["json", "markdown", "both"], default="json")
+    lpr.add_argument("--out-dir", default="", help="Write report files to directory")
+    lpr.set_defaults(func=cmd_lan_privacy_report)
+
+    lrs = sub.add_parser("lan-risk-score", help="Privacy risk score (transparent formula)")
+    lrs.add_argument("--fixture", required=True, help="Bundle fixture path")
+    lrs.set_defaults(func=cmd_lan_risk_score)
+
+    lct = sub.add_parser("lan-control-test", help="CTRL-LAN control matrix evaluation")
+    lct.add_argument("--fixture", required=True, help="Bundle fixture path")
+    lct.set_defaults(func=cmd_lan_control_test)
+
+    ri = sub.add_parser("router-import", help="Import router logs to normalized JSONL")
+    ri.add_argument("--type", required=True, choices=["dns", "firewall", "dhcp", "devices"])
+    ri.add_argument("--input", required=True, help="Router export file path")
+    ri.add_argument("--out", required=True, help="Output JSONL path")
+    ri.add_argument("--fixture", default="", help="Inject events instead of parsing input")
+    ri.set_defaults(func=cmd_router_import)
+
+    rc = sub.add_parser("router-correlate", help="Correlate host LAN log with router JSONL")
+    rc.add_argument("--host-log", required=True, help="lan-watch JSONL path")
+    rc.add_argument("--router-log", required=True, help="Router evidence JSONL path")
+    rc.set_defaults(func=cmd_router_correlate)
+
+    rer = sub.add_parser("risk-executive-report", help="Executive LAN technology risk report")
+    rer.add_argument("--fixture", required=True, help="Executive bundle fixture")
+    rer.add_argument("--format", choices=["json", "markdown", "both"], default="both")
+    rer.add_argument("--out-dir", default="", help="Output directory")
+    rer.set_defaults(func=cmd_risk_executive_report)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

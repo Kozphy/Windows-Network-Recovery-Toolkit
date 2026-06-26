@@ -4,6 +4,17 @@
 
 Canonical implementation: `src/platform_core/evidence/`, `src/platform_core/classification/`, `src/platform_core/policy/`, `src/platform_core/governance/`.
 
+## Platform capabilities
+
+Windows endpoints often fail while still appearing online (proxy errors, dead localhost ports, WinINET/WinHTTP drift). This platform:
+
+1. Collects **deterministic, read-only evidence**
+2. Classifies with **proof tiers (T0–T5)** and mandatory **`limitations[]`**
+3. Runs **control tests** and **policy gates** (preview-only by default)
+4. Produces **audit logs**, **replayable reports**, and **analytics-ready exports**
+
+**AI (when enabled) assists explanation drafting only.** Humans and policy rules authorize execution. See [ai-risk-analyst-guardrails.md](ai-risk-analyst-guardrails.md).
+
 ---
 
 ## Stage Reference
@@ -49,6 +60,8 @@ Canonical implementation: `src/platform_core/evidence/`, `src/platform_core/clas
 | `platform_core/governance/chain_of_custody.py` | Hash chain |
 
 Tests: `tests/test_evidence_level_contract.py`, `tests/test_observation_not_proof.py`
+
+LAN module: [evidence-boundaries.md](evidence-boundaries.md) · [lan-privacy-monitor.md](lan-privacy-monitor.md)
 
 ---
 

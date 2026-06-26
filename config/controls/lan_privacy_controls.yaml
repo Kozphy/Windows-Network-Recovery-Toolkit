@@ -1,0 +1,18 @@
+# CTRL-LAN home/SOHO privacy controls (doc parity — Python registry is authoritative)
+controls:
+  - id: CTRL-LAN-001
+    title: Maintain asset inventory
+  - id: CTRL-LAN-002
+    title: Detect unauthorized devices
+  - id: CTRL-LAN-003
+    title: Review IoT outbound DNS activity
+  - id: CTRL-LAN-004
+    title: Segment IoT from work devices
+  - id: CTRL-LAN-005
+    title: Disable unnecessary discovery protocols
+  - id: CTRL-LAN-006
+    title: Review UPnP exposure
+  - id: CTRL-LAN-007
+    title: Retain router logs
+  - id: CTRL-LAN-008
+    title: Investigate repeated subnet probing

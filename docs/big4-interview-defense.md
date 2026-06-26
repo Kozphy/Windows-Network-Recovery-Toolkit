@@ -96,6 +96,16 @@ See [powerbi-interview-story.md](powerbi-interview-story.md).
 | Does listener prove registry writer? | **No** — correlation only; Sysmon E13 for writer proof |
 | Can AI disable proxy? | **No** — policy + human confirmation only |
 | SOC 2 attestation? | **No** — design-effectiveness demo only |
+| Is this a spyware detector? | **No** — observed LAN discovery only; not confirmed surveillance |
+| Can host telemetry prove exfiltration? | **No** — router logs or PCAP required for outbound attribution |
+
+---
+
+## 60-second SOHO LAN pitch
+
+> "This module inventories LAN neighbors, classifies discovery versus probing patterns, imports optional router DNS/DHCP evidence, scores privacy risk with a transparent formula, and tests CTRL-LAN controls. Reports state observed activity — not confirmed spying or malware. Segmentation advice is preview-only."
+
+See [lan-privacy-monitor.md](lan-privacy-monitor.md) · [privacy-risk-score.md](privacy-risk-score.md) · [evidence-boundaries.md](evidence-boundaries.md).
 
 ---
 

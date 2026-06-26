@@ -4,6 +4,17 @@
 
 Principles: no silent registry changes; no silent process killing; no silent firewall reset; no adapter disable; preview-only by default; observation is not proof.
 
+## Non-claims summary
+
+| We do **not** claim | What we **do** |
+|---------------------|----------------|
+| Malware / compromise verdicts | Reliability labels + `limitations[]` |
+| Confirmed MITM or surveillance | Triage labels only; requires additional evidence |
+| Autonomous remediation | Dry-run default; typed confirmation for apply |
+| AI-authorized execution | AI explains; humans authorize |
+
+Related: [evidence-boundaries.md](evidence-boundaries.md) · [limitations.md](limitations.md) · [ai-risk-analyst-guardrails.md](ai-risk-analyst-guardrails.md)
+
 ---
 
 ## Allowed by Default (Read-Only)
