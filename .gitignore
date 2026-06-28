@@ -38,6 +38,8 @@ reports/
 !reports/sample_*.md
 !src/reports/
 !src/reports/**
+src/reports/**/__pycache__/
+src/reports/**/*.py[cod]
 !analytics/powerbi/reports/
 !analytics/powerbi/reports/**
 platform_data/
