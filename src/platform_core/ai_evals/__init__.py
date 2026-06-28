@@ -1,4 +1,18 @@
-"""AI evals feedback loop — fixture-based LLM evaluation harness."""
+"""AI evals feedback loop — fixture-based LLM evaluation harness.
+
+Deterministic evaluation of pre-recorded model outputs against JSON fixture cases.
+Each case embeds a ``model_output`` field; no live LLM or retrieval API calls are made.
+
+Modules:
+    evaluator: Case loading, heuristic checks, and suite aggregation.
+    failure_taxonomy: Failure labels, policy gates, and phrase heuristics.
+    policy: Maps failure labels to eval policy decisions.
+    report: Markdown and JSON report renderers.
+    schemas: Pydantic models for cases, results, and reports.
+
+Note:
+    Eval results are structured triage signals — not formal model safety certification.
+"""
 
 from __future__ import annotations
 

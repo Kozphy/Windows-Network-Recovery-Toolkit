@@ -1,4 +1,20 @@
-"""LAN privacy control tests — CTRL-LAN-001 through CTRL-LAN-008."""
+"""LAN privacy control tests (CTRL-LAN-001 through CTRL-LAN-008).
+
+Module responsibility:
+    Evaluate management controls against inventory, watch, router, and classification
+    evidence; emit PASS/FAIL/PARTIAL/NOT_TESTED results with remediation hints.
+
+System placement:
+    Invoked by ``lan-control-tests`` CLI and ``lan_privacy.runner`` executive pipeline.
+
+Key invariants:
+    * Results are management information — not audit opinions or security verdicts.
+    * Controls reference evidence types; missing evidence yields NOT_TESTED or PARTIAL.
+    * ``CONTROL_REGISTRY`` is the canonical definition set for all eight controls.
+
+Side effects:
+    * None — pure evaluation over in-memory evidence dicts.
+"""
 
 from __future__ import annotations
 

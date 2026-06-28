@@ -1,4 +1,10 @@
-"""Pydantic schemas for AI evals feedback loop."""
+"""Pydantic schemas for the AI evals feedback loop.
+
+Defines typed structures for fixture cases (including embedded ``ModelOutput``),
+per-case eval results, policy decisions, and aggregated suite reports.
+
+All model outputs are read from fixture JSON — this package never calls a live LLM API.
+"""
 
 from __future__ import annotations
 

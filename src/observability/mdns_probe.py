@@ -1,4 +1,19 @@
-"""mDNS discovery probe — brief UDP 5353 multicast listen (read-only)."""
+"""Read-only mDNS discovery probe (brief UDP 5353 multicast listen).
+
+Module responsibility:
+    Observe mDNS traffic on the local segment and return service/broadcaster hints.
+
+System placement:
+    Invoked by ``lan_privacy.collectors.collect_mdns_summary`` and ``mdns-probe`` CLI.
+
+Key invariants:
+    * Host-level observation only — no probe packets sent beyond socket bind/listen.
+    * Cannot infer malicious intent or exfiltration from mDNS alone.
+    * ``inject`` bypasses live socket work for tests and fixtures.
+
+Side effects:
+    * Binds UDP port 5353 for a bounded listen window (may fail if port is in use).
+"""
 
 from __future__ import annotations
 

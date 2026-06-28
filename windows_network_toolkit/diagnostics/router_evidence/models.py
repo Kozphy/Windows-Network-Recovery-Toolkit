@@ -1,4 +1,20 @@
-"""Router evidence models."""
+"""Router evidence models — canonical event types and serialization.
+
+Module responsibility:
+    Define ``RouterEvent`` dataclass, ``RouterEventType`` enum, and ``ROUTER_SCHEMA``
+    for normalized router log rows.
+
+System placement:
+    Shared by ``importers``, ``normalizer``, ``correlator``, and ``runner``.
+
+Key invariants:
+    * ``evidence_source`` defaults to ``ROUTER_LEVEL_EVIDENCE`` on all events.
+    * DNS events expose ``domain`` via ``query`` fallback in ``to_dict``.
+    * Schema version ``wnt.router_evidence.v1`` tags serialized JSONL.
+
+Side effects:
+    * None — types and serialization helpers only.
+"""
 
 from __future__ import annotations
 

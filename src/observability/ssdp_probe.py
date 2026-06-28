@@ -1,4 +1,19 @@
-"""SSDP/UPnP discovery probe — M-SEARCH and brief listen (read-only)."""
+"""Read-only SSDP/UPnP discovery probe (M-SEARCH and brief listen).
+
+Module responsibility:
+    Send SSDP M-SEARCH and collect UPnP discovery responses on the local segment.
+
+System placement:
+    Invoked by ``lan_privacy.collectors.collect_ssdp_summary`` and ``ssdp-probe`` CLI.
+
+Key invariants:
+    * Discovery activity is not a security verdict; WAN UPnP needs router evidence.
+    * Listen duration is clamped; ``inject`` bypasses live socket work for tests.
+    * Returns ``limitations`` on every path for safe downstream wording.
+
+Side effects:
+    * Sends one SSDP M-SEARCH multicast and listens on UDP 1900 for a bounded window.
+"""
 
 from __future__ import annotations
 

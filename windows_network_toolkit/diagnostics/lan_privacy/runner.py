@@ -1,4 +1,21 @@
-"""LAN privacy orchestration — bundle loading and command runners."""
+"""LAN privacy orchestration — bundle loading and command runners.
+
+Module responsibility:
+    Wire collectors, classifier, risk score, reports, controls, and optional router
+    correlation into single-call CLI pipelines.
+
+System placement:
+    Primary backend for ``lan-privacy-report``, ``lan-risk-score``, ``lan-executive-report``,
+    and related ``windows_network_toolkit.cli`` handlers.
+
+Key invariants:
+    * Optional imports (router correlation, control tests) degrade gracefully on ImportError.
+    * Bundle fixture paths resolved relative to repo layout for reproducible demos.
+    * Pipelines do not apply remediation — output is evidence and recommendations only.
+
+Side effects:
+    * May invoke watch, file writes, and subprocess-backed collectors per pipeline args.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,20 @@
-"""Network segmentation advisor — recommendation-only, preview mode."""
+"""Network segmentation advisor — recommendation-only, preview mode.
+
+Module responsibility:
+    Emit prioritized, preview-only segmentation suggestions from inventory flags,
+    classification, and optional router UPnP evidence.
+
+System placement:
+    Called by ``lan_privacy.runner`` and included in executive report output.
+
+Key invariants:
+    * Every ``SegmentationAdvice`` has ``preview_only=True`` — no config mutation.
+    * Recommendations use conditional language; not enforcement or policy apply.
+    * Absence of router evidence limits VLAN-specific advice to generic guidance.
+
+Side effects:
+    * None — pure recommendation generation.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,21 @@
-"""Bad-gateway diagnostic runner integrated with platform pipeline."""
+"""Bad-gateway diagnostic runner integrated with platform pipeline.
+
+Module responsibility:
+    Collect probes, classify cause, build platform evidence/decision envelope, optional audit.
+
+System placement:
+    Invoked by ``cmd_bad_gateway_diagnose`` and ``network_recovery.auto_fix``.
+
+Key invariants:
+    * Probes via ``collect_all`` are read-only.
+    * ``dry_run`` gates policy evaluation only; probes still run.
+
+Side effects:
+    May append platform audit via ``append_audit`` when configured.
+
+Audit Notes:
+    * Review returned ``policy_gate`` and ``safety_notes`` before any remediation.
+"""
 
 from __future__ import annotations
 

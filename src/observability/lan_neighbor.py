@@ -1,4 +1,21 @@
-"""LAN neighbor table collection — ARP cache and Get-NetNeighbor (Windows)."""
+"""Read-only LAN neighbor table collection (ARP cache and Get-NetNeighbor).
+
+Module responsibility:
+    Parse Windows neighbor tables into normalized IP/MAC device rows for inventory
+    and watch pipelines.
+
+System placement:
+    Called by ``windows_network_toolkit.diagnostics.lan_privacy.collectors`` and
+    ``lan-inventory`` / ``lan-watch`` CLI paths.
+
+Key invariants:
+    * Read-only subprocess calls — no registry or network mutation.
+    * Returns empty devices with ``limitations`` on non-Windows hosts unless ``inject`` is set.
+    * ARP cache reflects recent neighbors only, not a full subnet scan.
+
+Side effects:
+    * Spawns ``arp -a`` and/or PowerShell ``Get-NetNeighbor`` on Windows.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,12 @@
-"""Markdown and JSON report rendering for AI evals."""
+"""Markdown and JSON report rendering for AI eval suite results.
+
+Transforms an ``EvalReport`` aggregate into human-readable markdown or JSON-serializable
+dicts for CLI and CI consumption. Reports include taxonomy distribution, policy gates,
+and high-risk case lists.
+
+Note:
+    Rendered reports echo baseline limitations — they are not deployment authorization.
+"""
 
 from __future__ import annotations
 

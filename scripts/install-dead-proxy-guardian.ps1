@@ -3,17 +3,42 @@
 .SYNOPSIS
   Install auto-clear for dead localhost WinINET proxy drift (no admin required).
 .DESCRIPTION
-  Default install uses a per-user Startup hook that runs a hidden 5-minute guardian loop.
-  Only remediates DEAD_PROXY_CONFIG (enabled localhost proxy with no listener).
+  Registers a per-user Startup hook running scripts/run-proxy-guardian-loop.ps1.
+  Guardian invokes proxy-guardian --once on an interval; only remediates DEAD_PROXY_CONFIG.
 
-  Use -UseScheduledTask to also register Windows Task Scheduler jobs (may require elevation
-  on locked-down machines; Startup hook is installed either way).
-.PARAMETER UseScheduledTask
-  Attempt Task Scheduler registration (schtasks, then Register-ScheduledTask). Optional.
-.PARAMETER StartNow
-  Launch the background guardian loop immediately after install (default: true).
+  Inputs:
+    -IntervalMinutes   Loop sleep in minutes (default 5; auto-fix-proxy uses 1)
+    -UseScheduledTask  Also try Task Scheduler (may fail on locked-down PCs)
+    -StartNow          Launch background loop immediately (default true)
+    -Uninstall         Remove hook, tasks, and background loop
+
+  Outputs:
+    Install/uninstall status on stdout
+
+  Privileges:
+    Startup folder write (user). Task Scheduler may require elevation when -UseScheduledTask.
+
+  Side effects:
+    - Creates Startup\WNRT-DeadProxyGuardian.cmd
+    - Hidden powershell loop calling proxy-guardian
+    - HKCU WinINET mutation only when guardian detects dead proxy (no listener)
+
+  Safety boundaries:
+    Never disables proxy while localhost listener is bound. Does not touch WinHTTP by default.
+
+  Idempotency:
+    Re-install overwrites the same Startup hook. -Uninstall is reversible.
+
+  Recovery:
+    .\scripts\install-dead-proxy-guardian.ps1 -Uninstall
+    Manual: delete Startup hook and stop powershell processes running run-proxy-guardian-loop.ps1
+
+  Example:
+    .\scripts\install-dead-proxy-guardian.ps1
+    .\scripts\install-dead-proxy-guardian.ps1 -IntervalMinutes 1
+    .\scripts\install-dead-proxy-guardian.ps1 -UseScheduledTask
 .NOTES
-  SAFETY — Mutates HKCU WinINET only when classification is DEAD_PROXY_CONFIG.
+  Audit: guardian apply rows in .audit/proxy-disable.jsonl when remediation runs.
 #>
 param(
     [int]$IntervalMinutes = 5,

@@ -1,4 +1,25 @@
-"""CLI handlers for network recovery app-path scenarios."""
+"""CLI handlers for network recovery app-path scenarios.
+
+Module responsibility:
+    Wire legacy ``python -m src`` commands: ``diagnose --app chatgpt``, ``preview``,
+    ``remediate`` for the chatgpt_app_firewall scenario.
+
+System placement:
+    Registered from ``src/cli.py``; writes audit via ``append_network_recovery_audit``.
+
+Key invariants:
+    * Live collectors require Windows.
+    * ``cmd_diagnose_app`` always runs with dry_run diagnosis (read-only collectors).
+    * BLOCK tier never executes in ``cmd_remediate_scenario``.
+
+Side effects:
+    * Writes ``reports/last_network_recovery_diagnosis.json`` and appends JSONL on diagnose/remediate.
+    * Live remediate may invoke ``remediation_executor`` subprocess commands.
+
+Audit Notes:
+    * Review ``logs/network_recovery_events.jsonl`` after remediate.
+    * Recovery: use ``preview`` for tier listing without mutation.
+"""
 
 from __future__ import annotations
 

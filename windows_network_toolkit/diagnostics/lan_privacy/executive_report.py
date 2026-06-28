@@ -1,4 +1,20 @@
-"""Executive risk report for home/SOHO LAN privacy analytics."""
+"""Executive risk report for home/SOHO LAN privacy analytics.
+
+Module responsibility:
+    Assemble cross-cutting executive JSON/Markdown from inventory, classification,
+    risk score, controls, segmentation advice, and optional router correlation.
+
+System placement:
+    Invoked by ``lan_privacy.runner.run_executive_report_pipeline`` and executive CLI.
+
+Key invariants:
+    * Reuses ``report`` wording validators — same safe-language constraints apply.
+    * Control gaps and unknown-vendor counts are factual tallies, not legal findings.
+    * External domains sourced from correlation or explicit caller input only.
+
+Side effects:
+    * May write report files when ``write_executive_report`` is called by the runner.
+"""
 
 from __future__ import annotations
 

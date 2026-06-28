@@ -1,7 +1,23 @@
 """Append-only JSONL audit sink (local disk only; no upload).
 
-Each line is one JSON object suitable for ``json.loads`` when read back.
-Timestamps and record schema are owned by callers (e.g. `src.cli._audit`).
+Module responsibility:
+    Persist one JSON-serializable audit event per line; callers own schema and timestamps.
+
+System placement:
+    Used by ``src.cli._audit``, ``src.network_recovery.audit``, and guardian/remediation
+    paths that require durable local audit trails.
+
+Key invariants:
+    * Append-only — repeated calls add rows; not idempotent.
+    * No network upload or remote sink from this module.
+    * Creates parent directories before first write.
+
+Side effects:
+    * Creates ``path.parent`` if missing and appends one UTF-8 JSONL line to ``path``.
+
+Audit Notes:
+    Partial writes or disk exhaustion are file-level concerns; rotate or back up JSONL
+    outside this API if line-count growth or parse failures are observed.
 """
 
 from __future__ import annotations

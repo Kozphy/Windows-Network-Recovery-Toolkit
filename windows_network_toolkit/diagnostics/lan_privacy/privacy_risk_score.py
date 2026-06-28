@@ -1,4 +1,20 @@
-"""Transparent Privacy Risk Score for home/SOHO LAN analytics."""
+"""Transparent Privacy Risk Score for home/SOHO LAN analytics.
+
+Module responsibility:
+    Compute capped numeric score, risk level, and component breakdown from
+    classification, devices, observations, and optional router correlation.
+
+System placement:
+    Invoked by ``lan_privacy.runner`` risk pipeline and ``lan-risk-score`` CLI.
+
+Key invariants:
+    * Score components are capped and explainable — not a malware detection engine.
+    * Evidence tier reflects highest present source (host vs router vs insufficient).
+    * ``LAN_LIMITATIONS`` copied into every result for safe consumer wording.
+
+Side effects:
+    * None — deterministic scoring over supplied dicts.
+"""
 
 from __future__ import annotations
 

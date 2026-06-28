@@ -146,6 +146,21 @@ def cmd_replay_certify(args: argparse.Namespace) -> int:
 
 
 def cmd_bad_gateway_diagnose(args: argparse.Namespace) -> int:
+    """Run read-only bad-gateway (502/504) diagnostic for a target HTTPS URL.
+
+    Args:
+        args: Namespace with ``url``, optional ``json_only`` and ``summary_only``.
+
+    Returns:
+        0 on success; prints classification JSON or human summary.
+
+    Side effects:
+        Read-only probes only (DNS, TCP, curl via system vs direct path).
+        May append platform audit row via runner (see bad_gateway.runner).
+
+    Notes:
+        Used by auto-fix-chatgpt.ps1 step 2; does not mutate host settings.
+    """
     from windows_network_toolkit.diagnostics.bad_gateway import run_bad_gateway_diagnose
 
     report = run_bad_gateway_diagnose(args.url, dry_run=True)
@@ -289,7 +304,21 @@ def cmd_proxy_guardian(args: argparse.Namespace) -> int:
 
 
 def cmd_auto_fix_chatgpt(args: argparse.Namespace) -> int:
-    """Chain proxy guardian, bad-gateway diagnose, ChatGPT scenario diagnosis, LOW-risk apply."""
+    """Run ChatGPT auto-fix pipeline (proxy, diagnose, LOW-risk remediations).
+
+    Args:
+        args: Namespace with ``dry_run``, ``confirm``, ``url``, ``skip_proxy_auto_fix``,
+            ``skip_guardian_install``.
+
+    Returns:
+        0 when outcome healthy; 1 when degraded; 2 on unsupported platform.
+
+    Side effects:
+        Delegates to ``run_auto_fix_chatgpt`` — see ``src.network_recovery.auto_fix``.
+
+    Audit Notes:
+        Emits JSON steps payload; audit rows in ``logs/network_recovery_events.jsonl``.
+    """
     from src.network_recovery.auto_fix import run_auto_fix_chatgpt
 
     dry_run = args.dry_run.lower() != "false"
@@ -1244,6 +1273,28 @@ def cmd_risk_executive_report(args: argparse.Namespace) -> int:
 
 
 def cmd_ai_eval(args: argparse.Namespace) -> int:
+    """Run fixture-based AI eval suite and emit markdown or JSON report.
+
+    Loads pre-recorded model outputs from a JSON cases file and evaluates them with
+    deterministic checks (facts, format, citations, safety phrases, etc.). No live LLM
+    or retrieval API calls are made.
+
+    Args:
+        args: Namespace with ``cases`` (fixture path) and ``format`` (``markdown`` or ``json``).
+
+    Returns:
+        0 on success.
+
+    Side effects:
+        Read-only: reads fixture file; prints report to stdout.
+
+    Example:
+        ``toolkit ai-eval --cases examples/ai_evals/support_bot_cases.json --format markdown``
+
+    Notes:
+        Policy ALLOW and pass status are structured triage signals — not deployment
+        authorization or formal model safety certification.
+    """
     from src.platform_core.ai_evals import load_eval_cases, render_eval_markdown, run_eval_suite
 
     cases = load_eval_cases(Path(args.cases))

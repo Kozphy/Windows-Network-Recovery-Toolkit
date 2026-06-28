@@ -1,4 +1,34 @@
-"""Orchestrate ChatGPT connectivity auto-fix: proxy, diagnose, LOW-risk remediations."""
+"""Orchestrate ChatGPT connectivity auto-fix: proxy, diagnose, LOW-risk remediations.
+
+Module responsibility:
+    Single entry point for the auto-fix-chatgpt CLI and scripts/auto-fix-chatgpt.ps1
+    step 4. Chains proxy guardian, bad-gateway diagnose, scenario diagnosis, and
+    evidence-gated LOW-risk command apply.
+
+System placement:
+    Invoked by ``windows_network_toolkit.cli.cmd_auto_fix_chatgpt`` and tests.
+    Depends on ``proxy_guardian``, ``bad_gateway``, ``engine``, ``remediation_executor``.
+
+Key invariants:
+    * ``DEMO_MODE`` forces dry-run (no mutations).
+    * Live LOW-risk apply uses ``APPLY_CHATGPT_LOW_RISK`` when confirm omitted.
+    * BLOCK/MEDIUM catalog actions are never executed here.
+
+Side effects:
+    * May mutate HKCU proxy via guardian; runs ipconfig/netsh/ChatGPT restart when allowed.
+    * Writes ``reports/last_network_recovery_diagnosis.json`` and appends audit JSONL.
+
+Idempotency:
+    Diagnosis steps are read-only. Repeated LOW-risk commands are generally safe to rerun.
+
+Failure modes:
+    Returns ``unsupported_platform`` off Windows. ``outcome=degraded`` when HTTPS probe fails.
+
+Audit Notes:
+    * Wrong remediation: review ``logs/network_recovery_events.jsonl`` and step JSON in return payload.
+    * Detection: compare pre/post ``post_check_results`` when live apply ran.
+    * Recovery: rerun with ``--dry-run true``; use ``src remediate --dry-run false --confirm ...`` for manual path.
+"""
 
 from __future__ import annotations
 
@@ -40,7 +70,23 @@ def run_auto_fix_chatgpt(
     repo_root: Path | None = None,
     run: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
-    """Chain proxy guardian, bad-gateway diagnose, scenario diagnosis, and LOW-risk apply."""
+    """Chain proxy guardian, bad-gateway diagnose, scenario diagnosis, and LOW-risk apply.
+
+    Args:
+        dry_run: When True, preview only (forced when DEMO_MODE env is set).
+        confirm: Typed token for live LOW-risk apply; defaults to CONFIRMATION_PHRASE when live.
+        skip_proxy_auto_fix: Skip proxy-guardian and live proxy-status steps.
+        skip_guardian_install: Reserved for PS orchestrator metadata only.
+        chatgpt_url: HTTPS URL passed to bad-gateway diagnose.
+        repo_root: Repository root for reports and audit paths.
+        run: Injectable subprocess runner for tests.
+
+    Returns:
+        JSON-serializable result with ``steps``, ``outcome``, ``limitations``, and audit metadata.
+
+    Side effects:
+        See module docstring — registry/command mutation only when not dry_run.
+    """
     if platform.system() != "Windows":
         return {
             "unsupported_platform": True,

@@ -25,6 +25,9 @@ Evidence → Classification → Control tests → Risk scoring → Human review 
 | Reporting | `reporting.py`, `analytics_pipeline.py` | `analytics-export`, `GET /reports/executive` |
 | Latest snapshot | `latest_evidence_report.py` | `evidence-report --latest` |
 | Remediation preview | `proxy_remediation.py` | `proxy-disable` (dry-run default) |
+| ChatGPT app-path | `src/network_recovery/` | `diagnose --app chatgpt`, `auto-fix-chatgpt`, `make fix-chatgpt` |
+| LAN privacy | `windows_network_toolkit/diagnostics/lan_privacy/` | `lan-inventory`, `lan-watch`, `lan-privacy-report` |
+| AI evals | `src/platform_core/ai_evals/` | `ai-eval` (fixture-only) |
 
 ---
 
@@ -67,6 +70,8 @@ Full argparse definitions live in `windows_network_toolkit/cli.py`.
 | Remediation | `proxy-disable` (dry-run default) |
 | Analytics | `analytics-summary`, `analytics-export`, `powerbi-export` |
 | Governance | `risk-assess`, `control-test`, `governance-report`, `risk-kpi-summary` |
+| LAN privacy | `lan-inventory`, `lan-watch`, `lan-privacy-report`, `lan-risk-score`, `lan-control-test` |
+| AI evals | `ai-eval` (fixture-only, no live model calls) |
 | Audit | `audit verify` |
 
 ---
@@ -109,6 +114,9 @@ Root `GET /health` serves the ERP platform router — not the technology risk AP
 ## Where to read next
 
 - [architecture.md](architecture.md) — layered design
+- [chatgpt-auto-fix.md](chatgpt-auto-fix.md) — ChatGPT connectivity auto-fix
+- [lan-privacy-monitor.md](lan-privacy-monitor.md) — LAN privacy CLI
+- [ai-evals-feedback-loop.md](ai-evals-feedback-loop.md) — AI evals harness
 - [risk-model.md](risk-model.md) — scoring inputs/outputs
 - [powerbi-schema.md](powerbi-schema.md) — CSV/star schema export
 - [demo-script.md](demo-script.md) — 3-minute portfolio walkthrough

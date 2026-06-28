@@ -1,4 +1,20 @@
-"""LAN privacy collectors — inventory, protocol summaries."""
+"""LAN privacy collectors — inventory, subnet parse, protocol summaries.
+
+Module responsibility:
+    Orchestrate neighbor, mDNS, and SSDP probes into ``LanDevice`` / ``LanObservation``
+    records and watch-event normalization.
+
+System placement:
+    Called by ``lan_privacy.runner``, ``watch``, and ``lan-inventory`` / probe CLI paths.
+
+Key invariants:
+    * Delegates live probes to ``src.observability.*`` — no duplicate socket logic.
+    * ``inject`` parameters preserve testability without Windows network I/O.
+    * Every collection payload includes schema version and limitation strings.
+
+Side effects:
+    * Read-only subprocess and UDP probes on Windows when not using ``inject``.
+"""
 
 from __future__ import annotations
 

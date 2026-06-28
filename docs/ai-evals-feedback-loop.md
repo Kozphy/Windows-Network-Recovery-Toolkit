@@ -69,7 +69,22 @@ Language is **risk / limitation** based — we do not claim the model is “lyin
 
 **Principle:** Recommendation is not execution authority. `ALLOW` does not authorize production deployment.
 
-## Demo command
+## CLI command
+
+Primary entry point: `python -m windows_network_toolkit ai-eval`
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--cases` | `examples/ai_evals/support_bot_cases.json` | JSON file of eval cases (each embeds `model_output`; no live API) |
+| `--format` | `markdown` | `markdown` (human report) or `json` (structured `EvalReport`) |
+
+Markdown report (default cases path):
+
+```powershell
+python -m windows_network_toolkit ai-eval --format markdown
+```
+
+Explicit cases + markdown:
 
 ```powershell
 python -m windows_network_toolkit ai-eval `
@@ -77,13 +92,25 @@ python -m windows_network_toolkit ai-eval `
   --format markdown
 ```
 
-JSON output:
+JSON output (stdout, machine-readable):
 
 ```powershell
 python -m windows_network_toolkit ai-eval --format json
 ```
 
+Custom cases file:
+
+```powershell
+python -m windows_network_toolkit ai-eval --cases path/to/my_cases.json --format json
+```
+
+Implementation: `windows_network_toolkit/cli.py` → `cmd_ai_eval` → `src/platform_core/ai_evals` (`load_eval_cases`, `run_eval_suite`, `render_eval_markdown`).
+
+Exit code: **0** on success (fixture load + eval complete). Invalid `--cases` path fails at load time.
+
 Fixture dataset: [`examples/ai_evals/support_bot_cases.json`](../examples/ai_evals/support_bot_cases.json)
+
+Cross-reference: [demo-commands-reference.md](demo-commands-reference.md#ai-evals-fixture-only-no-api-keys) · [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) (Flow 6)
 
 ## Example report sections
 

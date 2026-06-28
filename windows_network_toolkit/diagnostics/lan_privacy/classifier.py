@@ -1,4 +1,20 @@
-"""LAN behavior classifier — evidence-based labels only."""
+"""LAN behavior classifier — evidence-based labels only.
+
+Module responsibility:
+    Derive ``LanClassification`` labels from observation counts, probe breadth, and
+    vendor context using tunable thresholds.
+
+System placement:
+    Used by ``lan_privacy.runner`` report/risk pipelines and ``lan-classify`` CLI.
+
+Key invariants:
+    * Never emits malware or exfiltration verdicts — classifications are observational.
+    * Insufficient observation volume maps to ``INSUFFICIENT_EVIDENCE``.
+    * Output always carries ``LAN_LIMITATIONS`` for downstream report guardrails.
+
+Side effects:
+    * None — pure aggregation over in-memory observation lists.
+"""
 
 from __future__ import annotations
 

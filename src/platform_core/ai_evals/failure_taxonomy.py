@@ -1,4 +1,17 @@
-"""Failure taxonomy for fixture-based LLM / RAG evaluation."""
+"""Failure taxonomy and policy gates for fixture-based LLM / RAG evaluation.
+
+Defines enumerated failure labels, eval policy gates, heuristic phrase lists used by
+deterministic checks, and human-readable descriptions for report rendering.
+
+This module does not invoke external models; it supplies constants and enums consumed
+by ``evaluator`` and ``policy``.
+
+Attributes:
+    FAILURE_DESCRIPTIONS: Map from failure label to report description text.
+    UNSAFE_PHRASES: Substrings that trigger safety review signals.
+    REFUSAL_PHRASES: Substrings that indicate unexpected refusals.
+    BASELINE_LIMITATIONS: Standard disclaimers appended to eval results and reports.
+"""
 
 from __future__ import annotations
 

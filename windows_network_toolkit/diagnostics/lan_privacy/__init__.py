@@ -1,4 +1,18 @@
-"""LAN Privacy & Device Discovery Monitor."""
+"""LAN Privacy & Device Discovery Monitor — public pipeline exports.
+
+Module responsibility:
+    Re-export collectors, watch, and report/risk pipelines for the LAN privacy CLI.
+
+System placement:
+    Entry surface for ``windows_network_toolkit.cli`` ``lan-*`` commands and tests.
+
+Key invariants:
+    * Pipelines remain read-only at the observability layer; no auto-remediation here.
+    * ``__all__`` lists the supported public callables only.
+
+Side effects:
+    * None at import time beyond submodule loading.
+"""
 
 from .runner import (
     run_executive_report_pipeline,

@@ -3,17 +3,49 @@
 .SYNOPSIS
   One-shot automatic fix for ChatGPT blank messages / connectivity (no prompts).
 .DESCRIPTION
-  1. Runs scripts/auto-fix-proxy.ps1 (Cursor no-proxy + dead proxy guardian)
-  2. bad-gateway-diagnose against https://chatgpt.com
-  3. Legacy scenario diagnose: python -m src diagnose --app chatgpt --json
-  4. Applies allowlisted LOW-risk remediations with typed confirmation gate
-     (same posture as proxy-disable / proxy-guardian)
+  Chains proxy auto-fix, read-only diagnosis, and policy-gated LOW-risk remediations.
+  See docs/chatgpt-auto-fix.md for limits (does not fix session/cache/server-side issues).
 
-  LOW-risk actions (evidence-gated): flush DNS, reset WinHTTP proxy, restart ChatGPT app.
-  MEDIUM/BLOCK tier actions are never auto-executed.
+  Steps:
+    1. auto-fix-proxy.ps1 — Cursor no-proxy + dead proxy guardian
+    2. bad-gateway-diagnose --url (default https://chatgpt.com) — read-only HTTP probe
+    3. python -m src diagnose --app chatgpt --json — scenario hypotheses + audit snapshot
+    4. auto-fix-chatgpt CLI — LOW-risk apply with confirmation APPLY_CHATGPT_LOW_RISK
 
+  Inputs:
+    -SkipProxyAutoFix     Skip step 1
+    -SkipGuardianInstall  Forwarded to auto-fix-proxy.ps1
+    -DryRun               Pass --dry-run true to step 4 (no mutations)
+    -Url                  HTTPS URL for bad-gateway step (default https://chatgpt.com)
+
+  Outputs:
+    JSON from each step on stdout; exit 0 when probes healthy or dry-run; else exit 1
+
+  Privileges:
+    No admin for most steps. flush_dns via CLI uses ipconfig /flushdns (user scope).
+
+  Side effects (live run, step 4):
+    - Same as auto-fix-proxy.ps1 for step 1
+    - ipconfig /flushdns, netsh winhttp reset proxy, ChatGPT.exe restart when evidence-gated
+    - reports/last_network_recovery_diagnosis.json, logs/network_recovery_events.jsonl
+
+  Safety boundaries:
+    MEDIUM/BLOCK actions (firewall reset, disable firewall) are never auto-executed.
+    Does not claim malware or prove registry writer identity.
+
+  Idempotency:
+    Diagnosis steps are read-only. LOW-risk commands are safe to repeat (WinHTTP reset is idempotent).
+
+  Recovery:
+    If messages still blank: Incognito, sign out/in, clear chatgpt.com site data.
+    MEDIUM tier requires manual review via python -m src preview --scenario chatgpt_app_firewall
+
+  Example:
+    .\scripts\auto-fix-chatgpt.ps1
+    .\scripts\auto-fix-chatgpt.ps1 -DryRun
+    .\scripts\auto-fix-chatgpt.ps1 -SkipProxyAutoFix -Url https://chatgpt.com
 .NOTES
-  No admin required for most steps. Restart browser after completion.
+  Audit: logs/network_recovery_events.jsonl and proxy-disable.jsonl after live apply.
 #>
 param(
     [switch]$SkipProxyAutoFix,

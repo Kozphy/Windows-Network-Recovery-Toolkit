@@ -1,4 +1,21 @@
-"""Correlate host LAN observations with router evidence."""
+"""Correlate host LAN observations with router evidence.
+
+Module responsibility:
+    Join router DNS/DHCP/device events to host inventory by IP/MAC and summarize
+    matched vs unmatched DNS and enrichment gaps.
+
+System placement:
+    Used by ``router_evidence.runner.run_router_correlation`` and ``lan_privacy.runner``
+    when router JSONL is available.
+
+Key invariants:
+    * Correlation links identifiers only — does not prove malicious intent.
+    * Unmatched DNS retained for visibility when inventory lacks the client IP.
+    * Output suitable for executive report external-domain sections.
+
+Side effects:
+    * None — pure join over in-memory event lists.
+"""
 
 from __future__ import annotations
 

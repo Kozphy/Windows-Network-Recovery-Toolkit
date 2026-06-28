@@ -1,4 +1,20 @@
-"""MAC OUI vendor lookup — embedded prefix table for common home/SOHO devices."""
+"""MAC OUI vendor lookup — embedded prefix table for home/SOHO devices.
+
+Module responsibility:
+    Map normalized MAC prefixes to vendor name and IoT-like flag from a curated
+    OUI subset (not the full IEEE registry).
+
+System placement:
+    Used by ``lan_privacy.collectors`` when enriching inventory device rows.
+
+Key invariants:
+    * Unknown OUIs return empty vendor — flagged as ``unknown_vendor`` upstream.
+    * Table is portfolio subset; absence of a prefix is not proof of legitimacy.
+    * Lookup is case- and separator-normalized on the first three octets.
+
+Side effects:
+    * None — in-memory dict lookup only.
+"""
 
 from __future__ import annotations
 

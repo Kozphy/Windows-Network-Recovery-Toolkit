@@ -1,5 +1,18 @@
 @echo off
 setlocal
+REM ============================================================
+REM WNRT Emergency WinINET Proxy Reset (HKCU)
+REM Purpose:     Immediate browser relief when ERR_PROXY_CONNECTION_FAILED
+REM Privileges:  Current user (HKCU Internet Settings)
+REM Inputs:      Interactive pause before apply
+REM Outputs:     reg.exe success/failure messages
+REM Side effects: ProxyEnable=0; deletes ProxyServer value if present
+REM Safety:      Does NOT diagnose root cause; does not change WinHTTP or Cursor settings
+REM Idempotency: Safe to rerun when proxy already disabled
+REM Recovery:    Re-enable proxy manually or via corporate tooling if required
+REM Example:     Double-click or: scripts\fix-wininet-proxy.cmd
+REM Audit:        No JSONL audit — use proxy-disable CLI for governed apply
+REM ============================================================
 title WNRT Emergency WinINET Proxy Reset
 
 echo.

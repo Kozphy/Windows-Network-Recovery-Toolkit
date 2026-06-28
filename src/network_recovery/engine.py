@@ -1,4 +1,22 @@
-"""Scenario diagnosis orchestration."""
+"""Scenario diagnosis orchestration.
+
+Module responsibility:
+    Collect signals, run scenario analyzer, attach remediation previews, build DiagnosisResult.
+
+System placement:
+    Core of ``network_recovery`` package; used by CLI, auto_fix, and tests.
+
+Key invariants:
+    * Only ``SCENARIO_CHATGPT_APP_FIREWALL`` is supported.
+    * ``timestamp`` is UTC ISO-8601 from ``datetime.now(UTC)``.
+    * ``dry_run`` controls LOW-tier policy_decision PREVIEW vs ALLOW in catalog.
+
+Side effects:
+    Live ``collect_signals`` invokes subprocess probes; no registry mutation in this module.
+
+Failure modes:
+    Raises ``ValueError`` for unknown scenario or missing signals when collect_live=False.
+"""
 
 from __future__ import annotations
 
@@ -32,7 +50,22 @@ def run_scenario_diagnosis(
     collect_live: bool = True,
     run: Any = None,
 ) -> DiagnosisResult:
-    """Run one app-path scenario and build a replayable diagnosis result."""
+    """Run one app-path scenario and build a replayable diagnosis result.
+
+    Args:
+        scenario: Must be ``SCENARIO_CHATGPT_APP_FIREWALL``.
+        signals: Pre-built bundle; required when ``collect_live=False``.
+        recovery_firewall_reset_helped: Optional operator feedback for verification tier.
+        dry_run: When True, remediation catalog marks LOW actions as PREVIEW-only.
+        collect_live: When True and signals omitted, runs ``collect_signals`` on Windows.
+        run: Injectable subprocess runner passed to collectors.
+
+    Returns:
+        ``DiagnosisResult`` with hypotheses, recommended_actions, and human_summary.
+
+    Raises:
+        ValueError: Unknown scenario or missing signals when collect_live=False.
+    """
     if scenario != SCENARIO_CHATGPT_APP_FIREWALL:
         raise ValueError(f"Unknown scenario: {scenario}")
 

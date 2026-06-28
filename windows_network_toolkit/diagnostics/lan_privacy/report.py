@@ -1,4 +1,20 @@
-"""LAN privacy report — JSON and Markdown with safe wording."""
+"""LAN privacy report — JSON and Markdown with safe wording.
+
+Module responsibility:
+    Build structured reports and Markdown narratives with forbidden-phrase filtering
+    and required safe-language guardrails.
+
+System placement:
+    Used by ``lan_privacy.runner`` and ``executive_report``; output of ``lan-privacy-report`` CLI.
+
+Key invariants:
+    * ``FORBIDDEN_LAN_PHRASES`` and ``REQUIRED_SAFE_PHRASES`` enforced before render.
+    * Explanations pass through ``sanitize_explanation_text`` where applicable.
+    * Reports include ``NON_CLAIMS`` and ``LAN_LIMITATIONS`` — no covert surveillance claims.
+
+Side effects:
+    * None — string and dict assembly only.
+"""
 
 from __future__ import annotations
 

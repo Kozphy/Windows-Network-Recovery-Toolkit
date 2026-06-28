@@ -1,4 +1,30 @@
-"""Execute allowlisted LOW-risk ChatGPT scenario remediations with typed confirmation."""
+"""Execute allowlisted LOW-risk ChatGPT scenario remediations with typed confirmation.
+
+Module responsibility:
+    Gate and run LOW-risk actions (flush_dns, reset_winhttp_proxy, restart_chatgpt_app)
+    after evidence selection. Enforces same typed-confirmation posture as proxy-disable.
+
+System placement:
+    Called by ``auto_fix.run_auto_fix_chatgpt`` and ``cli_handlers.cmd_remediate_scenario``.
+
+Key invariants:
+    * ``CONFIRMATION_PHRASE`` must match for live apply.
+    * ``_BLOCKED_ACTION_IDS`` and MEDIUM previews never execute.
+    * Only subprocess argv from allowlisted action map.
+
+Side effects:
+    Live apply runs ipconfig, netsh winhttp reset, Stop-Process/Start-Process for ChatGPT.exe.
+
+Idempotency:
+    WinHTTP reset and DNS flush are safe to repeat. App restart is disruptive but bounded.
+
+Failure modes:
+    Subprocess timeout/OSError captured in per-action result dict; ``ok=False`` on failure.
+
+Audit Notes:
+    * Command execution logged in ``remediation_results`` returned to caller and audit JSONL.
+    * Recovery: inspect stderr in results; no automatic rollback for DNS/WinHTTP reset.
+"""
 
 from __future__ import annotations
 

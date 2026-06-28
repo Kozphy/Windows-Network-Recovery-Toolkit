@@ -33,4 +33,12 @@ pytest -q                    # full test suite
 python -m windows_network_toolkit <command>
 ```
 
+Windows one-shot ChatGPT connectivity fix (proxy + diagnosis + LOW-risk remediations):
+
+```powershell
+make fix-chatgpt
+```
+
+See [chatgpt-auto-fix.md](chatgpt-auto-fix.md).
+
 New visitors: [START_HERE.md](START_HERE.md) · Install: [quick-start.md](quick-start.md) · Demos: [demo_5_min.md](demo_5_min.md) · [demo-commands-reference.md](demo-commands-reference.md)

@@ -15,7 +15,7 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 | Layer | Script | Role |
 |-------|--------|------|
 | **0. One-shot auto** | `scripts/auto-fix-proxy.ps1` | Cursor fix + live guardian apply + 1-minute background guardian |
-| **0b. ChatGPT auto** | `scripts/auto-fix-chatgpt.ps1` | Proxy auto-fix + bad-gateway diagnose + ChatGPT scenario + LOW-risk remediations |
+| **0b. ChatGPT auto** | `scripts/auto-fix-chatgpt.ps1` | Proxy auto-fix + bad-gateway diagnose + ChatGPT scenario + LOW-risk remediations — see [chatgpt-auto-fix.md](chatgpt-auto-fix.md) |
 | **1. Root cause** | `scripts/configure-cursor-no-proxy.ps1` | Stops Cursor from managing system proxy (`http.proxySupport: off`) |
 | **2. Startup guardian** | `scripts/install-dead-proxy-guardian.ps1` | At logon, runs a background loop every 5 minutes that clears **dead** proxy only |
 | **3. Emergency button** | `scripts/fix-wininet-proxy.cmd` | One-click manual HKCU disable when the browser is broken right now |
@@ -23,6 +23,21 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 ### Guardian safety
 
 `proxy-guardian` only remediates when classification is **`DEAD_PROXY_CONFIG`** (enabled localhost proxy, **no listener**). It does **not** clear an active localhost dev proxy while a process is still bound to the port.
+
+### ChatGPT auto-fix safety (layer 0b)
+
+[auto-fix-chatgpt.ps1](chatgpt-auto-fix.md) chains layer 0 with ChatGPT scenario diagnosis and **LOW-risk only** remediations:
+
+| Boundary | Enforcement |
+|----------|-------------|
+| Proxy HKCU mutation | Step 1 uses `DISABLE_WININET_PROXY` via `proxy-guardian` — same dead-proxy rules as layer 0 |
+| ChatGPT LOW-risk apply | Step 4 requires `APPLY_CHATGPT_LOW_RISK` for live `flush_dns`, `reset_winhttp_proxy`, `restart_chatgpt_app` |
+| MEDIUM/BLOCK tier | Firewall reset, disable firewall, process kill — **never** auto-executed |
+| Session/cache | App restart is a low-risk test; **no** automated cache or cookie clear |
+| Malware / writer proof | Does not claim attack, malware, or registry writer identity |
+| Server-side outage | HTTPS probes may fail externally; auto-fix does not prove OpenAI availability |
+
+If messages stay blank after a clean proxy path, follow manual recovery in [chatgpt-auto-fix.md](chatgpt-auto-fix.md#recovery-steps).
 
 ## What this does not solve
 

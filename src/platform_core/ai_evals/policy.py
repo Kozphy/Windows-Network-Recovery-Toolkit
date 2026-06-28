@@ -1,4 +1,10 @@
-"""Policy gates for AI eval outcomes."""
+"""Policy gates for AI eval outcomes.
+
+Maps detected failure labels and signals to a single ``EvalPolicyGate`` decision
+(e.g. ALLOW, PREVIEW, REQUIRE_HUMAN_REVIEW, BLOCK) with rationale and recommendations.
+
+Operates on deterministic eval results only; no live model inference.
+"""
 
 from __future__ import annotations
 

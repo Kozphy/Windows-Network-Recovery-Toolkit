@@ -1,4 +1,19 @@
-"""Router evidence import and correlation runners."""
+"""Router evidence import and correlation runners.
+
+Module responsibility:
+    Orchestrate import → JSONL normalize and host/router correlation CLI backends.
+
+System placement:
+    Invoked by ``router-import``, ``router-correlate`` CLI and optional ``lan_privacy.runner``.
+
+Key invariants:
+    * Unknown ``import_type`` returns structured error without writing output.
+    * ``load_router_jsonl`` skips missing files and malformed lines silently.
+    * Correlation loads lan-watch JSONL when host observations path not supplied.
+
+Side effects:
+    * Writes normalized router JSONL via ``normalizer.write_router_jsonl``.
+"""
 
 from __future__ import annotations
 

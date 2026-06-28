@@ -1,4 +1,19 @@
-"""Preview-gated remediation catalog for chatgpt_app_firewall scenario."""
+"""Preview-gated remediation catalog for chatgpt_app_firewall scenario.
+
+Module responsibility:
+    Enumerate BLOCK, MEDIUM, and LOW remediation tiers as ``RemediationActionPreview`` rows.
+
+System placement:
+    Used by ``engine.run_scenario_diagnosis``; execution delegated to ``remediation_executor``.
+
+Key invariants:
+    * BLOCK actions always ``policy_decision=BLOCK``.
+    * MEDIUM always PREVIEW-only (``dry_run_only=True``).
+    * LOW ALLOW only when ``dry_run=False`` in catalog (still requires confirm at execute).
+
+Audit Notes:
+    * Catalog describes intent only; executor enforces allowlist at apply time.
+"""
 
 from __future__ import annotations
 

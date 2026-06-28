@@ -1,4 +1,17 @@
-"""Deterministic fixture-based AI eval evaluator — no external API calls."""
+"""Deterministic fixture-based AI eval evaluator.
+
+Loads JSON fixture cases, runs heuristic checks against embedded ``model_output`` fields,
+and aggregates pass/fail/partial status with failure taxonomy labels.
+
+No live LLM or retrieval API calls are made. Checks include exact match, required facts,
+unsupported claims, JSON format, citations, refusal detection, safety phrases, and
+latency/cost thresholds.
+
+Functions:
+    load_eval_cases: Parse a fixture JSON file into ``EvalCase`` instances.
+    evaluate_case: Run all checks on a single case.
+    run_eval_suite: Evaluate a list of cases and build an ``EvalReport``.
+"""
 
 from __future__ import annotations
 

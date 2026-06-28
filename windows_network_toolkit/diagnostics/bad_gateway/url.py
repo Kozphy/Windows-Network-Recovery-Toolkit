@@ -1,4 +1,11 @@
-"""URL parsing for bad-gateway diagnostics."""
+"""URL parsing for bad-gateway diagnostics.
+
+Module responsibility:
+    Parse http/https target URL into host, port, scheme for probe routing.
+
+Raises:
+    ValueError: When scheme is not http/https or host is missing.
+"""
 
 from __future__ import annotations
 

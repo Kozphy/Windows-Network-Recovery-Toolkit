@@ -9,6 +9,7 @@
  * **Audit notes:** Non-OK responses throw `Error` strings containing HTTP status and body text—log
  * them in the UI when distinguishing quota (`429`) from auth failures (`401`/`403`).
  */
+/** FastAPI backend origin; defaults to `http://localhost:8000` for local demo. */
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 /**

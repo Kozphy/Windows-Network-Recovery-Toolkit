@@ -1,4 +1,19 @@
-"""Normalize router events to canonical JSONL."""
+"""Normalize router events to canonical JSONL.
+
+Module responsibility:
+    Write importer output as schema-tagged JSONL with router-level evidence metadata.
+
+System placement:
+    Called by ``router_evidence.runner`` after import; output feeds correlation pipelines.
+
+Key invariants:
+    * Overwrites ``out_path`` on each run — not append-only.
+    * Every line includes ``schema_version`` and ``evidence_source``.
+    * Limitations clarify import is normalized evidence, not packet capture.
+
+Side effects:
+    * Creates parent directories and writes/replaces the target JSONL file.
+"""
 
 from __future__ import annotations
 

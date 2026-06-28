@@ -118,6 +118,54 @@ Signals → FailureBlocks → Hypothesis/Evidence → Policy (ALLOW/PREVIEW/BLOC
 
 Entry: `src/cli.py` · Tests: `tests/test_policy_safety_contract.py`, `tests/test_replay_determinism.py`
 
+### 4. ChatGPT auto-fix (Windows, policy-gated)
+
+```text
+auto-fix-proxy → bad-gateway-diagnose → chatgpt scenario diagnose → LOW-risk apply (APPLY_CHATGPT_LOW_RISK)
+```
+
+Commands:
+
+```powershell
+make fix-chatgpt
+.\scripts\auto-fix-chatgpt.ps1
+python -m windows_network_toolkit auto-fix-chatgpt --dry-run true
+python -m src diagnose --app chatgpt --json
+```
+
+Modules: `src/network_recovery/`, `scripts/auto-fix-chatgpt.ps1` · Doc: [chatgpt-auto-fix.md](chatgpt-auto-fix.md) · Tests: `tests/test_network_recovery_auto_fix.py`
+
+### 5. LAN privacy monitor (read-only)
+
+```text
+lan-inventory → lan-watch (JSONL) → lan-privacy-report / lan-risk-score → risk-executive-report
+```
+
+Commands:
+
+```powershell
+python -m windows_network_toolkit lan-inventory --fixture examples/lan/executive_bundle.json
+python -m windows_network_toolkit lan-watch --duration 60 --audit-path .audit/lan-watch.jsonl
+python -m windows_network_toolkit lan-privacy-report --fixture executive_bundle.json --format both
+```
+
+Modules: `windows_network_toolkit/diagnostics/lan_privacy/` · Doc: [lan-privacy-monitor.md](lan-privacy-monitor.md)
+
+### 6. AI evals feedback loop (fixture-only)
+
+```text
+EvalCase fixtures → deterministic checks → failure taxonomy → policy gate → governance report
+```
+
+Commands:
+
+```powershell
+python -m windows_network_toolkit ai-eval --cases examples/ai_evals/support_bot_cases.json --format markdown
+python -m windows_network_toolkit ai-eval --format json
+```
+
+Modules: `src/platform_core/ai_evals/` · Doc: [ai-evals-feedback-loop.md](ai-evals-feedback-loop.md) · Tests: `tests/ai_evals/`
+
 ### 2. Shared decision engine
 
 ```text
@@ -166,6 +214,9 @@ Entry: `platform_core/outcome_learning/` · Fixture: `fixtures/outcome_learning/
 | Path | Responsibility |
 |------|----------------|
 | `src/` | Windows CLI, collectors, market events CLI |
+| `src/network_recovery/` | ChatGPT app-path scenario diagnose, LOW-risk auto-fix orchestrator |
+| `windows_network_toolkit/diagnostics/lan_privacy/` | LAN inventory, watch, privacy report (read-only) |
+| `src/platform_core/ai_evals/` | Fixture-based AI eval harness (`ai-eval` CLI) |
 | `platform_core/` | Shared models, policy, SRE, decision platform, outcome learning |
 | `src/decision_engine/` | Deterministic scoring and ranking |
 | `src/knowledge/` | Versioned YAML facts (separate from code) |
@@ -210,6 +261,10 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 | `docs/test_strategy.md` | Safety regression strategy |
 | `docs/platform_engineering_gap_report.md` | README vs repo reality audit |
 | `docs/proxy_green_definition.md` | Proxy health definition |
+| `docs/chatgpt-auto-fix.md` | ChatGPT auto-fix flow, tokens, audit paths |
+| `docs/lan-privacy-monitor.md` | LAN privacy monitor CLI |
+| `docs/ai-evals-feedback-loop.md` | AI evals fixture harness (`ai-eval`) |
+| `docs/dead-proxy-guardian.md` | Dead localhost WinINET proxy recovery |
 
 ## Audit checklist
 

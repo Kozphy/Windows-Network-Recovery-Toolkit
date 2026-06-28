@@ -1,4 +1,24 @@
-"""LAN watch — poll neighbors and append JSONL observations (read-only)."""
+"""LAN watch — poll neighbors and append JSONL observations (read-only).
+
+Module responsibility:
+    Periodically collect inventory/mDNS deltas and append structured watch events to
+    local JSONL for later classification and correlation.
+
+System placement:
+    Invoked by ``lan-watch`` CLI and loaded by ``runner`` / ``router_evidence`` pipelines.
+
+Key invariants:
+    * Read-only collection — no neighbor table or firewall mutation.
+    * Default audit path ``.audit/lan-watch.jsonl``; callers may override.
+    * New-neighbor and mDNS deltas become ``LanObservation``-compatible rows.
+
+Side effects:
+    * Appends JSONL rows to the configured audit path during each poll cycle.
+
+Audit Notes:
+    Watch JSONL is input evidence for classify/risk/correlate — preserve append order
+    and avoid manual edits that break event continuity.
+"""
 
 from __future__ import annotations
 

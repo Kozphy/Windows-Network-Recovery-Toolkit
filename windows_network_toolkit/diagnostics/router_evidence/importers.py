@@ -1,4 +1,20 @@
-"""Router log importers — vendor-agnostic CSV/JSON parsers."""
+"""Router log importers — vendor-agnostic CSV/JSON parsers.
+
+Module responsibility:
+    Parse exported DNS, firewall, DHCP, and device logs into ``RouterEvent`` dicts
+    via the ``IMPORTERS`` registry.
+
+System placement:
+    Called by ``router_evidence.runner.run_router_import`` and router-import CLI.
+
+Key invariants:
+    * Read-only file ingest — no live router API calls from this module.
+    * Header normalization supports common vendor CSV column variants.
+    * ``inject`` bypasses disk read for tests and fixtures.
+
+Side effects:
+    * Reads user-supplied log files from disk during import.
+"""
 
 from __future__ import annotations
 

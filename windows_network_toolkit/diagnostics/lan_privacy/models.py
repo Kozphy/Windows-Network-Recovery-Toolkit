@@ -1,4 +1,20 @@
-"""LAN privacy models — evidence sources, devices, observations, classifications."""
+"""LAN privacy data models — devices, observations, classifications, limitations.
+
+Module responsibility:
+    Define schema version, evidence tiers, classification enums, and dataclass
+    payloads shared across collectors, classifier, scoring, and reports.
+
+System placement:
+    Imported throughout ``windows_network_toolkit.diagnostics.lan_privacy`` and tests.
+
+Key invariants:
+    * ``LAN_LIMITATIONS`` must accompany user-facing outputs — not security verdicts.
+    * ``EvidenceSource`` distinguishes host, router, and packet-capture tiers.
+    * ``SCHEMA_VERSION`` tags all serialized LAN privacy artifacts.
+
+Side effects:
+    * None — types and constants only.
+"""
 
 from __future__ import annotations
 
