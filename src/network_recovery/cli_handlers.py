@@ -12,6 +12,11 @@ from typing import Any
 from .audit import append_network_recovery_audit
 from .engine import run_scenario_diagnosis
 from .models import SCENARIO_CHATGPT_APP_FIREWALL, SignalBundle
+from .remediation_executor import (
+    CONFIRMATION_PHRASE,
+    execute_selected_low_risk_actions,
+    select_low_risk_actions,
+)
 
 
 def _repo_root(explicit: Path | None) -> Path:
@@ -198,21 +203,24 @@ def cmd_remediate_scenario(args: argparse.Namespace) -> int:
             **kwargs,
         )
 
-    executed: list[str] = []
-    if not dry_run:
-        confirm = (getattr(args, "confirm_phrase", None) or "").strip()
-        for action in result.recommended_actions:
-            if action.policy_decision == "BLOCK":
-                continue
-            if action.risk == "low" and action.policy_decision == "ALLOW" and confirm:
-                executed.append(f"preview_only:{action.action_id}")
-        result.remediation_executed = executed
+    selected = select_low_risk_actions(result.signals, result.hypotheses)
+    confirm = (getattr(args, "confirm_phrase", None) or "").strip()
+    remediation = execute_selected_low_risk_actions(
+        selected,
+        dry_run=dry_run,
+        confirm=confirm,
+        previews=result.recommended_actions,
+    )
+    result.remediation_executed = list(remediation.get("executed", []))
 
     append_network_recovery_audit(repo, result)
 
     payload = {
         "dry_run": dry_run,
+        "confirmation_token": CONFIRMATION_PHRASE,
+        "selected_actions": selected,
         "remediation_executed": result.remediation_executed,
+        "remediation_results": remediation.get("results", []),
         "recommended_actions": [a.to_dict() for a in result.recommended_actions],
         "policy_decision": result.policy_decision,
     }
@@ -226,5 +234,8 @@ def cmd_remediate_scenario(args: argparse.Namespace) -> int:
             if a.policy_decision == "BLOCK":
                 print(f"  [BLOCK] {a.action_id}: {a.detail}")
         if dry_run:
-            print("\nRe-run with --dry-run false and typed --confirm only for allowlisted LOW actions.")
+            print(
+                f"\nRe-run with --dry-run false and --confirm {CONFIRMATION_PHRASE} "
+                "for allowlisted LOW actions only."
+            )
     return 0

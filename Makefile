@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report fix-proxy
+.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report fix-proxy fix-chatgpt
 
 WATCH_MINUTES ?= 15
 
@@ -45,6 +45,9 @@ demo:
 # Auto-fix dead localhost WinINET proxy (Windows, no prompts)
 fix-proxy:
 	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/auto-fix-proxy.ps1
+
+fix-chatgpt:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/auto-fix-chatgpt.ps1
 
 # Starts API in fixture mode (requires uvicorn; blocks terminal).
 demo-api:

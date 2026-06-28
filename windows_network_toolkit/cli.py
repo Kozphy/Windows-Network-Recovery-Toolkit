@@ -288,6 +288,26 @@ def cmd_proxy_guardian(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_auto_fix_chatgpt(args: argparse.Namespace) -> int:
+    """Chain proxy guardian, bad-gateway diagnose, ChatGPT scenario diagnosis, LOW-risk apply."""
+    from src.network_recovery.auto_fix import run_auto_fix_chatgpt
+
+    dry_run = args.dry_run.lower() != "false"
+    payload = run_auto_fix_chatgpt(
+        dry_run=dry_run,
+        confirm=args.confirm or "",
+        skip_proxy_auto_fix=bool(getattr(args, "skip_proxy_auto_fix", False)),
+        skip_guardian_install=bool(getattr(args, "skip_guardian_install", False)),
+        chatgpt_url=args.url or "https://chatgpt.com",
+    )
+    _emit_json(payload)
+    if payload.get("unsupported_platform"):
+        return 2
+    if payload.get("outcome") == "degraded":
+        return 1
+    return 0
+
+
 def cmd_proxy_disable(args: argparse.Namespace) -> int:
     """Run gated WinINET proxy disable (preview by default).
 
@@ -1312,6 +1332,39 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         help="Run one guardian check (default behavior)",
     )
     pg.set_defaults(func=cmd_proxy_guardian)
+
+    af = sub.add_parser(
+        "auto-fix-chatgpt",
+        help="Auto-fix ChatGPT connectivity: proxy guardian, diagnose, LOW-risk remediations",
+    )
+    af.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="false",
+        help="Preview only. Pass true for dry-run: --dry-run true",
+    )
+    af.add_argument(
+        "--confirm",
+        default="",
+        help="Typed confirmation for LOW-risk apply (default: APPLY_CHATGPT_LOW_RISK when live)",
+    )
+    af.add_argument(
+        "--url",
+        default="https://chatgpt.com",
+        help="HTTPS URL for bad-gateway diagnose step",
+    )
+    af.add_argument(
+        "--skip-proxy-auto-fix",
+        action="store_true",
+        help="Skip proxy-guardian step (use when auto-fix-proxy.ps1 already ran)",
+    )
+    af.add_argument(
+        "--skip-guardian-install",
+        action="store_true",
+        help="Reserved for PS orchestrator; guardian install is handled by auto-fix-proxy.ps1",
+    )
+    af.set_defaults(func=cmd_auto_fix_chatgpt)
 
     pw = sub.add_parser("proxy-watch", help="Poll WinINET proxy for drift (read-only)")
     pw.add_argument("--duration", default="900", help="Watch duration seconds")
