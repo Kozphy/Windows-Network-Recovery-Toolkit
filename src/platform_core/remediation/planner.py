@@ -126,7 +126,14 @@ def plan_proxy_drift_remediation(
         try:
             from windows_network_toolkit.remediation.proxy_disable import preview_proxy_disable
 
-            previews.append(preview_proxy_disable(dry_run=True))
+            preview_row = preview_proxy_disable(dry_run=True)
+            if isinstance(preview_row, dict):
+                previews.append(preview_row)
+            else:
+                previews.append({
+                    "type": "invalid_preview_row",
+                    "reason": f"non_dict_row:{type(preview_row).__name__}",
+                })
         except ImportError:
             previews.append({
                 "action_id": recommended_action,

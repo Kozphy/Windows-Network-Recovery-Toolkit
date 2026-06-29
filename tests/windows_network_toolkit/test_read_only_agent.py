@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import sys
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -24,6 +26,22 @@ from windows_network_toolkit.safety import BLOCKED_ACTIONS
 FIXTURE_BUNDLE = (
     Path(__file__).resolve().parents[1] / "fixtures" / "agent" / "sample_evidence_bundle.json"
 )
+
+
+@contextmanager
+def _mock_forbidden_remediation_modules() -> Iterator[dict[str, MagicMock]]:
+    """Insert MagicMock remediation modules; restore prior sys.modules state on exit."""
+    snapshot = {name: sys.modules.get(name) for name in FORBIDDEN_REMEDIATION_MODULES}
+    mocks = {name: MagicMock() for name in FORBIDDEN_REMEDIATION_MODULES}
+    try:
+        sys.modules.update(mocks)
+        yield mocks
+    finally:
+        for name, original in snapshot.items():
+            if original is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = original
 
 
 def test_build_evidence_event_from_fixture() -> None:
@@ -87,25 +105,25 @@ def test_get_spool_status_after_collect(tmp_path: Path) -> None:
 def test_agent_does_not_call_remediation_modules(tmp_path: Path) -> None:
     """Agent path must not import or invoke remediation execute modules."""
     spool = tmp_path / "safe.jsonl"
-    patches = {
-        name: patch.dict(sys.modules, {name: MagicMock()})
-        for name in FORBIDDEN_REMEDIATION_MODULES
-    }
-    for ctx in patches.values():
-        ctx.start()
-    try:
+    with _mock_forbidden_remediation_modules() as mocks:
         with patch("subprocess.run") as subprocess_run:
             with patch("subprocess.Popen") as subprocess_popen:
                 collect_once(spool_path=spool, fixture_path=FIXTURE_BUNDLE, endpoint_id="ep-safe")
                 subprocess_run.assert_not_called()
                 subprocess_popen.assert_not_called()
-        for name in FORBIDDEN_REMEDIATION_MODULES:
-            mod = sys.modules.get(name)
-            if mod is not None and hasattr(mod, "apply_remediation"):
+        for name, mod in mocks.items():
+            if hasattr(mod, "apply_remediation"):
                 mod.apply_remediation.assert_not_called()
-    finally:
-        for ctx in patches.values():
-            ctx.stop()
+
+
+def test_forbidden_modules_restored_after_remediation_guard(tmp_path: Path) -> None:
+    """Regression: MagicMock remediation modules must not leak into sys.modules."""
+    before = {name: sys.modules.get(name) for name in FORBIDDEN_REMEDIATION_MODULES}
+    test_agent_does_not_call_remediation_modules(tmp_path)
+    after = {name: sys.modules.get(name) for name in FORBIDDEN_REMEDIATION_MODULES}
+    assert after == before
+    for name in FORBIDDEN_REMEDIATION_MODULES:
+        assert not isinstance(sys.modules.get(name), MagicMock)
 
 
 def test_collect_once_live_windows_uses_evidence_collection(

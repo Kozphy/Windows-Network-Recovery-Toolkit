@@ -16,14 +16,14 @@ from platform_core.models import (
     RollbackPreviewFields,
     utc_now_iso,
 )
+from platform_core.remediation_registry import (
+    build_action_registry_legacy_dict,
+    get_remediation_action,
+)
 from src.platform_core.remediation.rollback import (
     build_proposed_mutation_preview,
     build_rollback_preview_package,
     capture_pre_change_snapshot,
-)
-from platform_core.remediation_registry import (
-    build_action_registry_legacy_dict,
-    get_remediation_action,
 )
 
 RiskName = Literal["read_only", "low", "medium", "high", "forbidden"]

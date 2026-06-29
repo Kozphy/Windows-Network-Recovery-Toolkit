@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from windows_network_toolkit.diagnostics.lan_privacy.models import LanClassification
-from windows_network_toolkit.diagnostics.lan_privacy.privacy_risk_score import compute_privacy_risk_score
+from windows_network_toolkit.diagnostics.lan_privacy.privacy_risk_score import (
+    compute_privacy_risk_score,
+)
 
 
 def test_score_increases_with_probing():

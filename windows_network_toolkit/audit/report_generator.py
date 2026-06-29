@@ -7,6 +7,32 @@ from typing import Any, Literal
 
 ReportFormat = Literal["json", "markdown", "html"]
 
+_MOCK_TYPE_NAMES = frozenset(
+    {"MagicMock", "Mock", "NonCallableMagicMock", "NonCallableMock", "AsyncMock"}
+)
+
+
+def _is_test_mock(obj: Any) -> bool:
+    type_name = type(obj).__name__
+    module = getattr(type(obj), "__module__", "") or ""
+    return (
+        type_name in _MOCK_TYPE_NAMES
+        or type_name.endswith("Mock")
+        or module.startswith("unittest.mock")
+    )
+
+
+def _json_default(obj: Any) -> str:
+    """Serialize non-JSON values without leaking raw mock repr strings into reports."""
+    if _is_test_mock(obj):
+        return f"[non-serializable-test-mock:{type(obj).__name__}]"
+    return f"[non-serializable:{type(obj).__name__}]"
+
+
+def _json_dump(obj: Any) -> str:
+    """Serialize audit report sections; surface test/mock objects as explicit markers."""
+    return json.dumps(obj, indent=2, default=_json_default)
+
 
 def _executive_summary(decision: dict[str, Any], policy: dict[str, Any]) -> str:
     itype = decision.get("incident_type", "UNKNOWN")
@@ -49,12 +75,12 @@ def generate_report(
         "audit_trail": audit_rows or [],
     }
     if fmt == "json":
-        return json.dumps(sections, indent=2)
+        return _json_dump(sections)
     if fmt == "html":
         body = "<h1>Endpoint Reliability Incident Report</h1>"
         body += f"<p>{sections['executive_summary']}</p>"
-        body += "<h2>Timeline</h2><pre>" + json.dumps(timeline, indent=2) + "</pre>"
-        body += "<h2>Decision</h2><pre>" + json.dumps(decision, indent=2) + "</pre>"
+        body += "<h2>Timeline</h2><pre>" + _json_dump(timeline) + "</pre>"
+        body += "<h2>Decision</h2><pre>" + _json_dump(decision) + "</pre>"
         return f"<!DOCTYPE html><html><body>{body}</body></html>"
     lines = [
         "# Endpoint Reliability Incident Report",
@@ -64,35 +90,35 @@ def generate_report(
         "",
         "## 2. Incident Timeline",
         "```json",
-        json.dumps(timeline, indent=2),
+        _json_dump(timeline),
         "```",
         "",
         "## 3. Evidence Collected",
         f"{len(timeline)} timeline events recorded.",
         "",
         "## 4. Hypothesis",
-        json.dumps(decision.get("metadata", {}), indent=2),
+        _json_dump(decision.get("metadata", {})),
         "",
         "## 5. Proof",
-        json.dumps(proof or [], indent=2),
+        _json_dump(proof or []),
         "",
         "## 6. Decision",
-        json.dumps(decision, indent=2),
+        _json_dump(decision),
         "",
         "## 7. Risk Classification",
         str(decision.get("risk_level")),
         "",
         "## 8. Policy Gate",
-        json.dumps(policy, indent=2),
+        _json_dump(policy),
         "",
         "## 9. Remediation Preview",
-        json.dumps(remediation, indent=2),
+        _json_dump(remediation),
         "",
         "## 10. Actions Taken",
         "None (preview-only run)." if policy.get("dry_run", True) else "See audit trail.",
         "",
         "## 11. Rollback Plan",
-        json.dumps(remediation.get("rollback_plan", {}), indent=2),
+        _json_dump(remediation.get("rollback_plan", {})),
         "",
         "## 12. Residual Risk",
         "Policy permission is not a safety guarantee. Correlation is not causation.",
@@ -103,7 +129,7 @@ def generate_report(
         f"| {policy.get('outcome', 'PREVIEW_ONLY')} | Detect / Audit / Prevent |",
         "",
         "## 14. Audit Trail",
-        json.dumps(audit_rows or [], indent=2),
+        _json_dump(audit_rows or []),
     ]
     return "\n".join(lines)
 
@@ -128,7 +154,7 @@ def generate_erp_report(package: dict[str, Any], *, fmt: ReportFormat = "markdow
         "safety_notes": package.get("safety_notes", []),
     }
     if fmt == "json":
-        return json.dumps(sections, indent=2)
+        return _json_dump(sections)
     if fmt == "html":
         body = "<h1>Endpoint Reliability Incident Report</h1>"
         body += f"<p>{sections['executive_summary']}</p>"
@@ -138,7 +164,7 @@ def generate_erp_report(package: dict[str, Any], *, fmt: ReportFormat = "markdow
             ("Policy", "policy_decision"),
             ("Timeline", "timeline"),
         ):
-            body += f"<h2>{title}</h2><pre>{json.dumps(sections[key], indent=2)}</pre>"
+            body += f"<h2>{title}</h2><pre>{_json_dump(sections[key])}</pre>"
         return f"<!DOCTYPE html><html><body>{body}</body></html>"
     lines = [
         "# Endpoint Reliability Incident Report",
@@ -148,43 +174,43 @@ def generate_erp_report(package: dict[str, Any], *, fmt: ReportFormat = "markdow
         "",
         "## 2. Evidence Collected",
         "```json",
-        json.dumps(sections["evidence_collected"], indent=2),
+        _json_dump(sections["evidence_collected"]),
         "```",
         "",
         "## 3. Hypotheses Tested",
-        json.dumps(sections["hypotheses_tested"], indent=2),
+        _json_dump(sections["hypotheses_tested"]),
         "",
         "## 4. Proof Results",
-        json.dumps(sections["proof_results"], indent=2),
+        _json_dump(sections["proof_results"]),
         "",
         "## 5. Risk Classification",
         str(sections["risk_classification"]),
         "",
         "## 6. Policy Decision",
-        json.dumps(sections["policy_decision"], indent=2),
+        _json_dump(sections["policy_decision"]),
         "",
         "## 7. Remediation Preview",
-        json.dumps(sections["remediation_preview"], indent=2),
+        _json_dump(sections["remediation_preview"]),
         "",
         "## 8. Approval Record",
-        json.dumps(sections["approval_record"], indent=2),
+        _json_dump(sections["approval_record"]),
         "",
         "## 9. Rollback Plan",
-        json.dumps(sections["rollback_plan"], indent=2),
+        _json_dump(sections["rollback_plan"]),
         "",
         "## 10. Timeline",
         "```json",
-        json.dumps(sections["timeline"], indent=2),
+        _json_dump(sections["timeline"]),
         "```",
         "",
         "## 11. Chain of Custody",
-        json.dumps(sections["chain_of_custody"], indent=2),
+        _json_dump(sections["chain_of_custody"]),
         "",
         "## 12. Control Mapping (informational)",
-        json.dumps(sections["control_mapping"], indent=2),
+        _json_dump(sections["control_mapping"]),
         "",
         "## 13. Audit Trail",
-        json.dumps(sections["audit_trail"], indent=2),
+        _json_dump(sections["audit_trail"]),
         "",
         "## 14. Safety Notes",
         "\n".join(f"- {n}" for n in sections["safety_notes"]),

@@ -46,3 +46,29 @@ def test_approval_token_gate() -> None:
         dry_run=False,
     )
     assert plan["approval"]["approved"] is True
+
+
+def test_invalid_preview_row_when_module_returns_non_dict() -> None:
+    import sys
+    from unittest.mock import MagicMock
+
+    module_name = "windows_network_toolkit.remediation.proxy_disable"
+    mock_mod = MagicMock()
+    mock_mod.preview_proxy_disable.return_value = MagicMock()
+    snapshot = sys.modules.get(module_name)
+    try:
+        sys.modules[module_name] = mock_mod
+        plan = plan_proxy_drift_remediation(
+            incident_id="inc-invalid-preview",
+            signals={"evidence_tier": "FINAL_CAUSATION", "path_validated": True},
+            dry_run=True,
+        )
+    finally:
+        if snapshot is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = snapshot
+
+    assert plan["previews"][0]["type"] == "invalid_preview_row"
+    assert plan["previews"][0]["reason"] == "non_dict_row:MagicMock"
+    assert plan["approval"]["can_execute"] is False

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 from windows_network_toolkit.audit.report_generator import generate_report
 
 
@@ -27,3 +29,16 @@ def test_report_json() -> None:
         fmt="json",
     )
     assert '"executive_summary"' in text
+
+
+def test_report_marks_mock_objects_without_raw_repr() -> None:
+    text = generate_report(
+        timeline=[],
+        decision={"incident_type": "NO_PROXY", "confidence": 0.5, "risk_level": "low"},
+        policy={"outcome": "ALLOW_PREVIEW", "dry_run": True},
+        remediation={"previews": [MagicMock()], "rollback_plan": {}},
+        fmt="json",
+    )
+    assert "[non-serializable-test-mock:MagicMock]" in text
+    assert "MagicMock id=" not in text
+    assert "<Mock" not in text

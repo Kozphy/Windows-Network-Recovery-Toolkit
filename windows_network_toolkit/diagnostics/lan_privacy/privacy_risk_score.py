@@ -18,11 +18,11 @@ Side effects:
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from .models import EvidenceSource, LAN_LIMITATIONS, LanClassification
+from .models import LAN_LIMITATIONS, EvidenceSource, LanClassification
 
 # Component caps per plan
 CAP_BREADTH = 20

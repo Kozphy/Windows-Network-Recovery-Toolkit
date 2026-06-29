@@ -381,7 +381,9 @@ def prometheus_metrics() -> Response:
     except ImportError:  # pragma: no cover
         pass
     try:
-        from src.platform_core.operability.metrics_registry import render_prometheus_text as render_operability_metrics
+        from src.platform_core.operability.metrics_registry import (
+            render_prometheus_text as render_operability_metrics,
+        )
 
         operability = render_operability_metrics()
         if operability:

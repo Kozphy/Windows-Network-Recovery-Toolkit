@@ -23,7 +23,7 @@ from typing import Any
 
 from src.platform_core.governance.report_sections import NON_CLAIMS
 
-from .report import REQUIRED_SAFE_PHRASES, render_lan_privacy_markdown, validate_report_wording
+from .report import REQUIRED_SAFE_PHRASES, validate_report_wording
 
 
 def build_executive_report(

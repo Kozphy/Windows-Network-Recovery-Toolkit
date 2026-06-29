@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .models import ROUTER_SCHEMA, RouterEvent, RouterEventType
+from .models import RouterEvent, RouterEventType
 
 
 def _now() -> str:

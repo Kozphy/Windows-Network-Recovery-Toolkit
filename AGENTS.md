@@ -4,7 +4,10 @@
 technology-risk governance: evidence collection, classification, policy-gated remediation
 previews, and append-only audit trails.
 
-**Not:** antivirus, EDR, malware verdicts, or autonomous remediation.
+**Not:** antivirus, EDR, XDR, malware detector, MITM confirmation system,
+autonomous remediation agent, SOC 2 attestation tool, formal audit opinion,
+or enterprise-certified production software.
+
 
 For human onboarding, read [`docs/ONBOARDING.md`](docs/ONBOARDING.md) and
 [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md). For docstring style, see
@@ -21,9 +24,15 @@ Cursor-specific scoped rules (if present): `.cursor/rules/`.
 1. **Observation is not proof.**
 2. **Correlation is not causation.**
 3. **Classification is not accusation.**
-4. **Policy permission is not a safety guarantee.**
+4. **Confidence is ordinal, not calibrated probability.**
+5. **Policy permission is not a safety guarantee.**
+6. **Recommendation is not execution authority.**
+7. **AI explains only; humans and policy gates authorize actions.**
 
-Preserve `limitations[]` in outputs and reports. Do not strip uncertainty language.
+Preserve `limitations[]` in outputs, reports, explanations, API responses, and audit artifacts. Do not strip uncertainty language.
+
+Do not introduce wording, code paths, documentation, tests, API responses, or demos that imply unsupported certainty, attribution, compromise, malware, confirmed MITM, formal assurance, or production certification.
+
 
 ### Mutation boundaries
 
@@ -154,6 +163,33 @@ ruff check <paths>
 
 ---
 
+
+## AI and agent boundaries
+
+### Agents may help with:
+
+* reading code
+* proposing small patches
+* adding tests
+* improving documentation
+* summarizing evidence
+* drafting safer explanation text
+* identifying missing verification steps
+
+### Agents must not:
+
+* authorize registry changes
+* execute remediation without explicit user instruction and required confirmation tokens
+* bypass policy gates
+* weaken dry-run defaults
+* remove audit logging
+* convert correlation into attribution
+* describe classifications as malware, compromise, or confirmed MITM
+* claim SOC 2 assurance, regulatory attestation, or enterprise production certification
+
+For risky or accusatory-adjacent outputs, preserve `limitations[]` and prefer preview/read-only guidance.
+
+
 ## Implementation guidance for agents
 
 1. **Minimize scope** — match surrounding code; reuse existing functions; no unrelated refactors.
@@ -161,6 +197,21 @@ ruff check <paths>
 3. **Do not load portfolio-only docs** (`big4-interview-*`, pitch scripts) unless the user asks — use `docs/ONBOARDING.md` and flow docs (`chatgpt-auto-fix.md`, `dead-proxy-guardian.md`, `ai-evals-feedback-loop.md`).
 4. **Documentation-only tasks** — follow `docs/code-documentation-standards.md`; no logic/signature changes unless requested.
 5. **Commits** — only when the user explicitly asks; never commit `.env`, secrets, or `__pycache__/`.
+
+---
+
+## Reviewer proof expectations
+
+When preparing changes for portfolio review, prefer evidence over claims:
+
+* `pytest` should pass, or failures should be documented honestly.
+* `ruff` should pass for touched Python files.
+* Demo commands should be reproducible from repo-root instructions.
+* Fixture-based examples should avoid live host mutation.
+* Safety, policy, audit, and explanation-boundary tests should not be weakened.
+* `docs/REVIEWER_PROOF_PACK.md`, if present, must reflect commands that actually exist and results that were actually observed.
+
+Do not claim that tests, demos, CI, replay, audit verification, or production readiness are complete unless verified.
 
 ---
 
