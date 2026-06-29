@@ -15,6 +15,36 @@
 
 ---
 
+## Ten-minute orientation (new engineers)
+
+Read in this order to understand structure and core flows without running Windows repair scripts:
+
+| Step | Doc / command | What you learn |
+|------|---------------|----------------|
+| 1 | This README — **Non-claims** + **Safety boundaries** | What the repo is *not*; dry-run defaults |
+| 2 | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) | Full doc map and golden case `59081` |
+| 3 | [AGENTS.md](AGENTS.md) | Contributor safety rules and test conventions |
+| 4 | `python -m windows_network_toolkit version` | Installed package version (no side effects) |
+| 5 | [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_governance_model.md) | Six governance principles |
+| 6 | [docs/enterprise-hardening-roadmap.md](docs/enterprise-hardening-roadmap.md) | Phases 1–8 (agent, observability, rollback preview) |
+
+**Repository map (verified paths):**
+
+```text
+windows_network_toolkit/   Primary CLI — proxy-status, diagnose, governance-report, agent *
+src/platform_core/         Canonical policy, evidence tiers, remediation preview, audit writers
+platform_core/             Platform JSONL storage, classic policy previews, fleet helpers
+backend/                   FastAPI — /trisk/*, /platform/*, /v1/enterprise/* (optional Postgres)
+tests/                     Safety contracts, fixtures, replay — run before risky edits
+docs/                      Architecture, demos, audit defense, operational runbooks
+```
+
+**Core flow (read-only by default):** collect evidence → classify with `limitations[]` → control tests → policy gate → remediation **preview** → append audit JSONL → governance report / Power BI export.
+
+**Audit evidence to inspect after a demo:** `tests/fixtures/risk_analytics/audit_sample/` (KPI fixtures), `platform_data/audit.jsonl` (when platform API used), `logs/rollback_audit.jsonl` (rollback preview rows), `.audit/*.jsonl` (operator CLI actions).
+
+---
+
 ## Non-claims and boundaries
 
 This project **does not** and **must not** be presented as:
@@ -220,6 +250,13 @@ Spec: [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_gove
 ```powershell
 pip install -e ".[dev]"
 $env:PYTHONPATH = (Get-Location).Path
+
+# Version (read-only)
+python -m windows_network_toolkit version
+
+# Read-only agent cycle (fixture or live collectors)
+python -m windows_network_toolkit agent collect --fixture tests/fixtures/agent/sample_evidence_bundle.json
+python -m windows_network_toolkit agent status
 
 # Evidence & classification
 python -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_PROXY_CONFIG.json
@@ -473,13 +510,16 @@ pytest -q tests/test_portfolio_case_studies.py tests/test_portfolio_evidence_sui
 ## Project structure
 
 ```text
-src/platform_core/         Canonical decision engine
-windows_network_toolkit/   Primary JSON-first CLI
-examples/evidence/         Portfolio evidence fixtures
-analytics/powerbi/         PL-300 Power BI CSV layer + model docs
-tests/                     Safety contracts + portfolio tests
-docs/                      Architecture, demos, case studies
-backend/                   FastAPI platform API
+src/platform_core/         Canonical decision engine, operability, evidence_collection, rollback preview
+windows_network_toolkit/   Primary JSON-first CLI + read-only agent (agent *)
+platform_core/             Platform JSONL (platform_data/), classic RemediationPreview models
+backend/                   FastAPI — /trisk/*, /platform/*, SQLModel TRISK tables (SQLite or Postgres)
+endpoint_agent/            Legacy remote diagnose loop (optional; distinct from read-only agent)
+examples/evidence/         Portfolio evidence fixtures (fictional — no production exports)
+analytics/powerbi/         PL-300 star-schema spec + DAX blueprint
+tests/                     Safety contracts, portfolio replay, concurrency/scale (synthetic)
+docs/                      Architecture, security-review, rollback-strategy, agent-deployment
+scripts/                   PowerShell wrappers — see safety headers in each file
 ```
 
 ---
@@ -523,6 +563,14 @@ GitHub Actions: lint · test · typecheck · build-smoke · Windows zero-skip �
 | [docs/demo-faang-big4-review.md](docs/demo-faang-big4-review.md) | FAANG + Big 4 demo paths |
 | [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md)     | Proof tiers T0–T5       |
 | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)   | Full index              |
+| [docs/enterprise-hardening-roadmap.md](docs/enterprise-hardening-roadmap.md) | Phases 1–8 program status |
+| [docs/security-review.md](docs/security-review.md)           | Threat model + abuse cases |
+| [docs/rollback-strategy.md](docs/rollback-strategy.md)       | Preview-first rollback model |
+| [docs/agent-deployment.md](docs/agent-deployment.md)         | Read-only agent CLI |
+| [docs/observability.md](docs/observability.md)               | trace_id, audit_id, /metrics |
+| [docs/scale-testing.md](docs/scale-testing.md)               | Synthetic local scale limits |
+| [docs/cross-platform-support.md](docs/cross-platform-support.md) | Linux/macOS PARTIAL foundation |
+| [docs/packaging-installer.md](docs/packaging-installer.md)     | pipx/wheel/portable install plan |
 
 
 ---

@@ -1,14 +1,23 @@
 """Rollback plan generation — preview-first; no live execution by default.
 
-Rollback model (preview-only):
-    1. pre_change evidence snapshot
-    2. proposed mutation preview
-    3. human approval token
-    4. reversible action record
-    5. rollback preview
-    6. rollback audit record
+Module responsibility:
+    Assemble the six-part rollback preview package (snapshot, mutation preview, approval
+    token, reversible action record, rollback steps, audit row) for policy-gated remediation.
 
-Rollback is **not** a guarantee of safety — see ``ROLLBACK_LIMITATIONS``.
+System placement:
+    Called by ``src/platform_core/remediation/planner.py`` and
+    ``platform_core/policy/classic.py`` (``RemediationPreview.rollback_preview``).
+    Live registry restore remains in ``src/proxy_guard/rollback.py`` (opt-in CLI only).
+
+Key invariants:
+    * ``dry_run=True`` is the default for all package builders.
+    * ``can_execute_rollback`` always returns ``False`` in this module — no live executor.
+    * ``ROLLBACK_LIMITATIONS`` is copied onto every preview artifact.
+
+Audit Notes:
+    Append preview rows via :func:`append_rollback_audit_record` to ``logs/rollback_audit.jsonl``.
+    Compare ``gate_reason`` on execute attempts with operator confirmation logs — successful
+    token validation still does not mutate state here.
 """
 
 from __future__ import annotations
@@ -43,7 +52,26 @@ def capture_pre_change_snapshot(
     proxy_enable: int | None = None,
     proxy_server: str | None = None,
 ) -> dict[str, Any]:
-    """Capture read-only pre-change evidence snapshot for rollback planning."""
+    """Capture read-only pre-change evidence snapshot for rollback planning.
+
+    Args:
+        endpoint_id: Stable endpoint identifier for audit correlation.
+        incident_id: Incident or failure event id linking snapshot to a decision.
+        evidence: Optional normalized signal dict (proxy_enable, proxy_server, tiers).
+        proxy_enable: WinINET ProxyEnable override when not in ``evidence``.
+        proxy_server: WinINET ProxyServer override when not in ``evidence``.
+
+    Returns:
+        Snapshot dict with ``snapshot_id``, ``proxy_registry`` fields, ``limitations``,
+        and ``read_only: True``. Timestamps are UTC ISO-8601 (``%Y-%m-%dT%H:%M:%SZ``).
+
+    Side effects:
+        None — does not read registry or write files.
+
+    Audit Notes:
+        Snapshot reflects caller-supplied values only; stale or partial evidence produces
+        a rollback plan that may not restore unknown prior PAC or GPO state.
+    """
     evidence = evidence or {}
     return {
         "snapshot_id": f"snap-{uuid.uuid4().hex[:12]}",
@@ -281,7 +309,23 @@ def can_execute_rollback(
     typed_confirmation: str,
     required_phrase: str = ROLLBACK_CONFIRMATION_PHRASE,
 ) -> tuple[bool, str]:
-    """Return whether live rollback may proceed — default denies execution."""
+    """Evaluate whether live rollback may proceed (platform core always denies).
+
+    Args:
+        dry_run: When ``True``, returns ``(False, "dry_run_default_no_execution")``.
+        confirmation_token: Operator-provided approval token.
+        expected_token: Token issued at preview time.
+        typed_confirmation: Operator-typed phrase; must equal ``required_phrase``.
+        required_phrase: Defaults to :data:`ROLLBACK_CONFIRMATION_PHRASE`.
+
+    Returns:
+        Tuple of ``(can_execute, gate_reason)``. This module never returns
+        ``can_execute=True`` — live restore is disabled in platform core.
+
+    Audit Notes:
+        Log ``gate_reason`` on every execute attempt; ``approval_token_missing_or_invalid``
+        vs ``typed_confirmation_required`` distinguish policy failures.
+    """
     if dry_run:
         return False, "dry_run_default_no_execution"
     if not validate_approval_token(confirmation_token, expected_token):
@@ -299,7 +343,26 @@ def attempt_rollback_execute(
     expected_token: str = "",
     dry_run: bool = True,
 ) -> dict[str, Any]:
-    """Attempt rollback execution — blocked unless explicit confirmation; never mutates by default."""
+    """Record a rollback execute attempt without mutating endpoint state.
+
+    Args:
+        package: Output of :func:`build_rollback_preview_package`.
+        confirmation_token: Operator approval token for gate evaluation.
+        typed_confirmation: Typed phrase (e.g. ``RESTORE_PROXY_LKG``).
+        expected_token: Override when not stored in ``package``.
+        dry_run: When ``True``, gate fails with ``dry_run_default_no_execution``.
+
+    Returns:
+        Dict with ``executed=False``, ``can_execute``, ``reason``, nested
+        ``rollback_audit_record``, and ``limitations``.
+
+    Side effects:
+        None on endpoint state. Caller may append ``rollback_audit_record`` to JSONL.
+
+    Audit Notes:
+        ``executed`` is always ``False`` here — correlate with ``src/proxy_guard/rollback.py``
+        only when operator runs opt-in CLI rollback separately.
+    """
     ht = package.get("human_approval_token") or {}
     token = expected_token or str(ht.get("expected_token", ""))
     can_execute, reason = can_execute_rollback(

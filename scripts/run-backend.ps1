@@ -1,4 +1,18 @@
 # Start FastAPI backend using the repo .venv (not a global/hermes uvicorn).
+#
+# Purpose:
+#   Launch backend.main via project Python with PYTHONPATH and fixture-safe defaults.
+#
+# Privileges:
+#   Standard user. Remediation routes still require API role headers + policy gates.
+#
+# Side effects:
+#   Binds HTTP listener on ListenHost:Port. Sets PLATFORM_FIXTURE_MODE=1 when unset.
+#   Does NOT mutate Windows registry or endpoint state.
+#
+# Recovery:
+#   If port is in use, use start-api.ps1 (port conflict check) or -Port 8001.
+#
 # Usage (from repo root):
 #   .\scripts\run-backend.ps1
 #   .\scripts\run-backend.ps1 -Reload

@@ -23,7 +23,27 @@ else:
 
 @contextlib.contextmanager
 def jsonl_file_lock(path: Path, *, timeout_seconds: float = 30.0) -> Iterator[None]:
-    """Exclusive advisory lock for one JSONL file (companion ``.lock`` sibling)."""
+    """Acquire an exclusive advisory lock for one JSONL file.
+
+    Creates a sibling ``<path>.lock`` file. Uses ``msvcrt`` on Windows and ``fcntl`` on POSIX.
+
+    Args:
+        path: Target JSONL file (parent dirs created on append, not here).
+        timeout_seconds: Max wait before raising ``TimeoutError``.
+
+    Yields:
+        None while the lock is held.
+
+    Raises:
+        TimeoutError: When lock cannot be acquired within ``timeout_seconds``.
+        OSError: When the lock file cannot be opened.
+
+    Side effects:
+        Creates or opens ``path.name + ".lock"``; releases lock on context exit.
+
+    Engineering Notes:
+        Advisory only — does not prevent unrelated processes that ignore the lock file.
+    """
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     lock_path = target.with_name(target.name + ".lock")
@@ -58,7 +78,18 @@ def jsonl_file_lock(path: Path, *, timeout_seconds: float = 30.0) -> Iterator[No
 
 
 def append_jsonl_locked(path: Path, record: dict[str, Any]) -> None:
-    """Append one JSON line under an exclusive file lock."""
+    """Append one JSON line under an exclusive file lock.
+
+    Args:
+        path: Destination JSONL file.
+        record: JSON-serializable dict (``ensure_ascii=False``, ``default=str``).
+
+    Side effects:
+        Creates parent directories; appends one line; calls ``os.fsync`` on the handle.
+
+    Audit Notes:
+        Not duplicate-safe — callers must enforce idempotency keys at a higher layer.
+    """
     target = Path(path)
     line = json.dumps(record, ensure_ascii=False, default=str)
     with jsonl_file_lock(target):

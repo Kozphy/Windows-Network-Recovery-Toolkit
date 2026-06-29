@@ -266,7 +266,13 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 | `docs/ai-evals-feedback-loop.md` | AI evals fixture harness (`ai-eval`) |
 | [enterprise-hardening-roadmap.md](enterprise-hardening-roadmap.md) | Production-shaped hardening program (8 phases) |
 | [adr/ADR-enterprise-hardening-roadmap.md](adr/ADR-enterprise-hardening-roadmap.md) | ADR: agent, observability, cross-platform foundation |
-| [agent-deployment.md](agent-deployment.md) | Read-only local agent CLI (`agent once|run|health|spool-status`) |
+| [agent-deployment.md](agent-deployment.md) | Read-only `wnrt agent *` CLI |
+| [observability.md](observability.md) | trace_id, audit_id, structured JSON logs |
+| [scale-testing.md](scale-testing.md) | Synthetic 100/1k/10k — local limits |
+| [cross-platform-support.md](cross-platform-support.md) | Linux/macOS PARTIAL evidence |
+| [packaging-installer.md](packaging-installer.md) | pipx/wheel/portable install plan |
+| [security-review.md](security-review.md) | Threat model + abuse-case pack |
+| [rollback-strategy.md](rollback-strategy.md) | Preview-first rollback six-part model |
 | `docs/dead-proxy-guardian.md` | Dead localhost WinINET proxy recovery |
 
 ## Audit checklist

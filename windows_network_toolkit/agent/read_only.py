@@ -1,4 +1,31 @@
-"""Read-only endpoint agent — evidence collection and spool only."""
+"""Read-only endpoint agent — evidence collection and JSONL spool only.
+
+Module responsibility:
+    Run observe-only collection cycles: gather endpoint evidence (live collectors or
+    fixtures), append events to a local spool, emit observability metrics.
+
+System placement:
+    Invoked via ``python -m windows_network_toolkit agent *`` CLI. Does **not** call
+    remediation executors listed in ``FORBIDDEN_REMEDIATION_MODULES``.
+
+Key invariants:
+    * ``READ_ONLY_POLICY_BOUNDARY`` = ``read_only_no_mutation``.
+    * ``automatic_repair`` is always ``False`` on spool events.
+    * Imports from ``windows_network_toolkit.safety.BLOCKED_ACTIONS`` for contract tests.
+
+Side effects:
+    Appends to spool JSONL (path from ``resolve_spool_path``); may increment in-memory
+    operability counters.
+
+Failure modes:
+    Collector failures surface in evidence ``limitations``; spool write failures raise
+    ``OSError`` to the CLI.
+
+Audit Notes:
+    Correlate spool ``collected_at_utc`` with ``trace_id`` / ``audit_id`` from
+    ``observability_scope``. Spool files are local custody — not uploaded unless a
+    separate sync path is configured.
+"""
 
 from __future__ import annotations
 

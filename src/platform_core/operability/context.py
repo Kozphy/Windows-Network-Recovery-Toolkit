@@ -1,4 +1,21 @@
-"""Local observability context — trace_id and audit_id propagation (no external deps)."""
+"""Local observability context — trace_id and audit_id propagation (no external deps).
+
+Module responsibility:
+    Bind ``trace_id`` and ``audit_id`` into ``contextvars`` for structured logging and
+    metrics correlation across a single request or agent cycle.
+
+System placement:
+    Used by ``windows_network_toolkit/agent/read_only.py``, ``src/logging/audit.py``,
+    and ``backend/main.py`` middleware when operability is enabled.
+
+Key invariants:
+    * Context is task-local — async workers must enter ``observability_scope`` per job.
+    * IDs are opaque strings (UUID hex / UUID str); not guaranteed globally unique across
+      processes without external coordination.
+
+Side effects:
+    None — only mutates contextvars for the current execution context.
+"""
 
 from __future__ import annotations
 

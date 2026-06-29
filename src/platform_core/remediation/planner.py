@@ -1,4 +1,24 @@
-"""Policy-gated remediation preview — dry-run default, never silent mutation."""
+"""Policy-gated remediation preview — dry-run default, never silent mutation.
+
+Module responsibility:
+    Build a proxy-drift remediation plan: policy evaluation, forward mutation preview,
+    structured rollback preview package, and approval token gate.
+
+System placement:
+    Consumed by tests and portfolio demos; does not execute registry writes.
+
+Key invariants:
+    * ``dry_run=True`` default — ``can_execute`` in output is ``False`` unless token +
+      policy allow and ``dry_run=False``.
+    * Weak proof tiers may yield ``BLOCK`` or ``PREVIEW_ONLY`` policy outcomes.
+
+Side effects:
+    None — returns an in-memory plan dict only.
+
+Audit Notes:
+    Persist ``rollback_preview["rollback_audit_record"]`` when operators need a custody
+    trail beyond the returned dict.
+"""
 
 from __future__ import annotations
 
@@ -56,7 +76,29 @@ def plan_proxy_drift_remediation(
     confirmation_token: str = "",
     expected_token: str = "",
 ) -> dict[str, Any]:
-    """Generate remediation plan with policy gate, rollback, and audit metadata."""
+    """Generate remediation plan with policy gate, rollback preview, and approval metadata.
+
+    Args:
+        incident_id: Correlates evidence bundle and decision records.
+        recommended_action: Registry action key (e.g. ``disable_wininet_proxy``).
+        signals: Normalized observation dict; may include ``evidence_tier``, ``endpoint_id``.
+        prior_proxy_enable: Value captured for rollback snapshot (default ``1``).
+        prior_proxy_server: Prior ``ProxyServer`` string for rollback snapshot.
+        dry_run: When ``True``, approval ``can_execute`` stays ``False``.
+        confirmation_token: Operator token to validate against ``expected_token``.
+        expected_token: Issued approval token; generated when empty.
+
+    Returns:
+        Plan dict with ``decision``, ``policy_gate``, ``previews``, ``rollback_plan``,
+        ``rollback_preview`` (six-part package), and ``approval`` sub-dict.
+
+    Side effects:
+        None.
+
+    Raises:
+        ImportError: Caught internally — falls back to stub mutation preview if
+            ``windows_network_toolkit.remediation.proxy_disable`` is unavailable.
+    """
     signals = signals or {}
     bundle = _bundle_from_signals(signals, incident_id=incident_id, tier=str(signals.get("evidence_tier", "OBSERVED_ONLY")))
     decision = Decision(
