@@ -380,6 +380,14 @@ def prometheus_metrics() -> Response:
             body = body.rstrip() + "\n" + "\n".join(extra) + "\n"
     except ImportError:  # pragma: no cover
         pass
+    try:
+        from src.platform_core.operability.metrics_registry import render_prometheus_text as render_operability_metrics
+
+        operability = render_operability_metrics()
+        if operability:
+            body = body.rstrip() + "\n" + operability
+    except ImportError:  # pragma: no cover
+        pass
     return Response(content=body, media_type="text/plain; version=0.0.4; charset=utf-8")
 
 

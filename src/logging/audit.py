@@ -33,6 +33,7 @@ def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     Side effects:
         - Creates parent directories if missing.
         - Appends one line to `path`.
+        - Optionally records local observability metrics/logs (no external services).
 
     Idempotency:
         Not idempotent; repeated calls append additional entries.
@@ -49,7 +50,29 @@ def append_jsonl(path: Path, payload: dict[str, Any]) -> None:
         Inspect line count growth and parse failures if disk fills or partial
         writes occur; recovery is file-level backup/rotation outside this API.
     """
+    try:
+        from src.platform_core.operability.context import correlation_fields, new_audit_id
+        from src.platform_core.operability.events import record_audit_appended
+
+        payload.setdefault("audit_id", new_audit_id())
+        for key, value in correlation_fields().items():
+            payload.setdefault(key, value)
+        record_audit_appended(
+            path=str(path),
+            audit_id=str(payload["audit_id"]),
+            trace_id=str(payload.get("trace_id")) if payload.get("trace_id") else None,
+        )
+    except ImportError:
+        pass
+
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(payload, ensure_ascii=False)
+    try:
+        from src.platform_core.io.locked_jsonl import append_jsonl_locked
+
+        append_jsonl_locked(path, payload)
+        return
+    except ImportError:
+        pass
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")

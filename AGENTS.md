@@ -96,6 +96,7 @@ Use `--fixture` paths under `tests/fixtures/` or `examples/` — no admin, no ho
 | Evidence | `proxy-status`, `proxy-health`, `diagnose`, `evidence-report` |
 | Proof | `proxy-proof`, `tls-proof`, `bad-gateway-diagnose` |
 | Remediation | `proxy-disable` (dry-run default), `auto-fix-chatgpt` |
+| Agent (read-only) | `agent once`, `agent run`, `agent health`, `agent spool-status` |
 | Analytics | `analytics-summary`, `analytics-export`, `powerbi-export` |
 | Governance | `risk-assess`, `control-test`, `governance-report`, `audit verify` |
 | LAN privacy | `lan-inventory`, `lan-watch`, `lan-privacy-report` |

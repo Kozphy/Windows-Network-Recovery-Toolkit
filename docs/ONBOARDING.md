@@ -26,6 +26,7 @@ Evidence → Classification → Control tests → Risk scoring → Human review 
 | Latest snapshot | `latest_evidence_report.py` | `evidence-report --latest` |
 | Remediation preview | `proxy_remediation.py` | `proxy-disable` (dry-run default) |
 | ChatGPT app-path | `src/network_recovery/` | `diagnose --app chatgpt`, `auto-fix-chatgpt`, `make fix-chatgpt` |
+| Read-only agent | `windows_network_toolkit/agent/` | `agent once`, `agent run`, `agent health`, `agent spool-status` |
 | LAN privacy | `windows_network_toolkit/diagnostics/lan_privacy/` | `lan-inventory`, `lan-watch`, `lan-privacy-report` |
 | AI evals | `src/platform_core/ai_evals/` | `ai-eval` (fixture-only) |
 
@@ -115,6 +116,7 @@ Root `GET /health` serves the ERP platform router — not the technology risk AP
 
 - [architecture.md](architecture.md) — layered design
 - [chatgpt-auto-fix.md](chatgpt-auto-fix.md) — ChatGPT connectivity auto-fix
+- [agent-deployment.md](agent-deployment.md) — Read-only local endpoint agent
 - [lan-privacy-monitor.md](lan-privacy-monitor.md) — LAN privacy CLI
 - [ai-evals-feedback-loop.md](ai-evals-feedback-loop.md) — AI evals harness
 - [risk-model.md](risk-model.md) — scoring inputs/outputs

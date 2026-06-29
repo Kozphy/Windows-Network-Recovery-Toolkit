@@ -15,3 +15,5 @@ def test_preview_includes_rollack_copy() -> None:
     )
     prev = build_preview(fe, "reset_proxy")
     assert "rollback" in (prev.rollback_plan or "").lower() or prev.rollback_plan
+    assert prev.rollback_preview is not None
+    assert prev.rollback_preview.dry_run is True

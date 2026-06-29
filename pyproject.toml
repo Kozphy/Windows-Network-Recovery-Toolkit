@@ -52,6 +52,7 @@ dev = [
 ]
 
 [project.scripts]
+wnrt = "windows_network_toolkit.cli:console_main"
 wnrt-api = "backend.__main__:main"
 
 [tool.setuptools.packages.find]

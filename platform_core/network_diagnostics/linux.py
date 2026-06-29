@@ -13,6 +13,7 @@ from platform_core.network_diagnostics.base import (
     dns_observation,
     observation,
 )
+from platform_core.network_diagnostics.listeners import listening_port_observations
 
 
 class LinuxNetworkDiagnostics(NetworkDiagnosticsProvider):
@@ -113,4 +114,5 @@ class LinuxNetworkDiagnostics(NetworkDiagnosticsProvider):
                     limitations=["resolv_conf_unavailable"],
                 )
             )
+        rows.extend(listening_port_observations(source="network_diagnostics.linux"))
         return rows

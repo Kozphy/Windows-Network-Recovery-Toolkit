@@ -270,6 +270,22 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_version(_args: argparse.Namespace) -> int:
+    """Emit package version JSON (read-only; no admin privileges)."""
+    from windows_network_toolkit import SERVICE_NAME, __version__
+
+    _emit_json(
+        {
+            "package": "windows-network-recovery-toolkit",
+            "version": __version__,
+            "service": SERVICE_NAME,
+            "read_only": True,
+            "requires_admin": False,
+        }
+    )
+    return 0
+
+
 def cmd_principles_explain(_args: argparse.Namespace) -> int:
     from src.platform_core.principles.validator import explain_principles
 
@@ -1272,6 +1288,61 @@ def cmd_risk_executive_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_agent_once(args: argparse.Namespace) -> int:
+    """Run one read-only agent evidence cycle and append to local JSONL spool."""
+    from windows_network_toolkit.agent.read_only import collect_once
+
+    fixture = Path(args.fixture) if args.fixture else None
+    if fixture and not fixture.is_file():
+        print(f"Fixture not found: {fixture}", file=sys.stderr)
+        return 1
+    spool = Path(args.spool) if args.spool else None
+    result = collect_once(
+        spool_path=spool,
+        os_family=args.os_family or None,
+        fixture_path=fixture,
+    )
+    _emit_json(result)
+    return 0
+
+
+def cmd_agent_run(args: argparse.Namespace) -> int:
+    """Run read-only agent collection loop until interrupted."""
+    from windows_network_toolkit.agent.read_only import run_agent_loop
+
+    fixture = Path(args.fixture) if args.fixture else None
+    if fixture and not fixture.is_file():
+        print(f"Fixture not found: {fixture}", file=sys.stderr)
+        return 1
+    spool = Path(args.spool) if args.spool else None
+    return run_agent_loop(
+        interval_seconds=float(args.interval),
+        spool_path=spool,
+        os_family=args.os_family or None,
+        fixture_path=fixture,
+        max_cycles=int(args.max_cycles) if args.max_cycles else None,
+    )
+
+
+def cmd_agent_health(args: argparse.Namespace) -> int:
+    """Report read-only agent health and optional backend /health probe."""
+    from windows_network_toolkit.agent.read_only import get_health_status
+
+    spool = Path(args.spool) if args.spool else None
+    payload = get_health_status(spool_path=spool, api_base=args.api or None)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_agent_spool_status(args: argparse.Namespace) -> int:
+    """Inspect local agent JSONL spool depth (read-only)."""
+    from windows_network_toolkit.agent.read_only import get_spool_status
+
+    spool = Path(args.spool) if args.spool else None
+    _emit_json(get_spool_status(spool_path=spool))
+    return 0
+
+
 def cmd_ai_eval(args: argparse.Namespace) -> int:
     """Run fixture-based AI eval suite and emit markdown or JSON report.
 
@@ -1324,6 +1395,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     """
     parser = argparse.ArgumentParser(prog=prog, description="Endpoint Reliability Decision Platform CLI")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    ver = sub.add_parser("version", help="Print installed package version (read-only)")
+    ver.set_defaults(func=cmd_version)
 
     replay = sub.add_parser("replay", help="Replay a JSONL incident fixture")
     replay.add_argument("fixture", help="Path to JSONL fixture")
@@ -1755,8 +1829,64 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     rer.add_argument("--out-dir", default="", help="Output directory")
     rer.set_defaults(func=cmd_risk_executive_report)
 
+    agent = sub.add_parser(
+        "agent",
+        help="Read-only local endpoint agent (evidence spool; no remediation)",
+    )
+    agent_sub = agent.add_subparsers(dest="agent_cmd", required=True)
+
+    def _add_agent_common(p: argparse.ArgumentParser) -> None:
+        p.add_argument(
+            "--spool",
+            default="",
+            help="Agent JSONL spool path (default: .audit/agent-spool.jsonl)",
+        )
+        p.add_argument(
+            "--fixture",
+            default="",
+            help="Evidence bundle fixture (skips live collection)",
+        )
+        p.add_argument(
+            "--os-family",
+            default="",
+            choices=["", "windows", "linux", "darwin", "unknown"],
+            help="Force OS family for evidence collection (tests/fixtures)",
+        )
+
+    agent_once = agent_sub.add_parser("once", help="One read-only evidence collection cycle")
+    _add_agent_common(agent_once)
+    agent_once.set_defaults(func=cmd_agent_once)
+
+    agent_run = agent_sub.add_parser("run", help="Loop read-only collection until Ctrl+C")
+    _add_agent_common(agent_run)
+    agent_run.add_argument("--interval", default="30", help="Seconds between cycles (min 5)")
+    agent_run.add_argument(
+        "--max-cycles",
+        default="",
+        help="Optional max cycles (for tests); default runs until interrupt",
+    )
+    agent_run.set_defaults(func=cmd_agent_run)
+
+    agent_health = agent_sub.add_parser("health", help="Agent health and optional backend probe")
+    agent_health.add_argument("--spool", default="", help="Agent JSONL spool path")
+    agent_health.add_argument(
+        "--api",
+        default="",
+        help="Optional backend base URL for GET /health (read-only)",
+    )
+    agent_health.set_defaults(func=cmd_agent_health)
+
+    agent_spool = agent_sub.add_parser("spool-status", help="Inspect agent JSONL spool depth")
+    agent_spool.add_argument("--spool", default="", help="Agent JSONL spool path")
+    agent_spool.set_defaults(func=cmd_agent_spool_status)
+
     args = parser.parse_args(argv)
     return int(args.func(args))
+
+
+def console_main() -> None:
+    """Setuptools console script entry point for ``wnrt``."""
+    raise SystemExit(main(prog="wnrt"))
 
 
 if __name__ == "__main__":

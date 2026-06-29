@@ -11,7 +11,12 @@ from src.platform_core.evidence.guards import proof_inputs_from_signals
 from src.platform_core.policy.approval import generate_approval_token, validate_approval_token
 from src.platform_core.policy.engine import evaluate_policy
 
-from .rollback import build_rollback_plan
+from .rollback import (
+    build_proposed_mutation_preview,
+    build_rollback_plan,
+    build_rollback_preview_package,
+    capture_pre_change_snapshot,
+)
 
 
 def _now() -> str:
@@ -87,14 +92,37 @@ def plan_proxy_drift_remediation(
                 "mutations": [{"argv": ["reg", "add", "..."], "human": "Set ProxyEnable=0 (preview)"}],
             })
 
+    pre_snapshot = capture_pre_change_snapshot(
+        endpoint_id=str(signals.get("endpoint_id", "local")),
+        incident_id=incident_id,
+        evidence=signals,
+        proxy_enable=prior_proxy_enable,
+        proxy_server=prior_proxy_server or "127.0.0.1:8080",
+    )
+    mutation_preview = build_proposed_mutation_preview(
+        action_id=recommended_action,
+        endpoint_id=str(signals.get("endpoint_id", "local")),
+        dry_run=True,
+        mutations=previews[0].get("mutations") if previews else None,
+    )
+
+    approval_token = expected_token or generate_approval_token()
+    rollback_preview = build_rollback_preview_package(
+        endpoint_id=str(signals.get("endpoint_id", "local")),
+        incident_id=incident_id,
+        action_id=recommended_action,
+        pre_change_snapshot=pre_snapshot,
+        proposed_mutation=mutation_preview,
+        dry_run=True,
+        approval_token=approval_token,
+        confirmation_token=confirmation_token,
+    )
     rollback = build_rollback_plan(
         action_id=recommended_action,
         prior_proxy_enable=prior_proxy_enable,
         prior_proxy_server=prior_proxy_server or "127.0.0.1:8080",
         dry_run=True,
     )
-
-    approval_token = expected_token or generate_approval_token()
     approved = validate_approval_token(confirmation_token, approval_token) if confirmation_token else False
     can_execute = approved and policy.outcome in {"ALLOW", "REQUIRE_HUMAN_APPROVAL"} and not dry_run
 
@@ -105,6 +133,7 @@ def plan_proxy_drift_remediation(
         "policy_gate": policy.model_dump(mode="json"),
         "previews": previews,
         "rollback_plan": rollback,
+        "rollback_preview": rollback_preview,
         "approval": {
             "required": policy.requires_approval or policy.outcome == "REQUIRE_HUMAN_APPROVAL",
             "token_expected_hint": approval_token[:8] + "…" if dry_run else "",

@@ -75,7 +75,7 @@ def _path(name: str) -> Path:
 
 
 def append_jsonl(path: Path, record: dict[str, Any]) -> None:
-    """Append one JSON object as a single UTF-8 line (no advisory file locking).
+    """Append one JSON object as a single UTF-8 line (advisory file lock when available).
 
     Args:
         path: Destination file; parent directories are created as needed.
@@ -85,9 +85,16 @@ def append_jsonl(path: Path, record: dict[str, Any]) -> None:
         ``OSError`` if the path is not writable.
 
     Side effects:
-        Creates ``path.parent`` and appends bytes atomically at the line level only—multi-line
-        atomicity is **not** guaranteed across processes.
+        Creates ``path.parent`` and appends one line under a per-file advisory lock when
+        :mod:`src.platform_core.io.locked_jsonl` is importable.
     """
+    try:
+        from src.platform_core.io.locked_jsonl import append_jsonl_locked
+
+        append_jsonl_locked(path, record)
+        return
+    except ImportError:
+        pass
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(record, ensure_ascii=False, default=str)
     with path.open("a", encoding="utf-8") as fh:

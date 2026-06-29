@@ -264,6 +264,9 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 | `docs/chatgpt-auto-fix.md` | ChatGPT auto-fix flow, tokens, audit paths |
 | `docs/lan-privacy-monitor.md` | LAN privacy monitor CLI |
 | `docs/ai-evals-feedback-loop.md` | AI evals fixture harness (`ai-eval`) |
+| [enterprise-hardening-roadmap.md](enterprise-hardening-roadmap.md) | Production-shaped hardening program (8 phases) |
+| [adr/ADR-enterprise-hardening-roadmap.md](adr/ADR-enterprise-hardening-roadmap.md) | ADR: agent, observability, cross-platform foundation |
+| [agent-deployment.md](agent-deployment.md) | Read-only local agent CLI (`agent once|run|health|spool-status`) |
 | `docs/dead-proxy-guardian.md` | Dead localhost WinINET proxy recovery |
 
 ## Audit checklist
