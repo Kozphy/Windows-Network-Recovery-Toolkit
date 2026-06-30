@@ -89,7 +89,7 @@ This project follows conservative repair defaults.
 - Guided repair asks before making changes.
 - Firewall reset is never automatic.
 - Full stack repair reminds the user to restart.
-- Logs are written locally and ignored by Git.
+- Logs are written locally and ignored by Git (see `.gitignore`).
 
 For more detail, read `docs/safety_model.md`.
 
@@ -113,6 +113,7 @@ Windows-Network-Recovery-Toolkit/
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 ├── SECURITY.md
+├── .gitignore
 ├── docs/
 ├── logs/
 └── scripts/
