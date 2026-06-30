@@ -56,6 +56,7 @@ config/last_known_good_proxy.json
 *.jsonl
 !tests/fixtures/**/*.jsonl
 !examples/**/*.jsonl
+!windows_network_toolkit/examples/*.jsonl
 !demo_data/**/*.jsonl
 
 # OS / editor

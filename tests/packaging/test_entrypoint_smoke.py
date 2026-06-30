@@ -112,6 +112,7 @@ def test_wnrt_console_script_if_installed() -> None:
     result = subprocess.run(
         ["wnrt", "version"],
         cwd=str(REPO_ROOT),
+        env=_env(),
         capture_output=True,
         text=True,
         check=False,
