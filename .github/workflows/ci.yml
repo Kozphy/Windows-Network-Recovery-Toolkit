@@ -162,8 +162,11 @@ jobs:
       - name: WNT JSON CLI smoke (fixture-based)
         run: |
           python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
+          python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_60505.json
+          python -m windows_network_toolkit proxy-health --fixture tests/fixtures/enert/dead_proxy_60505.json --json
           python -m windows_network_toolkit proxy-disable --dry-run
           python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
+          python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_60505.json
           python -m windows_network_toolkit proxy-owner --fixture tests/fixtures/enert/dead_proxy_59081.json
           python -m windows_network_toolkit proxy-writer-attribution --fixture tests/fixtures/enert/unknown_localhost_proxy.json
 

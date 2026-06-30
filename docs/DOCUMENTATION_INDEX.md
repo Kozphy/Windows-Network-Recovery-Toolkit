@@ -76,6 +76,17 @@ python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/de
 python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
 ```
 
+## Developer workflow & proxy troubleshooting
+
+| Doc | Purpose |
+|-----|---------|
+| **[WORKFLOW.md](WORKFLOW.md)** | Daily dev, incident recovery, tests, Git HTTPS vs SSH |
+| **[TROUBLESHOOTING_PROXY.md](TROUBLESHOOTING_PROXY.md)** | Symptom → command matrix; dead proxy port 60505 incident |
+| [dead-proxy-watch-workflow.md](dead-proxy-watch-workflow.md) | Continuous `proxy-watch` + `dead-proxy-export` |
+| [dead-proxy-guardian.md](dead-proxy-guardian.md) | Guardian + `auto-fix-proxy.ps1` |
+
+Incident fixture (60505): `tests/fixtures/enert/dead_proxy_60505.json`
+
 ## Core flows
 
 ### 1. Windows endpoint reliability (final causation)

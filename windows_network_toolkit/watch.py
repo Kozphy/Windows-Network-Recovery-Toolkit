@@ -45,6 +45,10 @@ from windows_network_toolkit.proxy_state_machine import (
     detect_reverter_loop_pattern,
 )
 from windows_network_toolkit.proxy_watch_diagnosis import analyze_proxy_watch_history
+from windows_network_toolkit.watch_schema import (
+    REVERTER_OPERATOR_NEXT_STEPS,
+    normalize_proxy_watch_event,
+)
 
 
 def _now() -> str:
@@ -132,6 +136,10 @@ def format_proxy_change_human(change: dict[str, Any]) -> str:
     reverter = change.get("reverter_diagnosis") or audit.get("reverter_diagnosis") or {}
     if reverter.get("status") and reverter.get("status") != "NONE":
         lines.append(f"Reverter diagnosis: {reverter.get('status')} (confidence {reverter.get('confidence', 0):.2f})")
+        lines.append("")
+        lines.append("Operator next steps (read-only — no auto-kill):")
+        for step in REVERTER_OPERATOR_NEXT_STEPS:
+            lines.append(f"  - {step}")
         lines.append("")
 
     lines.append("Evidence:")
@@ -348,7 +356,15 @@ def run_proxy_watch(
             te = event["transition_evidence"]
             if audit := event.get("health_audit"):
                 audit["transition_evidence"] = te
-            append_audit_dict(event, log_name="proxy-watch.jsonl")
+            audit_event = normalize_proxy_watch_event(event)
+            append_audit_dict(audit_event, log_name="proxy-watch.jsonl")
+            event.update(
+                {
+                    "schema_version": audit_event["schema_version"],
+                    "proof_tier": audit_event["proof_tier"],
+                    "limitations": audit_event["limitations"],
+                }
+            )
         events.append(event)
 
     def _poll(inject: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -386,7 +402,7 @@ def run_proxy_watch(
         for flushed in coalesce_buffer.flush():
             _finalize_coalesced(flushed)
         summary_reverter = analyze_proxy_watch_history(change_events)
-        return {
+        result: dict[str, Any] = {
             "polls": polls,
             "events": events,
             "duration_seconds": 0,
@@ -395,6 +411,9 @@ def run_proxy_watch(
             "reverter_diagnosis": summary_reverter.to_dict(),
             "transition_evidence": transition_evidence_log,
         }
+        if summary_reverter.status in {"REVERTER_SUSPECTED", "REPEATED_LOCALHOST_PROXY_PORTS"}:
+            result["operator_next_steps"] = REVERTER_OPERATOR_NEXT_STEPS
+        return result
 
     deadline = time.monotonic() + duration
     first = _poll()
@@ -405,7 +424,7 @@ def run_proxy_watch(
         _finalize_coalesced(flushed)
 
     summary_reverter = analyze_proxy_watch_history(change_events)
-    return {
+    result = {
         "polls": polls,
         "events": events,
         "duration_seconds": duration,
@@ -415,3 +434,6 @@ def run_proxy_watch(
         "reverter_diagnosis": summary_reverter.to_dict(),
         "transition_evidence": transition_evidence_log,
     }
+    if summary_reverter.status in {"REVERTER_SUSPECTED", "REPEATED_LOCALHOST_PROXY_PORTS"}:
+        result["operator_next_steps"] = REVERTER_OPERATOR_NEXT_STEPS
+    return result

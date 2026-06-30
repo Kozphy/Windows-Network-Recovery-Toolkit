@@ -311,6 +311,11 @@ def cmd_proxy_guardian(args: argparse.Namespace) -> int:
 
     dry_run = args.dry_run.lower() != "false"
     payload = run_proxy_guardian_once(dry_run=dry_run)
+    gate = payload.get("gate_reason")
+    if gate:
+        print(f"Guardian gate: {gate} — {payload.get('reason', '')}", file=sys.stderr)
+        for step in payload.get("operator_next_steps") or []:
+            print(f"  → {step}", file=sys.stderr)
     _emit_json(payload)
     if payload.get("unsupported_platform"):
         return 2
@@ -424,10 +429,25 @@ def cmd_proxy_watch(args: argparse.Namespace) -> int:
         for ch in changes:
             print(format_proxy_change_human(ch))
             print()
+        for step in payload.get("operator_next_steps") or []:
+            print(f"Next: {step}")
         if args.json_also:
             _emit_json(payload)
     else:
         _emit_json(payload)
+    return 0
+
+
+def cmd_dead_proxy_export(args: argparse.Namespace) -> int:
+    """Export local DEAD_PROXY incident bundle to reports/ (gitignored)."""
+    from pathlib import Path
+
+    from windows_network_toolkit.dead_proxy_incident import export_dead_proxy_incident_bundle
+
+    audit_dir = Path(args.audit_dir).resolve() if args.audit_dir else None
+    out_dir = Path(args.out_dir).resolve() if args.out_dir else None
+    payload = export_dead_proxy_incident_bundle(audit_dir=audit_dir, out_dir=out_dir)
+    _emit_json(payload)
     return 0
 
 
@@ -1506,6 +1526,14 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         help="Merge rapid registry sub-events within this window (200-5000 ms)",
     )
     pw.set_defaults(func=cmd_proxy_watch)
+
+    dpe = sub.add_parser(
+        "dead-proxy-export",
+        help="Export proxy-watch audit + status/health snapshot to reports/ (local only)",
+    )
+    dpe.add_argument("--audit-dir", default="", help="Audit directory (default .audit)")
+    dpe.add_argument("--out-dir", default="", help="Output directory override")
+    dpe.set_defaults(func=cmd_dead_proxy_export)
 
     preplay = sub.add_parser("proxy-replay", help="Replay proxy-watch JSONL through state machine")
     preplay.add_argument("--input", required=True, help="JSONL fixture or audit log path")

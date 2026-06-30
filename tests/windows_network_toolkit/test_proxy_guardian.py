@@ -14,10 +14,8 @@ def test_guardian_skips_when_no_dead_proxy() -> None:
     ):
         out = run_proxy_guardian_once(dry_run=False)
     assert out["action_taken"] == "none"
+    assert out["gate_reason"] == "classification_not_dead_proxy"
     assert "remediation" not in out
-
-
-def test_guardian_dry_run_dead_proxy() -> None:
     with (
         patch(
             "windows_network_toolkit.proxy_guardian.run_proxy_status",
@@ -35,6 +33,7 @@ def test_guardian_dry_run_dead_proxy() -> None:
         out = run_proxy_guardian_once(dry_run=True)
     disable.assert_called_once_with(dry_run=True, confirm="")
     assert out["action_taken"] == "would_remediate"
+    assert out["gate_reason"] == "dry_run_preview"
 
 
 def test_guardian_skips_active_localhost_proxy() -> None:
@@ -70,3 +69,4 @@ def test_guardian_applies_dead_proxy() -> None:
         out = run_proxy_guardian_once(dry_run=False)
     disable.assert_called_once_with(dry_run=False, confirm="DISABLE_WININET_PROXY")
     assert out["action_taken"] == "remediated"
+    assert out["gate_reason"] == "remediation_applied"

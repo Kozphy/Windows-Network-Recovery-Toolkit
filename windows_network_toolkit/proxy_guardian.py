@@ -53,7 +53,12 @@ def run_proxy_guardian_once(*, dry_run: bool = False) -> dict[str, Any]:
     }
 
     if classification != "DEAD_PROXY_CONFIG":
+        result["gate_reason"] = "classification_not_dead_proxy"
         result["reason"] = "No dead localhost proxy detected; guardian left settings unchanged."
+        result["operator_next_steps"] = [
+            "Run proxy-health and proxy-watch for path evidence before live remediation.",
+            "If browsers fail but classification is NO_PROXY: see diagnostic_hints on proxy-status.",
+        ]
         return result
 
     disable = run_proxy_disable(
@@ -63,17 +68,29 @@ def run_proxy_guardian_once(*, dry_run: bool = False) -> dict[str, Any]:
     result["remediation"] = disable
     if disable.get("unsupported_platform"):
         result["action_taken"] = "blocked"
+        result["gate_reason"] = "unsupported_platform"
         return result
 
     if dry_run:
         result["action_taken"] = "would_remediate"
+        result["gate_reason"] = "dry_run_preview"
         result["reason"] = "Dead localhost proxy detected; dry-run preview only."
+        result["operator_next_steps"] = [
+            "Review remediation preview in remediation field.",
+            "Live apply: proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY",
+        ]
         return result
 
     if disable.get("action_allowed"):
         result["action_taken"] = "remediated"
-        result["reason"] = "Dead localhost proxy cleared automatically."
+        result["gate_reason"] = "remediation_applied"
+        result["reason"] = "Dead localhost proxy cleared with typed confirmation."
     else:
         result["action_taken"] = "blocked"
+        result["gate_reason"] = disable.get("policy_reason") or "policy_or_confirmation_blocked"
         result["reason"] = disable.get("policy_reason") or "Remediation blocked by policy or confirmation."
+        result["operator_next_steps"] = [
+            "Run proxy-disable --dry-run true to inspect policy gate output.",
+            "Ensure DISABLE_WININET_PROXY confirmation for live apply.",
+        ]
     return result

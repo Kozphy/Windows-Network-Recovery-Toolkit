@@ -1,0 +1,106 @@
+{
+  "incident_note": "Synthetic fixture modeled on live incident 2026-06-30 — do not commit real host exports.",
+  "symptom": "ERR_PROXY_CONNECTION_FAILED; TCP 443 to google.com OK; WinINET HTTPS path failed until proxy disabled",
+  "proxy_state": {
+    "timestamp_utc": "2026-06-30T07:00:00Z",
+    "wininet_proxy_enabled": true,
+    "wininet_proxy_server": "127.0.0.1:60505",
+    "wininet_auto_config_url": "",
+    "winhttp_direct_access": true,
+    "localhost_port": 60505
+  },
+  "classification": {
+    "primary_classification": "DEAD_PROXY_CONFIG",
+    "secondary_signals": ["WININET_WINHTTP_MISMATCH", "LOCALHOST_PROXY", "DEAD_LOCALHOST_PORT"],
+    "severity": "medium",
+    "confidence": 0.92,
+    "reasoning": "ProxyServer references localhost:60505 but no listener is bound.",
+    "evidence": ["localhost_port=60505", "listener_found=false", "winhttp_direct=true"],
+    "recommended_next_actions": [
+      "Run proxy-health for path contrast",
+      "Preview proxy-disable with typed confirmation"
+    ],
+    "limitations": [
+      "Does not prove malware or MITM.",
+      "Listener absence is correlation, not registry-writer proof.",
+      "Confidence is ordinal ranking, not calibrated probability."
+    ]
+  },
+  "proxy_owner": {
+    "timestamp_utc": "2026-06-30T07:00:00Z",
+    "proxy_server": "127.0.0.1:60505",
+    "localhost_port": 60505,
+    "listener_found": false,
+    "process": null,
+    "errors": []
+  },
+  "health_inject": {
+    "host": "127.0.0.1",
+    "port": 60505,
+    "timestamp_utc": "2026-06-30T07:00:00Z",
+    "tcp_listening": false,
+    "tcp_connect_ok": false,
+    "proxy_https_connect_ok": false,
+    "direct_probe_ok": true,
+    "external_probe_ok": false,
+    "proxy_status": "DEAD_LOCALHOST_PROXY",
+    "evidence": [
+      "No TCP listener on configured localhost port 60505",
+      "Direct HTTPS probe succeeded (WinHTTP/direct path)",
+      "Proxied HTTPS path failed — consistent with dead WinINET proxy"
+    ],
+    "limitations": ["Synthetic fixture — observation is not proof"]
+  },
+  "health_inject_after_disable": {
+    "host": "127.0.0.1",
+    "port": 60505,
+    "timestamp_utc": "2026-06-30T07:05:00Z",
+    "tcp_listening": false,
+    "tcp_connect_ok": false,
+    "proxy_https_connect_ok": false,
+    "direct_probe_ok": true,
+    "external_probe_ok": true,
+    "proxy_status": "INSUFFICIENT_DATA",
+    "evidence": ["WinINET proxy disabled after typed confirmation — direct path OK"],
+    "limitations": ["Post-fix observation — does not prove root cause"]
+  },
+  "proof": {
+    "observation": {
+      "wininet_proxy": "127.0.0.1:60505",
+      "winhttp_direct": true,
+      "localhost_listener": false,
+      "tcp_443_google": "reachable",
+      "wininet_https_google": "failed_before_fix"
+    },
+    "hypothesis": "Browser failure is likely caused by dead WinINET localhost proxy.",
+    "proof_attempts": [
+      {
+        "name": "localhost_listener_check",
+        "status": "failed",
+        "meaning": "No process listening on port 60505."
+      },
+      {
+        "name": "wininet_winhttp_comparison",
+        "status": "supported",
+        "meaning": "WinHTTP direct while WinINET proxy enabled — stack mismatch."
+      },
+      {
+        "name": "direct_vs_proxy_https",
+        "status": "supported",
+        "meaning": "Direct HTTPS OK; proxied path failed before disable."
+      }
+    ],
+    "conclusion": { "status": "supported", "confidence": 0.92 },
+    "limitations": [
+      "This does not prove malware.",
+      "This does not prove MITM.",
+      "git@github.com Permission denied (publickey) is an SSH key issue, not proxy failure."
+    ]
+  },
+  "policy_decision": {
+    "action": "DISABLE_WININET_PROXY",
+    "outcome": "PREVIEW_ONLY",
+    "requires_confirmation": true,
+    "dry_run": true
+  }
+}

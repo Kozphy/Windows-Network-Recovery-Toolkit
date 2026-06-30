@@ -18,6 +18,8 @@ from src.platform_core.timeline.builder import IncidentTimelineBuilder
 from src.platform_core.timeline.models import TimelineEntry
 from windows_network_toolkit.audit_store import append_audit_dict
 from windows_network_toolkit.proxy_classification import classify_from_live
+from windows_network_toolkit.proxy_diagnostic_hints import build_proxy_status_hints
+from windows_network_toolkit.proxy_health import direct_https_probe
 from windows_network_toolkit.proxy_state import collect_proxy_state_model
 
 
@@ -50,6 +52,14 @@ def run_proxy_status(*, inject: dict[str, Any] | None = None, **kwargs: Any) -> 
         "classification_result": classification.to_dict(),
         "errors": state.errors,
     }
+    direct_probe_ok: bool | None = None
+    if not inject:
+        direct_probe_ok, _ = direct_https_probe("https://www.google.com", timeout=5.0)
+    payload["diagnostic_hints"] = build_proxy_status_hints(
+        classification=classification.primary_classification,
+        payload=payload,
+        direct_probe_ok=direct_probe_ok,
+    )
     append_audit_dict(
         {
             "command": "proxy-status",

@@ -115,3 +115,5 @@ python -m windows_network_toolkit proxy-status
 python -m windows_network_toolkit diagnose
 python -m windows_network_toolkit proxy-disable --dry-run false --confirm DISABLE_WININET_PROXY
 ```
+
+**Continuous detection and export:** [dead-proxy-watch-workflow.md](dead-proxy-watch-workflow.md) (`proxy-watch`, `dead-proxy-export`).
