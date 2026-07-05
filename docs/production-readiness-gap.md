@@ -1,29 +1,33 @@
-# Production readiness gap analysis
+# Production readiness gap matrix
 
-**Status:** Portfolio / prototype — honest gap table for reviewers and hiring panels.
+**Status:** Production-shaped portfolio prototype — honest gap table. Not production-certified.
 
-See also: [production_readiness.md](production_readiness.md) (checklist), [production_deployment.md](production_deployment.md) (Compose stack).
+See also: [production_readiness.md](production_readiness.md), [classifier-evaluation-report.md](classifier-evaluation-report.md), [human-review-workflow.md](human-review-workflow.md), [evidence-replay-benchmark.md](evidence-replay-benchmark.md).
 
----
+| Area | Current Portfolio Prototype | Production Requirement | Gap | Recommended Next Step |
+|------|----------------------------|------------------------|-----|------------------------|
+| Endpoint evidence collection | WNT CLI + fixture inject | Signed agent with scheduled collection | No fleet agent | Package Windows service agent |
+| Fixture replay | `replay-benchmark` + deterministic pipeline tests | Continuous replay in CI on every classifier change | Manual local runs | Gate merges on benchmark thresholds |
+| Classifier evaluation | `classifier-benchmark` offline harness | Versioned golden set + drift alerts | No hosted eval service | Publish benchmark CSV in CI artifacts |
+| Registry writer proof | Sysmon E13 optional; correlation capped | Mandatory writer telemetry for PROVEN tier | Writer proof optional | Enforce T4 gate in production agent |
+| Audit storage | Local JSONL + hash chain tests | WORM / immutability + retention | No external anchor | Object store with lifecycle policy |
+| Authentication | Demo API without auth on `/trisk/*` | OAuth2 / mTLS | Open read endpoints | Entra ID + API keys per tenant |
+| RBAC | Policy registry; no role-scoped API execute | Role-based execute and export | No RBAC middleware | Map roles to preview vs execute |
+| Multi-tenant data separation | Single-tenant local paths | Tenant-scoped storage and RLS | Shared demo paths | Partition `PLATFORM_DATA_DIR` by tenant |
+| API rate limiting | None in demo stack | Per-tenant quotas | Unlimited reads | Add gateway rate limits |
+| Observability | Prometheus/Grafana in full compose | SLO dashboards + tracing | Demo stack only | Define SLIs for ingest and audit writes |
+| Alerting | Manual review of reports | PagerDuty on control FAIL spikes | No alert routing | Alert on `human_review` queue depth |
+| Power BI Service deployment | Static CSV export + blueprint | Scheduled refresh + RLS in tenant | No deployed dataset | Fabric workspace + gateway |
+| Incident retention policy | Documented only | Legal hold + retention schedules | Unbounded local JSONL | Retention job with legal review |
+| Human review workflow | `human_review.jsonl` module | Ticketing integration (ServiceNow/Jira) | No external queue | Webhook on `PENDING_REVIEW` |
+| Legal / compliance review | Non-claims in docs | Legal sign-off on export templates | Template review pending | Review governance report wording |
+| Enterprise security review | Threat model + contract tests | STRIDE + pen test | No formal review | Schedule against [threat-model.md](threat-model.md) |
+| Deployment packaging | Docker compose + Makefile | GitOps + signed releases | Manual deploy | Helm chart + signed images |
+| Endpoint agent signing | Unsigned Python module | Authenticode MSI | Trust warnings | Sign releases; publish SBOM |
+| Privacy / data minimization | Synthetic fixtures in git | Field-level redaction at ingest | PII risk in exports | Redact-before-export in agent |
+| Unified domain event log | `trisk_domain_events` JSONL + Postgres | Stream processing at scale | File-based append | Kafka/EventStore when fleet scale |
+| MCP read-only tools | `mcp_server/` Phase 3 | Enterprise MCP gateway | Demo stdio server | Hosted MCP with OAuth |
+| Playwright browser evidence | `browser-evidence` CLI + fixtures | Headless fleet capture | Optional dep; CI uses fixtures | Scheduled browser probes |
+| Agent orchestration | Contract JSON + deterministic stub | Multi-agent LLM with guardrails | No autonomous loop yet | Phase 6 deferred |
 
-| Area | Current state (honest) | Production requirement | Risk if not addressed | Recommended next step |
-|------|------------------------|------------------------|----------------------|------------------------|
-| Endpoint collection | WNT CLI on operator laptop; fixture inject for CI | Scheduled agent on each endpoint with signed config | Stale or missing evidence; manual coverage gaps | Package Windows service agent with heartbeat + config channel |
-| Windows agent packaging | Python module + optional `src` shim; no MSI | Signed MSI/MSIX with auto-update channel | Trust and deployment friction; unsigned binary warnings | Build signed installer; document elevation model |
-| Code signing | Not signed in repo | Authenticode for binaries and scripts | SmartScreen / AppLocker blocks; supply-chain doubt | Sign releases in CI; publish SBOM |
-| Fleet ingestion | `fleet-simulate` JSONL + manual upload | Durable queue (Event Hub / Kafka) with idempotent ingest | Lost incidents; duplicate processing | Add ingest API with dedupe keys and backpressure |
-| Storage | Local `.audit/` JSONL; optional Postgres in full Compose | Encrypted object store + retention policy | Tampering; unbounded disk; compliance gaps | WORM or immutability layer; lifecycle rules |
-| Auth / RBAC | API fixture mode; no auth on `/trisk/*` demo | OAuth2 / mTLS per tenant; role-scoped execute | Unauthorized remediation attempts | Integrate Entra ID; block execute without role |
-| Audit immutability | Append-only writes; hash chain in tests | Cryptographic chain + external anchor | Undetected log tampering | Ship `audit-verify` as mandatory post-ingest step |
-| Secrets handling | Env vars in Compose examples | Vault / Key Vault with rotation | Leaked credentials in logs | Remove secrets from compose; use secret refs |
-| Observability | Prometheus/Grafana in full stack only | SLO dashboards + alert routing | Silent failures in fleet pipeline | Define SLIs for ingest lag and audit write errors |
-| Deployment | `docker-compose.yml` + `docker-compose.demo.yml` | GitOps / blue-green with health gates | Bad rollouts break reviewers and pilots | Add Helm chart; smoke tests on deploy |
-| Update mechanism | Manual `git pull` / image rebuild | Staged rollout with rollback | Broken agent fleet | Versioned agent channel with canary % |
-| Privacy / data minimization | Redaction helpers; synthetic fixtures in git | Field-level redaction at ingest | PII in shared audit exports | Enforce redact-before-export in agent |
-| Security review | Threat model docs + contract tests | Formal STRIDE review + pen test | Unknown abuse paths | Schedule review against [threat-model.md](threat-model.md) |
-| Incident response workflow | CLI replay + governance report | Ticketing integration + runbook links | Slow operator response | Webhook to ServiceNow/Jira on FAIL controls |
-| Power BI / reporting deployment | Static export + blueprint docs | Scheduled refresh + RLS in tenant | Stale executive view | Deploy dataset to Fabric with gateway |
-
----
-
-**Positioning:** This repository demonstrates architecture and safety contracts for technology risk evidence — not a shipped enterprise product. Gaps above are intentional scope boundaries for a portfolio prototype.
+**Positioning:** Architecture and safety contracts are demonstrated — this is not a shipped enterprise product.

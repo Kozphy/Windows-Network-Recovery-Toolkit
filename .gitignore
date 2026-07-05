@@ -6,6 +6,7 @@ __pycache__/
 *.pyc
 *.egg-info/
 .pytest_cache/
+.pytest-tmp/
 .coverage
 coverage/
 htmlcov/
@@ -38,6 +39,8 @@ reports/
 !reports/sample_*.md
 !src/reports/
 !src/reports/**
+src/reports/**/__pycache__/
+src/reports/**/*.py[cod]
 !analytics/powerbi/reports/
 !analytics/powerbi/reports/**
 platform_data/
@@ -53,6 +56,7 @@ config/last_known_good_proxy.json
 *.jsonl
 !tests/fixtures/**/*.jsonl
 !examples/**/*.jsonl
+!windows_network_toolkit/examples/*.jsonl
 !demo_data/**/*.jsonl
 
 # OS / editor
@@ -63,6 +67,9 @@ Thumbs.db
 
 # Large / binary artifacts
 *.sqlite
+trisk_local.db
+schemathesis-junit.xml
+schemathesis-run.log
 *.zip
 *.exe
 *.msi

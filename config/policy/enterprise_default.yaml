@@ -1,0 +1,50 @@
+# Enterprise Decision Intelligence — default policy pack (read-only, human-gated)
+
+schema_version: enterprise_policy.v1
+default_mode: read_only
+
+classification_rules:
+  KNOWN_CURSOR_PROXY:
+    decision: OBSERVE
+    severity: LOW
+    allowed_actions: [observe, log, export_report]
+    blocked_actions: [kill_process, reset_firewall, disable_adapter, registry_mutation]
+  KNOWN_VSCODE_EXTENSION:
+    decision: OBSERVE
+    severity: LOW
+    allowed_actions: [observe, export_report]
+  UNKNOWN_LOCAL_PROXY:
+    decision: ALERT
+    severity: HIGH
+    allowed_actions: [observe, preview_disable, export_report]
+    blocked_actions: [kill_process, registry_mutation]
+    requires_confirmation: true
+    requires_human_approval: true
+  SUSPICIOUS_PROXY:
+    decision: BLOCK_RECOMMENDED
+    severity: CRITICAL
+    requires_confirmation: true
+    requires_human_approval: true
+  POSSIBLE_MITM_RISK:
+    decision: ESCALATE_REVIEW
+    severity: CRITICAL
+    requires_human_approval: true
+  DEAD_PROXY_CONFIG:
+    decision: PREVIEW_ONLY
+    severity: MEDIUM
+    allowed_actions: [observe, preview_disable, export_report]
+  CORRELATION_ONLY:
+    decision: CORRELATION_ONLY_ALERT
+    severity: MEDIUM
+
+safety:
+  never_kill_process_automatically: true
+  never_reset_network_automatically: true
+  never_disable_adapter_automatically: true
+  registry_mutation_requires_typed_confirmation: true
+  default_mode: read_only
+
+governance:
+  observation_is_not_proof: true
+  classification_is_not_accusation: true
+  policy_permission_is_not_safety_guarantee: true

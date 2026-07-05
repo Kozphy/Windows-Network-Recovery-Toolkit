@@ -13,7 +13,13 @@ from platform_core.models import (
     RemediationPolicy,
     RemediationPreview,
     RequestSurface,
+    RollbackPreviewFields,
     utc_now_iso,
+)
+from src.platform_core.remediation.rollback import (
+    build_proposed_mutation_preview,
+    build_rollback_preview_package,
+    capture_pre_change_snapshot,
 )
 from platform_core.remediation_registry import (
     build_action_registry_legacy_dict,
@@ -126,6 +132,38 @@ def build_preview(
 
     pd = evaluate_action(recommended_action, requested_surface, pol)
     needs_confirm = pol.requires_confirmation and risk in ("low", "medium")
+
+    rollback_preview: RollbackPreviewFields | None = None
+    if defn.rollback_plan:
+        snapshot = capture_pre_change_snapshot(
+            endpoint_id=failure_event.endpoint_id,
+            incident_id=failure_event.event_id,
+        )
+        mutation = build_proposed_mutation_preview(
+            action_id=recommended_action,
+            endpoint_id=failure_event.endpoint_id,
+        )
+        pkg = build_rollback_preview_package(
+            endpoint_id=failure_event.endpoint_id,
+            incident_id=failure_event.event_id,
+            action_id=recommended_action,
+            pre_change_snapshot=snapshot,
+            proposed_mutation=mutation,
+            dry_run=True,
+        )
+        rb = pkg["rollback_preview"]
+        rollback_preview = RollbackPreviewFields(
+            rollback_preview_id=str(pkg["rollback_preview_id"]),
+            pre_change_snapshot=pkg["pre_change_snapshot"],
+            proposed_mutation_preview=pkg["proposed_mutation_preview"],
+            human_approval_token_required=bool(pkg["human_approval_token"]["required"]),
+            reversible_action_record=pkg["reversible_action_record"],
+            rollback_steps=list(rb["steps"]),
+            required_confirmation=str(rb["required_confirmation"]),
+            dry_run=bool(rb["dry_run"]),
+            limitations=list(rb["limitations"]),
+        )
+
     return RemediationPreview(
         preview_id=str(uuid.uuid4()),
         endpoint_id=failure_event.endpoint_id,
@@ -135,6 +173,7 @@ def build_preview(
         rationale=failure_event.summary or "See FailureBlock / event linkage.",
         commands_preview=commands,
         rollback_plan=defn.rollback_plan,
+        rollback_preview=rollback_preview,
         requires_typed_confirmation=needs_confirm and bool(defn.confirmation_phrase),
         confirmation_phrase=defn.confirmation_phrase,
         allowed_by_policy=pd.allowed,

@@ -12,10 +12,14 @@ import pytest
 
 from src.platform_core.analytics.powerbi_star_export import (
     FACT_CONTROL_TESTS_COLUMNS,
+    FACT_COSTS_COLUMNS,
     FACT_INCIDENTS_COLUMNS,
     FACT_POLICY_DECISIONS_COLUMNS,
+    FACT_RECOMMENDATIONS_COLUMNS,
+    FACT_RISKS_COLUMNS,
     STAR_CSV_FILES,
     build_dim_classification,
+    build_dim_evidence_tier,
     build_star_schema_tables,
     export_powerbi_star_schema,
     scan_for_secrets,
@@ -45,6 +49,9 @@ def test_powerbi_export_creates_all_required_files(export_dir: Path) -> None:
         ("fact_incidents.csv", FACT_INCIDENTS_COLUMNS),
         ("fact_control_tests.csv", FACT_CONTROL_TESTS_COLUMNS),
         ("fact_policy_decisions.csv", FACT_POLICY_DECISIONS_COLUMNS),
+        ("fact_risks.csv", FACT_RISKS_COLUMNS),
+        ("fact_recommendations.csv", FACT_RECOMMENDATIONS_COLUMNS),
+        ("fact_costs.csv", FACT_COSTS_COLUMNS),
     ],
 )
 def test_csv_required_columns(export_dir: Path, filename: str, columns: list[str]) -> None:
@@ -82,6 +89,21 @@ def test_classification_dimension_not_security_accusation() -> None:
     dim = build_dim_classification()
     assert dim
     assert all(row["is_security_accusation"] is False for row in dim)
+
+
+def test_dim_evidence_tier_includes_t5() -> None:
+    dim = build_dim_evidence_tier()
+    tiers = {row["evidence_tier"] for row in dim}
+    assert "T5_GOVERNANCE_PROOF" in tiers
+
+
+def test_portfolio_extension_tables_present(export_dir: Path) -> None:
+    export_powerbi_star_schema(AUDIT_SAMPLE, export_dir)
+    tables = build_star_schema_tables(AUDIT_SAMPLE, include_seed=True)
+    assert len(tables["fact_risks"]) >= 3
+    assert len(tables["fact_recommendations"]) >= 1
+    assert len(tables["fact_costs"]) >= 1
+    assert (export_dir / "dim_evidence_tier.csv").is_file()
 
 
 def test_export_deterministic_on_same_fixture(export_dir: Path) -> None:

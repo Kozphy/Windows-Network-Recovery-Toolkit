@@ -1,4 +1,29 @@
-"""Read-only signal collectors for app-path reliability scenarios."""
+"""Read-only signal collectors for app-path reliability scenarios.
+
+Module responsibility:
+    Gather observation-layer probes (HTTPS curl, DNS, proxy registry, firewall snapshot,
+    process detection) into a ``SignalBundle`` without causality claims.
+
+System placement:
+    Called by ``engine.run_scenario_diagnosis`` and ``auto_fix`` post-check.
+
+Key invariants:
+    * All probes are read-only except subprocess side effects of curl/nslookup/netsh/tasklist.
+    * ``bool | None`` fields mean unknown when probe fails (timeout/OSError).
+    * Process/listener signals are correlation only (documented in collector_notes).
+
+Side effects:
+    Subprocess/network reads only; no registry writes.
+
+Failure modes:
+    Individual probe failures yield None or False; bundle still returned with notes.
+
+Input assumptions:
+    Windows with curl, nslookup, netsh, tasklist available on PATH.
+
+Output guarantees:
+    ``SignalBundle`` JSON-serializable via ``to_dict()``; timestamps not embedded (engine adds UTC).
+"""
 
 from __future__ import annotations
 
@@ -110,7 +135,18 @@ def collect_signals(
     run: Callable[..., Any] = subprocess.run,
     timeout_seconds: float = 15.0,
 ) -> SignalBundle:
-    """Gather read-only observations for ChatGPT/desktop-app path scenarios."""
+    """Gather read-only observations for ChatGPT/desktop-app path scenarios.
+
+    Args:
+        run: Subprocess runner (default ``subprocess.run``).
+        timeout_seconds: Per-probe timeout budget.
+
+    Returns:
+        ``SignalBundle`` with HTTPS/DNS/proxy/process fields; None where probe inconclusive.
+
+    Side effects:
+        Invokes curl, nslookup, netsh, tasklist, PowerShell Get-NetAdapter (read-only).
+    """
     notes: list[str] = []
     reg = read_proxy_registry(run=run, query_timeout=timeout_seconds)
     parsed = parse_proxy_server(reg.proxy_server)

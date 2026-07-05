@@ -2,6 +2,8 @@
 
 Deterministic classification from **full WinINET before/after state** (`windows_network_toolkit/proxy_state_machine.py`).
 
+**AI-native platform:** State transitions surface in domain event timeline and Next.js evidence-timeline UI — see [domain-event-catalog.md](domain-event-catalog.md) and [state-machine.md](state-machine.md) (this doc).
+
 ## Mermaid state diagram (simplified)
 
 ```mermaid

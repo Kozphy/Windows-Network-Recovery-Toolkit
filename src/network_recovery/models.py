@@ -1,4 +1,23 @@
-"""Typed models for network recovery scenario runs."""
+"""Typed models for network recovery scenario runs.
+
+Module responsibility:
+    Define frozen/dataclass contracts for signals, hypotheses, remediation previews,
+    and audit-serializable diagnosis results.
+
+System placement:
+    Shared by collectors, engine, scenarios, remediation_executor, and audit.
+
+Key invariants:
+    * ``SignalBundle`` is observation-only; no inference fields.
+    * ``timestamp`` on ``DiagnosisResult`` is UTC ISO-8601 (set by engine).
+    * ``OrdinalConfidence`` is ordinal rank, not calibrated probability.
+
+Data shape:
+    ``to_audit_dict()`` flattens primary hypothesis evidence for JSONL append-only logs.
+
+Side effects:
+    None — pure data structures.
+"""
 
 from __future__ import annotations
 

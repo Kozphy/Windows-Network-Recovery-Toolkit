@@ -28,7 +28,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from .auth import AuthUser, get_current_user
+from .jwt_auth import AuthUser, get_current_user
 
 _ROOT = Path(__file__).resolve().parent.parent
 

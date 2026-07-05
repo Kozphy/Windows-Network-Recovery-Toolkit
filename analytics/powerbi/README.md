@@ -4,6 +4,22 @@ This folder contains a **Power BI-ready analytics layer** for the Technology Ris
 
 > **Honest positioning:** This is a portfolio-ready semantic model and dashboard **specification**, not a published Power BI Service tenant deployment.
 
+---
+
+## Audit notes (for reviewers)
+
+| Topic | Guidance |
+|-------|----------|
+| Source of truth | Append-only JSONL audit dirs (e.g. `tests/fixtures/risk_analytics/audit_sample/`) — CSV exports are **point-in-time snapshots** |
+| Classification fields | Triage labels — not malware verdicts; every row should carry `limitations` where exported |
+| KPI measures | Ordinal confidence — not calibrated probability (see `docs/proxy-proof-ladder.md`) |
+| RLS design | Spec only in [rls_design.md](rls_design.md) — not enforced until imported in Power BI Desktop |
+| AI fields | Explanation metadata only — does not imply execution authority |
+
+To verify export integrity: re-run `powerbi-export` with the same `--audit-dir` and `--seed` (if applicable) and diff CSV hashes.
+
+---
+
 ## Contents
 
 | Path | Purpose |

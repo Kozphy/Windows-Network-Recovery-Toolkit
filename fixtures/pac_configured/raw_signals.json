@@ -1,0 +1,15 @@
+{
+  "schema_version": "portfolio_evidence.v1",
+  "incident_id": "FIX-PAC_CONFIGURED",
+  "proxy_state": {
+    "wininet_proxy_enabled": false,
+    "wininet_proxy_server": "",
+    "wininet_auto_config_url": "http://pac.example.com/proxy.pac"
+  },
+  "classification": {
+    "primary_classification": "PAC_CONFIGURED",
+    "limitations": [
+      "Fixture pack for demo replay."
+    ]
+  }
+}

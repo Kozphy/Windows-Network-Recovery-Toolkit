@@ -15,6 +15,36 @@
 
 ---
 
+## Ten-minute orientation (new engineers)
+
+Read in this order to understand structure and core flows without running Windows repair scripts:
+
+| Step | Doc / command | What you learn |
+|------|---------------|----------------|
+| 1 | This README — **Non-claims** + **Safety boundaries** | What the repo is *not*; dry-run defaults |
+| 2 | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) | Full doc map and golden case `59081` |
+| 3 | [AGENTS.md](AGENTS.md) | Contributor safety rules and test conventions |
+| 4 | `python -m windows_network_toolkit version` | Installed package version (no side effects) |
+| 5 | [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_governance_model.md) | Six governance principles |
+| 6 | [docs/enterprise-hardening-roadmap.md](docs/enterprise-hardening-roadmap.md) | Phases 1–8 (agent, observability, rollback preview) |
+
+**Repository map (verified paths):**
+
+```text
+windows_network_toolkit/   Primary CLI — proxy-status, diagnose, governance-report, agent *
+src/platform_core/         Canonical policy, evidence tiers, remediation preview, audit writers
+platform_core/             Platform JSONL storage, classic policy previews, fleet helpers
+backend/                   FastAPI — /trisk/*, /platform/*, /v1/enterprise/* (optional Postgres)
+tests/                     Safety contracts, fixtures, replay — run before risky edits
+docs/                      Architecture, demos, audit defense, operational runbooks
+```
+
+**Core flow (read-only by default):** collect evidence → classify with `limitations[]` → control tests → policy gate → remediation **preview** → append audit JSONL → governance report / Power BI export.
+
+**Audit evidence to inspect after a demo:** `tests/fixtures/risk_analytics/audit_sample/` (KPI fixtures), `platform_data/audit.jsonl` (when platform API used), `logs/rollback_audit.jsonl` (rollback preview rows), `.audit/*.jsonl` (operator CLI actions).
+
+---
+
 ## Non-claims and boundaries
 
 This project **does not** and **must not** be presented as:
@@ -221,6 +251,13 @@ Spec: [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_gove
 pip install -e ".[dev]"
 $env:PYTHONPATH = (Get-Location).Path
 
+# Version (read-only)
+python -m windows_network_toolkit version
+
+# Read-only agent cycle (fixture or live collectors)
+python -m windows_network_toolkit agent collect --fixture tests/fixtures/agent/sample_evidence_bundle.json
+python -m windows_network_toolkit agent status
+
 # Evidence & classification
 python -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_PROXY_CONFIG.json
 python -m windows_network_toolkit proxy-health --fixture tests/fixtures/proxy_health_dead.json --json
@@ -234,6 +271,13 @@ python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_stud
 python -m windows_network_toolkit control-test --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
 python -m windows_network_toolkit risk-kpi-summary --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
 python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+
+# Portfolio analytics (risk matrix, cloud governance, FinOps, executive report)
+python -m windows_network_toolkit risk-matrix export --register tests/fixtures/risk_register/sample_risk_register.json
+python -m windows_network_toolkit cloud-recommendations summarize --fixture tests/fixtures/cloud_governance/mock_recommendations.json
+python -m windows_network_toolkit finops export --fixture tests/fixtures/finops/mock_costs.json --out-dir reports/finops
+python -m windows_network_toolkit evidence-report --executive --risk-register tests/fixtures/risk_register/sample_risk_register.json --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+python -m windows_network_toolkit powerbi-export --audit-dir tests/fixtures/risk_analytics/audit_sample --out-dir examples/powerbi/export
 
 # Evidence report & audit
 python -m windows_network_toolkit evidence-report --url https://example.com --fixture tests/fixtures/enert/dead_proxy_59081.json --format markdown
@@ -338,6 +382,55 @@ python -m windows_network_toolkit evidence-report --latest --fixture tests/fixtu
 - **WinINET vs WinHTTP mismatch:** compare `proxy-status` WinINET block with WinHTTP direct-access flag.
 
 Listener and process names are **correlation only** unless registry writer evidence exists. See [docs/case-study-1-proxy-drift.md](docs/case-study-1-proxy-drift.md).
+
+### Why `ERR_PROXY_CONNECTION_FAILED` happens (and ping still works)
+
+Browsers route HTTP/HTTPS through **WinINET** (`HKCU\...\Internet Settings`). When `ProxyEnable=1` and `ProxyServer=127.0.0.1:<port>`, the browser opens a TCP connection to that localhost port. If **nothing is listening** (the dev proxy, VPN shim, or MCP helper exited or changed ports), the connection fails → `ERR_PROXY_CONNECTION_FAILED`.
+
+**Ping and DNS still work** because they use ICMP and the resolver stack — not the browser’s WinINET proxy path.
+
+**Stale WinINET proxy survives reboot** because HKCU registry values persist across sessions. A startup app may set proxy at logon; if its listener exits later, the registry can remain pointed at a dead port until something clears it.
+
+| Concept | What it means |
+| ------- | ------------- |
+| **Registry writer** | Process that modified `ProxyEnable` / `ProxyServer` (requires Sysmon/Procmon/EventLog — not inferred from listeners alone) |
+| **Listener process** | Process currently bound to `127.0.0.1:<port>` |
+| **Correlated process** | Name/PID matched by timing or port — **observation, not proof** of writer identity |
+
+**Warning:** This toolkit reports **suspected local proxy drift**. It does **not** prove malware, compromise, or intent.
+
+**Targeted proxy drift commands** (`python -m src`):
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+
+# One-shot auto-fix + install 60s background guardian (recommended after ERR_PROXY)
+.\scripts\auto-fix-proxy.ps1
+python -m src auto-fix-proxy
+
+# Startup inventory (no full profile recursion)
+python -m src startup-inventory
+python -m src startup-inventory --json
+
+# Post-login boot trace (WinINET + WinHTTP + listeners + deltas)
+python -m src proxy-boot-trace --duration 180 --interval 2
+
+# Dead localhost guardian (dry-run by default)
+python -m src proxy-guardian --once
+python -m src proxy-guardian --loop --interval 60 --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false
+
+# Emergency HKCU fix (localhost ProxyServer only)
+python -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
+
+# Scheduled task installer (preview first)
+python -m src install-guardian-task
+python -m src install-guardian-task --confirm INSTALL_GUARDIAN_TASK --dry-run false
+
+# Timeout-safe search (startup target, no profile walk)
+python -m src safe-search --query WNRT-DeadProxyGuardian --target startup
+```
+
+Audit logs: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`, `logs/proxy_guardian.jsonl`. Emergency CMD wrapper: `scripts/fix-wininet-proxy.cmd`.
 
 ---
 
@@ -473,29 +566,65 @@ pytest -q tests/test_portfolio_case_studies.py tests/test_portfolio_evidence_sui
 ## Project structure
 
 ```text
-src/platform_core/         Canonical decision engine
-windows_network_toolkit/   Primary JSON-first CLI
-examples/evidence/         Portfolio evidence fixtures
-analytics/powerbi/         PL-300 Power BI CSV layer + model docs
-tests/                     Safety contracts + portfolio tests
-docs/                      Architecture, demos, case studies
-backend/                   FastAPI platform API
+src/platform_core/         Canonical decision engine, operability, evidence_collection, rollback preview
+windows_network_toolkit/   Primary JSON-first CLI + read-only agent (agent *)
+platform_core/             Platform JSONL (platform_data/), classic RemediationPreview models
+backend/                   FastAPI — /trisk/*, /platform/*, SQLModel TRISK tables (SQLite or Postgres)
+endpoint_agent/            Legacy remote diagnose loop (optional; distinct from read-only agent)
+examples/evidence/         Portfolio evidence fixtures (fictional — no production exports)
+analytics/powerbi/         PL-300 star-schema spec + DAX blueprint
+tests/                     Safety contracts, portfolio replay, concurrency/scale (synthetic)
+docs/                      Architecture, security-review, rollback-strategy, agent-deployment
+scripts/                   PowerShell wrappers — see safety headers in each file
 ```
 
 ---
 
-## Tests and CI
+## Development & CI/CD
+
+### Install and run locally
 
 ```powershell
-make test          # Full pytest suite
-make lint          # Ruff
-make typecheck     # Mypy (portfolio modules: ai_risk_analyst, risk, governance, analytics)
-pytest -q tests/test_policy_safety_contract.py
-pytest -q tests/test_portfolio_evidence_suite.py
-pytest -q tests/test_powerbi_analytics.py
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+$env:PYTHONPATH = (Get-Location).Path
+
+python -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_PROXY_CONFIG.json
+python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json
 ```
 
-GitHub Actions: lint · test · typecheck · build-smoke · Windows zero-skip — [.github/workflows/ci.yml](.github/workflows/ci.yml)
+Optional stack: `docker compose -f docker-compose.demo.yml up --build` · `cd frontend && npm ci && npm run dev`
+
+### Test, lint, and build
+
+```powershell
+make lint          # ruff check .
+make typecheck     # mypy (portfolio modules)
+make test          # full pytest suite
+make principles-test
+```
+
+Frontend build: `cd frontend && npm ci && npm run build`
+
+Docker smoke: `docker compose config --quiet && docker build -t er-platform-api:local .`
+
+### Pull request checks
+
+Every PR to **`main`** runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+
+| Job | Checks |
+|-----|--------|
+| `lint` | Ruff + Bandit |
+| `typecheck` | Mypy (portfolio modules) |
+| `test` | Safety contracts, full pytest, Linux integration, fixture CLI smoke |
+| `test-windows` | Full pytest on Windows (zero skipped tests) |
+| `build-smoke` | Docker compose + image build |
+| `frontend-build` | Next.js production build |
+
+After merge: [`build.yml`](.github/workflows/build.yml) pushes an immutable GHCR image; [`deploy.yml`](.github/workflows/deploy.yml) deploys via SSH + Docker Compose when secrets are configured.
+
+Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch_protection.md](docs/ci_branch_protection.md)
 
 ---
 
@@ -523,6 +652,14 @@ GitHub Actions: lint · test · typecheck · build-smoke · Windows zero-skip �
 | [docs/demo-faang-big4-review.md](docs/demo-faang-big4-review.md) | FAANG + Big 4 demo paths |
 | [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md)     | Proof tiers T0–T5       |
 | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)   | Full index              |
+| [docs/enterprise-hardening-roadmap.md](docs/enterprise-hardening-roadmap.md) | Phases 1–8 program status |
+| [docs/security-review.md](docs/security-review.md)           | Threat model + abuse cases |
+| [docs/rollback-strategy.md](docs/rollback-strategy.md)       | Preview-first rollback model |
+| [docs/agent-deployment.md](docs/agent-deployment.md)         | Read-only agent CLI |
+| [docs/observability.md](docs/observability.md)               | trace_id, audit_id, /metrics |
+| [docs/scale-testing.md](docs/scale-testing.md)               | Synthetic local scale limits |
+| [docs/cross-platform-support.md](docs/cross-platform-support.md) | Linux/macOS PARTIAL foundation |
+| [docs/packaging-installer.md](docs/packaging-installer.md)     | pipx/wheel/portable install plan |
 
 
 ---

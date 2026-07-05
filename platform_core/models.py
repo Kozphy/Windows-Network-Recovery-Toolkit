@@ -86,6 +86,20 @@ class RemediationPolicy(BaseModel):
     rollback_required: bool = False
 
 
+class RollbackPreviewFields(BaseModel):
+    """Structured rollback preview (preview-only; does not execute mutations)."""
+
+    rollback_preview_id: str = ""
+    pre_change_snapshot: dict[str, Any] = Field(default_factory=dict)
+    proposed_mutation_preview: dict[str, Any] = Field(default_factory=dict)
+    human_approval_token_required: bool = True
+    reversible_action_record: dict[str, Any] = Field(default_factory=dict)
+    rollback_steps: list[dict[str, Any]] = Field(default_factory=list)
+    required_confirmation: str = ""
+    dry_run: bool = True
+    limitations: list[str] = Field(default_factory=list)
+
+
 class RemediationPreview(BaseModel):
     """Human-readable preview before any mutation."""
 
@@ -97,6 +111,7 @@ class RemediationPreview(BaseModel):
     rationale: str = ""
     commands_preview: list[str] = Field(default_factory=list)
     rollback_plan: str = ""
+    rollback_preview: RollbackPreviewFields | None = None
     requires_typed_confirmation: bool = True
     confirmation_phrase: str = ""
     allowed_by_policy: bool = False

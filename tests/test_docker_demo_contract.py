@@ -57,6 +57,26 @@ def test_health_returns_demo_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.json()["mode"] == "demo"
 
 
+def test_root_redirects_to_openapi_docs() -> None:
+    client = TestClient(app)
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code == 307
+    assert r.headers["location"] == "/docs"
+
+
+def test_favicon_returns_no_content() -> None:
+    client = TestClient(app)
+    assert client.get("/favicon.ico").status_code == 204
+
+
 def test_readme_contains_reviewer_docker_demo_section() -> None:
+    """README is a navigation hub; Docker demo depth lives in docs/docker-demo.md."""
     readme = _read("README.md")
-    assert "Reviewer Docker Demo" in readme or "docker-compose.demo.yml" in readme
+    docker_doc = _read("docs/docker-demo.md")
+    readme_navigates = (
+        "Reviewer Docker Demo" in readme
+        or "docker-compose.demo.yml" in readme
+        or "docker-demo.md" in readme
+    )
+    assert readme_navigates
+    assert "docker-compose.demo.yml" in docker_doc

@@ -1,14 +1,16 @@
 # CI/CD branch protection
 
+> **Canonical guide:** [ci-cd.md](ci-cd.md) — local commands, PR workflow, deployment, secrets.
+
 This repository uses GitHub Actions workflows under [`.github/workflows/`](../.github/workflows/):
 
 | Workflow | File | Purpose |
 |----------|------|---------|
-| **CI (primary)** | `ci.yml` | `lint` · `test` · `test-windows` · `build-smoke` · `frontend-build` |
-| **Lint (legacy)** | `lint.yml` | Ruff + Black — overlaps `ci` job `lint` |
-| **Test (extended)** | `test.yml` | mypy, coverage pytest, safety regression — overlaps `ci` job `test` |
+| **CI (primary PR gate)** | `ci.yml` | `lint` · `typecheck` · `test` · `test-windows` · `build-smoke` · `frontend-build` |
 | **Build (release)** | `build.yml` | Docker image push to GHCR on default branch |
-| **Security** | `security.yml` | pip-audit, Trivy (filesystem + container) |
+| **Deploy (CD)** | `deploy.yml` | SSH + compose deploy after successful Build |
+| **Security** | `security.yml` | pip-audit, Trivy (filesystem + container); weekly schedule |
+| **Lint / Test (legacy)** | `lint.yml`, `test.yml` | Manual `workflow_dispatch` only — use **CI** instead |
 
 Gap audit: [platform_engineering_gap_report.md](platform_engineering_gap_report.md)
 
@@ -26,16 +28,16 @@ Enable **Require status checks to pass before merging** and select:
 
 | Check name (job) | Workflow | Rationale |
 |------------------|----------|-----------|
-| `lint` | CI | Ruff on first-party Python |
+| `lint` | CI | Ruff lint + format, Bandit |
+| `typecheck` | CI | Mypy on portfolio modules |
 | `test` | CI | Safety contracts, full pytest + `tests/integration_linux`, fixture CLI smoke |
-| `test-windows` | CI | Full pytest on `windows-latest`; **fails if any test is skipped** (`pytest -q -rs`) |
+| `test-windows` | CI | Full pytest on `windows-latest`; **fails if any test is skipped** |
 | `build-smoke` | CI | `docker compose config`, image build, compose/health tests |
 | `frontend-build` | CI | Next.js dashboard compiles |
 | `pip-audit` | Security | Python dependency CVEs |
 | `trivy (filesystem)` | Security | Repo secrets/misconfig/high vulns |
 | `trivy (container)` | Security | Production image scan |
 | `docker` | Build (optional) | GHCR push on merge to default branch |
-| `mypy` | Test (optional) | Extended typing gate |
 
 Optional (stricter teams): require **all** workflows on `schedule` security runs to stay green weekly.
 
@@ -76,14 +78,15 @@ Pull requests **build** the image but do **not** push to GHCR (tarball artifact 
 
 ## Local parity
 
+See [ci-cd.md](ci-cd.md#local-development). Quick copy:
+
 ```bash
 pip install -e ".[dev]"
-ruff check platform_core backend evidence failure_system telemetry tests
-ruff format --check platform_core backend evidence failure_system telemetry tests
-black --check platform_core backend evidence failure_system telemetry tests
-mypy
-pytest --cov=platform_core --cov=backend --cov-report=term-missing
-pip-audit
+ruff check .
+ruff format --check .
+make typecheck
+make test
+docker compose config --quiet
 docker build -t er-platform-api:local .
 ```
 

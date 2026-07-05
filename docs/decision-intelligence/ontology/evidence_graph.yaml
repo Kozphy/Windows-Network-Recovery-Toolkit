@@ -1,0 +1,182 @@
+# Decision Intelligence Platform — Evidence Graph Ontology
+# Palantir Foundry-style object types and link types (v1)
+# Maps to: backend/db/models.py, src/platform_core/*
+
+schema_version: decision_intelligence_ontology.v1
+
+epistemic_principles:
+  - observation_is_not_proof
+  - correlation_is_not_causation
+  - confidence_is_not_certainty
+  - classification_is_not_accusation
+  - policy_permission_is_not_safety_guarantee
+  - recommendation_is_not_execution_authority
+
+object_types:
+  Endpoint:
+    primary_key: endpoint_id
+    properties:
+      - { name: endpoint_id, type: string, required: true }
+      - { name: tenant_id, type: string, required: true }
+      - { name: hostname, type: string }
+      - { name: fleet_partition, type: integer }
+      - { name: last_seen_at, type: timestamp }
+    backing: trisk_endpoints
+
+  Event:
+    primary_key: event_id
+    properties:
+      - { name: event_id, type: string, required: true }
+      - { name: event_type, type: string, required: true }
+      - { name: timestamp_utc, type: timestamp, required: true }
+      - { name: actor, type: string }
+      - { name: correlation_id, type: string }
+      - { name: limitations, type: array<string> }
+    backing: trisk_domain_events
+
+  Evidence:
+    primary_key: event_id
+    properties:
+      - { name: event_id, type: string, required: true }
+      - { name: evidence_type, type: string, required: true }
+      - { name: evidence_tier, type: string, enum: [T0_OBSERVATION_ONLY, T1_STATE_EVIDENCE, T2_RUNTIME_CORROBORATION, T3_BEHAVIORAL_REPRODUCTION, T4_OPERATOR_CONFIRMED] }
+      - { name: content_hash, type: string, required: true }
+      - { name: raw_snapshot, type: object }
+      - { name: normalized_fields, type: object }
+      - { name: limitations, type: array<string> }
+    backing: trisk_evidence_events
+
+  Observation:
+    primary_key: observation_id
+    properties:
+      - { name: observation_id, type: string, required: true }
+      - { name: signal_type, type: string }
+      - { name: raw_observation, type: object }
+      - { name: correlation_id, type: string }
+    backing: trisk_observations
+
+  Hypothesis:
+    primary_key: hypothesis_id
+    properties:
+      - { name: hypothesis_id, type: string, required: true }
+      - { name: label, type: string, required: true }
+      - { name: confidence_score, type: float, semantics: ordinal_not_probability }
+      - { name: confidence_ordinal, type: string, enum: [very_low, low, medium, high] }
+      - { name: status, type: string, enum: [proposed, supported, rejected, superseded] }
+      - { name: limitations, type: array<string> }
+    backing: trisk_hypotheses
+    code: src/platform_core/hypothesis/models.py
+
+  Control:
+    primary_key: control_id
+    properties:
+      - { name: control_id, type: string, required: true }  # CTRL-001 .. CTRL-010
+      - { name: control_name, type: string }
+      - { name: control_domain, type: string }
+      - { name: test_result, type: string, enum: [PASS, FAIL, PARTIAL, NOT_TESTED, INSUFFICIENT_EVIDENCE] }
+      - { name: evidence_refs, type: array<string> }
+    backing: trisk_control_tests
+    code: windows_network_toolkit/control_tests.py
+
+  Risk:
+    primary_key: incident_id
+    properties:
+      - { name: incident_id, type: string, required: true }
+      - { name: risk_score, type: integer, range: [0, 100], semantics: ordinal }
+      - { name: risk_level, type: string, enum: [LOW, MEDIUM, HIGH] }
+      - { name: confidence_score, type: float, semantics: ordinal_not_probability }
+      - { name: evidence_strength, type: string, enum: [weak, moderate, strong] }
+      - { name: proof_tier, type: string }
+      - { name: human_review_recommended, type: boolean }
+    backing: trisk_incidents + risk_scores projection
+    code: windows_network_toolkit/risk_scoring_engine.py
+
+  Decision:
+    primary_key: decision_id
+    properties:
+      - { name: decision_id, type: string, required: true }
+      - { name: policy_outcome, type: string, enum: [PREVIEW_ONLY, REQUIRE_HUMAN_APPROVAL, BLOCK, ALLOW] }
+      - { name: execution_authority, type: string, enum: [preview_only, requires_approval, blocked] }
+      - { name: human_approval_status, type: string }
+      - { name: rationale, type: string }
+      - { name: limitations, type: array<string> }
+    backing: trisk_platform_decisions
+
+  AuditRecord:
+    primary_key: log_id
+    properties:
+      - { name: log_id, type: string, required: true }
+      - { name: event_type, type: string }
+      - { name: prev_hash, type: string }
+      - { name: row_hash, type: string }
+      - { name: payload, type: object }
+    backing: trisk_audit_logs
+
+  AIExplanation:
+    primary_key: explanation_id
+    properties:
+      - { name: explanation_id, type: string }
+      - { name: decision_id, type: string }
+      - { name: cited_evidence_ids, type: array<string> }
+      - { name: uncertainty_notes, type: array<string> }
+      - { name: recommended_next_actions, type: array<string> }
+      - { name: guardrail_passed, type: boolean }
+    backing: trisk_ai_explanations  # planned
+
+link_types:
+  - name: endpoint_emits_event
+    from: Endpoint
+    to: Event
+    cardinality: one_to_many
+
+  - name: event_derives_evidence
+    from: Event
+    to: Evidence
+    cardinality: one_to_one
+
+  - name: observation_normalizes_to_evidence
+    from: Observation
+    to: Evidence
+    cardinality: many_to_one
+
+  - name: evidence_supports_hypothesis
+    from: Evidence
+    to: Hypothesis
+    cardinality: many_to_many
+    properties:
+      - { name: support_strength, type: string, enum: [weak, moderate, strong] }
+      - { name: is_proof, type: boolean, default: false }
+
+  - name: hypothesis_maps_to_control
+    from: Hypothesis
+    to: Control
+    cardinality: many_to_many
+    via: incident_control_map
+
+  - name: evidence_tests_control
+    from: Evidence
+    to: Control
+    cardinality: many_to_many
+
+  - name: hypothesis_informs_risk
+    from: Hypothesis
+    to: Risk
+    cardinality: many_to_one
+
+  - name: risk_gates_decision
+    from: Risk
+    to: Decision
+    cardinality: one_to_one
+
+  - name: decision_requires_audit
+    from: Decision
+    to: AuditRecord
+    cardinality: one_to_many
+
+  - name: decision_explained_by_ai
+    from: Decision
+    to: AIExplanation
+    cardinality: one_to_one
+
+graph_traversal_path:
+  - Endpoint → Event → Evidence → Hypothesis → Control → Risk → Decision → AuditRecord

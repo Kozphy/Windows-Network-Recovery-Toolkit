@@ -1,4 +1,23 @@
-"""CASE_CHATGPT_APP_FIREWALL_FILTERING_INTERACTION scenario analyzer."""
+"""CASE_CHATGPT_APP_FIREWALL_FILTERING_INTERACTION scenario analyzer.
+
+Module responsibility:
+    Rank competing hypotheses when browser path is healthy but ChatGPT/app path degrades.
+
+System placement:
+    Called by ``engine.run_scenario_diagnosis`` after ``collect_signals``.
+
+Key invariants:
+    * Ordinal confidence only; sorted high > medium > low.
+    * Never emits malware or attack verdicts.
+    * ``recovery_firewall_reset_helped`` adjusts verification_status only.
+
+Decision intent:
+    Triage firewall, Electron, cache/session, proxy/VPN interactions for operator review.
+
+Audit Notes:
+    * Verify ranked hypotheses against raw ``SignalBundle`` in audit JSONL.
+    * Recovery feedback via ``--recovery-feedback firewall_reset_helped`` on CLI.
+"""
 
 from __future__ import annotations
 
@@ -125,7 +144,16 @@ def analyze_chatgpt_app_firewall(
     *,
     recovery_firewall_reset_helped: bool | None = None,
 ) -> dict[str, object]:
-    """Return events, ranked hypotheses, verification, and confidence boundary."""
+    """Return events, ranked hypotheses, verification, and confidence boundary.
+
+    Args:
+        signals: Observation bundle from collectors.
+        recovery_firewall_reset_helped: Optional post-remediation operator feedback.
+
+    Returns:
+        Dict with keys: canonical_case, scenario_id, events, hypotheses,
+        verification_status, confidence_boundary, limitations.
+    """
     events: list[str] = []
     if _browser_healthy_app_degraded(signals):
         events.append(DESKTOP_APP_PATH_DEGRADED_EVENT)

@@ -67,31 +67,9 @@ def _evidence_timeline(records: list[dict[str, Any]], limit: int = 20) -> list[d
 
 
 def _human_review_queue(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    review_classes = {
-        "UNKNOWN_LOCAL_PROXY",
-        "SUSPICIOUS_PROXY",
-        "POSSIBLE_MITM_RISK",
-        "REVERTER_SUSPECTED",
-    }
-    queue: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for row in records:
-        cls = _classification_of(row) or ""
-        if cls not in review_classes:
-            continue
-        inc = str(row.get("incident_id") or row.get("case_id") or row.get("timestamp") or "")
-        if inc in seen:
-            continue
-        seen.add(inc)
-        queue.append(
-            {
-                "incident_id": row.get("incident_id") or row.get("case_id"),
-                "classification": cls,
-                "reason": "Accusatory-adjacent classification requires human review before remediation narrative.",
-                "recommended_forum": map_business_impact(cls).suggested_forum,
-            }
-        )
-    return queue
+    from src.platform_core.governance.human_review import items_needing_review
+
+    return items_needing_review(records)
 
 
 def _top_risk_themes(kpis: dict[str, Any], limit: int = 5) -> list[dict[str, Any]]:

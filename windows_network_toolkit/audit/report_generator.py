@@ -8,6 +8,11 @@ from typing import Any, Literal
 ReportFormat = Literal["json", "markdown", "html"]
 
 
+def _json_dumps(payload: Any) -> str:
+    """Serialize report sections; coerce non-JSON types (e.g. leaked test mocks)."""
+    return json.dumps(payload, indent=2, default=str)
+
+
 def _executive_summary(decision: dict[str, Any], policy: dict[str, Any]) -> str:
     itype = decision.get("incident_type", "UNKNOWN")
     if itype in {"WININET_PROXY_DRIFT", "PROXY_PATH_FAIL_DIRECT_PATH_SUCCESS"}:
@@ -128,7 +133,7 @@ def generate_erp_report(package: dict[str, Any], *, fmt: ReportFormat = "markdow
         "safety_notes": package.get("safety_notes", []),
     }
     if fmt == "json":
-        return json.dumps(sections, indent=2)
+        return _json_dumps(sections)
     if fmt == "html":
         body = "<h1>Endpoint Reliability Incident Report</h1>"
         body += f"<p>{sections['executive_summary']}</p>"
@@ -138,7 +143,7 @@ def generate_erp_report(package: dict[str, Any], *, fmt: ReportFormat = "markdow
             ("Policy", "policy_decision"),
             ("Timeline", "timeline"),
         ):
-            body += f"<h2>{title}</h2><pre>{json.dumps(sections[key], indent=2)}</pre>"
+            body += f"<h2>{title}</h2><pre>{_json_dumps(sections[key])}</pre>"
         return f"<!DOCTYPE html><html><body>{body}</body></html>"
     lines = [
         "# Endpoint Reliability Incident Report",
@@ -148,43 +153,43 @@ def generate_erp_report(package: dict[str, Any], *, fmt: ReportFormat = "markdow
         "",
         "## 2. Evidence Collected",
         "```json",
-        json.dumps(sections["evidence_collected"], indent=2),
+        _json_dumps(sections["evidence_collected"]),
         "```",
         "",
         "## 3. Hypotheses Tested",
-        json.dumps(sections["hypotheses_tested"], indent=2),
+        _json_dumps(sections["hypotheses_tested"]),
         "",
         "## 4. Proof Results",
-        json.dumps(sections["proof_results"], indent=2),
+        _json_dumps(sections["proof_results"]),
         "",
         "## 5. Risk Classification",
         str(sections["risk_classification"]),
         "",
         "## 6. Policy Decision",
-        json.dumps(sections["policy_decision"], indent=2),
+        _json_dumps(sections["policy_decision"]),
         "",
         "## 7. Remediation Preview",
-        json.dumps(sections["remediation_preview"], indent=2),
+        _json_dumps(sections["remediation_preview"]),
         "",
         "## 8. Approval Record",
-        json.dumps(sections["approval_record"], indent=2),
+        _json_dumps(sections["approval_record"]),
         "",
         "## 9. Rollback Plan",
-        json.dumps(sections["rollback_plan"], indent=2),
+        _json_dumps(sections["rollback_plan"]),
         "",
         "## 10. Timeline",
         "```json",
-        json.dumps(sections["timeline"], indent=2),
+        _json_dumps(sections["timeline"]),
         "```",
         "",
         "## 11. Chain of Custody",
-        json.dumps(sections["chain_of_custody"], indent=2),
+        _json_dumps(sections["chain_of_custody"]),
         "",
         "## 12. Control Mapping (informational)",
-        json.dumps(sections["control_mapping"], indent=2),
+        _json_dumps(sections["control_mapping"]),
         "",
         "## 13. Audit Trail",
-        json.dumps(sections["audit_trail"], indent=2),
+        _json_dumps(sections["audit_trail"]),
         "",
         "## 14. Safety Notes",
         "\n".join(f"- {n}" for n in sections["safety_notes"]),

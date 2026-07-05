@@ -1,11 +1,20 @@
-.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent
+.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report fix-proxy fix-chatgpt
 
 WATCH_MINUTES ?= 15
 
 PYTHON ?= python
+ifeq ($(OS),Windows_NT)
+ifneq (,$(wildcard .venv/Scripts/python.exe))
+PYTHON := .venv/Scripts/python.exe
+endif
+else
+ifneq (,$(wildcard .venv/bin/python))
+PYTHON := .venv/bin/python
+endif
+endif
 PYTEST ?= $(PYTHON) -m pytest
 install:
-	$(PYTHON) -m pip install -e ".[dev]"
+	$(PYTHON) -m pip install -r requirements.txt
 
 test:
 	$(PYTEST) -q
@@ -32,6 +41,13 @@ typecheck:
 demo:
 	$(PYTHON) scripts/golden_demo.py
 	$(PYTEST) -q windows_network_toolkit/tests/test_replay.py tests/test_demo_replay_pipeline.py
+
+# Auto-fix dead localhost WinINET proxy (Windows, no prompts)
+fix-proxy:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/auto-fix-proxy.ps1
+
+fix-chatgpt:
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/auto-fix-chatgpt.ps1
 
 # Starts API in fixture mode (requires uvicorn; blocks terminal).
 demo-api:
@@ -101,3 +117,20 @@ demo-report:
 
 demo-audit-verify:
 	$(PYTHON) -m windows_network_toolkit audit verify tests/fixtures/risk_analytics/audit_sample/incidents.jsonl || echo "Sample audit is illustrative — hash chain may not verify"
+
+# Production-shaped stack: Postgres + Redis + API + RQ worker + Prometheus + Grafana
+prod-demo-up:
+	docker compose up --build -d
+
+prod-demo-down:
+	docker compose down
+
+prod-demo-health:
+	curl -sf http://127.0.0.1:8000/health
+	curl -sf -H "X-Api-Token: dev-trisk-token" -H "X-Api-Role: operator" http://127.0.0.1:8000/v1/incidents
+
+prod-demo-benchmark:
+	$(PYTHON) -m windows_network_toolkit fleet-benchmark --scenario mixed_proxy_failures --endpoints 1000 --seed 42 --format markdown --out reports/benchmarks/fleet-1000.md
+
+prod-demo-report:
+	curl -sf -H "X-Api-Token: dev-trisk-token" -H "X-Api-Role: auditor_readonly" http://127.0.0.1:8000/v1/reports/executive

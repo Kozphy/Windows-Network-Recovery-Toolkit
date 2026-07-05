@@ -32,6 +32,9 @@ const NAV = [
   { href: "/platform/slo", label: "SLO" },
   { href: "/platform/timeline", label: "Timeline" },
   { href: "/platform/sre", label: "SRE Incidents" },
+  { href: "/platform/risk-overview", label: "Risk (/v1)" },
+  { href: "/platform/evidence-timeline", label: "Event timeline" },
+  { href: "/platform/audit-viewer", label: "Audit viewer" },
 ] as const;
 
 export function PlatformShell(props: {

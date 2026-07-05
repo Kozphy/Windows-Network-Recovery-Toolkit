@@ -55,6 +55,10 @@ blocked_overclaim_terms:
   - safe to execute automatically
   - malware confirmed
   - confirmed compromise
+  - confirmed spying
+  - confirmed data theft
+  - confirmed advertising surveillance
+  - confirmed smart tv tracking
 
 probability_phrases:
   - "% chance"

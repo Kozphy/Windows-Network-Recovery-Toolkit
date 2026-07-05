@@ -1,4 +1,21 @@
-"""Classify bad-gateway root cause — diagnostic only."""
+"""Classify bad-gateway root cause — diagnostic only.
+
+Module responsibility:
+    Map probe dict to cause_code, confidence, recommended_action, safety_notes.
+
+System placement:
+    Called by ``runner.run_bad_gateway_diagnose`` after ``collect_all``.
+
+Key invariants:
+    * Does not mutate system state.
+    * ``SAFETY_NOTES`` always included in output.
+
+Decision intent:
+    Distinguish DNS/TCP failures, local proxy misconfig, loopback proxy, upstream 502.
+
+Constraints:
+    Confidence is heuristic float, not calibrated probability.
+"""
 
 from __future__ import annotations
 

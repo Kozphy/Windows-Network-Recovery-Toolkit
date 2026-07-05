@@ -1,0 +1,9 @@
+{
+  "primary_classification": "UNKNOWN_LOCAL_PROXY",
+  "secondary_signals": [
+    "EXTERNAL_PROXY"
+  ],
+  "proof_tier": "T2",
+  "confidence_min": 0.3,
+  "limitations_required": true
+}

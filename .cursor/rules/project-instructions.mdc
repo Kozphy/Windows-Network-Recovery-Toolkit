@@ -1,0 +1,68 @@
+---
+description: Core project goals, safety boundaries, coding and test standards for this repository
+alwaysApply: true
+---
+
+# Windows Network Recovery Toolkit — project instructions
+
+## What this repo is
+
+Technology Risk & Control Analytics Platform for **Windows endpoint evidence**: proxy drift, TLS-path comparison, incident classification, control testing, audit reports, and governance exports.
+
+**Not:** antivirus, EDR, XDR, malware attribution, or autonomous security software.
+
+Primary CLI: `python -m windows_network_toolkit` (repo root, `$env:PYTHONPATH = (Get-Location).Path`).
+
+## Epistemic and safety boundaries
+
+- Do not claim certainty. Use evidence tiers, ordinal confidence, and audit-backed reasoning.
+- Preserve `limitations[]` in outputs. Observation ≠ proof; correlation ≠ causation; classification ≠ accusation.
+- Keep **Observation → Hypothesis → Proof → Policy → Remediation → Audit** clearly separated in code and docs.
+- Prefer **deterministic fixtures** (`tests/fixtures/`) over live host speculation.
+
+## Remediation and Windows behavior
+
+- Remediation is **policy-gated** and **preview-only by default** (`--dry-run true`).
+- Never change risky Windows/network behavior (registry, firewall, adapters, process kill) without **explicit user confirmation** and the correct typed token (e.g. `DISABLE_WININET_PROXY`).
+- Do not weaken gates in `windows_network_toolkit/safety.py`, `proxy_remediation.py`, or `proxy_guardian.py`.
+- Read-only first: `proxy-status`, `proxy-health`, `diagnose`, `agent once`.
+
+## Before editing code
+
+1. Inspect nearby modules and existing tests; match conventions (dataclass/`to_dict`, governance envelope, fixture inject).
+2. Minimize scope — no unrelated refactors or invented CLI commands/APIs.
+3. Preserve **backward-compatible CLI** unless the task explicitly changes behavior.
+
+## After code changes
+
+1. Run the **smallest relevant tests** first, then broader slices if needed.
+2. `ruff check` on touched Python paths.
+3. If tests fail due to **missing dependencies**, say so clearly — never claim tests passed.
+4. When adding features, update **docs and tests together**.
+
+```powershell
+pytest -q tests/<area> -v
+pytest -q tests/test_policy_safety_contract.py
+make principles-test
+```
+
+## Python standards
+
+- Clear typing, small functions, explicit errors.
+- Structured JSON / audit output with governance envelope where applicable (`attach_governance_envelope`).
+- Imports at top of file; exhaustive switches for discriminated unions.
+
+## Git and artifacts
+
+- Commit **only when the user explicitly asks**.
+- Never commit: `__pycache__/`, `*.pyc`, `.env`, secrets, `.audit/`, `reports/` exports, logs, or local junk.
+
+## Task completion
+
+End each task with a short summary: **changed files**, **tests run** (and results), **risks/limitations**, **next recommended step**.
+
+## Pointers
+
+- Humans: `docs/ONBOARDING.md`, `docs/DOCUMENTATION_INDEX.md`
+- Agents: `AGENTS.md`
+- Docstrings: `docs/code-documentation-standards.md`

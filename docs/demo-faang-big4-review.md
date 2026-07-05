@@ -22,6 +22,22 @@
 
 ---
 
+## 60-second pitch — mixed panel (FAANG + Big 4)
+
+> "Same evidence pipeline serves platform reliability and technology risk: deterministic classifier evaluation, replay benchmarks for audit reproduction, policy-gated remediation previews, human review for accusatory-adjacent labels, and governance reports with explicit non-claims — not autonomous security verdicts."
+
+---
+
+## Evaluation & governance commands (add to both paths)
+
+```powershell
+python -m windows_network_toolkit classifier-benchmark --cases examples/evaluation/classifier_benchmark_sample.json --format markdown
+python -m windows_network_toolkit replay-benchmark --cases tests/fixtures/evaluation/replay_cases.jsonl
+pytest -q tests/platform_core/evaluation tests/platform_core/governance/test_human_review.py tests/platform_core/ai_risk_analyst/test_explanation_guardrails.py
+```
+
+---
+
 ## Path A — FAANG platform engineering (≈5 minutes)
 
 ### Narrative arc

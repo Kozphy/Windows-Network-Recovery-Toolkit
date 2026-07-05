@@ -1,0 +1,80 @@
+"""Reporting Service — governance and executive reports."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Any
+
+from sqlmodel import Session, select
+
+from backend.db.models import ControlTestResult, HumanReviewItem, PlatformDecisionRecord
+from backend.services.base import TenantContext
+from src.platform_core.governance.audit_report import build_audit_governance_report
+from windows_network_toolkit.analytics_pipeline import run_endpoint_analytics_pipeline
+from windows_network_toolkit.reporting import build_executive_report
+
+
+class ReportingService:
+    def __init__(self, session: Session, ctx: TenantContext) -> None:
+        self._session = session
+        self._ctx = ctx
+
+    def governance_report(self, *, audit_dir: Path | None = None) -> dict[str, Any]:
+        path = audit_dir or Path(
+            os.getenv("PLATFORM_DATA_DIR", "tests/fixtures/risk_analytics/audit_sample")
+        )
+        if (path / "incidents.jsonl").is_file():
+            raw = build_audit_governance_report(path, format="json")
+            return raw if isinstance(raw, dict) else {"report": raw}
+        return {
+            "schema_version": "audit_governance_report.v2",
+            "tenant_id": self._ctx.tenant_id,
+            "limitations": ["No audit directory — committee report unavailable."],
+        }
+
+    def executive_summary(self, *, fixture: dict[str, Any] | None = None) -> dict[str, Any]:
+        if fixture:
+            payload = run_endpoint_analytics_pipeline(fixture=fixture)
+        else:
+            payload = {"incidents": [], "control_tests": [], "limitations": []}
+        report = build_executive_report(payload)
+        report["tenant_id"] = self._ctx.tenant_id
+        return report
+
+    def decision_dashboard(self) -> dict[str, Any]:
+        decisions = list(
+            self._session.exec(
+                select(PlatformDecisionRecord)
+                .where(PlatformDecisionRecord.tenant_id == self._ctx.tenant_id)
+                .order_by(PlatformDecisionRecord.created_at.desc())
+                .limit(100)
+            ).all()
+        )
+        pending_reviews = list(
+            self._session.exec(
+                select(HumanReviewItem).where(HumanReviewItem.status == "PENDING_REVIEW").limit(50)
+            ).all()
+        )
+        controls = list(
+            self._session.exec(select(ControlTestResult).limit(100)).all()
+        )
+        return {
+            "tenant_id": self._ctx.tenant_id,
+            "decision_count": len(decisions),
+            "pending_human_reviews": len(pending_reviews),
+            "control_test_count": len(controls),
+            "recent_decisions": [
+                {
+                    "decision_id": d.decision_id,
+                    "policy_outcome": d.policy_outcome,
+                    "confidence_label": d.confidence_label,
+                    "human_approval_status": d.human_approval_status,
+                }
+                for d in decisions[:20]
+            ],
+            "limitations": [
+                "Management information — not formal audit opinion.",
+                "Not antivirus, EDR, or autonomous remediation.",
+            ],
+        }

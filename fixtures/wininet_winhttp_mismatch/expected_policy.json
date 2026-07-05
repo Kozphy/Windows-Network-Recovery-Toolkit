@@ -1,0 +1,6 @@
+{
+  "policy_gate": "PREVIEW",
+  "outcome": "PREVIEW_ONLY",
+  "dry_run_default": true,
+  "destructive_actions_blocked": true
+}

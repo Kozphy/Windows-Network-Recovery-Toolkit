@@ -1,0 +1,14 @@
+risk_decision_id,incident_id,endpoint_id,observed_at,classification,proof_tier,risk_rating,confidence_ordinal,recommended_action,execution_authority,human_review_required,evidence_hash,audit_id
+RD-INC-101,INC-101,EP-FIN-001,2026-06-10T08:00:00Z,DEAD_PROXY_CONFIG,T2_RUNTIME_CORROBORATION,MEDIUM,4,Preview remediation,preview_only,False,sha256-sample-inc-101,audit-inc-101
+RD-INC-102,INC-102,EP-FIN-002,2026-06-10T14:00:00Z,WININET_WINHTTP_MISMATCH,T2_RUNTIME_CORROBORATION,MEDIUM,4,Preview remediation,preview_only,False,sha256-sample-inc-102,audit-inc-102
+RD-INC-103,INC-103,EP-DEV-001,2026-06-10T20:00:00Z,LOCAL_PROXY_ACTIVE,T2_RUNTIME_CORROBORATION,LOW,3,Collect additional evidence,preview_only,False,sha256-sample-inc-103,audit-inc-103
+RD-INC-104,INC-104,EP-OPS-003,2026-06-11T02:00:00Z,UNKNOWN_LOCAL_PROXY,T1_LOCAL_CONFIG_EVIDENCE,HIGH,2,Preview remediation,preview_only,True,sha256-sample-inc-104,audit-inc-104
+RD-INC-105,INC-105,EP-GOV-001,2026-06-11T08:00:00Z,PAC_CONFIGURED,T1_LOCAL_CONFIG_EVIDENCE,MEDIUM,3,Preview remediation,preview_only,True,sha256-sample-inc-105,audit-inc-105
+RD-INC-106,INC-106,EP-SEC-002,2026-06-11T14:00:00Z,POSSIBLE_MITM_RISK,T2_RUNTIME_CORROBORATION,HIGH,3,Preview remediation,preview_only,True,sha256-sample-inc-106,audit-inc-106
+RD-INC-107,INC-107,EP-OPS-004,2026-06-11T20:00:00Z,REVERTER_SUSPECTED,T1_LOCAL_CONFIG_EVIDENCE,HIGH,3,Preview remediation,preview_only,True,sha256-sample-inc-107,audit-inc-107
+RD-INC-108,INC-108,EP-HR-001,2026-06-12T02:00:00Z,ERROR_INSUFFICIENT_DATA,T0_OBSERVATION_ONLY,LOW,1,Collect additional evidence,blocked,False,sha256-sample-inc-108,audit-inc-108
+RD-INC-109,INC-109,EP-FIN-003,2026-06-12T08:00:00Z,DEAD_PROXY_CONFIG,T1_LOCAL_CONFIG_EVIDENCE,MEDIUM,3,Preview remediation,preview_only,False,sha256-sample-inc-109,audit-inc-109
+RD-INC-110,INC-110,EP-DEV-002,2026-06-12T14:00:00Z,LOCAL_PROXY_ACTIVE,T3_BEHAVIORAL_REPRODUCTION,LOW,4,Collect additional evidence,human_confirmed,False,sha256-sample-inc-110,audit-inc-110
+RD-INC-111,INC-111,EP-SEC-003,2026-06-12T20:00:00Z,POSSIBLE_MITM_RISK,T2_RUNTIME_CORROBORATION,HIGH,3,Preview remediation,preview_only,True,sha256-sample-inc-111,audit-inc-111
+RD-INC-112,INC-112,EP-GOV-002,2026-06-13T02:00:00Z,PAC_CONFIGURED,T2_RUNTIME_CORROBORATION,MEDIUM,4,Preview remediation,preview_only,False,sha256-sample-inc-112,audit-inc-112
+RD-DEMO-59081,DEMO-59081,EP-081,2026-06-20T08:23:33Z,ERROR_INSUFFICIENT_DATA,T0_OBSERVATION_ONLY,LOW,1,Continue read-only investigation,preview_only,False,,be8fe96a-c5b5-47c3-b989-02d61cc07560

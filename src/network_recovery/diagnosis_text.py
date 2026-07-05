@@ -1,4 +1,18 @@
-"""Human-readable diagnosis for network recovery scenarios."""
+"""Human-readable diagnosis for network recovery scenarios.
+
+Module responsibility:
+    Format operator-facing text from signals, events, and ranked hypotheses.
+
+System placement:
+    Used by ``engine.run_scenario_diagnosis`` for ``human_summary`` field.
+
+Key invariants:
+    * Does not claim malware or calibrated probabilities.
+    * Surfaces epistemic boundary and limitations explicitly.
+
+Side effects:
+    None — returns str only.
+"""
 
 from __future__ import annotations
 

@@ -1,56 +1,24 @@
-name: Lint
+# Deprecated: use .github/workflows/ci.yml (lint job).
+# Kept for manual debugging only — does not run on push or pull_request.
+
+name: Lint (legacy manual)
 
 on:
-  push:
-    branches:
-      - main
-      - master
-      - amd_version
-      - "feature/**"
-      - "fix/**"
-      - "ci/**"
-  pull_request:
-    branches:
-      - main
-      - master
-      - amd_version
   workflow_dispatch:
 
-concurrency:
-  group: lint-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  ruff-black:
-    name: ruff & black
+  lint:
+    name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-
-      - name: Install linters
-        run: |
+      - run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-
-      - name: Ruff check
-        run: >
-          ruff check
-          platform_core backend evidence failure_system telemetry tests
-
-      - name: Ruff format check
-        run: >
-          ruff format --check
-          platform_core backend evidence failure_system telemetry tests
-
-      - name: Black format check
-        run: >
-          black --check
-          platform_core backend evidence failure_system telemetry tests
+          ruff check .
+          ruff format --check .

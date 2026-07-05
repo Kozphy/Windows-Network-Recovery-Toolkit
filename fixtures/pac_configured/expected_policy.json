@@ -1,0 +1,6 @@
+{
+  "policy_gate": "ALLOW",
+  "outcome": "ALLOW",
+  "dry_run_default": true,
+  "destructive_actions_blocked": true
+}

@@ -1,4 +1,25 @@
-"""CLI handlers for network recovery app-path scenarios."""
+"""CLI handlers for network recovery app-path scenarios.
+
+Module responsibility:
+    Wire legacy ``python -m src`` commands: ``diagnose --app chatgpt``, ``preview``,
+    ``remediate`` for the chatgpt_app_firewall scenario.
+
+System placement:
+    Registered from ``src/cli.py``; writes audit via ``append_network_recovery_audit``.
+
+Key invariants:
+    * Live collectors require Windows.
+    * ``cmd_diagnose_app`` always runs with dry_run diagnosis (read-only collectors).
+    * BLOCK tier never executes in ``cmd_remediate_scenario``.
+
+Side effects:
+    * Writes ``reports/last_network_recovery_diagnosis.json`` and appends JSONL on diagnose/remediate.
+    * Live remediate may invoke ``remediation_executor`` subprocess commands.
+
+Audit Notes:
+    * Review ``logs/network_recovery_events.jsonl`` after remediate.
+    * Recovery: use ``preview`` for tier listing without mutation.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +33,11 @@ from typing import Any
 from .audit import append_network_recovery_audit
 from .engine import run_scenario_diagnosis
 from .models import SCENARIO_CHATGPT_APP_FIREWALL, SignalBundle
+from .remediation_executor import (
+    CONFIRMATION_PHRASE,
+    execute_selected_low_risk_actions,
+    select_low_risk_actions,
+)
 
 
 def _repo_root(explicit: Path | None) -> Path:
@@ -198,21 +224,24 @@ def cmd_remediate_scenario(args: argparse.Namespace) -> int:
             **kwargs,
         )
 
-    executed: list[str] = []
-    if not dry_run:
-        confirm = (getattr(args, "confirm_phrase", None) or "").strip()
-        for action in result.recommended_actions:
-            if action.policy_decision == "BLOCK":
-                continue
-            if action.risk == "low" and action.policy_decision == "ALLOW" and confirm:
-                executed.append(f"preview_only:{action.action_id}")
-        result.remediation_executed = executed
+    selected = select_low_risk_actions(result.signals, result.hypotheses)
+    confirm = (getattr(args, "confirm_phrase", None) or "").strip()
+    remediation = execute_selected_low_risk_actions(
+        selected,
+        dry_run=dry_run,
+        confirm=confirm,
+        previews=result.recommended_actions,
+    )
+    result.remediation_executed = list(remediation.get("executed", []))
 
     append_network_recovery_audit(repo, result)
 
     payload = {
         "dry_run": dry_run,
+        "confirmation_token": CONFIRMATION_PHRASE,
+        "selected_actions": selected,
         "remediation_executed": result.remediation_executed,
+        "remediation_results": remediation.get("results", []),
         "recommended_actions": [a.to_dict() for a in result.recommended_actions],
         "policy_decision": result.policy_decision,
     }
@@ -226,5 +255,8 @@ def cmd_remediate_scenario(args: argparse.Namespace) -> int:
             if a.policy_decision == "BLOCK":
                 print(f"  [BLOCK] {a.action_id}: {a.detail}")
         if dry_run:
-            print("\nRe-run with --dry-run false and typed --confirm only for allowlisted LOW actions.")
+            print(
+                f"\nRe-run with --dry-run false and --confirm {CONFIRMATION_PHRASE} "
+                "for allowlisted LOW actions only."
+            )
     return 0

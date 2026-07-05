@@ -15,7 +15,10 @@ from windows_network_toolkit.analytics_pipeline import (
     normalize_events_from_fixture,
     run_endpoint_analytics_pipeline,
 )
-from windows_network_toolkit.control_tests import ControlTestOutcome, map_control_tests_from_incident
+from windows_network_toolkit.control_tests import (
+    ControlTestOutcome,
+    map_control_tests_from_incident,
+)
 from windows_network_toolkit.evidence_schema import (
     make_event_id,
     normalize_listener_state,

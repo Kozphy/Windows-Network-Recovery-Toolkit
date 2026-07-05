@@ -4,6 +4,10 @@
 
 An **evidence-based Windows endpoint reliability and IT risk decision platform**. It collects endpoint signals, builds an incident timeline, ranks hypotheses, applies **policy-gated** remediation previews, and exports **audit-ready** reports.
 
+Windows endpoints often fail while still appearing online (proxy errors, dead localhost ports, WinINET/WinHTTP drift).
+
+A **LAN privacy module** adds home/SOHO device inventory, router log import, privacy risk scoring, and CTRL-LAN controls — observation only, not confirmed surveillance. See [lan-privacy-monitor.md](lan-privacy-monitor.md).
+
 **Pipeline:** Evidence → Hypothesis → Proof → Policy → Remediation → Audit → Replay
 
 ## What this is not
@@ -64,7 +68,11 @@ pytest -q
 
 ## Reading order
 
-1. [epistemic_model.md](epistemic_model.md)
-2. [architecture/canonical_decision_pipeline.md](architecture/canonical_decision_pipeline.md)
-3. [safety_doctrine.md](safety_doctrine.md)
-4. [bad_gateway_diagnostic.md](bad_gateway_diagnostic.md)
+1. [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) — full layered index (demos, portfolio, LAN, production depth)
+2. [portfolio-positioning.md](portfolio-positioning.md) — audience guides and interview packs
+3. [epistemic_model.md](epistemic_model.md)
+4. [architecture/canonical_decision_pipeline.md](architecture/canonical_decision_pipeline.md)
+5. [safety_doctrine.md](safety_doctrine.md)
+6. [bad_gateway_diagnostic.md](bad_gateway_diagnostic.md)
+
+Extended demos: [demo-commands-reference.md](demo-commands-reference.md) · Incidents: [incident-walkthrough-dead-proxy.md](incident-walkthrough-dead-proxy.md)

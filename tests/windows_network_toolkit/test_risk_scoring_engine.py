@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from windows_network_toolkit.risk_scoring_engine import (
     ControlAggregate,
     RiskScoringInput,

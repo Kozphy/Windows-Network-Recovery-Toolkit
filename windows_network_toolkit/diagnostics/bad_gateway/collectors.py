@@ -1,4 +1,18 @@
-"""Injectable read-only probes for bad-gateway diagnosis."""
+"""Injectable read-only probes for bad-gateway diagnosis.
+
+Module responsibility:
+    Run DNS, TCP, HTTP (system proxy vs direct), WinINET registry, local listener probes.
+
+System placement:
+    Used by ``runner.collect`` path via ``collect_all``.
+
+Key invariants:
+    * Injectable ``run`` for tests.
+    * Missing curl/PowerShell yields probe failures captured in probe dicts.
+
+Side effects:
+    Subprocess and network I/O only; no registry writes.
+"""
 
 from __future__ import annotations
 

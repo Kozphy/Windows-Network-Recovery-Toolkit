@@ -1,13 +1,17 @@
 @echo off
 setlocal
 
-REM Windows Network Recovery Toolkit
-REM DNS repair script for stale DNS cache or name resolution problems.
-REM --
-REM Purpose: Flush resolver cache / show DNS-facing config per script commands.
-REM Privileges: Administrator required.
-REM Side effects: ipconfig and related read-only/display steps as implemented below.
-REM Idempotency: Safe to rerun; refreshes cache only.
+REM Windows Network Recovery Toolkit — Reset DNS
+REM Purpose:     Flush Windows DNS resolver cache; show adapter DNS summary
+REM Privileges:  Administrator required (net session check)
+REM Inputs:      Interactive — pauses before and after
+REM Outputs:     ipconfig /flushdns result; filtered ipconfig /all DNS lines
+REM Side effects: Clears local DNS cache only; does not change adapter DNS servers
+REM Safety:      Does not modify firewall, proxy, or routing
+REM Idempotency: Safe to rerun; cache flush is repeatable
+REM Recovery:    If resolution still fails, check adapter DNS or use diagnose CLI
+REM Example:     Right-click Run as administrator: scripts\reset_dns.bat
+REM Note:        ChatGPT auto-fix may call ipconfig /flushdns without this bat (user scope)
 
 title Windows Network Recovery Toolkit - Reset DNS
 

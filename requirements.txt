@@ -1,0 +1,4 @@
+# Install runtime + dev/test dependencies (includes sqlmodel for backend/db).
+# From repo root:
+#   python -m pip install -r requirements.txt
+-e ".[dev]"

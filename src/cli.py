@@ -128,6 +128,16 @@ from .production_handlers import (
     cmd_policy_validate,
 )
 from .proof.proxy_https import run_localhost_proxy_https_proof
+from .proxy_drift.handlers import (
+    cmd_auto_fix_proxy,
+    cmd_install_guardian_task,
+    cmd_proxy_boot_trace,
+    cmd_proxy_fix,
+    cmd_proxy_guardian_drift,
+    cmd_safe_search,
+    cmd_startup_inventory,
+    cmd_uninstall_guardian_task,
+)
 from .proxy_guard.linux_proxy_commands import cmd_proxy_linux_snapshot
 from .recommendations.engine import RecommendationBundle, build_recommendations
 from .version import SCRIPT_VERSION
@@ -1838,6 +1848,175 @@ def build_parser() -> argparse.ArgumentParser:
         stop_reverter_first=False,
         stop_parent_tree=False,
     )
+
+    p_si = sub.add_parser(
+        "startup-inventory",
+        help="Targeted Windows startup inventory (no full profile recursion).",
+    )
+    p_si.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON only.")
+    p_si.set_defaults(func=cmd_startup_inventory)
+
+    p_pbt = sub.add_parser(
+        "proxy-boot-trace",
+        help="Post-login WinINET/WinHTTP/listener trace with delta detection.",
+    )
+    p_pbt.add_argument("--duration", type=float, default=180.0, dest="boot_trace_duration")
+    p_pbt.add_argument("--interval", type=float, default=2.0, dest="boot_trace_interval")
+    p_pbt.add_argument("--json", dest="emit_json", action="store_true")
+    p_pbt.set_defaults(func=cmd_proxy_boot_trace)
+
+    p_pgd = sub.add_parser(
+        "proxy-guardian",
+        help="Dead localhost WinINET proxy guardian (dry-run by default; distinct from proxy-guard).",
+    )
+    p_pgd.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm CLEAR_DEAD_LOCALHOST_PROXY.",
+    )
+    p_pgd.add_argument("--once", action="store_true", help="Single check then exit (default).")
+    p_pgd.add_argument(
+        "--loop",
+        action="store_true",
+        dest="guardian_loop",
+        help="Repeat every --interval seconds until interrupted.",
+    )
+    p_pgd.add_argument("--interval", type=float, default=60.0, help="Seconds between checks when --loop.")
+    p_pgd.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live clear requires CLEAR_DEAD_LOCALHOST_PROXY.",
+    )
+    p_pgd.add_argument("--json", dest="emit_json", action="store_true")
+    p_pgd.set_defaults(func=cmd_proxy_guardian_drift, once=True)
+
+    p_igt = sub.add_parser(
+        "install-guardian-task",
+        help="Preview/install WNRT-DeadProxyGuardian logon scheduled task.",
+    )
+    p_igt.add_argument("--interval", type=int, default=60)
+    p_igt.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+    )
+    p_igt.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live install requires INSTALL_GUARDIAN_TASK.",
+    )
+    p_igt.add_argument("--json", dest="emit_json", action="store_true")
+    p_igt.set_defaults(func=cmd_install_guardian_task)
+
+    p_ugt = sub.add_parser(
+        "uninstall-guardian-task",
+        help="Preview/remove WNRT-DeadProxyGuardian scheduled task.",
+    )
+    p_ugt.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+    )
+    p_ugt.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live uninstall requires UNINSTALL_GUARDIAN_TASK.",
+    )
+    p_ugt.add_argument("--json", dest="emit_json", action="store_true")
+    p_ugt.set_defaults(func=cmd_uninstall_guardian_task)
+
+    p_pfx = sub.add_parser(
+        "proxy-fix",
+        help="Emergency HKCU WinINET fix — clears localhost ProxyServer only.",
+    )
+    p_pfx.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+    )
+    p_pfx.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live apply requires DISABLE_WININET_PROXY.",
+    )
+    p_pfx.add_argument(
+        "--clear-pac",
+        action="store_true",
+        dest="clear_pac",
+        help="Also clear AutoConfigURL (requires --confirm CLEAR_PAC_TOO).",
+    )
+    p_pfx.add_argument("--json", dest="emit_json", action="store_true")
+    p_pfx.set_defaults(func=cmd_proxy_fix)
+
+    p_ss = sub.add_parser(
+        "safe-search",
+        help="Timeout-safe targeted file search (no full profile recursion).",
+    )
+    p_ss.add_argument("--query", required=True, dest="search_query")
+    p_ss.add_argument(
+        "--target",
+        default="project",
+        dest="search_target",
+        choices=("project", "startup", "logs", "scripts"),
+    )
+    p_ss.add_argument("--max-seconds", type=float, default=20.0, dest="search_max_seconds")
+    p_ss.add_argument("--max-files", type=int, default=3000, dest="search_max_files")
+    p_ss.add_argument("--json", dest="emit_json", action="store_true")
+    p_ss.set_defaults(func=cmd_safe_search)
+
+    p_afp = sub.add_parser(
+        "auto-fix-proxy",
+        help="One-shot dead localhost proxy fix + 60s background guardian install.",
+    )
+    p_afp.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview only — no registry mutation or guardian install.",
+    )
+    p_afp.add_argument(
+        "--skip-guardian-install",
+        action="store_true",
+        help="Fix now but do not install startup background guardian.",
+    )
+    p_afp.add_argument(
+        "--skip-cursor-fix",
+        action="store_true",
+        help="Skip configure-cursor-no-proxy.ps1 step.",
+    )
+    p_afp.add_argument(
+        "--guardian-interval",
+        type=int,
+        default=60,
+        dest="guardian_interval",
+        help="Background guardian check interval in seconds (default 60).",
+    )
+    p_afp.add_argument("--json", dest="emit_json", action="store_true")
+    p_afp.set_defaults(func=cmd_auto_fix_proxy, dry_run=False)
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)

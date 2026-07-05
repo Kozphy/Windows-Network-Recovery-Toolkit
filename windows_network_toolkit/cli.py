@@ -66,6 +66,19 @@ def _resolve_fixture(path_str: str) -> Path:
         repo / "tests" / "fixtures" / "classification" / f"{path_str}.json",
         repo / "tests" / "fixtures" / "case_studies" / path_str,
         repo / "tests" / "fixtures" / "case_studies" / f"{path_str}.json",
+        repo / "examples" / "lan" / path_str,
+        repo / "examples" / "lan" / f"{path_str}.json",
+        repo / "examples" / "lan" / f"{path_str}.jsonl",
+        repo / "examples" / "router" / path_str,
+        repo / "tests" / "fixtures" / "lan" / path_str,
+        repo / "tests" / "fixtures" / "lan" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "router" / path_str,
+        repo / "tests" / "fixtures" / "risk_register" / path_str,
+        repo / "tests" / "fixtures" / "risk_register" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "cloud_governance" / path_str,
+        repo / "tests" / "fixtures" / "cloud_governance" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "finops" / path_str,
+        repo / "tests" / "fixtures" / "finops" / f"{path_str}.json",
     ):
         if candidate.is_file():
             return candidate
@@ -139,6 +152,21 @@ def cmd_replay_certify(args: argparse.Namespace) -> int:
 
 
 def cmd_bad_gateway_diagnose(args: argparse.Namespace) -> int:
+    """Run read-only bad-gateway (502/504) diagnostic for a target HTTPS URL.
+
+    Args:
+        args: Namespace with ``url``, optional ``json_only`` and ``summary_only``.
+
+    Returns:
+        0 on success; prints classification JSON or human summary.
+
+    Side effects:
+        Read-only probes only (DNS, TCP, curl via system vs direct path).
+        May append platform audit row via runner (see bad_gateway.runner).
+
+    Notes:
+        Used by auto-fix-chatgpt.ps1 step 2; does not mutate host settings.
+    """
     from windows_network_toolkit.diagnostics.bad_gateway import run_bad_gateway_diagnose
 
     report = run_bad_gateway_diagnose(args.url, dry_run=True)
@@ -205,28 +233,62 @@ def cmd_proxy_owner(args: argparse.Namespace) -> int:
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
-    """Emit structured proof diagnosis JSON for a URL or fixture.
+    """Emit structured diagnosis JSON for a URL or fixture.
 
-    Args:
-        args: Namespace with ``url``, optional ``fixture``, optional ``principles`` flag.
-
-    Returns:
-        0 on success.
-
-    Side effects:
-        Read-only network/registry evidence collection when not using fixture.
+    With ``--proof``, runs the full proof envelope (signals, attempts, conclusion).
+    Without ``--proof``, emits read-only proxy status summary from fixture or live probes.
     """
+    inject = None
+    fixture_data: dict | None = None
+    if args.fixture:
+        fixture_data = _load_fixture_data(args.fixture)
+        inject = fixture_data.get("proof") or fixture_data
+
+    if not getattr(args, "proof", False):
+        from windows_network_toolkit.diagnostics.proxy import run_proxy_status
+
+        payload = run_proxy_status(inject=inject or fixture_data)
+        if fixture_data and fixture_data.get("classification"):
+            payload["classification"] = fixture_data["classification"]
+        payload["proof_mode"] = "summary"
+        payload["recommended_next_step"] = "Re-run with --proof for full proof envelope"
+        _emit_json(payload)
+        return 0
+
+    from src.platform_core.governance.proof_tier import resolve_proof_tier
+    from src.platform_core.policy.outcome_normalizer import normalize_policy_outcome
     from windows_network_toolkit.proof import enrich_diagnose_payload, run_diagnose_proof
 
-    inject = None
-    if args.fixture:
-        data = _load_fixture_data(args.fixture)
-        inject = data.get("proof") or data
     payload = run_diagnose_proof(args.url or None, inject=inject)
     out = payload.to_dict()
+    if fixture_data:
+        tier = resolve_proof_tier(fixture_data)
+        out["proof_tier"] = tier.proof_tier.value
+        out["proof_tier_label"] = tier.proof_tier_label
+        pol = fixture_data.get("policy_decision") or {}
+        gate = normalize_policy_outcome(str(pol.get("outcome", "PREVIEW_ONLY")))
+        out["policy_gate"] = gate.value
+        out["recommended_next_step"] = f"Policy gate: {gate.value}; preview remediation before apply"
     if getattr(args, "principles", False):
         out = enrich_diagnose_payload(out, include_principles=True)
+    out["proof_mode"] = "full"
     _emit_json(out)
+    return 0
+
+
+def cmd_version(_args: argparse.Namespace) -> int:
+    """Emit package version JSON (read-only; no admin privileges)."""
+    from windows_network_toolkit import SERVICE_NAME, __version__
+
+    _emit_json(
+        {
+            "package": "windows-network-recovery-toolkit",
+            "version": __version__,
+            "service": SERVICE_NAME,
+            "read_only": True,
+            "requires_admin": False,
+        }
+    )
     return 0
 
 
@@ -247,6 +309,54 @@ def cmd_principles_validate(args: argparse.Namespace) -> int:
     result = validate_fixture_path(path)
     _emit_json(result.to_dict())
     return 0 if result.compliant else 1
+
+
+def cmd_proxy_guardian(args: argparse.Namespace) -> int:
+    """Auto-clear dead localhost WinINET proxy when no listener is bound."""
+    from windows_network_toolkit.proxy_guardian import run_proxy_guardian_once
+
+    dry_run = args.dry_run.lower() != "false"
+    payload = run_proxy_guardian_once(dry_run=dry_run)
+    _emit_json(payload)
+    if payload.get("unsupported_platform"):
+        return 2
+    if payload.get("action_taken") == "blocked":
+        return 1
+    return 0
+
+
+def cmd_auto_fix_chatgpt(args: argparse.Namespace) -> int:
+    """Run ChatGPT auto-fix pipeline (proxy, diagnose, LOW-risk remediations).
+
+    Args:
+        args: Namespace with ``dry_run``, ``confirm``, ``url``, ``skip_proxy_auto_fix``,
+            ``skip_guardian_install``.
+
+    Returns:
+        0 when outcome healthy; 1 when degraded; 2 on unsupported platform.
+
+    Side effects:
+        Delegates to ``run_auto_fix_chatgpt`` — see ``src.network_recovery.auto_fix``.
+
+    Audit Notes:
+        Emits JSON steps payload; audit rows in ``logs/network_recovery_events.jsonl``.
+    """
+    from src.network_recovery.auto_fix import run_auto_fix_chatgpt
+
+    dry_run = args.dry_run.lower() != "false"
+    payload = run_auto_fix_chatgpt(
+        dry_run=dry_run,
+        confirm=args.confirm or "",
+        skip_proxy_auto_fix=bool(getattr(args, "skip_proxy_auto_fix", False)),
+        skip_guardian_install=bool(getattr(args, "skip_guardian_install", False)),
+        chatgpt_url=args.url or "https://chatgpt.com",
+    )
+    _emit_json(payload)
+    if payload.get("unsupported_platform"):
+        return 2
+    if payload.get("outcome") == "degraded":
+        return 1
+    return 0
 
 
 def cmd_proxy_disable(args: argparse.Namespace) -> int:
@@ -551,6 +661,31 @@ def cmd_evidence_report(args: argparse.Namespace) -> int:
     Notes:
         Reports include ``limitations[]`` — management information, not audit opinions.
     """
+    if getattr(args, "executive", False):
+        from src.platform_core.analytics.executive_evidence_report import (
+            export_executive_evidence_report,
+            format_executive_evidence_markdown,
+        )
+
+        report = export_executive_evidence_report(
+            risk_register_path=Path(args.risk_register) if getattr(args, "risk_register", None) else None,
+            cloud_fixture_path=Path(args.cloud_fixture) if getattr(args, "cloud_fixture", None) else None,
+            finops_fixture_path=Path(args.finops_fixture) if getattr(args, "finops_fixture", None) else None,
+            audit_dir=Path(args.audit_dir) if getattr(args, "audit_dir", None) else None,
+            out_path=Path(args.out) if args.out else None,
+            fmt=args.format if args.format in ("json", "markdown") else "markdown",
+        )
+        if args.out:
+            if args.format == "json":
+                _emit_json(report)
+            else:
+                print(format_executive_evidence_markdown(report))
+        elif args.format == "json":
+            _emit_json(report)
+        else:
+            print(format_executive_evidence_markdown(report))
+        return 0
+
     if getattr(args, "latest", False):
         from windows_network_toolkit.latest_evidence_report import (
             build_latest_evidence_package,
@@ -774,6 +909,53 @@ def cmd_risk_kpi_summary(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_risk_matrix(args: argparse.Namespace) -> int:
+    """Export risk matrix heat-map data (read-only)."""
+    from src.platform_core.risk.risk_matrix import export_risk_matrix
+
+    register = _resolve_fixture(args.register) if getattr(args, "register", None) else None
+    out = Path(args.out) if getattr(args, "out", None) else None
+    payload = export_risk_matrix(
+        register_path=register,
+        out_path=out,
+        fmt=args.format,
+    )
+    if args.format == "json" and not out:
+        _emit_json(payload)
+    elif args.format == "json" and out:
+        _emit_json({k: v for k, v in payload.items() if k != "matrix_rows"})
+    else:
+        _emit_json(payload)
+    return 0
+
+
+def cmd_cloud_recommendations(args: argparse.Namespace) -> int:
+    """Summarize mock cloud governance recommendations (read-only)."""
+    from src.platform_core.cloud_governance import (
+        format_cloud_summary_markdown,
+        summarize_cloud_recommendations,
+    )
+
+    fixture = _resolve_fixture(args.fixture) if getattr(args, "fixture", None) else None
+    summary = summarize_cloud_recommendations(fixture_path=fixture)
+    if args.format == "markdown":
+        print(format_cloud_summary_markdown(summary))
+    else:
+        _emit_json(summary)
+    return 0
+
+
+def cmd_finops_export(args: argparse.Namespace) -> int:
+    """Export mock FinOps cost facts (read-only)."""
+    from src.platform_core.finops import export_finops
+
+    fixture = _resolve_fixture(args.fixture) if getattr(args, "fixture", None) else None
+    out_dir = Path(args.out_dir) if getattr(args, "out_dir", None) else None
+    payload = export_finops(fixture_path=fixture, out_dir=out_dir, fmt=args.format)
+    _emit_json(payload)
+    return 0
+
+
 def cmd_powerbi_export(args: argparse.Namespace) -> int:
     from src.platform_core.analytics.powerbi_star_export import export_powerbi_star_schema
 
@@ -783,6 +965,9 @@ def cmd_powerbi_export(args: argparse.Namespace) -> int:
         audit_dir,
         out_dir,
         include_seed=not getattr(args, "no_seed", False),
+        risk_register_path=Path(args.risk_register) if getattr(args, "risk_register", None) else None,
+        cloud_fixture_path=Path(args.cloud_fixture) if getattr(args, "cloud_fixture", None) else None,
+        finops_fixture_path=Path(args.finops_fixture) if getattr(args, "finops_fixture", None) else None,
     )
     _emit_json(payload)
     return 0
@@ -926,6 +1111,353 @@ def cmd_fleet_simulate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_fleet_benchmark(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.fleet_benchmark import (
+        render_fleet_benchmark_markdown,
+        run_fleet_benchmark,
+    )
+
+    out_dir = Path(args.out).parent if args.out else Path("reports/benchmarks/run")
+    if args.out and args.format != "markdown":
+        out_dir = Path(args.out)
+    summary = run_fleet_benchmark(
+        scenario=args.scenario,
+        endpoints=int(args.endpoints),
+        seed=int(args.seed),
+        out_dir=out_dir,
+    )
+    if args.format == "markdown":
+        md = render_fleet_benchmark_markdown(summary)
+        if args.out:
+            Path(args.out).write_text(md, encoding="utf-8")
+        else:
+            print(md)
+    else:
+        _emit_json(summary)
+    return 0
+
+
+def cmd_browser_evidence(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from windows_network_toolkit.browser_evidence import load_browser_package_from_fixture
+    from windows_network_toolkit.collectors.playwright_collector import collect_browser_evidence
+
+    out_dir = Path(args.out)
+    if args.fixture:
+        pkg = load_browser_package_from_fixture(Path(args.fixture))
+    elif args.url:
+        pkg = collect_browser_evidence(args.url, out_dir, headless=not args.headed)
+        manifest = out_dir / "browser_package.json"
+        manifest.write_text(pkg.model_dump_json(indent=2), encoding="utf-8")
+    else:
+        print("Provide --url or --fixture", file=sys.stderr)
+        return 2
+    payload = {"browser_evidence": pkg.model_dump(), "raw_snapshot": pkg.to_raw_snapshot()}
+    if args.format == "json":
+        _emit_json(payload)
+    else:
+        print(pkg.model_dump_json(indent=2))
+    return 0
+
+
+def cmd_classifier_benchmark(args: argparse.Namespace) -> int:
+    from src.platform_core.evaluation.classifier_benchmark import (
+        load_benchmark_cases,
+        render_classifier_benchmark_markdown,
+        run_classifier_benchmark,
+    )
+
+    cases = load_benchmark_cases(Path(args.cases))
+    summary = run_classifier_benchmark(cases)
+    if args.format == "markdown":
+        print(render_classifier_benchmark_markdown(summary))
+    else:
+        _emit_json(summary.model_dump())
+    return 0
+
+
+def cmd_replay_benchmark(args: argparse.Namespace) -> int:
+    from src.platform_core.evaluation.replay_benchmark import (
+        load_replay_cases,
+        render_replay_benchmark_markdown,
+        run_replay_benchmark,
+    )
+
+    cases = load_replay_cases(Path(args.cases))
+    summary = run_replay_benchmark(cases, replay_count=int(args.replay_count))
+    if args.format == "markdown":
+        print(render_replay_benchmark_markdown(summary))
+    else:
+        _emit_json(summary.model_dump())
+    return 0
+
+
+def cmd_lan_inventory(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.collectors import collect_inventory
+
+    inject = None
+    if args.fixture:
+        data = _load_fixture_data(args.fixture)
+        inject = data if "devices" in data else data
+    payload = collect_inventory(subnet_override=args.subnet or "", inject=inject)
+    _emit_json(payload)
+    return 0 if payload.get("ok", True) else 1
+
+
+def cmd_lan_watch(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.watch import run_lan_watch
+
+    inject_sequence = None
+    if args.fixture:
+        data = _load_fixture_data(args.fixture)
+        inject_sequence = data.get("watch_sequence") or data.get("events")
+    payload = run_lan_watch(
+        duration=int(args.duration),
+        interval=float(args.interval),
+        audit_path=args.audit_path,
+        inject_sequence=inject_sequence,
+        include_mdns=args.mdns,
+    )
+    if payload.get("unsupported_platform"):
+        _emit_json(payload)
+        return 2
+    _emit_json(payload)
+    return 0
+
+
+def cmd_lan_mdns_summary(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.collectors import collect_mdns_summary
+
+    inject = _load_fixture_data(args.fixture) if args.fixture else None
+    payload = collect_mdns_summary(duration_seconds=float(args.duration), inject=inject)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_lan_ssdp_summary(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.collectors import collect_ssdp_summary
+
+    inject = _load_fixture_data(args.fixture) if args.fixture else None
+    payload = collect_ssdp_summary(duration_seconds=float(args.duration), inject=inject)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_lan_privacy_report(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.runner import (
+        load_bundle,
+        run_lan_privacy_report_pipeline,
+    )
+
+    if args.fixture:
+        bundle = load_bundle(_resolve_fixture(args.fixture))
+    elif args.watch_log:
+        bundle = {"host_log": args.watch_log}
+    else:
+        bundle = {"host_log": ".audit/lan-watch.jsonl"}
+    result = run_lan_privacy_report_pipeline(
+        bundle, fmt=args.format, out_dir=args.out_dir or ""
+    )
+    if args.format == "markdown":
+        print(result.get("markdown", ""))
+    elif args.format == "both":
+        if result.get("markdown"):
+            print(result["markdown"])
+        if not args.out_dir:
+            _emit_json(result["report"])
+    else:
+        _emit_json(result["report"])
+    return 0
+
+
+def cmd_lan_risk_score(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.runner import (
+        load_bundle,
+        run_lan_risk_score_pipeline,
+    )
+
+    if not args.fixture:
+        print("lan-risk-score requires --fixture", file=sys.stderr)
+        return 1
+    bundle = load_bundle(_resolve_fixture(args.fixture))
+    _emit_json(run_lan_risk_score_pipeline(bundle))
+    return 0
+
+
+def cmd_lan_control_test(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.classifier import classify_lan_behavior
+    from windows_network_toolkit.diagnostics.lan_privacy.privacy_risk_score import (
+        compute_privacy_risk_score,
+    )
+    from windows_network_toolkit.diagnostics.lan_privacy.runner import (
+        _resolve_observations,
+        load_bundle,
+    )
+    from windows_network_toolkit.lan_control_tests import run_lan_control_tests
+
+    if not args.fixture:
+        print("lan-control-test requires --fixture", file=sys.stderr)
+        return 1
+    bundle = load_bundle(_resolve_fixture(args.fixture))
+    observations, inventory, router_events = _resolve_observations(bundle)
+    devices = inventory.get("devices") or []
+    classification = classify_lan_behavior(observations=observations, devices=devices)
+    score = compute_privacy_risk_score(
+        observations=observations,
+        devices=devices,
+        router_events=router_events,
+        classification=classification.primary_classification,
+    )
+    results = run_lan_control_tests(
+        inventory=inventory,
+        observations=observations,
+        router_events=router_events,
+        score_result={
+            **score.to_dict(),
+            "primary_classification": classification.primary_classification,
+        },
+    )
+    _emit_json({"controls": [r.to_dict() for r in results]})
+    return 0
+
+
+def cmd_router_import(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.router_evidence.runner import run_router_import
+
+    inject = None
+    if args.fixture:
+        inject = _load_fixture_data(args.fixture).get("events")
+    payload = run_router_import(
+        import_type=args.type,
+        input_path=str(_resolve_fixture(args.input)),
+        out_path=args.out,
+        inject=inject,
+    )
+    _emit_json(payload)
+    return 0 if payload.get("ok") else 1
+
+
+def cmd_router_correlate(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.router_evidence.runner import run_router_correlation
+
+    payload = run_router_correlation(host_log=args.host_log, router_log=args.router_log)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_risk_executive_report(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.lan_privacy.executive_report import (
+        render_executive_markdown,
+    )
+    from windows_network_toolkit.diagnostics.lan_privacy.runner import (
+        load_bundle,
+        run_executive_report_pipeline,
+    )
+
+    if not args.fixture:
+        print("risk-executive-report requires --fixture", file=sys.stderr)
+        return 1
+    bundle = load_bundle(_resolve_fixture(args.fixture))
+    result = run_executive_report_pipeline(
+        bundle, fmt=args.format, out_dir=args.out_dir or ""
+    )
+    if args.format == "markdown" and not args.out_dir:
+        print(render_executive_markdown(result["report"]))
+    elif not args.out_dir:
+        _emit_json(result["report"])
+    return 0
+
+
+def cmd_agent_once(args: argparse.Namespace) -> int:
+    """Run one read-only agent evidence cycle and append to local JSONL spool."""
+    from windows_network_toolkit.agent.read_only import collect_once
+
+    fixture = Path(args.fixture) if args.fixture else None
+    if fixture and not fixture.is_file():
+        print(f"Fixture not found: {fixture}", file=sys.stderr)
+        return 1
+    spool = Path(args.spool) if args.spool else None
+    result = collect_once(
+        spool_path=spool,
+        os_family=args.os_family or None,
+        fixture_path=fixture,
+    )
+    _emit_json(result)
+    return 0
+
+
+def cmd_agent_run(args: argparse.Namespace) -> int:
+    """Run read-only agent collection loop until interrupted."""
+    from windows_network_toolkit.agent.read_only import run_agent_loop
+
+    fixture = Path(args.fixture) if args.fixture else None
+    if fixture and not fixture.is_file():
+        print(f"Fixture not found: {fixture}", file=sys.stderr)
+        return 1
+    spool = Path(args.spool) if args.spool else None
+    return run_agent_loop(
+        interval_seconds=float(args.interval),
+        spool_path=spool,
+        os_family=args.os_family or None,
+        fixture_path=fixture,
+        max_cycles=int(args.max_cycles) if args.max_cycles else None,
+    )
+
+
+def cmd_agent_health(args: argparse.Namespace) -> int:
+    """Report read-only agent health and optional backend /health probe."""
+    from windows_network_toolkit.agent.read_only import get_health_status
+
+    spool = Path(args.spool) if args.spool else None
+    payload = get_health_status(spool_path=spool, api_base=args.api or None)
+    _emit_json(payload)
+    return 0
+
+
+def cmd_agent_spool_status(args: argparse.Namespace) -> int:
+    """Inspect local agent JSONL spool depth (read-only)."""
+    from windows_network_toolkit.agent.read_only import get_spool_status
+
+    spool = Path(args.spool) if args.spool else None
+    _emit_json(get_spool_status(spool_path=spool))
+    return 0
+
+
+def cmd_ai_eval(args: argparse.Namespace) -> int:
+    """Run fixture-based AI eval suite and emit markdown or JSON report.
+
+    Loads pre-recorded model outputs from a JSON cases file and evaluates them with
+    deterministic checks (facts, format, citations, safety phrases, etc.). No live LLM
+    or retrieval API calls are made.
+
+    Args:
+        args: Namespace with ``cases`` (fixture path) and ``format`` (``markdown`` or ``json``).
+
+    Returns:
+        0 on success.
+
+    Side effects:
+        Read-only: reads fixture file; prints report to stdout.
+
+    Example:
+        ``toolkit ai-eval --cases examples/ai_evals/support_bot_cases.json --format markdown``
+
+    Notes:
+        Policy ALLOW and pass status are structured triage signals — not deployment
+        authorization or formal model safety certification.
+    """
+    from src.platform_core.ai_evals import load_eval_cases, render_eval_markdown, run_eval_suite
+
+    cases = load_eval_cases(Path(args.cases))
+    report = run_eval_suite(cases)
+    if args.format == "markdown":
+        print(render_eval_markdown(report))
+    else:
+        _emit_json(report.model_dump(mode="json"))
+    return 0
+
+
 def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     """Parse CLI arguments and dispatch to the selected subcommand handler.
 
@@ -944,6 +1476,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     """
     parser = argparse.ArgumentParser(prog=prog, description="Endpoint Reliability Decision Platform CLI")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    ver = sub.add_parser("version", help="Print installed package version (read-only)")
+    ver.set_defaults(func=cmd_version)
 
     replay = sub.add_parser("replay", help="Replay a JSONL incident fixture")
     replay.add_argument("fixture", help="Path to JSONL fixture")
@@ -986,6 +1521,57 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     pd.add_argument("--confirm", default="", help="Typed confirmation token")
     pd.set_defaults(func=cmd_proxy_disable)
 
+    pg = sub.add_parser(
+        "proxy-guardian",
+        help="Auto-clear dead localhost WinINET proxy (for scheduled guardian)",
+    )
+    pg.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="false",
+        help="Preview only (default false for --once guardian runs)",
+    )
+    pg.add_argument(
+        "--once",
+        action="store_true",
+        help="Run one guardian check (default behavior)",
+    )
+    pg.set_defaults(func=cmd_proxy_guardian)
+
+    af = sub.add_parser(
+        "auto-fix-chatgpt",
+        help="Auto-fix ChatGPT connectivity: proxy guardian, diagnose, LOW-risk remediations",
+    )
+    af.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="false",
+        help="Preview only. Pass true for dry-run: --dry-run true",
+    )
+    af.add_argument(
+        "--confirm",
+        default="",
+        help="Typed confirmation for LOW-risk apply (default: APPLY_CHATGPT_LOW_RISK when live)",
+    )
+    af.add_argument(
+        "--url",
+        default="https://chatgpt.com",
+        help="HTTPS URL for bad-gateway diagnose step",
+    )
+    af.add_argument(
+        "--skip-proxy-auto-fix",
+        action="store_true",
+        help="Skip proxy-guardian step (use when auto-fix-proxy.ps1 already ran)",
+    )
+    af.add_argument(
+        "--skip-guardian-install",
+        action="store_true",
+        help="Reserved for PS orchestrator; guardian install is handled by auto-fix-proxy.ps1",
+    )
+    af.set_defaults(func=cmd_auto_fix_chatgpt)
+
     pw = sub.add_parser("proxy-watch", help="Poll WinINET proxy for drift (read-only)")
     pw.add_argument("--duration", default="900", help="Watch duration seconds")
     pw.add_argument("--interval", default="2", help="Poll interval seconds")
@@ -1012,6 +1598,20 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     preplay.add_argument("--format", choices=("json", "human"), default="json", help="Output format")
     preplay.add_argument("--json-also", action="store_true", help="With --format human, also emit JSON")
     preplay.set_defaults(func=cmd_proxy_replay)
+
+    replay_demo = sub.add_parser(
+        "replay-demo",
+        help="Alias for proxy-replay — deterministic fixture replay demo",
+    )
+    replay_demo.add_argument("--input", required=True, help="JSONL fixture or audit log path")
+    replay_demo.add_argument(
+        "--coalesce-ms",
+        default="1000",
+        help="Coalescing window in milliseconds (200-5000)",
+    )
+    replay_demo.add_argument("--format", choices=("json", "human"), default="json", help="Output format")
+    replay_demo.add_argument("--json-also", action="store_true", help="With --format human, also emit JSON")
+    replay_demo.set_defaults(func=cmd_proxy_replay)
 
     ph = sub.add_parser("proxy-health", help="Localhost proxy health check (read-only)")
     ph.add_argument("--host", default="", help="Override localhost host")
@@ -1082,6 +1682,11 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         "evidence-report",
         help="Merged evidence timeline report (JSONL/Markdown/HTML, preview-only)",
     )
+    er.add_argument("--executive", action="store_true", help="Executive portfolio evidence report")
+    er.add_argument("--risk-register", default="", help="Risk register JSON for executive report")
+    er.add_argument("--cloud-fixture", default="", help="Cloud governance fixture for executive report")
+    er.add_argument("--finops-fixture", default="", help="FinOps fixture for executive report")
+    er.add_argument("--audit-dir", default="", help="Optional audit dir for executive KPI rollup")
     er.add_argument("--latest", action="store_true", help="Latest proxy path diagnosis report (markdown)")
     er.add_argument("--analytics", action="store_true", help="Endpoint evidence analytics report (markdown)")
     er.add_argument("--url", default="", help="Target URL for network proof (legacy merged report)")
@@ -1127,6 +1732,44 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     rks.add_argument("--audit-dir", default="tests/fixtures/risk_analytics/audit_sample", help="Audit directory")
     rks.add_argument("--format", choices=["json", "markdown"], default="json")
     rks.set_defaults(func=cmd_risk_kpi_summary)
+
+    rm = sub.add_parser("risk-matrix", help="Risk matrix heat-map export (read-only)")
+    rm_sub = rm.add_subparsers(dest="risk_matrix_cmd", required=True)
+    rm_export = rm_sub.add_parser("export", help="Export risk matrix JSON or CSV")
+    rm_export.add_argument(
+        "--register",
+        default="tests/fixtures/risk_register/sample_risk_register.json",
+        help="Risk register JSON path",
+    )
+    rm_export.add_argument("--format", choices=["json", "csv"], default="json")
+    rm_export.add_argument("--out", default="", help="Optional output file path")
+    rm_export.set_defaults(func=cmd_risk_matrix)
+
+    cr = sub.add_parser(
+        "cloud-recommendations",
+        help="Summarize mock cloud governance recommendations (read-only)",
+    )
+    cr_sub = cr.add_subparsers(dest="cloud_recommendations_cmd", required=True)
+    cr_sum = cr_sub.add_parser("summarize", help="Summarize recommendations by pillar/provider")
+    cr_sum.add_argument(
+        "--fixture",
+        default="tests/fixtures/cloud_governance/mock_recommendations.json",
+        help="Cloud governance fixture JSON",
+    )
+    cr_sum.add_argument("--format", choices=["json", "markdown"], default="json")
+    cr_sum.set_defaults(func=cmd_cloud_recommendations)
+
+    fo = sub.add_parser("finops", help="FinOps mock cost export (read-only)")
+    fo_sub = fo.add_subparsers(dest="finops_cmd", required=True)
+    fo_export = fo_sub.add_parser("export", help="Export FinOps cost facts")
+    fo_export.add_argument(
+        "--fixture",
+        default="tests/fixtures/finops/mock_costs.json",
+        help="FinOps cost fixture JSON",
+    )
+    fo_export.add_argument("--out-dir", default="", help="Optional output directory")
+    fo_export.add_argument("--format", choices=["json", "csv", "both"], default="json")
+    fo_export.set_defaults(func=cmd_finops_export)
 
     ans = sub.add_parser("analytics-summary", help="Endpoint evidence analytics summary (read-only)")
     ans.add_argument("--input", default="", help="Audit JSONL file or directory (default: .audit)")
@@ -1174,6 +1817,16 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     )
     pbi.set_defaults(func=cmd_analytics_export_powerbi)
 
+    export_pbi = sub.add_parser(
+        "export-powerbi",
+        help="Alias for analytics-export-powerbi (star-schema CSV export)",
+    )
+    export_pbi.add_argument("--audit-dir", default="tests/fixtures/risk_analytics/audit_sample")
+    export_pbi.add_argument("--out-dir", default="analytics/powerbi/sample_csv")
+    export_pbi.add_argument("--portfolio-sample", action="store_true")
+    export_pbi.add_argument("--include-seed", action="store_true")
+    export_pbi.set_defaults(func=cmd_analytics_export_powerbi)
+
     star = sub.add_parser(
         "powerbi-export",
         help="Export Power BI star schema semantic model pack (read-only)",
@@ -1193,6 +1846,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         action="store_true",
         help="Do not merge portfolio seed rows (audit-only export)",
     )
+    star.add_argument("--risk-register", default="", help="Optional risk register JSON path")
+    star.add_argument("--cloud-fixture", default="", help="Optional cloud governance fixture path")
+    star.add_argument("--finops-fixture", default="", help="Optional FinOps fixture path")
     star.set_defaults(func=cmd_powerbi_export)
 
     demo = sub.add_parser("demo", help="Golden fixture demo (read-only)")
@@ -1211,8 +1867,153 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     fs.add_argument("--out", default="examples/fleet/audit_sample")
     fs.set_defaults(func=cmd_fleet_simulate)
 
+    fb = sub.add_parser("fleet-benchmark", help="Fleet performance and classification benchmark")
+    fb.add_argument("--scenario", default="mixed_proxy_failures")
+    fb.add_argument("--endpoints", default="100")
+    fb.add_argument("--seed", default="42")
+    fb.add_argument("--format", choices=["json", "markdown"], default="json")
+    fb.add_argument("--out", default="", help="Output markdown path when --format markdown")
+    fb.set_defaults(func=cmd_fleet_benchmark)
+
+    be = sub.add_parser("browser-evidence", help="Playwright browser evidence package (screenshot + HAR)")
+    be.add_argument("--url", default="", help="URL to capture")
+    be.add_argument("--fixture", default="", help="Load fixture package JSON instead of live browser")
+    be.add_argument("--out", default="browser_evidence_out", help="Output directory for captures")
+    be.add_argument("--headed", action="store_true", help="Run browser headed (not headless)")
+    be.add_argument("--format", choices=["json", "package"], default="json")
+    be.set_defaults(func=cmd_browser_evidence)
+
+    cb = sub.add_parser("classifier-benchmark", help="Offline classifier evaluation harness")
+    cb.add_argument("--cases", default="examples/evaluation/classifier_benchmark_sample.json")
+    cb.add_argument("--format", choices=["json", "markdown"], default="json")
+    cb.set_defaults(func=cmd_classifier_benchmark)
+
+    rb = sub.add_parser("replay-benchmark", help="Evidence replay determinism benchmark")
+    rb.add_argument("--cases", default="tests/fixtures/evaluation/replay_cases.jsonl")
+    rb.add_argument("--replay-count", default="2")
+    rb.add_argument("--format", choices=["json", "markdown"], default="json")
+    rb.set_defaults(func=cmd_replay_benchmark)
+
+    ae = sub.add_parser("ai-eval", help="Fixture-based AI evals feedback loop (no live model calls)")
+    ae.add_argument("--cases", default="examples/ai_evals/support_bot_cases.json")
+    ae.add_argument("--format", choices=["json", "markdown"], default="markdown")
+    ae.set_defaults(func=cmd_ai_eval)
+
+    li = sub.add_parser("lan-inventory", help="LAN asset inventory (read-only)")
+    li.add_argument("--fixture", default="", help="Fixture JSON for offline inventory")
+    li.add_argument("--subnet", default="", help="Subnet override for display")
+    li.add_argument("--json-only", action="store_true", help="JSON output only")
+    li.set_defaults(func=cmd_lan_inventory)
+
+    lw = sub.add_parser("lan-watch", help="Poll LAN neighbors and append JSONL (read-only)")
+    lw.add_argument("--duration", default="60", help="Watch duration seconds")
+    lw.add_argument("--interval", default="10", help="Poll interval seconds")
+    lw.add_argument("--fixture", default="", help="Fixture with watch_sequence")
+    lw.add_argument("--audit-path", default=".audit/lan-watch.jsonl", help="JSONL output path")
+    lw.add_argument("--mdns", action="store_true", help="Include brief mDNS sample each tick")
+    lw.set_defaults(func=cmd_lan_watch)
+
+    lms = sub.add_parser("lan-mdns-summary", help="mDNS discovery summary (read-only)")
+    lms.add_argument("--duration", default="5", help="Listen duration seconds")
+    lms.add_argument("--fixture", default="", help="Fixture inject")
+    lms.set_defaults(func=cmd_lan_mdns_summary)
+
+    lss = sub.add_parser("lan-ssdp-summary", help="SSDP/UPnP discovery summary (read-only)")
+    lss.add_argument("--duration", default="5", help="Probe duration seconds")
+    lss.add_argument("--fixture", default="", help="Fixture inject")
+    lss.set_defaults(func=cmd_lan_ssdp_summary)
+
+    lpr = sub.add_parser("lan-privacy-report", help="LAN privacy evidence report")
+    lpr.add_argument("--fixture", default="", help="Bundle or scenario fixture")
+    lpr.add_argument("--watch-log", default="", help="lan-watch JSONL path")
+    lpr.add_argument("--format", choices=["json", "markdown", "both"], default="json")
+    lpr.add_argument("--out-dir", default="", help="Write report files to directory")
+    lpr.set_defaults(func=cmd_lan_privacy_report)
+
+    lrs = sub.add_parser("lan-risk-score", help="Privacy risk score (transparent formula)")
+    lrs.add_argument("--fixture", required=True, help="Bundle fixture path")
+    lrs.set_defaults(func=cmd_lan_risk_score)
+
+    lct = sub.add_parser("lan-control-test", help="CTRL-LAN control matrix evaluation")
+    lct.add_argument("--fixture", required=True, help="Bundle fixture path")
+    lct.set_defaults(func=cmd_lan_control_test)
+
+    ri = sub.add_parser("router-import", help="Import router logs to normalized JSONL")
+    ri.add_argument("--type", required=True, choices=["dns", "firewall", "dhcp", "devices"])
+    ri.add_argument("--input", required=True, help="Router export file path")
+    ri.add_argument("--out", required=True, help="Output JSONL path")
+    ri.add_argument("--fixture", default="", help="Inject events instead of parsing input")
+    ri.set_defaults(func=cmd_router_import)
+
+    rc = sub.add_parser("router-correlate", help="Correlate host LAN log with router JSONL")
+    rc.add_argument("--host-log", required=True, help="lan-watch JSONL path")
+    rc.add_argument("--router-log", required=True, help="Router evidence JSONL path")
+    rc.set_defaults(func=cmd_router_correlate)
+
+    rer = sub.add_parser("risk-executive-report", help="Executive LAN technology risk report")
+    rer.add_argument("--fixture", required=True, help="Executive bundle fixture")
+    rer.add_argument("--format", choices=["json", "markdown", "both"], default="both")
+    rer.add_argument("--out-dir", default="", help="Output directory")
+    rer.set_defaults(func=cmd_risk_executive_report)
+
+    agent = sub.add_parser(
+        "agent",
+        help="Read-only local endpoint agent (evidence spool; no remediation)",
+    )
+    agent_sub = agent.add_subparsers(dest="agent_cmd", required=True)
+
+    def _add_agent_common(p: argparse.ArgumentParser) -> None:
+        p.add_argument(
+            "--spool",
+            default="",
+            help="Agent JSONL spool path (default: .audit/agent-spool.jsonl)",
+        )
+        p.add_argument(
+            "--fixture",
+            default="",
+            help="Evidence bundle fixture (skips live collection)",
+        )
+        p.add_argument(
+            "--os-family",
+            default="",
+            choices=["", "windows", "linux", "darwin", "unknown"],
+            help="Force OS family for evidence collection (tests/fixtures)",
+        )
+
+    agent_once = agent_sub.add_parser("once", help="One read-only evidence collection cycle")
+    _add_agent_common(agent_once)
+    agent_once.set_defaults(func=cmd_agent_once)
+
+    agent_run = agent_sub.add_parser("run", help="Loop read-only collection until Ctrl+C")
+    _add_agent_common(agent_run)
+    agent_run.add_argument("--interval", default="30", help="Seconds between cycles (min 5)")
+    agent_run.add_argument(
+        "--max-cycles",
+        default="",
+        help="Optional max cycles (for tests); default runs until interrupt",
+    )
+    agent_run.set_defaults(func=cmd_agent_run)
+
+    agent_health = agent_sub.add_parser("health", help="Agent health and optional backend probe")
+    agent_health.add_argument("--spool", default="", help="Agent JSONL spool path")
+    agent_health.add_argument(
+        "--api",
+        default="",
+        help="Optional backend base URL for GET /health (read-only)",
+    )
+    agent_health.set_defaults(func=cmd_agent_health)
+
+    agent_spool = agent_sub.add_parser("spool-status", help="Inspect agent JSONL spool depth")
+    agent_spool.add_argument("--spool", default="", help="Agent JSONL spool path")
+    agent_spool.set_defaults(func=cmd_agent_spool_status)
+
     args = parser.parse_args(argv)
     return int(args.func(args))
+
+
+def console_main() -> None:
+    """Setuptools console script entry point for ``wnrt``."""
+    raise SystemExit(main(prog="wnrt"))
 
 
 if __name__ == "__main__":

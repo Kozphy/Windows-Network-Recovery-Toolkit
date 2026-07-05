@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import re
+import zlib
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -20,9 +21,12 @@ from src.platform_core.analytics.summary import (
     _incident_key,
     _load_audit_records,
 )
+from src.platform_core.cloud_governance import load_cloud_recommendations
+from src.platform_core.finops import load_finops_fixture
 from src.platform_core.governance.chain_of_custody import verify_chain
 from src.platform_core.governance.proof_tier import ProofTier
 from src.platform_core.risk.business_impact_mapping import map_business_impact
+from src.platform_core.risk.risk_matrix import build_risk_matrix, default_risk_register_path
 
 SCHEMA_VERSION = "powerbi_star_export.v1"
 
@@ -99,14 +103,87 @@ DIM_PROOF_TIER_COLUMNS = [
     "maturity_order",
 ]
 
+FACT_RISKS_COLUMNS = [
+    "risk_id",
+    "date_key",
+    "category_key",
+    "evidence_tier_key",
+    "control_key",
+    "probability_score",
+    "impact_score",
+    "severity_score",
+    "confidence",
+    "recommended_action",
+    "status",
+]
+
+FACT_RECOMMENDATIONS_COLUMNS = [
+    "recommendation_id",
+    "date_key",
+    "resource_key",
+    "category_key",
+    "provider",
+    "pillar",
+    "estimated_monthly_savings_usd",
+    "confidence",
+    "priority",
+    "status",
+]
+
+FACT_COSTS_COLUMNS = [
+    "cost_id",
+    "date_key",
+    "resource_key",
+    "category_key",
+    "provider",
+    "service",
+    "monthly_cost_usd",
+    "budget_category",
+    "anomaly_flag",
+]
+
+DIM_RESOURCE_COLUMNS = [
+    "resource_key",
+    "resource_id",
+    "resource_name",
+    "provider",
+]
+
+DIM_CATEGORY_COLUMNS = [
+    "category_key",
+    "category",
+    "domain",
+]
+
+DIM_CONTROL_COLUMNS = [
+    "control_key",
+    "control_id",
+    "control_name",
+    "control_domain",
+]
+
+DIM_EVIDENCE_TIER_COLUMNS = [
+    "evidence_tier_key",
+    "evidence_tier",
+    "description",
+    "maturity_order",
+]
+
 STAR_CSV_FILES = [
     "fact_incidents.csv",
     "fact_control_tests.csv",
     "fact_policy_decisions.csv",
+    "fact_risks.csv",
+    "fact_recommendations.csv",
+    "fact_costs.csv",
     "dim_classification.csv",
     "dim_date.csv",
     "dim_stakeholder.csv",
     "dim_proof_tier.csv",
+    "dim_resource.csv",
+    "dim_category.csv",
+    "dim_control.csv",
+    "dim_evidence_tier.csv",
     "README.md",
 ]
 
@@ -129,6 +206,34 @@ _PROOF_TIER_CATALOG: list[tuple[int, str, str, int]] = [
     (2, ProofTier.T2_RUNTIME_CORROBORATION.value, "Runtime path or listener corroboration", 2),
     (3, ProofTier.T3_BEHAVIORAL_REPRODUCTION.value, "Structured proof reproduction", 3),
     (4, ProofTier.T4_OPERATOR_CONFIRMED.value, "Operator-confirmed action in audit", 4),
+]
+
+_EVIDENCE_TIER_CATALOG: list[tuple[int, str, str, int]] = _PROOF_TIER_CATALOG + [
+    (5, ProofTier.T5_GOVERNANCE_PROOF.value, "Governance-confirmed audit chain", 5),
+]
+
+_CATEGORY_CATALOG: list[tuple[int, str, str]] = [
+    (1, "Endpoint Reliability", "Technology Risk"),
+    (2, "Technology Risk", "Technology Risk"),
+    (3, "Cloud Governance", "Cloud Governance"),
+    (4, "FinOps", "FinOps"),
+    (5, "Cost Optimization", "FinOps"),
+    (6, "Security", "Cloud Governance"),
+    (7, "High Availability", "Cloud Governance"),
+    (8, "Operational Excellence", "Cloud Governance"),
+]
+
+_CONTROL_CATALOG: list[tuple[int, str, str, str]] = [
+    (1, "CTRL-001", "Dead WinINET Proxy Detection", "Endpoint Reliability"),
+    (2, "CTRL-002", "WinINET / WinHTTP Stack Alignment", "Platform Governance"),
+    (3, "CTRL-003", "Localhost Proxy Path Health", "Endpoint Reliability"),
+    (4, "CTRL-004", "Local Proxy Listener Governance", "Technology Risk"),
+    (5, "CTRL-005", "PAC Configuration Observability", "Platform Governance"),
+    (6, "CTRL-006", "Unknown Local Proxy Triage", "Technology Risk"),
+    (7, "CTRL-007", "Proxy Reverter & Drift Detection", "Endpoint Reliability"),
+    (8, "CTRL-008", "Direct vs Proxy Path Comparison", "Endpoint Reliability"),
+    (9, "CTRL-009", "Policy-Gated Safe Remediation", "Platform Governance"),
+    (10, "CTRL-010", "Audit Hash Chain Integrity", "Internal Audit"),
 ]
 
 _STAKEHOLDER_CATALOG: list[tuple[int, str, str]] = [
@@ -169,6 +274,42 @@ def _proof_tier_key(tier: str) -> int:
     return 0
 
 
+def _evidence_tier_key(tier: str) -> int:
+    for tier_key, value, _, _ in _EVIDENCE_TIER_CATALOG:
+        if value == tier:
+            return tier_key
+    return 0
+
+
+def _category_key(name: str) -> int:
+    for key, category, _ in _CATEGORY_CATALOG:
+        if category == name:
+            return key
+    return 2
+
+
+def _control_key(control_id: str) -> int:
+    for key, cid, _, _ in _CONTROL_CATALOG:
+        if cid == control_id:
+            return key
+    return 10
+
+
+def _resource_key(resource_id: str) -> int:
+    """Stable integer key for resource_id strings."""
+    return zlib.adler32(resource_id.encode("utf-8")) % 900000 + 100000
+
+
+def _date_key_from_iso(value: str) -> int:
+    if not value:
+        return 20260601
+    try:
+        parts = value.split("-")
+        return int(parts[0]) * 10000 + int(parts[1]) * 100 + int(parts[2])
+    except (ValueError, IndexError):
+        return 20260601
+
+
 def _stakeholder_key(classification: str) -> int:
     forum = map_business_impact(classification).suggested_forum.lower()
     for fragment, key in _STAKEHOLDER_FORUM_MAP.items():
@@ -207,6 +348,59 @@ def build_dim_proof_tier() -> list[dict[str, Any]]:
         }
         for key, tier, desc, order in _PROOF_TIER_CATALOG
     ]
+
+
+def build_dim_evidence_tier() -> list[dict[str, Any]]:
+    return [
+        {
+            "evidence_tier_key": key,
+            "evidence_tier": tier,
+            "description": desc,
+            "maturity_order": order,
+        }
+        for key, tier, desc, order in _EVIDENCE_TIER_CATALOG
+    ]
+
+
+def build_dim_category() -> list[dict[str, Any]]:
+    return [
+        {"category_key": key, "category": category, "domain": domain}
+        for key, category, domain in _CATEGORY_CATALOG
+    ]
+
+
+def build_dim_control() -> list[dict[str, Any]]:
+    return [
+        {
+            "control_key": key,
+            "control_id": control_id,
+            "control_name": name,
+            "control_domain": domain,
+        }
+        for key, control_id, name, domain in _CONTROL_CATALOG
+    ]
+
+
+def build_dim_resource(
+    cloud_fixture: dict[str, Any] | None,
+    finops_fixture: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    resources: dict[str, dict[str, Any]] = {}
+    for source in (cloud_fixture, finops_fixture):
+        if not source:
+            continue
+        rows = source.get("recommendations") or source.get("costs") or []
+        for row in rows:
+            rid = str(row.get("resource_id") or "")
+            if not rid:
+                continue
+            resources[rid] = {
+                "resource_key": _resource_key(rid),
+                "resource_id": rid,
+                "resource_name": str(row.get("resource_name") or rid),
+                "provider": str(row.get("provider") or ""),
+            }
+    return sorted(resources.values(), key=lambda r: r["resource_key"])
 
 
 def build_dim_stakeholder() -> list[dict[str, Any]]:
@@ -291,10 +485,112 @@ def _control_domain(control_name: str) -> str:
     return "Technology Risk Control"
 
 
+def _build_portfolio_extension_tables(
+    *,
+    risk_register_path: Path | None = None,
+    cloud_fixture_path: Path | None = None,
+    finops_fixture_path: Path | None = None,
+    include_seed: bool = True,
+) -> dict[str, list[dict[str, Any]]]:
+    """Build risk, cloud governance, and FinOps star tables from mock fixtures."""
+    if not include_seed:
+        return {
+            "fact_risks": [],
+            "fact_recommendations": [],
+            "fact_costs": [],
+            "dim_resource": [],
+            "dim_category": build_dim_category(),
+            "dim_control": build_dim_control(),
+            "dim_evidence_tier": build_dim_evidence_tier(),
+        }
+
+    register_path = risk_register_path or default_risk_register_path()
+    cloud_path = cloud_fixture_path or (
+        Path(__file__).resolve().parents[3]
+        / "tests"
+        / "fixtures"
+        / "cloud_governance"
+        / "mock_recommendations.json"
+    )
+    finops_path = finops_fixture_path or (
+        Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "finops" / "mock_costs.json"
+    )
+
+    risk_matrix = build_risk_matrix(register_path=register_path)
+    cloud_data = load_cloud_recommendations(cloud_path) if cloud_path.is_file() else {}
+    finops_data = load_finops_fixture(finops_path) if finops_path.is_file() else {}
+
+    fact_risks: list[dict[str, Any]] = []
+    for row in risk_matrix.get("matrix_rows") or []:
+        fact_risks.append(
+            {
+                "risk_id": row["risk_id"],
+                "date_key": _date_key_from_iso(str(row.get("due_date") or "")),
+                "category_key": _category_key(str(row.get("category") or "")),
+                "evidence_tier_key": _evidence_tier_key(str(row.get("evidence_tier") or "")),
+                "control_key": _control_key(str(row.get("recommended_control") or "")),
+                "probability_score": row["probability_score"],
+                "impact_score": row["impact_score"],
+                "severity_score": row["severity_score"],
+                "confidence": row["confidence"],
+                "recommended_action": row["recommended_action"],
+                "status": row.get("status", "open"),
+            }
+        )
+
+    fact_recommendations: list[dict[str, Any]] = []
+    for row in cloud_data.get("recommendations") or []:
+        rid = str(row.get("resource_id") or "")
+        fact_recommendations.append(
+            {
+                "recommendation_id": row.get("recommendation_id"),
+                "date_key": 20260601,
+                "resource_key": _resource_key(rid) if rid else 0,
+                "category_key": _category_key(str(row.get("category") or "")),
+                "provider": row.get("provider"),
+                "pillar": row.get("pillar"),
+                "estimated_monthly_savings_usd": row.get("estimated_monthly_savings_usd"),
+                "confidence": row.get("confidence"),
+                "priority": row.get("priority"),
+                "status": row.get("status"),
+            }
+        )
+
+    fact_costs: list[dict[str, Any]] = []
+    for row in finops_data.get("costs") or []:
+        rid = str(row.get("resource_id") or "")
+        fact_costs.append(
+            {
+                "cost_id": row.get("cost_id"),
+                "date_key": int(row.get("date_key") or 20260601),
+                "resource_key": _resource_key(rid) if rid else 0,
+                "category_key": _category_key(str(row.get("category") or "")),
+                "provider": row.get("provider"),
+                "service": row.get("service"),
+                "monthly_cost_usd": row.get("monthly_cost_usd"),
+                "budget_category": row.get("budget_category"),
+                "anomaly_flag": bool(row.get("anomaly_flag")),
+            }
+        )
+
+    return {
+        "fact_risks": fact_risks,
+        "fact_recommendations": fact_recommendations,
+        "fact_costs": fact_costs,
+        "dim_resource": build_dim_resource(cloud_data, finops_data),
+        "dim_category": build_dim_category(),
+        "dim_control": build_dim_control(),
+        "dim_evidence_tier": build_dim_evidence_tier(),
+    }
+
+
 def build_star_schema_tables(
     audit_dir: Path,
     *,
     include_seed: bool = True,
+    risk_register_path: Path | None = None,
+    cloud_fixture_path: Path | None = None,
+    finops_fixture_path: Path | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """Build star schema tables from audit directory and optional portfolio seed."""
     flats, records, _ = _flat_incidents_from_audit(audit_dir, include_seed=include_seed)
@@ -396,14 +692,36 @@ def build_star_schema_tables(
 
     fact_policy.sort(key=lambda r: (r["decision_id"], r["incident_id"]))
 
+    extension = _build_portfolio_extension_tables(
+        risk_register_path=risk_register_path,
+        cloud_fixture_path=cloud_fixture_path,
+        finops_fixture_path=finops_fixture_path,
+        include_seed=include_seed,
+    )
+    all_date_rows = (
+        fact_incidents
+        + fact_controls
+        + fact_policy
+        + extension["fact_risks"]
+        + extension["fact_recommendations"]
+        + extension["fact_costs"]
+    )
+
     return {
         "fact_incidents": fact_incidents,
         "fact_control_tests": fact_controls,
         "fact_policy_decisions": fact_policy,
+        "fact_risks": extension["fact_risks"],
+        "fact_recommendations": extension["fact_recommendations"],
+        "fact_costs": extension["fact_costs"],
         "dim_classification": build_dim_classification(),
-        "dim_date": build_dim_date_star(fact_incidents + fact_controls + fact_policy),
+        "dim_date": build_dim_date_star(all_date_rows),
         "dim_stakeholder": build_dim_stakeholder(),
         "dim_proof_tier": build_dim_proof_tier(),
+        "dim_resource": extension["dim_resource"],
+        "dim_category": extension["dim_category"],
+        "dim_control": extension["dim_control"],
+        "dim_evidence_tier": extension["dim_evidence_tier"],
     }
 
 
@@ -419,10 +737,17 @@ Exported by `powerbi-export` from Technology Risk & Control Analytics Platform a
 | fact_incidents.csv | Incident grain — risk level, proof tier keys, execution authority |
 | fact_control_tests.csv | Control test results per incident |
 | fact_policy_decisions.csv | Policy gate outcomes — preview, block, human confirmation |
+| fact_risks.csv | Risk register heat-map grain — probability, impact, severity |
+| fact_recommendations.csv | Cloud governance recommendations (mock/sample) |
+| fact_costs.csv | FinOps monthly cost facts (mock/sample) |
 | dim_classification.csv | Triage labels — **is_security_accusation is always false** |
 | dim_date.csv | Calendar dimension (mark as date table in Power BI) |
 | dim_stakeholder.csv | Forum / audience for reporting |
-| dim_proof_tier.csv | T0–T4 evidence maturity ordering |
+| dim_proof_tier.csv | T0–T4 evidence maturity ordering (legacy compatibility) |
+| dim_evidence_tier.csv | T0–T5 evidence tier dimension |
+| dim_category.csv | Risk and cloud governance categories |
+| dim_control.csv | CTRL-001–010 control catalog |
+| dim_resource.csv | Cloud resource dimension (Azure/GCP mock) |
 
 ## Relationships
 
@@ -432,6 +757,13 @@ Exported by `powerbi-export` from Technology Risk & Control Analytics Platform a
 - dim_stakeholder[stakeholder_key] → fact_incidents[stakeholder_key]
 - fact_incidents[incident_id] → fact_control_tests[incident_id]
 - fact_incidents[incident_id] → fact_policy_decisions[incident_id]
+- dim_category[category_key] → fact_risks[category_key]
+- dim_evidence_tier[evidence_tier_key] → fact_risks[evidence_tier_key]
+- dim_control[control_key] → fact_risks[control_key]
+- dim_resource[resource_key] → fact_recommendations[resource_key]
+- dim_resource[resource_key] → fact_costs[resource_key]
+- dim_category[category_key] → fact_recommendations[category_key]
+- dim_category[category_key] → fact_costs[category_key]
 
 ## Governance
 
@@ -450,10 +782,17 @@ def write_star_schema_csvs(tables: dict[str, list[dict[str, Any]]], out_dir: Pat
         "fact_incidents.csv": (FACT_INCIDENTS_COLUMNS, tables["fact_incidents"]),
         "fact_control_tests.csv": (FACT_CONTROL_TESTS_COLUMNS, tables["fact_control_tests"]),
         "fact_policy_decisions.csv": (FACT_POLICY_DECISIONS_COLUMNS, tables["fact_policy_decisions"]),
+        "fact_risks.csv": (FACT_RISKS_COLUMNS, tables["fact_risks"]),
+        "fact_recommendations.csv": (FACT_RECOMMENDATIONS_COLUMNS, tables["fact_recommendations"]),
+        "fact_costs.csv": (FACT_COSTS_COLUMNS, tables["fact_costs"]),
         "dim_classification.csv": (DIM_CLASSIFICATION_COLUMNS, tables["dim_classification"]),
         "dim_date.csv": (DIM_DATE_COLUMNS, tables["dim_date"]),
         "dim_stakeholder.csv": (DIM_STAKEHOLDER_COLUMNS, tables["dim_stakeholder"]),
         "dim_proof_tier.csv": (DIM_PROOF_TIER_COLUMNS, tables["dim_proof_tier"]),
+        "dim_resource.csv": (DIM_RESOURCE_COLUMNS, tables["dim_resource"]),
+        "dim_category.csv": (DIM_CATEGORY_COLUMNS, tables["dim_category"]),
+        "dim_control.csv": (DIM_CONTROL_COLUMNS, tables["dim_control"]),
+        "dim_evidence_tier.csv": (DIM_EVIDENCE_TIER_COLUMNS, tables["dim_evidence_tier"]),
     }
     for filename, (columns, rows) in mapping.items():
         path = out_dir / filename
@@ -470,10 +809,19 @@ def export_powerbi_star_schema(
     out_dir: Path,
     *,
     include_seed: bool = True,
+    risk_register_path: Path | None = None,
+    cloud_fixture_path: Path | None = None,
+    finops_fixture_path: Path | None = None,
 ) -> dict[str, Any]:
     """Export Power BI star schema CSV pack from audit JSONL directory."""
     _, _, limitations = _load_audit_records(audit_dir)
-    tables = build_star_schema_tables(audit_dir, include_seed=include_seed)
+    tables = build_star_schema_tables(
+        audit_dir,
+        include_seed=include_seed,
+        risk_register_path=risk_register_path,
+        cloud_fixture_path=cloud_fixture_path,
+        finops_fixture_path=finops_fixture_path,
+    )
     write_star_schema_csvs(tables, out_dir)
     return {
         "schema_version": SCHEMA_VERSION,

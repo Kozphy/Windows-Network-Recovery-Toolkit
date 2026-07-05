@@ -30,6 +30,25 @@ Organizations lose time when endpoint network failures (proxy drift, WinINET/Win
 
 This platform standardizes **Evidence → Risk → Decision → Audit** with policy-gated remediation previews.
 
+> *This repository is an AI-assisted technology risk analytics platform prototype. Its core value is deterministic evidence, policy-gated decisions, human review, and audit-backed governance reporting — not autonomous remediation or AI security verdicts.*
+
+### Production-shaped evaluation upgrades
+
+| Link | Topic |
+|------|-------|
+| [docs/classifier-evaluation-report.md](docs/classifier-evaluation-report.md) | Offline classifier benchmark |
+| [docs/evidence-replay-benchmark.md](docs/evidence-replay-benchmark.md) | Deterministic pipeline replay |
+| [docs/human-review-workflow.md](docs/human-review-workflow.md) | Human review queue |
+| [docs/ai-risk-analyst-guardrails.md](docs/ai-risk-analyst-guardrails.md) | Explanation text guardrails |
+| [docs/case-studies/case-001-dead-localhost-proxy.md](docs/case-studies/case-001-dead-localhost-proxy.md) | Case study 001–005 index start |
+| [docs/production-readiness-gap.md](docs/production-readiness-gap.md) | Honest production gap matrix |
+| [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) | Unified system design for FAANG + Big 4 reviewers |
+| [docs/senior-platform-review.md](docs/senior-platform-review.md) | Staff / platform production Q&A |
+| [docs/sre-interview-defense.md](docs/sre-interview-defense.md) | SRE on-call + metrics narrative |
+| [docs/big4-senior-risk-review.md](docs/big4-senior-risk-review.md) | Technology risk committee framing |
+| [docs/production-architecture.md](docs/production-architecture.md) | Postgres + queue + `/v1` flow |
+| [docs/fleet-benchmark-methodology.md](docs/fleet-benchmark-methodology.md) | Fleet-scale offline benchmark |
+
 ---
 
 ## Technical stack

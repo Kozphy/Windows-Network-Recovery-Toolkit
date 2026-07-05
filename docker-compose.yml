@@ -15,10 +15,22 @@ services:
       - pg_data:/var/lib/postgresql/data
       - ./platform_core/db/schema.sql:/docker-entrypoint-initdb.d/01_platform.sql:ro
       - ./platform_core/db/decision_intelligence_schema.sql:/docker-entrypoint-initdb.d/02_decision_intelligence.sql:ro
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/03_trisk_schema.sql:ro
+      - ./backend/db/enterprise_schema.sql:/docker-entrypoint-initdb.d/04_enterprise_schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-di} -d ${POSTGRES_DB:-decision_intelligence}"]
       interval: 10s
       timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
       retries: 5
 
   api:
@@ -39,10 +51,17 @@ services:
       REQUIRE_PING_BINARY: "1"
       PLATFORM_API_KEY: ${PLATFORM_API_KEY:-dev-platform-key-change-me}
       DATABASE_URL: postgresql://${POSTGRES_USER:-di}:${POSTGRES_PASSWORD:-di}@postgres:5432/${POSTGRES_DB:-decision_intelligence}
+      TRISK_DATABASE_URL: postgresql://${POSTGRES_USER:-di}:${POSTGRES_PASSWORD:-di}@postgres:5432/${POSTGRES_DB:-decision_intelligence}
+      REDIS_URL: redis://redis:6379/0
+      QUEUE_BACKEND: rq
+      TRISK_SYNC_CLASSIFY: "0"
+      TRISK_API_TOKEN: ${TRISK_API_TOKEN:-dev-trisk-token}
     volumes:
       - platform_data:/data/platform
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -56,6 +75,28 @@ services:
       timeout: 5s
       start_period: 25s
       retries: 3
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["rq", "worker", "trisk", "--url", "redis://redis:6379/0"]
+    environment:
+      PLATFORM_SAFE_MODE: "1"
+      PLATFORM_FIXTURE_MODE: "1"
+      PLATFORM_REPO_ROOT: /app
+      PLATFORM_DATA_DIR: /data/platform
+      TRISK_DATABASE_URL: postgresql://${POSTGRES_USER:-di}:${POSTGRES_PASSWORD:-di}@postgres:5432/${POSTGRES_DB:-decision_intelligence}
+      REDIS_URL: redis://redis:6379/0
+      QUEUE_BACKEND: rq
+      TRISK_API_TOKEN: ${TRISK_API_TOKEN:-dev-trisk-token}
+    volumes:
+      - platform_data:/data/platform
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   prometheus:
     image: prom/prometheus:v2.54.1

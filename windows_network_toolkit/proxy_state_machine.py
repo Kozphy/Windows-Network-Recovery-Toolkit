@@ -393,8 +393,6 @@ def classify_transition(
     )
     autodetect_on = not before.auto_detect and bool(after.auto_detect)
     before_localhost = before.proxy_mode == ProxyMode.LOCALHOST_PROXY.value
-    after_localhost = after.proxy_mode == ProxyMode.LOCALHOST_PROXY.value
-    before_remote = before.proxy_mode == ProxyMode.REMOTE_PROXY.value
     after_remote = after.proxy_mode == ProxyMode.REMOTE_PROXY.value
     localhost_to_remote = (
         before_localhost
