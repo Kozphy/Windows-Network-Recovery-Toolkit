@@ -42,6 +42,7 @@
 #>
 param(
     [int]$IntervalMinutes = 5,
+    [int]$IntervalSeconds = 0,
     [switch]$UseScheduledTask,
     [bool]$StartNow = $true,
     [switch]$Uninstall
@@ -54,6 +55,9 @@ if (-not (Test-Path -LiteralPath $Python)) {
     $Python = (Get-Command python -ErrorAction Stop).Source
 }
 
+if ($IntervalSeconds -le 0) {
+    $IntervalSeconds = [Math]::Max(60, $IntervalMinutes * 60)
+}
 $StartupHook = Join-Path ([Environment]::GetFolderPath('Startup')) 'WNRT-DeadProxyGuardian.cmd'
 $LoopScript = Join-Path $RepoRoot 'scripts\run-proxy-guardian-loop.ps1'
 
@@ -76,7 +80,8 @@ function Install-StartupHook {
     @(
         '@echo off',
         "cd /d `"$RepoRoot`"",
-        "start /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$LoopScript`""
+        "set PYTHONPATH=$RepoRoot",
+        "start /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$LoopScript`" -IntervalSeconds $IntervalSeconds"
     ) | Set-Content -LiteralPath $StartupHook -Encoding ASCII
 }
 
@@ -94,7 +99,7 @@ function Install-ScheduledTasks {
 function Install-ScheduledTasksCmdlet {
     $action = New-ScheduledTaskAction `
         -Execute $Python `
-        -Argument "-m windows_network_toolkit proxy-guardian --once" `
+        -Argument "-m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false" `
         -WorkingDirectory $RepoRoot
     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
@@ -119,7 +124,7 @@ if ($Uninstall) {
     exit 0
 }
 
-$taskCmd = "`"$Python`" -m windows_network_toolkit proxy-guardian --once"
+$taskCmd = "`"$Python`" -m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false"
 $scheduledOk = $false
 
 Install-StartupHook
@@ -143,7 +148,7 @@ if ($StartNow) {
     Stop-GuardianLoop
     Start-Process powershell.exe -ArgumentList @(
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
-        '-File', $LoopScript
+        '-File', $LoopScript, '-IntervalSeconds', "$IntervalSeconds"
     ) -WindowStyle Hidden
 }
 
@@ -151,7 +156,7 @@ Write-Host "Installed guardian: $TaskName" -ForegroundColor Green
 Write-Host "  Python:       $Python"
 Write-Host "  Repo:         $RepoRoot"
 Write-Host "  Startup hook: $StartupHook"
-Write-Host "  Interval:     every $IntervalMinutes minute(s) via background loop"
+Write-Host "  Interval:     every $IntervalSeconds second(s) via background loop"
 if ($UseScheduledTask) {
     if ($scheduledOk) {
         Write-Host "  Task Scheduler: registered" -ForegroundColor Green
@@ -163,7 +168,8 @@ if ($UseScheduledTask) {
 }
 Write-Host ""
 Write-Host "Test now:" -ForegroundColor Cyan
-Write-Host "  & `"$Python`" -m windows_network_toolkit proxy-guardian --once"
+Write-Host "  & `"$Python`" -m src auto-fix-proxy"
+Write-Host "  & `"$Python`" -m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false"
 Write-Host ""
 Write-Host "Uninstall:" -ForegroundColor DarkGray
 Write-Host "  .\scripts\install-dead-proxy-guardian.ps1 -Uninstall"

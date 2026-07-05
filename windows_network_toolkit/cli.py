@@ -73,6 +73,12 @@ def _resolve_fixture(path_str: str) -> Path:
         repo / "tests" / "fixtures" / "lan" / path_str,
         repo / "tests" / "fixtures" / "lan" / f"{path_str}.json",
         repo / "tests" / "fixtures" / "router" / path_str,
+        repo / "tests" / "fixtures" / "risk_register" / path_str,
+        repo / "tests" / "fixtures" / "risk_register" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "cloud_governance" / path_str,
+        repo / "tests" / "fixtures" / "cloud_governance" / f"{path_str}.json",
+        repo / "tests" / "fixtures" / "finops" / path_str,
+        repo / "tests" / "fixtures" / "finops" / f"{path_str}.json",
     ):
         if candidate.is_file():
             return candidate
@@ -655,6 +661,31 @@ def cmd_evidence_report(args: argparse.Namespace) -> int:
     Notes:
         Reports include ``limitations[]`` — management information, not audit opinions.
     """
+    if getattr(args, "executive", False):
+        from src.platform_core.analytics.executive_evidence_report import (
+            export_executive_evidence_report,
+            format_executive_evidence_markdown,
+        )
+
+        report = export_executive_evidence_report(
+            risk_register_path=Path(args.risk_register) if getattr(args, "risk_register", None) else None,
+            cloud_fixture_path=Path(args.cloud_fixture) if getattr(args, "cloud_fixture", None) else None,
+            finops_fixture_path=Path(args.finops_fixture) if getattr(args, "finops_fixture", None) else None,
+            audit_dir=Path(args.audit_dir) if getattr(args, "audit_dir", None) else None,
+            out_path=Path(args.out) if args.out else None,
+            fmt=args.format if args.format in ("json", "markdown") else "markdown",
+        )
+        if args.out:
+            if args.format == "json":
+                _emit_json(report)
+            else:
+                print(format_executive_evidence_markdown(report))
+        elif args.format == "json":
+            _emit_json(report)
+        else:
+            print(format_executive_evidence_markdown(report))
+        return 0
+
     if getattr(args, "latest", False):
         from windows_network_toolkit.latest_evidence_report import (
             build_latest_evidence_package,
@@ -878,6 +909,53 @@ def cmd_risk_kpi_summary(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_risk_matrix(args: argparse.Namespace) -> int:
+    """Export risk matrix heat-map data (read-only)."""
+    from src.platform_core.risk.risk_matrix import export_risk_matrix
+
+    register = _resolve_fixture(args.register) if getattr(args, "register", None) else None
+    out = Path(args.out) if getattr(args, "out", None) else None
+    payload = export_risk_matrix(
+        register_path=register,
+        out_path=out,
+        fmt=args.format,
+    )
+    if args.format == "json" and not out:
+        _emit_json(payload)
+    elif args.format == "json" and out:
+        _emit_json({k: v for k, v in payload.items() if k != "matrix_rows"})
+    else:
+        _emit_json(payload)
+    return 0
+
+
+def cmd_cloud_recommendations(args: argparse.Namespace) -> int:
+    """Summarize mock cloud governance recommendations (read-only)."""
+    from src.platform_core.cloud_governance import (
+        format_cloud_summary_markdown,
+        summarize_cloud_recommendations,
+    )
+
+    fixture = _resolve_fixture(args.fixture) if getattr(args, "fixture", None) else None
+    summary = summarize_cloud_recommendations(fixture_path=fixture)
+    if args.format == "markdown":
+        print(format_cloud_summary_markdown(summary))
+    else:
+        _emit_json(summary)
+    return 0
+
+
+def cmd_finops_export(args: argparse.Namespace) -> int:
+    """Export mock FinOps cost facts (read-only)."""
+    from src.platform_core.finops import export_finops
+
+    fixture = _resolve_fixture(args.fixture) if getattr(args, "fixture", None) else None
+    out_dir = Path(args.out_dir) if getattr(args, "out_dir", None) else None
+    payload = export_finops(fixture_path=fixture, out_dir=out_dir, fmt=args.format)
+    _emit_json(payload)
+    return 0
+
+
 def cmd_powerbi_export(args: argparse.Namespace) -> int:
     from src.platform_core.analytics.powerbi_star_export import export_powerbi_star_schema
 
@@ -887,6 +965,9 @@ def cmd_powerbi_export(args: argparse.Namespace) -> int:
         audit_dir,
         out_dir,
         include_seed=not getattr(args, "no_seed", False),
+        risk_register_path=Path(args.risk_register) if getattr(args, "risk_register", None) else None,
+        cloud_fixture_path=Path(args.cloud_fixture) if getattr(args, "cloud_fixture", None) else None,
+        finops_fixture_path=Path(args.finops_fixture) if getattr(args, "finops_fixture", None) else None,
     )
     _emit_json(payload)
     return 0
@@ -1601,6 +1682,11 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         "evidence-report",
         help="Merged evidence timeline report (JSONL/Markdown/HTML, preview-only)",
     )
+    er.add_argument("--executive", action="store_true", help="Executive portfolio evidence report")
+    er.add_argument("--risk-register", default="", help="Risk register JSON for executive report")
+    er.add_argument("--cloud-fixture", default="", help="Cloud governance fixture for executive report")
+    er.add_argument("--finops-fixture", default="", help="FinOps fixture for executive report")
+    er.add_argument("--audit-dir", default="", help="Optional audit dir for executive KPI rollup")
     er.add_argument("--latest", action="store_true", help="Latest proxy path diagnosis report (markdown)")
     er.add_argument("--analytics", action="store_true", help="Endpoint evidence analytics report (markdown)")
     er.add_argument("--url", default="", help="Target URL for network proof (legacy merged report)")
@@ -1646,6 +1732,44 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     rks.add_argument("--audit-dir", default="tests/fixtures/risk_analytics/audit_sample", help="Audit directory")
     rks.add_argument("--format", choices=["json", "markdown"], default="json")
     rks.set_defaults(func=cmd_risk_kpi_summary)
+
+    rm = sub.add_parser("risk-matrix", help="Risk matrix heat-map export (read-only)")
+    rm_sub = rm.add_subparsers(dest="risk_matrix_cmd", required=True)
+    rm_export = rm_sub.add_parser("export", help="Export risk matrix JSON or CSV")
+    rm_export.add_argument(
+        "--register",
+        default="tests/fixtures/risk_register/sample_risk_register.json",
+        help="Risk register JSON path",
+    )
+    rm_export.add_argument("--format", choices=["json", "csv"], default="json")
+    rm_export.add_argument("--out", default="", help="Optional output file path")
+    rm_export.set_defaults(func=cmd_risk_matrix)
+
+    cr = sub.add_parser(
+        "cloud-recommendations",
+        help="Summarize mock cloud governance recommendations (read-only)",
+    )
+    cr_sub = cr.add_subparsers(dest="cloud_recommendations_cmd", required=True)
+    cr_sum = cr_sub.add_parser("summarize", help="Summarize recommendations by pillar/provider")
+    cr_sum.add_argument(
+        "--fixture",
+        default="tests/fixtures/cloud_governance/mock_recommendations.json",
+        help="Cloud governance fixture JSON",
+    )
+    cr_sum.add_argument("--format", choices=["json", "markdown"], default="json")
+    cr_sum.set_defaults(func=cmd_cloud_recommendations)
+
+    fo = sub.add_parser("finops", help="FinOps mock cost export (read-only)")
+    fo_sub = fo.add_subparsers(dest="finops_cmd", required=True)
+    fo_export = fo_sub.add_parser("export", help="Export FinOps cost facts")
+    fo_export.add_argument(
+        "--fixture",
+        default="tests/fixtures/finops/mock_costs.json",
+        help="FinOps cost fixture JSON",
+    )
+    fo_export.add_argument("--out-dir", default="", help="Optional output directory")
+    fo_export.add_argument("--format", choices=["json", "csv", "both"], default="json")
+    fo_export.set_defaults(func=cmd_finops_export)
 
     ans = sub.add_parser("analytics-summary", help="Endpoint evidence analytics summary (read-only)")
     ans.add_argument("--input", default="", help="Audit JSONL file or directory (default: .audit)")
@@ -1722,6 +1846,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         action="store_true",
         help="Do not merge portfolio seed rows (audit-only export)",
     )
+    star.add_argument("--risk-register", default="", help="Optional risk register JSON path")
+    star.add_argument("--cloud-fixture", default="", help="Optional cloud governance fixture path")
+    star.add_argument("--finops-fixture", default="", help="Optional FinOps fixture path")
     star.set_defaults(func=cmd_powerbi_export)
 
     demo = sub.add_parser("demo", help="Golden fixture demo (read-only)")

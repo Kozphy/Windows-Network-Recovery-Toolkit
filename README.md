@@ -272,6 +272,13 @@ python -m windows_network_toolkit control-test --fixture tests/fixtures/case_stu
 python -m windows_network_toolkit risk-kpi-summary --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
 python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
 
+# Portfolio analytics (risk matrix, cloud governance, FinOps, executive report)
+python -m windows_network_toolkit risk-matrix export --register tests/fixtures/risk_register/sample_risk_register.json
+python -m windows_network_toolkit cloud-recommendations summarize --fixture tests/fixtures/cloud_governance/mock_recommendations.json
+python -m windows_network_toolkit finops export --fixture tests/fixtures/finops/mock_costs.json --out-dir reports/finops
+python -m windows_network_toolkit evidence-report --executive --risk-register tests/fixtures/risk_register/sample_risk_register.json --audit-dir tests/fixtures/risk_analytics/audit_sample --format markdown
+python -m windows_network_toolkit powerbi-export --audit-dir tests/fixtures/risk_analytics/audit_sample --out-dir examples/powerbi/export
+
 # Evidence report & audit
 python -m windows_network_toolkit evidence-report --url https://example.com --fixture tests/fixtures/enert/dead_proxy_59081.json --format markdown
 python -m windows_network_toolkit audit verify tests/fixtures/analytics/audit_sample/incidents.jsonl
@@ -375,6 +382,55 @@ python -m windows_network_toolkit evidence-report --latest --fixture tests/fixtu
 - **WinINET vs WinHTTP mismatch:** compare `proxy-status` WinINET block with WinHTTP direct-access flag.
 
 Listener and process names are **correlation only** unless registry writer evidence exists. See [docs/case-study-1-proxy-drift.md](docs/case-study-1-proxy-drift.md).
+
+### Why `ERR_PROXY_CONNECTION_FAILED` happens (and ping still works)
+
+Browsers route HTTP/HTTPS through **WinINET** (`HKCU\...\Internet Settings`). When `ProxyEnable=1` and `ProxyServer=127.0.0.1:<port>`, the browser opens a TCP connection to that localhost port. If **nothing is listening** (the dev proxy, VPN shim, or MCP helper exited or changed ports), the connection fails → `ERR_PROXY_CONNECTION_FAILED`.
+
+**Ping and DNS still work** because they use ICMP and the resolver stack — not the browser’s WinINET proxy path.
+
+**Stale WinINET proxy survives reboot** because HKCU registry values persist across sessions. A startup app may set proxy at logon; if its listener exits later, the registry can remain pointed at a dead port until something clears it.
+
+| Concept | What it means |
+| ------- | ------------- |
+| **Registry writer** | Process that modified `ProxyEnable` / `ProxyServer` (requires Sysmon/Procmon/EventLog — not inferred from listeners alone) |
+| **Listener process** | Process currently bound to `127.0.0.1:<port>` |
+| **Correlated process** | Name/PID matched by timing or port — **observation, not proof** of writer identity |
+
+**Warning:** This toolkit reports **suspected local proxy drift**. It does **not** prove malware, compromise, or intent.
+
+**Targeted proxy drift commands** (`python -m src`):
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+
+# One-shot auto-fix + install 60s background guardian (recommended after ERR_PROXY)
+.\scripts\auto-fix-proxy.ps1
+python -m src auto-fix-proxy
+
+# Startup inventory (no full profile recursion)
+python -m src startup-inventory
+python -m src startup-inventory --json
+
+# Post-login boot trace (WinINET + WinHTTP + listeners + deltas)
+python -m src proxy-boot-trace --duration 180 --interval 2
+
+# Dead localhost guardian (dry-run by default)
+python -m src proxy-guardian --once
+python -m src proxy-guardian --loop --interval 60 --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false
+
+# Emergency HKCU fix (localhost ProxyServer only)
+python -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
+
+# Scheduled task installer (preview first)
+python -m src install-guardian-task
+python -m src install-guardian-task --confirm INSTALL_GUARDIAN_TASK --dry-run false
+
+# Timeout-safe search (startup target, no profile walk)
+python -m src safe-search --query WNRT-DeadProxyGuardian --target startup
+```
+
+Audit logs: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`, `logs/proxy_guardian.jsonl`. Emergency CMD wrapper: `scripts/fix-wininet-proxy.cmd`.
 
 ---
 

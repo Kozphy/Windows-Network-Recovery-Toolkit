@@ -14,10 +14,10 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 
 | Layer | Script | Role |
 |-------|--------|------|
-| **0. One-shot auto** | `scripts/auto-fix-proxy.ps1` | Cursor fix + live guardian apply + 1-minute background guardian |
+| **0. One-shot auto** | `scripts/auto-fix-proxy.ps1` or `python -m src auto-fix-proxy` | Cursor fix + live guardian + fallback proxy-fix + 60s background guardian |
 | **0b. ChatGPT auto** | `scripts/auto-fix-chatgpt.ps1` | Proxy auto-fix + bad-gateway diagnose + ChatGPT scenario + LOW-risk remediations — see [chatgpt-auto-fix.md](chatgpt-auto-fix.md) |
 | **1. Root cause** | `scripts/configure-cursor-no-proxy.ps1` | Stops Cursor from managing system proxy (`http.proxySupport: off`) |
-| **2. Startup guardian** | `scripts/install-dead-proxy-guardian.ps1` | At logon, runs a background loop every 5 minutes that clears **dead** proxy only |
+| **2. Startup guardian** | `scripts/install-dead-proxy-guardian.ps1` | At logon, runs a background loop every **60 seconds** (configurable) that clears **dead** proxy only |
 | **3. Emergency button** | `scripts/fix-wininet-proxy.cmd` | One-click manual HKCU disable when the browser is broken right now |
 
 ### Guardian safety
@@ -52,6 +52,7 @@ If messages stay blank after a clean proxy path, follow manual recovery in [chat
 
 ```powershell
 .\scripts\auto-fix-proxy.ps1
+python -m src auto-fix-proxy
 .\scripts\auto-fix-chatgpt.ps1
 ```
 

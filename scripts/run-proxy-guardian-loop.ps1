@@ -1,35 +1,23 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Background loop: invoke proxy-guardian --once every five minutes.
+  Background loop: invoke src proxy-guardian with live dead-proxy clear on an interval.
 .DESCRIPTION
   Started hidden by install-dead-proxy-guardian.ps1 Startup hook.
-  Calls windows_network_toolkit proxy-guardian --once; sleeps 300 seconds between checks.
+  Calls: python -m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false
 
-  Inputs:  None (repo root inferred from script location)
-  Outputs: Discarded JSON from guardian (Out-Null); no console UI
+  Inputs:
+    -IntervalSeconds  Sleep between checks (default 60)
 
-  Privileges:
-    Current user; may mutate HKCU WinINET when DEAD_PROXY_CONFIG detected.
-
-  Side effects:
-    Repeated proxy-guardian checks; registry disable on dead proxy only.
-
-  Safety boundaries:
-    Same as proxy-guardian — no mutation unless DEAD_PROXY_CONFIG and no listener.
-
-  Idempotency:
-    Loop runs until process killed or -Uninstall on install-dead-proxy-guardian.ps1.
-
-  Recovery:
-    Stop-Process powershell instances with run-proxy-guardian-loop.ps1 in command line,
-    or run install-dead-proxy-guardian.ps1 -Uninstall
-
-  Example:
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-proxy-guardian-loop.ps1
+  Safety:
+    Clears HKCU WinINET only when localhost proxy is enabled and no listener is bound.
 .NOTES
   Do not run multiple instances — install script stops existing loop before StartNow.
 #>
+param(
+    [int]$IntervalSeconds = 60
+)
+
 $ErrorActionPreference = 'SilentlyContinue'
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $Python = Join-Path $RepoRoot '.venv\Scripts\python.exe'
@@ -37,7 +25,13 @@ if (-not (Test-Path -LiteralPath $Python)) {
     $Python = (Get-Command python -ErrorAction Stop).Source
 }
 Set-Location -LiteralPath $RepoRoot
+$env:PYTHONPATH = $RepoRoot
+$interval = [Math]::Max(15, $IntervalSeconds)
+
 while ($true) {
-    & $Python -m windows_network_toolkit proxy-guardian --once | Out-Null
-    Start-Sleep -Seconds 300
+    & $Python -m src proxy-guardian --once `
+        --confirm CLEAR_DEAD_LOCALHOST_PROXY `
+        --dry-run false `
+        --json | Out-Null
+    Start-Sleep -Seconds $interval
 }

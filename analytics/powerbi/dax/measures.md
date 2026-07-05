@@ -154,6 +154,38 @@ DIVIDE (
 
 ---
 
+## Risk matrix heat map (`fact_risks`)
+
+```dax
+Total Risks =
+COUNTROWS ( fact_risks )
+```
+
+```dax
+High Severity Risks =
+CALCULATE (
+    COUNTROWS ( fact_risks ),
+    fact_risks[severity_score] >= 12
+)
+```
+
+```dax
+Risk Heat Severity =
+AVERAGE ( fact_risks[severity_score] )
+```
+
+```dax
+Illustrative Monthly Savings =
+SUM ( fact_recommendations[estimated_monthly_savings_usd] )
+```
+
+```dax
+Total Monthly Cloud Spend =
+SUM ( fact_costs[monthly_cost_usd] )
+```
+
+---
+
 ## Formatting recommendations
 
 | Measure | Format |
