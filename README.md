@@ -580,18 +580,51 @@ scripts/                   PowerShell wrappers — see safety headers in each fi
 
 ---
 
-## Tests and CI
+## Development & CI/CD
+
+### Install and run locally
 
 ```powershell
-make test          # Full pytest suite
-make lint          # Ruff
-make typecheck     # Mypy (portfolio modules: ai_risk_analyst, risk, governance, analytics)
-pytest -q tests/test_policy_safety_contract.py
-pytest -q tests/test_portfolio_evidence_suite.py
-pytest -q tests/test_powerbi_analytics.py
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+$env:PYTHONPATH = (Get-Location).Path
+
+python -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_PROXY_CONFIG.json
+python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json
 ```
 
-GitHub Actions: lint · test · typecheck · build-smoke · Windows zero-skip — [.github/workflows/ci.yml](.github/workflows/ci.yml)
+Optional stack: `docker compose -f docker-compose.demo.yml up --build` · `cd frontend && npm ci && npm run dev`
+
+### Test, lint, and build
+
+```powershell
+make lint          # ruff check .
+make typecheck     # mypy (portfolio modules)
+make test          # full pytest suite
+make principles-test
+```
+
+Frontend build: `cd frontend && npm ci && npm run build`
+
+Docker smoke: `docker compose config --quiet && docker build -t er-platform-api:local .`
+
+### Pull request checks
+
+Every PR to **`main`** runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+
+| Job | Checks |
+|-----|--------|
+| `lint` | Ruff + Bandit |
+| `typecheck` | Mypy (portfolio modules) |
+| `test` | Safety contracts, full pytest, Linux integration, fixture CLI smoke |
+| `test-windows` | Full pytest on Windows (zero skipped tests) |
+| `build-smoke` | Docker compose + image build |
+| `frontend-build` | Next.js production build |
+
+After merge: [`build.yml`](.github/workflows/build.yml) pushes an immutable GHCR image; [`deploy.yml`](.github/workflows/deploy.yml) deploys via SSH + Docker Compose when secrets are configured.
+
+Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch_protection.md](docs/ci_branch_protection.md)
 
 ---
 
