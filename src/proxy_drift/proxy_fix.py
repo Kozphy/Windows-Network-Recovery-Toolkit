@@ -169,7 +169,7 @@ def apply_proxy_fix(
         payload["action_allowed"] = False
         payload["reason"] = f"Typed confirmation required: {CONFIRM_CLEAR_PAC}"
         return payload
-    apply_mutations(mutations, dry_run=False, run=subprocess_run)
+    apply_mutations(mutations, dry_run=False)
     after = read_proxy_registry(run=subprocess_run)
     payload["action_allowed"] = True
     payload["after"] = {
