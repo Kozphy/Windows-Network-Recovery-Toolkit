@@ -13,16 +13,20 @@ from typing import Any
 _DEFAULT_MAX_SECONDS = 20.0
 _DEFAULT_MAX_FILES = 3000
 
-_EXCLUDE_DIR_NAMES = frozenset(
+_ALWAYS_EXCLUDE_DIR_NAMES = frozenset(
     {
         "node_modules",
         ".git",
         ".cache",
-        "Docker",
-        "Temp",
-        "Packages",
-        "Edge",
-        "Chrome",
+        "docker",
+    }
+)
+_PROFILE_EXCLUDE_DIR_NAMES = frozenset(
+    {
+        "temp",
+        "packages",
+        "edge",
+        "chrome",
     }
 )
 _EXCLUDE_DIR_FRAGMENTS = (
@@ -40,10 +44,12 @@ def _now() -> str:
 
 def _should_exclude_dir(path: Path, *, profile_scan: bool = False) -> bool:
     parts = {p.lower() for p in path.parts}
-    if parts & {n.lower() for n in _EXCLUDE_DIR_NAMES}:
+    if parts & _ALWAYS_EXCLUDE_DIR_NAMES:
         return True
     if not profile_scan:
         return False
+    if parts & _PROFILE_EXCLUDE_DIR_NAMES:
+        return True
     norm = str(path).replace("/", "\\")
     return any(frag.replace("/", "\\") in norm for frag in _EXCLUDE_DIR_FRAGMENTS)
 
