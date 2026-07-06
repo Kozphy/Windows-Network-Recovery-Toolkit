@@ -1,0 +1,2 @@
+Time of Day,Process Name,PID,Operation,Path,Result,Detail
+12:00:01.000,node.exe,4242,RegSetValue,HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyServer,SUCCESS,127.0.0.1:8080

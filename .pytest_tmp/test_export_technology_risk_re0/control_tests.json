@@ -1,0 +1,187 @@
+[
+  {
+    "control_id": "WININET_LOCALHOST_PROXY_HEALTH",
+    "control_objective": "Localhost WinINET proxy must forward external HTTPS when enabled.",
+    "test_result": "FAIL",
+    "risk": "HIGH",
+    "evidence": [
+      "proxy_status=DIRECT_ONLY_WORKS direct=True proxy=None"
+    ],
+    "limitations": [
+      "Listener ownership is correlation, not registry writer proof.",
+      "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+      "Successful proxy probe does not prove the proxy is safe or intended.",
+      "Risk classification is a triage signal, not a malware verdict."
+    ],
+    "recommendation": "Preview proxy-disable with typed confirmation; verify listener before apply."
+  },
+  {
+    "control_id": "WININET_PROXY_OWNER_VERIFICATION",
+    "control_objective": "Proxy registry changes should have a known and attributable owner.",
+    "test_result": "PARTIAL",
+    "risk": "HIGH",
+    "evidence": [
+      "ProxyServer: 127.0.0.1:62285",
+      "node.exe was listening on port 62285"
+    ],
+    "limitations": [
+      "Likely process / correlation only; registry writer proof unavailable.",
+      "Port ownership is correlation, not registry writer proof."
+    ],
+    "recommendation": "Enable Sysmon Event ID 13 or collect Procmon registry trace."
+  },
+  {
+    "control_id": "PROXY_REVERTER_DETECTION",
+    "control_objective": "Detect proxy settings returning after disable without operator confirmation.",
+    "test_result": "FAIL",
+    "risk": "HIGH",
+    "evidence": [
+      "listener_found=True port=62285 process=node.exe",
+      "proxy_status=DIRECT_ONLY_WORKS direct=True proxy=None",
+      "ProxyServer  -> 127.0.0.1:62285",
+      "Proxy settings changed repeatedly — attribution remains correlational without writer proof."
+    ],
+    "limitations": [
+      "Listener ownership is correlation, not registry writer proof.",
+      "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+      "Successful proxy probe does not prove the proxy is safe or intended.",
+      "Risk classification is a triage signal, not a malware verdict.",
+      "Likely process / correlation only; registry writer proof unavailable."
+    ],
+    "recommendation": "Correlate with Sysmon registry writes; do not kill processes automatically."
+  },
+  {
+    "control_id": "DIRECT_VS_PROXY_PATH_COMPARISON",
+    "control_objective": "Compare direct HTTPS path with WinINET localhost proxy path.",
+    "test_result": "PARTIAL",
+    "risk": "HIGH",
+    "evidence": [
+      "direct_probe_ok=True",
+      "proxy_probe_ok=False",
+      "proxy_status=DIRECT_ONLY_WORKS"
+    ],
+    "limitations": [
+      "Listener ownership is correlation, not registry writer proof.",
+      "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+      "Successful proxy probe does not prove the proxy is safe or intended.",
+      "Risk classification is a triage signal, not a malware verdict."
+    ],
+    "recommendation": "Browser likely broken via proxy — preview disable after human review."
+  },
+  {
+    "control_id": "SAFE_REMEDIATION_POLICY",
+    "control_objective": "Destructive remediation must remain preview-only or require typed confirmation.",
+    "test_result": "PASS",
+    "risk": "LOW",
+    "evidence": [
+      "proxy-health and proxy-watch are read-only",
+      "proxy-disable defaults to dry-run",
+      "No automatic process kill or registry mutation in health pipeline"
+    ],
+    "limitations": [
+      "Operator may still run gated commands manually"
+    ],
+    "recommendation": "Use proxy-disable --dry-run true before any live apply."
+  },
+  {
+    "control_id": "WININET_WINHTTP_ALIGNMENT",
+    "control_objective": "WinINET and WinHTTP proxy configuration should align for predictable browser behavior.",
+    "test_result": "FAIL",
+    "risk": "MEDIUM",
+    "evidence": [
+      "WinINET proxy enabled",
+      "WinHTTP reports direct access (no proxy server)"
+    ],
+    "limitations": [],
+    "recommendation": "Run diagnose --proof; reconcile WinINET vs WinHTTP with change management."
+  },
+  {
+    "control_id": "WININET_LOCALHOST_PROXY_HEALTH",
+    "control_objective": "Localhost WinINET proxy must forward external HTTPS when enabled.",
+    "test_result": "FAIL",
+    "risk": "HIGH",
+    "evidence": [
+      "proxy_status=DIRECT_ONLY_WORKS direct=True proxy=None"
+    ],
+    "limitations": [
+      "Listener ownership is correlation, not registry writer proof.",
+      "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+      "Successful proxy probe does not prove the proxy is safe or intended.",
+      "Risk classification is a triage signal, not a malware verdict."
+    ],
+    "recommendation": "Preview proxy-disable with typed confirmation; verify listener before apply."
+  },
+  {
+    "control_id": "WININET_PROXY_OWNER_VERIFICATION",
+    "control_objective": "Proxy registry changes should have a known and attributable owner.",
+    "test_result": "PARTIAL",
+    "risk": "HIGH",
+    "evidence": [
+      "ProxyServer: 127.0.0.1:62285",
+      "node.exe was listening on port 62285"
+    ],
+    "limitations": [
+      "Likely process / correlation only; registry writer proof unavailable.",
+      "Port ownership is correlation, not registry writer proof."
+    ],
+    "recommendation": "Enable Sysmon Event ID 13 or collect Procmon registry trace."
+  },
+  {
+    "control_id": "PROXY_REVERTER_DETECTION",
+    "control_objective": "Detect proxy settings returning after disable without operator confirmation.",
+    "test_result": "PASS",
+    "risk": "LOW",
+    "evidence": [
+      "No reverter or flapping pattern in timeline window"
+    ],
+    "limitations": [
+      "Likely process / correlation only; registry writer proof unavailable."
+    ],
+    "recommendation": "Continue proxy-watch during remediation windows."
+  },
+  {
+    "control_id": "DIRECT_VS_PROXY_PATH_COMPARISON",
+    "control_objective": "Compare direct HTTPS path with WinINET localhost proxy path.",
+    "test_result": "PARTIAL",
+    "risk": "HIGH",
+    "evidence": [
+      "direct_probe_ok=True",
+      "proxy_probe_ok=False",
+      "proxy_status=DIRECT_ONLY_WORKS"
+    ],
+    "limitations": [
+      "Listener ownership is correlation, not registry writer proof.",
+      "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+      "Successful proxy probe does not prove the proxy is safe or intended.",
+      "Risk classification is a triage signal, not a malware verdict."
+    ],
+    "recommendation": "Browser likely broken via proxy — preview disable after human review."
+  },
+  {
+    "control_id": "SAFE_REMEDIATION_POLICY",
+    "control_objective": "Destructive remediation must remain preview-only or require typed confirmation.",
+    "test_result": "PASS",
+    "risk": "LOW",
+    "evidence": [
+      "proxy-health and proxy-watch are read-only",
+      "proxy-disable defaults to dry-run",
+      "No automatic process kill or registry mutation in health pipeline"
+    ],
+    "limitations": [
+      "Operator may still run gated commands manually"
+    ],
+    "recommendation": "Use proxy-disable --dry-run true before any live apply."
+  },
+  {
+    "control_id": "WININET_WINHTTP_ALIGNMENT",
+    "control_objective": "WinINET and WinHTTP proxy configuration should align for predictable browser behavior.",
+    "test_result": "FAIL",
+    "risk": "MEDIUM",
+    "evidence": [
+      "WinINET proxy enabled",
+      "WinHTTP reports direct access (no proxy server)"
+    ],
+    "limitations": [],
+    "recommendation": "Run diagnose --proof; reconcile WinINET vs WinHTTP with change management."
+  }
+]

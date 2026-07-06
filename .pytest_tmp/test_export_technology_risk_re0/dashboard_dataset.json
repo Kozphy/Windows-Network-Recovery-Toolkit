@@ -1,0 +1,77 @@
+{
+  "summary": {
+    "total_evidence_events": 4,
+    "total_incidents": 2,
+    "high_risk_incidents": 2,
+    "control_failures": 5,
+    "reverter_suspected_count": 1
+  },
+  "charts": {
+    "incident_classes": [
+      {
+        "incident_class": "REVERTER_SUSPECTED",
+        "count": 1
+      },
+      {
+        "incident_class": "WININET_WINHTTP_MISMATCH",
+        "count": 1
+      }
+    ],
+    "risk_levels": [
+      {
+        "risk_level": "HIGH",
+        "count": 2
+      }
+    ],
+    "control_results": [
+      {
+        "test_result": "FAIL",
+        "count": 5
+      },
+      {
+        "test_result": "PARTIAL",
+        "count": 4
+      },
+      {
+        "test_result": "PASS",
+        "count": 3
+      }
+    ],
+    "top_listener_processes": [
+      {
+        "process_name": "node.exe",
+        "count": 1
+      }
+    ],
+    "direct_vs_proxy_outcomes": [
+      {
+        "outcome": "REVERTER_SUSPECTED",
+        "count": 1
+      },
+      {
+        "outcome": "WININET_WINHTTP_MISMATCH",
+        "count": 1
+      }
+    ],
+    "evidence_tiers": [
+      {
+        "evidence_tier": "T1_STATE_EVIDENCE",
+        "count": 2
+      },
+      {
+        "evidence_tier": "T2_RUNTIME_EVIDENCE",
+        "count": 1
+      },
+      {
+        "evidence_tier": "T3_PATH_EVIDENCE",
+        "count": 1
+      }
+    ],
+    "timeline": [
+      {
+        "bucket": "2026-06-18",
+        "count": 2
+      }
+    ]
+  }
+}

@@ -1,0 +1,306 @@
+{
+  "schema_version": "technology_risk_executive_report.v1",
+  "executive_summary": {
+    "total_incidents": 2,
+    "high_risk_incidents": 2,
+    "control_failures": 5,
+    "human_review_recommended": 2,
+    "reverter_suspected_count": 1
+  },
+  "positioning": "Technology Risk & Control Analytics — not antivirus, EDR, XDR, malware detection, or autonomous remediation.",
+  "governance_principles": [
+    "Observation is not proof.",
+    "Correlation is not causation.",
+    "Confidence is not certainty.",
+    "Classification is not accusation.",
+    "Policy permission is not safety guarantee."
+  ],
+  "incidents": [
+    {
+      "incident_id": "INC-cac7d28cd7e24e33",
+      "timestamp_utc": "2026-06-18T10:00:02Z",
+      "endpoint_id": "2026-01-12-Z01",
+      "incident_class": "REVERTER_SUSPECTED",
+      "risk_level": "HIGH",
+      "confidence": 0.8,
+      "supporting_evidence": [
+        "listener_found=True port=62285 process=node.exe",
+        "proxy_status=DIRECT_ONLY_WORKS direct=True proxy=None",
+        "ProxyServer  -> 127.0.0.1:62285"
+      ],
+      "contradicting_evidence": [],
+      "limitations": [
+        "Listener ownership is correlation, not registry writer proof.",
+        "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+        "Successful proxy probe does not prove the proxy is safe or intended.",
+        "Risk classification is a triage signal, not a malware verdict.",
+        "Likely process / correlation only; registry writer proof unavailable."
+      ],
+      "recommended_policy_action": "alert_reverter_suspected",
+      "human_interpretation": "Proxy settings changed repeatedly — attribution remains correlational without writer proof."
+    },
+    {
+      "incident_id": "INC-9fa15c3db93b5162",
+      "timestamp_utc": "2026-06-18T10:00:00Z",
+      "endpoint_id": "endpoint-demo-01",
+      "incident_class": "WININET_WINHTTP_MISMATCH",
+      "risk_level": "HIGH",
+      "confidence": 0.72,
+      "supporting_evidence": [
+        "WinINET proxy_enable=1 proxy_server=127.0.0.1:62285",
+        "WinINET enabled while WinHTTP reports direct access."
+      ],
+      "contradicting_evidence": [],
+      "limitations": [
+        "Listener ownership is correlation, not registry writer proof.",
+        "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+        "Successful proxy probe does not prove the proxy is safe or intended.",
+        "Risk classification is a triage signal, not a malware verdict."
+      ],
+      "recommended_policy_action": "human_review",
+      "human_interpretation": "Proxy enabled but listener and probe evidence incomplete."
+    }
+  ],
+  "risk_scores": [
+    {
+      "likelihood": "high",
+      "impact": "high",
+      "risk_score": 68.6,
+      "risk_level": "MEDIUM",
+      "explanation": "Incident class REVERTER_SUSPECTED with high likelihood and high impact (evidence_quality=0.80, proof=T1, controls=FAIL, recurrence=0) yields risk_score=68.6 (MEDIUM).",
+      "limitations": [
+        "Risk score is ordinal governance input, not a statistical probability.",
+        "Correlation and listener attribution do not prove registry writer identity without T4 proof.",
+        "Classification is not accusation — this is not malware or EDR verdicting.",
+        "Policy permission is not a safety guarantee; human review may still be required.",
+        "Proof tier is observation or correlation — escalate only with additional validation."
+      ],
+      "incident_class": "REVERTER_SUSPECTED",
+      "human_review_recommended": true,
+      "incident_id": "INC-cac7d28cd7e24e33"
+    },
+    {
+      "likelihood": "high",
+      "impact": "high",
+      "risk_score": 58.0,
+      "risk_level": "MEDIUM",
+      "explanation": "Incident class WININET_WINHTTP_MISMATCH with high likelihood and high impact (evidence_quality=0.72, proof=T1, controls=FAIL, recurrence=0) yields risk_score=58.0 (MEDIUM).",
+      "limitations": [
+        "Risk score is ordinal governance input, not a statistical probability.",
+        "Correlation and listener attribution do not prove registry writer identity without T4 proof.",
+        "Classification is not accusation — this is not malware or EDR verdicting.",
+        "Policy permission is not a safety guarantee; human review may still be required.",
+        "Proof tier is observation or correlation — escalate only with additional validation."
+      ],
+      "incident_class": "WININET_WINHTTP_MISMATCH",
+      "human_review_recommended": true,
+      "incident_id": "INC-9fa15c3db93b5162"
+    }
+  ],
+  "control_tests": [
+    {
+      "control_id": "WININET_LOCALHOST_PROXY_HEALTH",
+      "control_objective": "Localhost WinINET proxy must forward external HTTPS when enabled.",
+      "test_result": "FAIL",
+      "risk": "HIGH",
+      "evidence": [
+        "proxy_status=DIRECT_ONLY_WORKS direct=True proxy=None"
+      ],
+      "limitations": [
+        "Listener ownership is correlation, not registry writer proof.",
+        "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+        "Successful proxy probe does not prove the proxy is safe or intended.",
+        "Risk classification is a triage signal, not a malware verdict."
+      ],
+      "recommendation": "Preview proxy-disable with typed confirmation; verify listener before apply."
+    },
+    {
+      "control_id": "WININET_PROXY_OWNER_VERIFICATION",
+      "control_objective": "Proxy registry changes should have a known and attributable owner.",
+      "test_result": "PARTIAL",
+      "risk": "HIGH",
+      "evidence": [
+        "ProxyServer: 127.0.0.1:62285",
+        "node.exe was listening on port 62285"
+      ],
+      "limitations": [
+        "Likely process / correlation only; registry writer proof unavailable.",
+        "Port ownership is correlation, not registry writer proof."
+      ],
+      "recommendation": "Enable Sysmon Event ID 13 or collect Procmon registry trace."
+    },
+    {
+      "control_id": "PROXY_REVERTER_DETECTION",
+      "control_objective": "Detect proxy settings returning after disable without operator confirmation.",
+      "test_result": "FAIL",
+      "risk": "HIGH",
+      "evidence": [
+        "listener_found=True port=62285 process=node.exe",
+        "proxy_status=DIRECT_ONLY_WORKS direct=True proxy=None",
+        "ProxyServer  -> 127.0.0.1:62285",
+        "Proxy settings changed repeatedly — attribution remains correlational without writer proof."
+      ],
+      "limitations": [
+        "Listener ownership is correlation, not registry writer proof.",
+        "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+        "Successful proxy probe does not prove the proxy is safe or intended.",
+        "Risk classification is a triage signal, not a malware verdict.",
+        "Likely process / correlation only; registry writer proof unavailable."
+      ],
+      "recommendation": "Correlate with Sysmon registry writes; do not kill processes automatically."
+    },
+    {
+      "control_id": "DIRECT_VS_PROXY_PATH_COMPARISON",
+      "control_objective": "Compare direct HTTPS path with WinINET localhost proxy path.",
+      "test_result": "PARTIAL",
+      "risk": "HIGH",
+      "evidence": [
+        "direct_probe_ok=True",
+        "proxy_probe_ok=False",
+        "proxy_status=DIRECT_ONLY_WORKS"
+      ],
+      "limitations": [
+        "Listener ownership is correlation, not registry writer proof.",
+        "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+        "Successful proxy probe does not prove the proxy is safe or intended.",
+        "Risk classification is a triage signal, not a malware verdict."
+      ],
+      "recommendation": "Browser likely broken via proxy — preview disable after human review."
+    },
+    {
+      "control_id": "SAFE_REMEDIATION_POLICY",
+      "control_objective": "Destructive remediation must remain preview-only or require typed confirmation.",
+      "test_result": "PASS",
+      "risk": "LOW",
+      "evidence": [
+        "proxy-health and proxy-watch are read-only",
+        "proxy-disable defaults to dry-run",
+        "No automatic process kill or registry mutation in health pipeline"
+      ],
+      "limitations": [
+        "Operator may still run gated commands manually"
+      ],
+      "recommendation": "Use proxy-disable --dry-run true before any live apply."
+    },
+    {
+      "control_id": "WININET_WINHTTP_ALIGNMENT",
+      "control_objective": "WinINET and WinHTTP proxy configuration should align for predictable browser behavior.",
+      "test_result": "FAIL",
+      "risk": "MEDIUM",
+      "evidence": [
+        "WinINET proxy enabled",
+        "WinHTTP reports direct access (no proxy server)"
+      ],
+      "limitations": [],
+      "recommendation": "Run diagnose --proof; reconcile WinINET vs WinHTTP with change management."
+    },
+    {
+      "control_id": "WININET_LOCALHOST_PROXY_HEALTH",
+      "control_objective": "Localhost WinINET proxy must forward external HTTPS when enabled.",
+      "test_result": "FAIL",
+      "risk": "HIGH",
+      "evidence": [
+        "proxy_status=DIRECT_ONLY_WORKS direct=True proxy=None"
+      ],
+      "limitations": [
+        "Listener ownership is correlation, not registry writer proof.",
+        "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+        "Successful proxy probe does not prove the proxy is safe or intended.",
+        "Risk classification is a triage signal, not a malware verdict."
+      ],
+      "recommendation": "Preview proxy-disable with typed confirmation; verify listener before apply."
+    },
+    {
+      "control_id": "WININET_PROXY_OWNER_VERIFICATION",
+      "control_objective": "Proxy registry changes should have a known and attributable owner.",
+      "test_result": "PARTIAL",
+      "risk": "HIGH",
+      "evidence": [
+        "ProxyServer: 127.0.0.1:62285",
+        "node.exe was listening on port 62285"
+      ],
+      "limitations": [
+        "Likely process / correlation only; registry writer proof unavailable.",
+        "Port ownership is correlation, not registry writer proof."
+      ],
+      "recommendation": "Enable Sysmon Event ID 13 or collect Procmon registry trace."
+    },
+    {
+      "control_id": "PROXY_REVERTER_DETECTION",
+      "control_objective": "Detect proxy settings returning after disable without operator confirmation.",
+      "test_result": "PASS",
+      "risk": "LOW",
+      "evidence": [
+        "No reverter or flapping pattern in timeline window"
+      ],
+      "limitations": [
+        "Likely process / correlation only; registry writer proof unavailable."
+      ],
+      "recommendation": "Continue proxy-watch during remediation windows."
+    },
+    {
+      "control_id": "DIRECT_VS_PROXY_PATH_COMPARISON",
+      "control_objective": "Compare direct HTTPS path with WinINET localhost proxy path.",
+      "test_result": "PARTIAL",
+      "risk": "HIGH",
+      "evidence": [
+        "direct_probe_ok=True",
+        "proxy_probe_ok=False",
+        "proxy_status=DIRECT_ONLY_WORKS"
+      ],
+      "limitations": [
+        "Listener ownership is correlation, not registry writer proof.",
+        "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+        "Successful proxy probe does not prove the proxy is safe or intended.",
+        "Risk classification is a triage signal, not a malware verdict."
+      ],
+      "recommendation": "Browser likely broken via proxy — preview disable after human review."
+    },
+    {
+      "control_id": "SAFE_REMEDIATION_POLICY",
+      "control_objective": "Destructive remediation must remain preview-only or require typed confirmation.",
+      "test_result": "PASS",
+      "risk": "LOW",
+      "evidence": [
+        "proxy-health and proxy-watch are read-only",
+        "proxy-disable defaults to dry-run",
+        "No automatic process kill or registry mutation in health pipeline"
+      ],
+      "limitations": [
+        "Operator may still run gated commands manually"
+      ],
+      "recommendation": "Use proxy-disable --dry-run true before any live apply."
+    },
+    {
+      "control_id": "WININET_WINHTTP_ALIGNMENT",
+      "control_objective": "WinINET and WinHTTP proxy configuration should align for predictable browser behavior.",
+      "test_result": "FAIL",
+      "risk": "MEDIUM",
+      "evidence": [
+        "WinINET proxy enabled",
+        "WinHTTP reports direct access (no proxy server)"
+      ],
+      "limitations": [],
+      "recommendation": "Run diagnose --proof; reconcile WinINET vs WinHTTP with change management."
+    }
+  ],
+  "dashboard_kpis": {
+    "total_evidence_events": 4,
+    "total_incidents": 2,
+    "high_risk_incidents": 2,
+    "control_failures": 5,
+    "reverter_suspected_count": 1
+  },
+  "limitations": [
+    "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
+    "Risk classification is a triage signal, not a malware verdict.",
+    "Successful proxy probe does not prove the proxy is safe or intended.",
+    "Listener ownership is correlation, not registry writer proof."
+  ],
+  "recommended_actions": [
+    "Route HIGH risk and human_review_recommended items to analyst queue.",
+    "Run proxy-health and proxy-watch before any preview remediation.",
+    "Export CSV artefacts for Power BI committee dashboards.",
+    "Collect T4 writer proof (Sysmon E13 / Procmon) before escalation."
+  ]
+}

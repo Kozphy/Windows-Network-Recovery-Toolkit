@@ -1,0 +1,2 @@
+HTTP_PROXY="http://proxy.local:3128"
+export HTTPS_PROXY=http://proxy.local:3128

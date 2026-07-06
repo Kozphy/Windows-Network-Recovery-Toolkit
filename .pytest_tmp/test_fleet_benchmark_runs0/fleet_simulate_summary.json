@@ -1,0 +1,16 @@
+{
+  "scenario": "mixed_proxy_failures",
+  "endpoints": 10,
+  "seed": 1,
+  "rows_written": 20,
+  "incident_rows": 10,
+  "output_dir": "C:\\Users\\Zixsa\\Kozphy\\Windows-Network-Recovery-Toolkit\\.pytest_tmp\\test_fleet_benchmark_runs0",
+  "incidents_path": "C:\\Users\\Zixsa\\Kozphy\\Windows-Network-Recovery-Toolkit\\.pytest_tmp\\test_fleet_benchmark_runs0\\incidents.jsonl",
+  "endpoint_ids_sample": [
+    "endpoint-001",
+    "endpoint-002",
+    "endpoint-003",
+    "...",
+    "endpoint-010"
+  ]
+}

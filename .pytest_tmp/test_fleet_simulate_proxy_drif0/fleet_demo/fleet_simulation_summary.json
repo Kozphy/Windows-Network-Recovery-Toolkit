@@ -1,0 +1,8 @@
+{
+  "scenario": "proxy-drift",
+  "endpoints": 25,
+  "proxy_drift_incidents": 5,
+  "incidents_total": 5,
+  "output_dir": "C:\\Users\\Zixsa\\Kozphy\\Windows-Network-Recovery-Toolkit\\.pytest_tmp\\test_fleet_simulate_proxy_drif0\\fleet_demo",
+  "generated_at": "2026-07-06T04:32:37.711869+00:00"
+}

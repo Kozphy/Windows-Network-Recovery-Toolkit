@@ -197,3 +197,32 @@ def test_classify_preserves_non_localhost_proxy() -> None:
         listener_found=None,
     )
     assert out["classification"] == "INSUFFICIENT_EVIDENCE"
+
+
+def test_boot_trace_snapshot_uses_proxy_actor_image_path() -> None:
+    from src.proxy_drift.boot_trace import _snapshot
+    from src.proxy_guard.attribution_model import LayeredAttributionResult, ProxyActor
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:60505", auto_config_url=None, proxy_override=None)
+    actor = ProxyActor(
+        pid=1234,
+        process_name="node.exe",
+        image_path=r"C:\Program Files\node.exe",
+        command_line="node proxy.js",
+        parent_pid=999,
+        parent_process_name="Cursor.exe",
+    )
+    attr = LayeredAttributionResult(
+        candidate_actor=actor,
+        attribution_confidence="medium",
+        attribution_method="localhost_listener",
+    )
+    with (
+        patch("src.proxy_drift.boot_trace.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.boot_trace._port_listening", return_value=True),
+        patch("src.proxy_drift.boot_trace.attribute_localhost_proxy_listener", return_value=attr),
+        patch("src.proxy_drift.boot_trace._winhttp_direct", return_value=True),
+    ):
+        snap = _snapshot(MagicMock())
+    assert snap["listener"]["exe_path"] == r"C:\Program Files\node.exe"
+    assert snap["listener"]["process_name"] == "node.exe"

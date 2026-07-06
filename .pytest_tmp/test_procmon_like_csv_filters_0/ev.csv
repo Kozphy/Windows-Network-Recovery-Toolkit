@@ -1,0 +1,3 @@
+Time of Day,Process Name,PID,Path,Detail
+12:34:56,foo.exe,1,HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ProxyEnable,{}
+12:34:56,bar.exe,2,C:\\Other,{}
