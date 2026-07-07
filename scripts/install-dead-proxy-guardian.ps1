@@ -1,8 +1,10 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Install auto-clear for dead localhost WinINET proxy drift (no admin required).
+  Install guardian-only auto-clear for dead localhost WinINET proxy drift.
 .DESCRIPTION
+  For the combined v0.3.0 operator workflow, prefer
+  scripts/install-startup-observability.ps1.
   Registers a per-user Startup hook running scripts/run-proxy-guardian-loop.ps1.
   Guardian invokes proxy-guardian --once on an interval; only remediates DEAD_PROXY_CONFIG.
 

@@ -17,7 +17,9 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 | **0. One-shot auto** | `scripts/auto-fix-proxy.ps1` or `python -m src auto-fix-proxy` | Cursor fix + live guardian + fallback proxy-fix + 60s background guardian |
 | **0b. ChatGPT auto** | `scripts/auto-fix-chatgpt.ps1` | Proxy auto-fix + bad-gateway diagnose + ChatGPT scenario + LOW-risk remediations — see [chatgpt-auto-fix.md](chatgpt-auto-fix.md) |
 | **1. Root cause** | `scripts/configure-cursor-no-proxy.ps1` | Stops Cursor from managing system proxy (`http.proxySupport: off`) |
-| **2. Startup guardian** | `scripts/install-dead-proxy-guardian.ps1` | At logon, runs a background loop every **60 seconds** (configurable) that clears **dead** proxy only |
+| **2. Startup observability** | `scripts/install-startup-observability.ps1` or `python -m src install-startup-observability` | One preview-first install for guardian + boot trace with automatic Startup hook fallback if Task Scheduler is denied |
+| **2a. Guardian only** | `scripts/install-dead-proxy-guardian.ps1` | Guardian-only install for operators who do not want boot trace |
+| **2b. Boot trace only** | `scripts/install-proxy-boot-trace-task.ps1` | Boot-trace-only install for operators who do not want guardian |
 | **3. Emergency button** | `scripts/fix-wininet-proxy.cmd` | One-click manual HKCU disable when the browser is broken right now |
 
 ### Guardian safety
@@ -56,7 +58,20 @@ python -m src auto-fix-proxy
 .\scripts\auto-fix-chatgpt.ps1
 ```
 
-Or step by step from the repository root:
+Recommended startup-time install from the repository root:
+
+```powershell
+.\scripts\install-startup-observability.ps1
+.\scripts\install-startup-observability.ps1 -Apply
+python -m src install-startup-observability --json
+```
+
+This preview-first installer attempts a per-user Scheduled Task for each component and, if Task Scheduler returns `Access is denied`, automatically falls back to:
+
+- `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\WNRT-DeadProxyGuardian.cmd`
+- `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\WNRT-ProxyBootTrace.cmd`
+
+Step-by-step alternatives:
 
 ```powershell
 .\scripts\configure-cursor-no-proxy.ps1
@@ -73,9 +88,35 @@ Optional Task Scheduler (may require elevation or fail on locked-down PCs):
 .\scripts\install-dead-proxy-guardian.ps1 -UseScheduledTask
 ```
 
-If registration is denied, you will see:
+Optional component-specific startup-time evidence collection (read-only):
 
-`Task Scheduler: skipped (access denied or policy block; startup hook is active)`
+```powershell
+.\scripts\install-proxy-boot-trace-task.ps1
+.\scripts\install-proxy-boot-trace-task.ps1 -Apply
+```
+
+This installs `WNRT-ProxyBootTrace`, which runs:
+
+```powershell
+python -m src proxy-boot-trace --duration 180 --interval 2
+```
+
+30 seconds after logon so VPN, Cursor, and other startup tools have time to touch WinINET before the trace begins.
+
+You can verify the preferred or fallback install path with:
+
+```powershell
+schtasks /Query /TN WNRT-DeadProxyGuardian
+schtasks /Query /TN WNRT-ProxyBootTrace
+dir "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\WNRT-*.cmd"
+```
+
+Evidence collection and summary:
+
+```powershell
+python -m src collect-evidence-bundle
+python -m src startup-observability-report --json
+```
 
 ## Test
 
@@ -104,10 +145,12 @@ Sets `ProxyEnable=0` and removes `ProxyServer` under HKCU. Use only when you nee
 ## Uninstall guardian
 
 ```powershell
-.\scripts\install-dead-proxy-guardian.ps1 -Uninstall
+.\scripts\install-startup-observability.ps1 -Uninstall
+.\scripts\install-startup-observability.ps1 -Uninstall -Apply
+python -m src uninstall-startup-observability --dry-run false --confirm UNINSTALL_STARTUP_OBSERVABILITY
 ```
 
-Removes the Startup hook, stops the background loop, and attempts to remove scheduled tasks if present.
+This removes scheduled tasks and Startup hooks if present. The operation is idempotent, so it still succeeds if only one install method exists.
 
 ## Related CLI
 

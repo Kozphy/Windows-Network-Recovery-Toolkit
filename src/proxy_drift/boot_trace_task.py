@@ -1,4 +1,4 @@
-"""Install/uninstall WNRT-DeadProxyGuardian scheduled task at user logon."""
+"""Install/uninstall WNRT-ProxyBootTrace scheduled task at user logon."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from typing import Any
 
 from src.proxy_drift.startup_hook import remove_startup_hook, startup_hook_path, write_startup_hook
 
-TASK_NAME = "WNRT-DeadProxyGuardian"
-CONFIRM_INSTALL = "INSTALL_GUARDIAN_TASK"
-CONFIRM_UNINSTALL = "UNINSTALL_GUARDIAN_TASK"
+TASK_NAME = "WNRT-ProxyBootTrace"
+CONFIRM_INSTALL = "INSTALL_BOOT_TRACE_TASK"
+CONFIRM_UNINSTALL = "UNINSTALL_BOOT_TRACE_TASK"
 
 
 def _now() -> str:
@@ -28,32 +28,30 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def build_guardian_task_command(*, interval: int = 60) -> str:
+def build_boot_trace_task_command(*, duration: int = 180, interval: int = 2) -> str:
     """Return the command line the scheduled task should execute."""
     py = _python_exe()
-    return (
-        f'"{py}" -m src proxy-guardian --loop --interval {interval} '
-        f"--confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false"
-    )
+    return f'"{py}" -m src proxy-boot-trace --duration {duration} --interval {interval}'
 
 
-def build_startup_hook_lines(*, interval: int = 60) -> list[str]:
+def build_startup_hook_lines(*, duration: int = 180, interval: int = 2) -> list[str]:
     repo_root = _repo_root()
-    loop_script = repo_root / "scripts" / "run-proxy-guardian-loop.ps1"
+    py = _python_exe()
     return [
         "@echo off",
         f'cd /d "{repo_root}"',
         f"set PYTHONPATH={repo_root}",
         (
-            "start /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden "
-            f'-File "{loop_script}" -IntervalSeconds {interval}'
+            'start /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden '
+            f'-Command "Start-Sleep -Seconds 30; & \\"{py}\\" -m src proxy-boot-trace '
+            f'--duration {duration} --interval {interval}"'
         ),
     ]
 
 
-def build_schtasks_create_preview(*, interval: int = 60) -> tuple[str, ...]:
+def build_schtasks_create_preview(*, duration: int = 180, interval: int = 2) -> tuple[str, ...]:
     """Return argv for ``schtasks /Create`` (preview only)."""
-    cmd = build_guardian_task_command(interval=interval)
+    cmd = build_boot_trace_task_command(duration=duration, interval=interval)
     return (
         "schtasks",
         "/Create",
@@ -61,6 +59,8 @@ def build_schtasks_create_preview(*, interval: int = 60) -> tuple[str, ...]:
         TASK_NAME,
         "/SC",
         "ONLOGON",
+        "/DELAY",
+        "0000:30",
         "/RL",
         "LIMITED",
         "/F",
@@ -69,17 +69,18 @@ def build_schtasks_create_preview(*, interval: int = 60) -> tuple[str, ...]:
     )
 
 
-def preview_install_guardian_task(*, interval: int = 60) -> dict[str, Any]:
+def preview_install_boot_trace_task(*, duration: int = 180, interval: int = 2) -> dict[str, Any]:
     """Return human-readable preview of the scheduled task without creating it."""
-    argv = build_schtasks_create_preview(interval=interval)
+    argv = build_schtasks_create_preview(duration=duration, interval=interval)
     return {
-        "schema_version": "guardian_task.v1",
+        "schema_version": "boot_trace_task.v1",
         "timestamp_utc": _now(),
         "task_name": TASK_NAME,
         "requested_method": "scheduled_task",
         "fallback_method": "startup_hook",
         "trigger": "ONLOGON",
-        "command": build_guardian_task_command(interval=interval),
+        "delay": "0000:30",
+        "command": build_boot_trace_task_command(duration=duration, interval=interval),
         "schtasks_argv": list(argv),
         "schtasks_command": subprocess.list2cmdline(list(argv)),
         "startup_hook_path": str(startup_hook_path(TASK_NAME).resolve()),
@@ -90,21 +91,22 @@ def preview_install_guardian_task(*, interval: int = 60) -> dict[str, Any]:
         "confirmation_required": CONFIRM_INSTALL,
         "limitations": [
             "Task creation mutates Windows scheduler — preview shown first.",
-            "Guardian only clears dead localhost proxies with typed confirmation.",
+            "Boot trace is read-only and writes audit observations to logs/proxy_boot_trace.jsonl.",
         ],
     }
 
 
-def install_guardian_task(
+def install_boot_trace_task(
     *,
-    interval: int = 60,
+    duration: int = 180,
+    interval: int = 2,
     confirm: str = "",
     dry_run: bool = True,
     run: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Create logon scheduled task when confirmed, falling back to Startup hook."""
     subprocess_run = run if run is not None else subprocess.run
-    preview = preview_install_guardian_task(interval=interval)
+    preview = preview_install_boot_trace_task(duration=duration, interval=interval)
     if dry_run:
         preview["action_taken"] = "preview_only"
         preview["reason"] = "Dry-run — task not created."
@@ -127,7 +129,7 @@ def install_guardian_task(
     stderr_l = (proc.stderr or "").lower()
     stdout_l = (proc.stdout or "").lower()
     if "access is denied" in stderr_l or "access is denied" in stdout_l:
-        hook = write_startup_hook(name=TASK_NAME, lines=build_startup_hook_lines(interval=interval))
+        hook = write_startup_hook(name=TASK_NAME, lines=build_startup_hook_lines(duration=duration, interval=interval))
         preview["actual_method"] = "startup_hook"
         preview["fallback_used"] = True
         preview["startup_hook_path"] = str(hook.resolve())
@@ -141,17 +143,17 @@ def install_guardian_task(
     return preview
 
 
-def uninstall_guardian_task(
+def uninstall_boot_trace_task(
     *,
     confirm: str = "",
     dry_run: bool = True,
     run: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
-    """Remove the guardian scheduled task and Startup hook when confirmed."""
+    """Remove scheduled task and Startup hook when confirmed."""
     subprocess_run = run if run is not None else subprocess.run
     argv = ("schtasks", "/Delete", "/TN", TASK_NAME, "/F")
     payload: dict[str, Any] = {
-        "schema_version": "guardian_task.v1",
+        "schema_version": "boot_trace_task.v1",
         "timestamp_utc": _now(),
         "task_name": TASK_NAME,
         "requested_method": "all",

@@ -130,13 +130,19 @@ from .production_handlers import (
 from .proof.proxy_https import run_localhost_proxy_https_proof
 from .proxy_drift.handlers import (
     cmd_auto_fix_proxy,
+    cmd_collect_evidence_bundle,
+    cmd_install_boot_trace_task,
     cmd_install_guardian_task,
+    cmd_install_startup_observability,
     cmd_proxy_boot_trace,
     cmd_proxy_fix,
     cmd_proxy_guardian_drift,
     cmd_safe_search,
     cmd_startup_inventory,
+    cmd_startup_observability_report,
+    cmd_uninstall_boot_trace_task,
     cmd_uninstall_guardian_task,
+    cmd_uninstall_startup_observability,
 )
 from .proxy_guard.linux_proxy_commands import cmd_proxy_linux_snapshot
 from .recommendations.engine import RecommendationBundle, build_recommendations
@@ -1865,6 +1871,107 @@ def build_parser() -> argparse.ArgumentParser:
     p_pbt.add_argument("--json", dest="emit_json", action="store_true")
     p_pbt.set_defaults(func=cmd_proxy_boot_trace)
 
+    p_ibtt = sub.add_parser(
+        "install-boot-trace-task",
+        help="Preview/install WNRT-ProxyBootTrace logon scheduled task.",
+    )
+    p_ibtt.add_argument("--duration", type=int, default=180, dest="boot_trace_duration")
+    p_ibtt.add_argument("--interval", type=int, default=2, dest="boot_trace_interval")
+    p_ibtt.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm INSTALL_BOOT_TRACE_TASK.",
+    )
+    p_ibtt.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live install requires INSTALL_BOOT_TRACE_TASK.",
+    )
+    p_ibtt.add_argument("--json", dest="emit_json", action="store_true")
+    p_ibtt.set_defaults(func=cmd_install_boot_trace_task)
+
+    p_ubtt = sub.add_parser(
+        "uninstall-boot-trace-task",
+        help="Preview/uninstall WNRT-ProxyBootTrace logon scheduled task.",
+    )
+    p_ubtt.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm UNINSTALL_BOOT_TRACE_TASK.",
+    )
+    p_ubtt.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live uninstall requires UNINSTALL_BOOT_TRACE_TASK.",
+    )
+    p_ubtt.add_argument("--json", dest="emit_json", action="store_true")
+    p_ubtt.set_defaults(func=cmd_uninstall_boot_trace_task)
+
+    p_iso = sub.add_parser(
+        "install-startup-observability",
+        help="Preview/install guardian + boot trace startup observability.",
+    )
+    p_iso.add_argument("--guardian-interval", type=int, default=60, dest="guardian_interval")
+    p_iso.add_argument("--duration", type=int, default=180, dest="boot_trace_duration")
+    p_iso.add_argument("--interval", type=int, default=2, dest="boot_trace_interval")
+    p_iso.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm INSTALL_STARTUP_OBSERVABILITY.",
+    )
+    p_iso.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live install requires INSTALL_STARTUP_OBSERVABILITY.",
+    )
+    p_iso.add_argument("--json", dest="emit_json", action="store_true")
+    p_iso.set_defaults(func=cmd_install_startup_observability)
+
+    p_uso = sub.add_parser(
+        "uninstall-startup-observability",
+        help="Preview/uninstall guardian + boot trace startup observability.",
+    )
+    p_uso.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm UNINSTALL_STARTUP_OBSERVABILITY.",
+    )
+    p_uso.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live uninstall requires UNINSTALL_STARTUP_OBSERVABILITY.",
+    )
+    p_uso.add_argument("--json", dest="emit_json", action="store_true")
+    p_uso.set_defaults(func=cmd_uninstall_startup_observability)
+
     p_pgd = sub.add_parser(
         "proxy-guardian",
         help="Dead localhost WinINET proxy guardian (dry-run by default; distinct from proxy-guard).",
@@ -1988,6 +2095,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_ss.add_argument("--max-files", type=int, default=3000, dest="search_max_files")
     p_ss.add_argument("--json", dest="emit_json", action="store_true")
     p_ss.set_defaults(func=cmd_safe_search)
+
+    p_ceb = sub.add_parser(
+        "collect-evidence-bundle",
+        help="Collect a read-only proxy/network evidence bundle under reports/.",
+    )
+    p_ceb.add_argument("--out-dir", dest="bundle_dir", default=None)
+    p_ceb.add_argument("--duration", type=int, default=30, dest="boot_trace_duration")
+    p_ceb.add_argument("--interval", type=int, default=2, dest="boot_trace_interval")
+    p_ceb.add_argument("--json", dest="emit_json", action="store_true")
+    p_ceb.set_defaults(func=cmd_collect_evidence_bundle)
+
+    p_sor = sub.add_parser(
+        "startup-observability-report",
+        help="Summarize boot trace JSONL into an operator-readable report.",
+    )
+    p_sor.add_argument("--trace-path", dest="trace_path", default="")
+    p_sor.add_argument("--json", dest="emit_json", action="store_true")
+    p_sor.set_defaults(func=cmd_startup_observability_report)
 
     p_afp = sub.add_parser(
         "auto-fix-proxy",
