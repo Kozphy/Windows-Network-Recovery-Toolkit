@@ -1,2 +1,0 @@
-Time of Day,Process Name,PID,Operation,Path,Result,Detail
-12:00:00.000,svc.exe,777,RegSetValue,HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyServer,SUCCESS,127.0.0.1:8888

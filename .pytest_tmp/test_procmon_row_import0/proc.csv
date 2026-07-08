@@ -1,2 +1,0 @@
-Time of Day,Process Name,PID,Operation,Path,Result,Detail
-12:34:56.789,svc.exe,99,RegSetValue,HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ProxyEnable,SUCCESS,DWORD:00000001

@@ -1,6 +1,0 @@
-cost_id,provider,resource_id,resource_name,service,category,monthly_cost_usd,budget_category,date_key,anomaly_flag
-COST-AZ-001,azure,res-vm-prod-web-01,vm-prod-web-01,Virtual Machines,Compute,1180.0,production,20260601,False
-COST-AZ-002,azure,res-storage-logs,stg-audit-logs,Storage Accounts,Storage,240.0,governance,20260601,False
-COST-GCP-001,gcp,res-gke-dev-cluster,gke-dev-cluster,Kubernetes Engine,Compute,890.0,non_production,20260601,True
-COST-GCP-002,gcp,res-sql-primary,cloudsql-primary,Cloud SQL,Database,650.0,production,20260601,False
-COST-AZ-003,azure,res-monitor-workspace,log-analytics-prod,Log Analytics,Observability,320.0,platform,20260601,False
