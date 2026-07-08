@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Added — Startup observability (v0.3.0)
+
+- `src/proxy_drift/` — combined install (`install-startup-observability`), boot trace task, dead-proxy guardian, evidence bundle, operator report, bounded `safe-search`
+- CLI (`python -m src`): `install-startup-observability`, `collect-evidence-bundle`, `startup-observability-report`, `install-boot-trace-task`, `uninstall-startup-observability`
+- Scripts: `scripts/install-startup-observability.ps1`, `scripts/collect-evidence-bundle.ps1`, `scripts/install-proxy-boot-trace-task.ps1`
+- Docs: `docs/startup-observability.md`; updates to `docs/dead-proxy-guardian.md`, `docs/cli_reference.md`, `SYSTEM_DESIGN.md`, `README.md`
+- Tests: `tests/test_proxy_drift_toolkit.py`
+- Pytest: `--basetemp=.pytest_tmp` in `pytest.ini` for Windows temp isolation
+
+### Fixed
+
+- `safe-search` — explicit scan roots under `%TEMP%` are no longer skipped when a path segment contains `temp`
+
 ### Added — AI evals feedback loop
 
 - `src/platform_core/ai_evals/` — fixture-only GenAI eval harness (schemas, evaluator, failure taxonomy, policy gates, report)

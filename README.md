@@ -439,9 +439,18 @@ python -m src install-guardian-task --confirm INSTALL_GUARDIAN_TASK --dry-run fa
 
 # Timeout-safe search (startup target, no profile walk)
 python -m src safe-search --query WNRT-DeadProxyGuardian --target startup
+
+# v0.3.0 startup observability (recommended)
+python -m src install-startup-observability
+python -m src install-startup-observability --dry-run false --confirm INSTALL_STARTUP_OBSERVABILITY
+python -m src collect-evidence-bundle
+python -m src startup-observability-report --json
+python -m src uninstall-startup-observability --dry-run false --confirm UNINSTALL_STARTUP_OBSERVABILITY
 ```
 
 Audit logs: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`, `logs/proxy_guardian.jsonl`. Emergency CMD wrapper: `scripts/fix-wininet-proxy.cmd`.
+
+Runbook: [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md) · Architecture: [docs/startup-observability.md](docs/startup-observability.md).
 
 ---
 
@@ -671,6 +680,8 @@ Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch
 | [docs/scale-testing.md](docs/scale-testing.md)               | Synthetic local scale limits |
 | [docs/cross-platform-support.md](docs/cross-platform-support.md) | Linux/macOS PARTIAL foundation |
 | [docs/packaging-installer.md](docs/packaging-installer.md)     | pipx/wheel/portable install plan |
+| [docs/startup-observability.md](docs/startup-observability.md) | v0.3.0 startup observability architecture |
+| [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md)   | Dead localhost proxy recovery runbook |
 
 
 ---

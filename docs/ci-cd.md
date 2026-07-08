@@ -70,9 +70,11 @@ Direct pytest examples:
 
 ```powershell
 pytest -q tests/test_policy_safety_contract.py
-pytest -q tests/test_proxy_drift_toolkit.py
+pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 pytest -q --junitxml=reports/junit.xml
 ```
+
+`pytest.ini` sets `--import-mode=importlib` and `--basetemp=.pytest_tmp` so temp dirs stay under the repo (avoids Windows `%TEMP%` cleanup noise and duplicate module collisions).
 
 ---
 

@@ -31,12 +31,16 @@ Normalized platform fixtures live under `tests/fixtures/platform/`. Feature vect
 | Classic CLI continuity | Fixture `diagnose` run with isolated `--repo-root` exits 0 | `test_smoke_python_m_src_fixture_diagnose_isolated_repo` |
 | Network State Manager | Snapshot/diff/policy/report/audit/evidence parsing with fakes only; CLI list smoke uses `--repo-root` temp | `tests/test_network_state_manager.py` |
 | Proxy change attribution | Pure parse/diff/score/audit/CSV import + inventory graceful failure; no live PowerShell registry | `tests/test_proxy_change_attribution.py` |
+| Startup observability / proxy drift | Install preview, Startup hook fallback, evidence bundle, boot trace report, safe-search caps; no live schtasks on CI | `tests/test_proxy_drift_toolkit.py` |
 | Failure system entry | `-m failure_system --help` exits 0 | `test_smoke_failure_system_help_exits_clean` |
 
 Run the focused suite:
 
 ```powershell
 pytest tests/test_safety_regression.py tests/test_platform_faang_upgrade.py -q
+pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 ```
+
+`pytest.ini` sets `--basetemp=.pytest_tmp` so Windows runs keep temp artifacts under the repo instead of system `%TEMP%`.
 
 Run the full project suite from the repo root as your environment allows.

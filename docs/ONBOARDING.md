@@ -29,6 +29,7 @@ Evidence → Classification → Control tests → Risk scoring → Human review 
 | Read-only agent | `windows_network_toolkit/agent/` | `agent once`, `agent run`, `agent health`, `agent spool-status` |
 | LAN privacy | `windows_network_toolkit/diagnostics/lan_privacy/` | `lan-inventory`, `lan-watch`, `lan-privacy-report` |
 | AI evals | `src/platform_core/ai_evals/` | `ai-eval` (fixture-only) |
+| Startup observability | `src/proxy_drift/` | `install-startup-observability`, `collect-evidence-bundle`, `proxy-boot-trace` |
 
 ---
 
@@ -36,6 +37,8 @@ Evidence → Classification → Control tests → Risk scoring → Human review 
 
 ```text
 windows_network_toolkit/   # Primary CLI package (python -m windows_network_toolkit)
+src/proxy_drift/           # Startup observability, boot trace, guardian, evidence bundle
+src/cli.py                 # Extended operator CLI (python -m src)
 src/platform_core/         # Canonical governance, proof, audit, case-study risk
 src/proxy_guard/           # Legacy proxy-watch integration
 backend/                   # FastAPI host (optional local demo API)
@@ -73,6 +76,7 @@ Full argparse definitions live in `windows_network_toolkit/cli.py`.
 | Governance | `risk-assess`, `control-test`, `governance-report`, `risk-kpi-summary` |
 | LAN privacy | `lan-inventory`, `lan-watch`, `lan-privacy-report`, `lan-risk-score`, `lan-control-test` |
 | AI evals | `ai-eval` (fixture-only, no live model calls) |
+| Startup observability | `install-startup-observability`, `collect-evidence-bundle`, `startup-observability-report`, `proxy-boot-trace` (`python -m src`) |
 | Audit | `audit verify` |
 
 ---

@@ -35,7 +35,10 @@ Preserve `limitations[]`. Blocked actions live in `windows_network_toolkit/safet
 $env:PYTHONPATH = (Get-Location).Path
 python -m windows_network_toolkit proxy-status --fixture dead_proxy_60505.json
 python -m windows_network_toolkit proxy-disable --dry-run true
+python -m src install-startup-observability --json
+python -m src collect-evidence-bundle
 pytest -q tests/test_policy_safety_contract.py
+pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 ```
 
 ## Key paths
@@ -43,11 +46,14 @@ pytest -q tests/test_policy_safety_contract.py
 | Path | Role |
 |------|------|
 | `windows_network_toolkit/` | Primary CLI and diagnostics |
+| `src/proxy_drift/` | Startup observability, boot trace, guardian, evidence bundle |
+| `src/cli.py` | Extended operator CLI (`python -m src`) |
 | `src/platform_core/` | Policy, governance envelope, audit |
 | `telemetry/` | Registry-writer telemetry (fixture-first) |
 | `tests/fixtures/` | Deterministic test inputs |
 | `docs/ONBOARDING.md` | Human onboarding |
+| `docs/startup-observability.md` | Startup observability architecture |
 
 ## Deeper reference
 
-Full CLI groups, confirmation tokens, and test conventions were consolidated into `.cursor/rules/project-instructions.mdc`. For operator runbooks: `docs/TROUBLESHOOTING_PROXY.md`, `docs/dead-proxy-guardian.md`.
+Full CLI groups, confirmation tokens, and test conventions were consolidated into `.cursor/rules/project-instructions.mdc`. For operator runbooks: `docs/TROUBLESHOOTING_PROXY.md`, `docs/dead-proxy-guardian.md`, `docs/startup-observability.md`.

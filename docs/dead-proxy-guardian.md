@@ -1,5 +1,7 @@
 # Dead localhost WinINET proxy — 3-layer recovery
 
+**Architecture (v0.3.0):** [startup-observability.md](startup-observability.md) — combined install, boot trace JSONL, evidence bundle, operator report.
+
 ## Problem
 
 Windows **WinINET** (browser) proxy can point at a stale localhost port such as `127.0.0.1:62285` with `ProxyEnable=1` while **nothing is listening** on that port. Symptoms:
