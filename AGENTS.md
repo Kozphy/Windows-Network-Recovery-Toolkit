@@ -37,6 +37,7 @@ python -m windows_network_toolkit proxy-status --fixture dead_proxy_60505.json
 python -m windows_network_toolkit proxy-disable --dry-run true
 python -m src install-startup-observability --json
 python -m src collect-evidence-bundle
+python -m src ensure-proxy-health
 pytest -q tests/test_policy_safety_contract.py
 pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 ```

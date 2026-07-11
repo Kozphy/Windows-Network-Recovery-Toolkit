@@ -131,6 +131,7 @@ from .proof.proxy_https import run_localhost_proxy_https_proof
 from .proxy_drift.handlers import (
     cmd_auto_fix_proxy,
     cmd_collect_evidence_bundle,
+    cmd_ensure_proxy_health,
     cmd_install_boot_trace_task,
     cmd_install_guardian_task,
     cmd_install_startup_observability,
@@ -2142,6 +2143,49 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_afp.add_argument("--json", dest="emit_json", action="store_true")
     p_afp.set_defaults(func=cmd_auto_fix_proxy, dry_run=False)
+
+    p_eph = sub.add_parser(
+        "ensure-proxy-health",
+        help=(
+            "Session ensure: clear dead localhost WinINET, install startup observability, "
+            "optional --prefer-direct for LinkedIn/browser reliability."
+        ),
+    )
+    p_eph.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview only — no registry mutation or install.",
+    )
+    p_eph.add_argument(
+        "--prefer-direct",
+        action="store_true",
+        help="Also clear an active localhost WinINET proxy (requires --confirm PREFER_DIRECT_WININET).",
+    )
+    p_eph.add_argument(
+        "--confirm",
+        dest="confirm_phrase",
+        default="",
+        help="PREFER_DIRECT_WININET when using --prefer-direct.",
+    )
+    p_eph.add_argument(
+        "--skip-observability-install",
+        action="store_true",
+        help="Skip installing guardian + boot trace if missing.",
+    )
+    p_eph.add_argument(
+        "--skip-cursor-fix",
+        action="store_true",
+        help="Skip configure-cursor-no-proxy.ps1 step.",
+    )
+    p_eph.add_argument(
+        "--guardian-interval",
+        type=int,
+        default=60,
+        dest="guardian_interval",
+        help="Guardian check interval in seconds (default 60).",
+    )
+    p_eph.add_argument("--json", dest="emit_json", action="store_true")
+    p_eph.set_defaults(func=cmd_ensure_proxy_health, dry_run=False)
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)

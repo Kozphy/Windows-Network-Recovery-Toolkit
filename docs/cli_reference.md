@@ -187,6 +187,22 @@ python -m src collect-evidence-bundle [--out-dir reports/custom] [--duration 30 
 python -m src startup-observability-report [--trace-path logs/proxy_boot_trace.jsonl] [--json]
 ```
 
+### Session ensure (run when opening the repo)
+
+```powershell
+.\ensure-proxy.cmd
+make ensure
+python -m src ensure-proxy-health
+
+# LinkedIn / browser reliability — clear active localhost WinINET too
+.\ensure-proxy.cmd prefer-direct
+python -m src ensure-proxy-health --prefer-direct --confirm PREFER_DIRECT_WININET
+```
+
+`start-api.ps1` runs ensure automatically (skip with `-SkipProxyEnsure`; force direct with `-PreferDirectProxy`).
+
+Default ensure clears **dead** localhost only and installs startup observability if missing. `--prefer-direct` also clears an *active* localhost proxy (may break intentional local tunnels).
+
 ### Bounded file search
 
 ```powershell

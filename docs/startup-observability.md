@@ -16,6 +16,11 @@ Startup observability automates:
 ```powershell
 $env:PYTHONPATH = (Get-Location).Path
 
+# Every session — clear dead localhost + ensure guardian/boot-trace install
+.\ensure-proxy.cmd
+# LinkedIn ERR_PROXY_CONNECTION_FAILED with a flaky local Node proxy:
+.\ensure-proxy.cmd prefer-direct
+
 # Preview combined install (guardian + boot trace)
 python -m src install-startup-observability --json
 

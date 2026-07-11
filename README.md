@@ -292,13 +292,17 @@ Legacy / extended CLI: `python -m src` · Full reference: [docs/cli_reference.md
 For startup-time proxy drift on Windows, the recommended operator flow is:
 
 ```powershell
+.\ensure-proxy.cmd
+# LinkedIn / flaky local Node proxy → force direct:
+.\ensure-proxy.cmd prefer-direct
+
 python -m src install-startup-observability
 python -m src install-startup-observability --dry-run false --confirm INSTALL_STARTUP_OBSERVABILITY
 python -m src collect-evidence-bundle
 python -m src startup-observability-report --json
 ```
 
-That path keeps `python -m src` as the single startup-observability CLI, prefers per-user Scheduled Tasks, and automatically falls back to Startup hooks if Task Scheduler is denied.
+That path keeps `python -m src` as the single startup-observability CLI, prefers per-user Scheduled Tasks, and automatically falls back to Startup hooks if Task Scheduler is denied. `start-api.ps1` also runs `ensure-proxy-health` before the API starts.
 
 ### FastAPI — Technology Risk Analytics (read-only)
 

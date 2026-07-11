@@ -86,6 +86,26 @@ PowerShell helper:
 
 ## Startup observability (Windows, `python -m src`)
 
+**Every session (recommended):** clear dead localhost proxies and keep the guardian installed:
+
+```powershell
+.\ensure-proxy.cmd
+# or
+make ensure
+python -m src ensure-proxy-health
+```
+
+**LinkedIn / browser `ERR_PROXY_CONNECTION_FAILED`** when a flaky local Node proxy is still active:
+
+```powershell
+.\ensure-proxy.cmd prefer-direct
+# or
+make ensure-direct
+python -m src ensure-proxy-health --prefer-direct --confirm PREFER_DIRECT_WININET
+```
+
+Then fully quit and reopen LinkedIn. `start-api.ps1` also runs ensure automatically (use `-PreferDirectProxy` to force direct).
+
 Preview-first install for post-logon guardian + boot trace. See `docs/startup-observability.md`.
 
 ```powershell

@@ -329,3 +329,35 @@ def cmd_auto_fix_proxy(args: argparse.Namespace) -> int:
     if outcome == "unsupported":
         return 2
     return 0
+
+
+def cmd_ensure_proxy_health(args: argparse.Namespace) -> int:
+    """Session ensure: dead-proxy fix + startup observability; optional prefer-direct."""
+    if (code := exit_code_if_not_windows("ensure-proxy-health")) is not None:
+        return code
+    from src.proxy_drift.ensure_health import run_ensure_proxy_health
+
+    dry_run = bool(getattr(args, "dry_run", False))
+    result = run_ensure_proxy_health(
+        dry_run=dry_run,
+        prefer_direct=bool(getattr(args, "prefer_direct", False)),
+        confirm=str(getattr(args, "confirm_phrase", "") or ""),
+        skip_observability_install=bool(getattr(args, "skip_observability_install", False)),
+        skip_cursor_fix=bool(getattr(args, "skip_cursor_fix", False)),
+        guardian_interval_seconds=int(getattr(args, "guardian_interval", 60)),
+        repo_root=Path.cwd(),
+    )
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(f"Outcome: {result.get('outcome')}")
+        print(f"Classification: {result.get('classification')}")
+        print(f"Proxy: enable={result.get('proxy_enable')} server={result.get('proxy_server')}")
+        print(f"Observability installed: {result.get('observability_installed')}")
+        print(result.get("recommended_next_step") or "")
+    outcome = str(result.get("outcome") or "")
+    if outcome in {"still_dead", "needs_prefer_direct_confirm"}:
+        return 1
+    if outcome == "unsupported":
+        return 2
+    return 0
