@@ -1,0 +1,12 @@
+# Diagnostic output
+clipboard-result.json
+*.clipboard-result.json
+
+# PowerShell
+*.clixml
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
