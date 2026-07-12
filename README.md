@@ -668,6 +668,8 @@ After merge: [`build.yml`](.github/workflows/build.yml) pushes an immutable GHCR
 
 Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch_protection.md](docs/ci_branch_protection.md)
 
+Optional maintainer helper (not a product feature): when you publish a GitHub Release, [`.github/workflows/linkedin-release-draft.yml`](.github/workflows/linkedin-release-draft.yml) can generate a **LinkedIn post draft** for manual review — it does **not** auto-publish. See [docs/linkedin-release-automation.md](docs/linkedin-release-automation.md).
+
 ---
 
 ## Documentation index

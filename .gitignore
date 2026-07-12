@@ -92,3 +92,7 @@ demo-output/reports/*
 !demo-output/timelines/
 demo-output/timelines/*
 !demo-output/timelines/.gitkeep
+
+# Generated LinkedIn release drafts (workflow artifacts; keep folder)
+artifacts/linkedin/*
+!artifacts/linkedin/.gitkeep

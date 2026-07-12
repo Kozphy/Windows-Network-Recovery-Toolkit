@@ -1,0 +1,294 @@
+# LinkedIn release draft (manual approval required)
+#
+# Generates a professional LinkedIn *draft* when a GitHub Release is published.
+# Does NOT post to LinkedIn. Optional Zapier webhook receives draft-only payloads
+# when ZAPIER_LINKEDIN_WEBHOOK_URL is configured.
+#
+# Permissions: contents read + issues write. Secrets are never echoed.
+
+name: LinkedIn release draft
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag (e.g. v0.2.0)
+        required: true
+        type: string
+      release_name:
+        description: Release display name
+        required: false
+        type: string
+        default: ""
+      release_url:
+        description: Release HTML URL (optional; derived if empty)
+        required: false
+        type: string
+        default: ""
+      notes:
+        description: Release notes / body
+        required: false
+        type: string
+        default: ""
+      published_at:
+        description: Publication timestamp (ISO-8601)
+        required: false
+        type: string
+        default: ""
+      validation_summary:
+        description: Optional verified test/validation summary (no secrets)
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: linkedin-release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  draft:
+    name: generate-linkedin-draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Materialize release payload
+        id: payload
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          REL_TAG: ${{ github.event.release.tag_name }}
+          REL_NAME: ${{ github.event.release.name }}
+          REL_URL: ${{ github.event.release.html_url }}
+          REL_BODY: ${{ github.event.release.body }}
+          REL_PUBLISHED: ${{ github.event.release.published_at }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_NAME: ${{ inputs.release_name }}
+          INPUT_URL: ${{ inputs.release_url }}
+          INPUT_NOTES: ${{ inputs.notes }}
+          INPUT_PUBLISHED: ${{ inputs.published_at }}
+          INPUT_VALIDATION: ${{ inputs.validation_summary }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          event = os.environ.get("EVENT_NAME", "")
+          repo = os.environ["REPO"]
+          if event == "release":
+              tag = os.environ.get("REL_TAG") or ""
+              name = os.environ.get("REL_NAME") or tag
+              url = os.environ.get("REL_URL") or ""
+              notes = os.environ.get("REL_BODY") or ""
+              published = os.environ.get("REL_PUBLISHED") or ""
+              validation = ""
+          else:
+              tag = os.environ.get("INPUT_TAG") or ""
+              name = os.environ.get("INPUT_NAME") or tag
+              url = os.environ.get("INPUT_URL") or ""
+              notes = os.environ.get("INPUT_NOTES") or ""
+              published = os.environ.get("INPUT_PUBLISHED") or ""
+              validation = os.environ.get("INPUT_VALIDATION") or ""
+          if not url and tag:
+              url = f"https://github.com/{repo}/releases/tag/{tag}"
+          payload = {
+              "repository": repo,
+              "release_name": name,
+              "tag": tag,
+              "release_url": url,
+              "notes": notes,
+              "published_at": published,
+              "validation_summary": validation,
+          }
+          path = Path("release-payload.json")
+          path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+          print(f"tag={tag}")
+          if not tag:
+              raise SystemExit("Release tag is required")
+          PY
+
+      - name: Generate LinkedIn draft
+        id: generate
+        run: |
+          python scripts/generate_linkedin_release_post.py \
+            --release-json release-payload.json \
+            --repo-root . \
+            --write-artifact \
+            --max-length 2800 > generate-out.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("generate-out.json").read_text(encoding="utf-8"))
+          Path("draft-body.txt").write_text(data["draft"], encoding="utf-8")
+          print(f"Wrote {data['draft_path']}")
+          PY
+
+      - name: Write GitHub Step Summary
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          data = json.loads(Path("generate-out.json").read_text(encoding="utf-8"))
+          payload = json.loads(Path("release-payload.json").read_text(encoding="utf-8"))
+          path = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          block = [
+              "# LinkedIn release draft (manual approval required)",
+              "",
+              f"- **Repository:** `{payload['repository']}`",
+              f"- **Release:** {payload['release_name']} (`{payload['tag']}`)",
+              f"- **URL:** {payload['release_url']}",
+              f"- **Published:** {payload.get('published_at') or '(manual run)'}",
+              "",
+              "## Draft",
+              "",
+              "```text",
+              data["draft"],
+              "```",
+              "",
+              "Do **not** publish until the review issue checklist is complete.",
+              "",
+          ]
+          path.write_text("\n".join(block) + "\n", encoding="utf-8")
+          PY
+
+      - name: Upsert review issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import urllib.parse
+          from pathlib import Path
+
+          payload = json.loads(Path("release-payload.json").read_text(encoding="utf-8"))
+          tag = payload["tag"]
+          title = f"LinkedIn draft: {payload['release_name'] or tag}"
+          marker = f"<!-- linkedin-release-draft:{tag} -->"
+          issue_body = subprocess.check_output(
+              [
+                  "python",
+                  "scripts/generate_linkedin_release_post.py",
+                  "--release-json",
+                  "release-payload.json",
+                  "--print-issue-body",
+              ],
+              text=True,
+              encoding="utf-8",
+          )
+
+          def gh_json(args: list[str]) -> object:
+              out = subprocess.check_output(["gh", *args], text=True, encoding="utf-8")
+              return json.loads(out) if out.strip() else None
+
+          # Search open + closed issues for the stable marker (idempotent upsert).
+          q = urllib.parse.quote(f'repo:{payload["repository"]} in:body "{marker}"')
+          search = gh_json(["api", f"search/issues?q={q}&per_page=5"])
+          items = (search or {}).get("items") or []
+          existing = None
+          for item in items:
+              if marker in (item.get("body") or ""):
+                  existing = item
+                  break
+
+          Path("issue-body.md").write_text(issue_body, encoding="utf-8")
+          if existing:
+              number = existing["number"]
+              subprocess.check_call(
+                  [
+                      "gh",
+                      "issue",
+                      "edit",
+                      str(number),
+                      "--title",
+                      title,
+                      "--body-file",
+                      "issue-body.md",
+                  ]
+              )
+              print(f"Updated issue #{number}")
+          else:
+              url = subprocess.check_output(
+                  [
+                      "gh",
+                      "issue",
+                      "create",
+                      "--title",
+                      title,
+                      "--body-file",
+                      "issue-body.md",
+                  ],
+                  text=True,
+                  encoding="utf-8",
+              ).strip()
+              print(f"Created issue: {url}")
+          PY
+
+      - name: Upload draft artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-draft-${{ github.event.release.tag_name || inputs.tag }}
+          path: |
+            artifacts/linkedin/
+            draft-body.txt
+            release-payload.json
+          retention-days: 30
+
+      - name: Optional Zapier webhook (draft only)
+        env:
+          ZAPIER_LINKEDIN_WEBHOOK_URL: ${{ secrets.ZAPIER_LINKEDIN_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          url = (os.environ.get("ZAPIER_LINKEDIN_WEBHOOK_URL") or "").strip()
+          if not url:
+              print("ZAPIER_LINKEDIN_WEBHOOK_URL not set; skipping webhook.")
+              raise SystemExit(0)
+
+          data = json.loads(Path("generate-out.json").read_text(encoding="utf-8"))
+          payload = json.loads(Path("release-payload.json").read_text(encoding="utf-8"))
+          body = {
+              "repository": payload["repository"],
+              "release_name": payload["release_name"],
+              "tag": payload["tag"],
+              "release_url": payload["release_url"],
+              "draft": data["draft"],
+              "approval_required": True,
+          }
+          req = urllib.request.Request(
+              url,
+              data=json.dumps(body).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=30) as resp:
+                  print(f"Webhook status: {resp.status}")
+          except urllib.error.HTTPError as exc:
+              print(f"Webhook HTTP error: {exc.code}")
+              raise SystemExit(1) from exc
+          # Never print the webhook URL or Authorization material.
+          print("Webhook delivered (URL redacted).")
+          PY

@@ -1,0 +1,73 @@
+---
+description: LinkedIn content tone, non-claims, and folder conventions for docs/linkedin/
+globs: docs/linkedin/**/*
+alwaysApply: false
+---
+
+# LinkedIn content — Windows Network Recovery Toolkit
+
+## Scope
+
+Apply when drafting, editing, or reviewing files under `docs/linkedin/` (drafts, published copies, performance notes) or when generating LinkedIn posts about this repository.
+
+Related automation (draft-only, no auto-publish): `docs/linkedin-release-automation.md` and `.github/workflows/linkedin-release-draft.yml`.
+
+## Folder conventions
+
+| Path | Purpose |
+|------|---------|
+| `docs/linkedin/drafts/` | Work-in-progress posts (not yet published) |
+| `docs/linkedin/published/` | Snapshot of posts that went live (for archive) |
+| `docs/linkedin/performance/` | Optional engagement notes (impressions, comments) — no secrets |
+
+Do **not** store LinkedIn tokens, Zapier webhook URLs, emails, or API keys in these folders.
+
+## Project positioning (use real terminology)
+
+- Technology Risk & Control Analytics / Windows endpoint **evidence** toolkit
+- Evidence tiers, proof tiers, policy-gated remediation (dry-run by default)
+- Audit-ready outputs and `limitations[]`
+- Optional: Procmon import, proxy-watch soak, read-only monitoring dashboard, Power BI exports — only if the post is about a release that includes them
+
+## Non-claims (never write these)
+
+- Antivirus, EDR, XDR, malware verdicts, MITM “confirmed”
+- Autonomous / silent repair of production endpoints
+- Invented test counts, customers, benchmarks, or certifications
+- Guaranteed security outcomes
+
+## Tone
+
+Professional, factual. Suitable for Technology Risk, IT Audit, Platform Engineering, SRE, and Cyber Risk audiences.
+
+Prefer: “evidence”, “classification”, “preview”, “policy-gated”, “audit trail”.  
+Avoid: “AI agent fixed your network”, “detects malware”, “enterprise-ready SLA”.
+
+## Draft template
+
+```text
+I've released {name} of my Windows Network Recovery Toolkit.
+
+What's new:
+• {verified improvement}
+• {verified improvement}
+• {verified improvement}
+
+Why it matters:
+{practical impact without overclaim}
+
+Validation:
+{only verified local/CI facts}
+
+GitHub:
+{release or repo URL}
+
+#TechnologyRisk #PlatformEngineering #SRE #Windows #OpenSource
+```
+
+## Approval before publish
+
+- [ ] Technical claims verified against code/docs
+- [ ] Test/validation lines verified (or omitted)
+- [ ] No confidential host/user/path data
+- [ ] Ready to publish (human posts; automation stays draft-only)
