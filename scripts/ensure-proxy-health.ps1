@@ -2,9 +2,24 @@
 <#
 .SYNOPSIS
   Ensure WinINET proxy health when opening / running this repo.
+
 .DESCRIPTION
   Clears dead localhost proxies, installs startup observability if missing,
-  and optionally forces direct access (--PreferDirect) for LinkedIn/browser reliability.
+  and optionally forces direct access (-PreferDirect) for browser reliability.
+
+  Safety boundaries:
+    Prefer -DryRun for preview. Does not kill processes or reset firewall/adapters.
+    Registry/proxy changes go through python -m src ensure-proxy-health (policy-gated).
+
+  Side effects:
+    May mutate WinINET proxy toward healthy/direct; may install scheduled tasks
+    for startup observability / guardian unless skipped.
+
+  Idempotency:
+    Re-run when already healthy should soft-skip or report no action (see CLI JSON).
+
+  Recovery:
+    Re-run with -DryRun; inspect with python -m windows_network_toolkit proxy-status.
 
   Examples:
     .\scripts\ensure-proxy-health.ps1

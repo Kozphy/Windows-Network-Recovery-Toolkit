@@ -1,3 +1,16 @@
+/**
+ * @file Static platform dashboard helpers (vanilla JS) served with the FastAPI portfolio UI.
+ *
+ * @remarks
+ * Fetches read-oriented `/health`, `/platform/audit/logs`, and replay endpoints into
+ * DOM panels. Not the NiceGUI monitoring dashboard (`python -m windows_network_toolkit dashboard`).
+ *
+ * Side effects: browser `fetch` only. No registry or remediations.
+ *
+ * Audit notes: failed fetches render `{ error }` in the panel — check backend reachability
+ * and that audit JSONL exists before treating empty panels as "healthy".
+ */
+
 async function fetchJson(url, opts) {
   const r = await fetch(url, opts);
   if (!r.ok) throw new Error(`${url} -> ${r.status}`);

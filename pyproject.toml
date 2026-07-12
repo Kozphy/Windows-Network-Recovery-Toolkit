@@ -21,6 +21,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+dashboard = [
+    "nicegui>=2.0",
+    "psutil>=5.9",
+    "pywin32>=306; platform_system=='Windows'",
+]
 postgres = [
     "psycopg2-binary>=2.9",
 ]

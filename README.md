@@ -266,6 +266,12 @@ python -m windows_network_toolkit analytics-export --fixture tests/fixtures/anal
 python -m windows_network_toolkit evidence-report --analytics --fixture tests/fixtures/analytics_pipeline_fixture.json
 python -m windows_network_toolkit diagnose --proof --fixture examples/evidence/DEAD_PROXY_CONFIG.json
 
+# Local monitoring dashboard (read-only; requires optional dashboard extras)
+pip install -e ".[dashboard]"
+python -m windows_network_toolkit dashboard
+# Opens http://127.0.0.1:8765 — Overview, Live Timeline, Process Snapshot, Incident Detail
+python -m windows_network_toolkit procmon-import .\capture.csv
+
 # Risk & governance
 python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
 python -m windows_network_toolkit control-test --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
@@ -397,6 +403,18 @@ python -m windows_network_toolkit evidence-report --latest --fixture tests/fixtu
 - **WinINET vs WinHTTP mismatch:** compare `proxy-status` WinINET block with WinHTTP direct-access flag.
 
 Listener and process names are **correlation only** unless registry writer evidence exists. See [docs/case-study-1-proxy-drift.md](docs/case-study-1-proxy-drift.md).
+
+**Local monitoring dashboard (read-only)**
+
+| Item | Detail |
+|------|--------|
+| Launch | `python -m windows_network_toolkit dashboard` → http://127.0.0.1:8765 |
+| Screens | Overview cards, Live Timeline (pause/resume/clear UI/filters), Process Snapshot, Incident Detail |
+| Procmon | `python -m windows_network_toolkit procmon-import .\capture.csv` |
+| Security | No disable-proxy / kill-process / registry-write buttons; remediation stays on gated CLIs |
+| Install | `pip install -e ".[dashboard]"` (nicegui, psutil, pywin32 on Windows) |
+
+Troubleshooting: if bind fails, confirm nothing else uses port 8765; never use `--host 0.0.0.0` unless you intentionally accept exposure via `--allow-non-loopback-bind`.
 
 ### Why `ERR_PROXY_CONNECTION_FAILED` happens (and ping still works)
 
