@@ -94,6 +94,18 @@ python -m src proxy-causation --fixture tests/fixtures/proxy_causation/scenario1
 
 Modules: `src/proxy_guard/registry_writer_proof.py`, `final_causation.py`, `port_owner.py`, `process_tree.py`, `proxy_path_proof.py`
 
+### 1b. Localhost web-app refuse-to-connect
+
+```text
+localhost-diagnose → TCP/listener/process/HTTP/proxy evidence → classification + T0–T5 → PREVIEW remediation
+```
+
+```powershell
+python -m windows_network_toolkit localhost-diagnose --url "http://localhost:61161/ChtPopupForm" --json --remediation-preview
+```
+
+Docs: [localhost-diagnose.md](localhost-diagnose.md)
+
 ### 2. Multi-domain decision platform (fixture-based)
 
 ```text
@@ -298,8 +310,10 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 | [security-review.md](security-review.md) | Threat model + abuse-case pack |
 | [rollback-strategy.md](rollback-strategy.md) | Preview-first rollback six-part model |
 | [startup-observability.md](startup-observability.md) | v0.3.0 startup observability architecture and CLI |
+| [localhost-diagnose.md](localhost-diagnose.md) | Localhost ERR_CONNECTION_REFUSED evidence pipeline |
 | [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery runbook |
 | [audit-custody.md](audit-custody.md) | Level 1 hash-chained custody + tip anchor verify |
+| [procmon_proxy_filter.md](procmon_proxy_filter.md) | Procmon RegSetValue filter set + CSV import |
 | [monitoring-dashboard.md](monitoring-dashboard.md) | Read-only NiceGUI local monitoring dashboard |
 | [cli_reference.md](cli_reference.md) | Full `python -m src` command inventory |
 

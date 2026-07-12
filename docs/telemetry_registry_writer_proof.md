@@ -26,7 +26,7 @@ Listener attribution uses netstat/process metadata. It is useful candidate evide
 
 - **Sysmon Event ID 13** — registry value set
 - **Security Event ID 4657** — registry auditing (when enabled)
-- **Procmon / ETW exports** — operator-supplied traces
+- **Procmon / ETW exports** — operator-supplied traces ([procmon filter set](procmon_proxy_filter.md))
 
 See [ADR-004-heuristic-attribution-is-not-proof.md](adr/ADR-004-heuristic-attribution-is-not-proof.md).
 

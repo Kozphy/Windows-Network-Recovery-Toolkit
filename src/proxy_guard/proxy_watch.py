@@ -15,6 +15,8 @@ Key invariants:
     * This module never mutates the registry or network stack.
     * ``auto_rollback`` read from policy never performs a live rollback here—only emits an advisory
       stderr banner pointing operators to gated restore commands.
+    * ``soak_minutes > 0`` bounds the loop and emits ``watch_soak_result`` (rewrite stickiness
+      observation — not writer proof).
 
 Input assumptions:
     * ``prior_state`` starts as ``None`` so the initial poll establishes baseline without logging drift.
@@ -49,6 +51,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +63,40 @@ from .change_attribution import attribute_proxy_change
 from .process_snapshot_enrichment import capture_enriched_process_snapshot
 from .state import snapshot_wininet_state
 from .wininet_change_diff import diff_wininet_states
+
+
+@dataclass(frozen=True)
+class WatchSoakResult:
+    """Outcome of a bounded ``proxy-watch`` soak (read-only).
+
+    Status values:
+        * ``STABLE`` — no WinINET drift during the window.
+        * ``CHANGED`` — one or more drifts observed; ProxyEnable did not flip 0→1
+          (or baseline was already enabled).
+        * ``REWRITE_DETECTED`` — ProxyEnable moved from disabled (0) to enabled (1).
+        * ``SOAK_SKIPPED`` — soak_minutes <= 0 (caller used unbounded / ``--once`` path).
+    """
+
+    status: str
+    soak_minutes: float
+    poll_seconds: float
+    samples: int
+    changes_observed: int
+    detail: str
+    baseline_proxy_enable: int | None
+    last_proxy_enable: int | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "soak_minutes": self.soak_minutes,
+            "poll_seconds": self.poll_seconds,
+            "samples": self.samples,
+            "changes_observed": self.changes_observed,
+            "detail": self.detail,
+            "baseline_proxy_enable": self.baseline_proxy_enable,
+            "last_proxy_enable": self.last_proxy_enable,
+        }
 
 
 def load_watch_policy(repo_root: Path) -> dict[str, Any]:
@@ -471,6 +508,18 @@ def _run_final_causation_if_enabled(
         return None
 
 
+def _proxy_enable_int(state: dict[str, Any] | None) -> int | None:
+    if not state:
+        return None
+    raw = state.get("proxy_enable")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def run_proxy_watch_loop(
     *,
     repo_root: Path,
@@ -479,42 +528,74 @@ def run_proxy_watch_loop(
     run: Callable[..., Any] = subprocess.run,
     evidence_boost: float = 0.0,
     final_causation: bool = False,
-) -> None:
-    """Poll WinINET snapshots until interrupted; on drift, inventory processes and persist audit rows.
+    soak_minutes: float = 0.0,
+    exit_on_rewrite: bool = True,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    monotonic_fn: Callable[[], float] = time.monotonic,
+) -> WatchSoakResult | None:
+    """Poll WinINET snapshots until interrupted, ``--once``, or a soak deadline.
 
     Args:
         repo_root: Toolkit root hosting ``logs/`` for JSONL sinks and ``config/`` for optional policy.
         interval_seconds: Sleep between polls; clamped downstream to ``>= 1.0`` seconds.
         once: When True, terminates after baseline plus one drift-check cycle (still prints
-            ``initial_poll`` once).
+            ``initial_poll`` once). Ignored when ``soak_minutes > 0``.
         run: Injectable ``subprocess.run`` surrogate for tests (passed through to snapshot/inventory).
-        evidence_confidence_boost: Additive score mass forwarded to ``attribute_proxy_change``
+        evidence_boost: Additive score mass forwarded to ``attribute_proxy_change``
             (typically from optional Procmon CSV path parsed by CLI before calling this routine).
+        final_causation: When True, run final causation collector on each drift.
+        soak_minutes: When ``> 0``, poll for that many minutes then exit with a
+            :class:`WatchSoakResult` (short soak for rewrite detection).
+        exit_on_rewrite: When soaking, stop early if ``ProxyEnable`` flips ``0 → 1``.
+        sleep_fn: Injectable sleep for tests.
+        monotonic_fn: Injectable monotonic clock for tests.
 
     Returns:
-        ``None``. Loop runs until ``KeyboardInterrupt`` in normal interactive use unless ``once``.
+        :class:`WatchSoakResult` when ``soak_minutes > 0``; otherwise ``None`` (unbounded /
+        ``--once`` interactive paths).
 
     Side effects:
         Writes append-only NDJSON lines to ``logs/proxy_guard.jsonl`` via
         ``emit_proxy_change_detected_audit`` whenever ``diff.changed`` is true (after baseline).
         Writes human summaries to stderr. First iteration emits JSON to stdout once.
+        Soak completion also emits a ``watch_soak_result`` JSON object to stdout.
 
     Raises:
         None by design—subprocess faults are swallowed within snapshot/inventory layers.
 
     Audit Notes:
         Correlate stdout ``initial_poll`` ``state`` with subsequent JSONL timestamps when narrowing
-        which configuration transition caused user-visible breakage.
+        which configuration transition caused user-visible breakage. Soak status is observation of
+        registry stickiness, not writer proof — pair with Procmon/Sysmon for attribution.
     """
 
     policy = load_watch_policy(repo_root)
     prior_state: dict[str, Any] | None = None
     printed_poll = False
+    soaking = soak_minutes > 0
+    deadline = (monotonic_fn() + soak_minutes * 60.0) if soaking else None
+    samples = 0
+    changes_observed = 0
+    baseline_enable: int | None = None
+    last_enable: int | None = None
+    rewrite_detected = False
+    poll_seconds = max(1.0, float(interval_seconds))
+
     while True:
         now_state = snapshot_wininet_state(run=run)
+        samples += 1
+        last_enable = _proxy_enable_int(now_state)
+        if baseline_enable is None:
+            baseline_enable = last_enable
+
         if prior_state is not None:
             diff = diff_wininet_states(prior_state, now_state, policy=policy)
             if diff.get("changed"):
+                changes_observed += 1
+                prior_en = _proxy_enable_int(prior_state)
+                if prior_en == 0 and last_enable == 1:
+                    rewrite_detected = True
+
                 parsed = now_state.get("parsed_proxy_server") or {}
                 port_hint = parsed.get("localhost_port")
                 port_int = None
@@ -565,18 +646,72 @@ def run_proxy_watch_loop(
                 _print_human_banner(diff=diff, attribution=attribution, decision=decision, health_audit=health_audit)
 
                 if bool(policy.get("auto_rollback")):
-                    banner = "[policy] auto_rollback=true but proxy-watch never executes live rollback here — use proxy-guard or typed restores."
+                    banner = (
+                        "[policy] auto_rollback=true but proxy-watch never executes live "
+                        "rollback here — use proxy-guard or typed restores."
+                    )
                     print(banner, file=sys.stderr)
+
+                if soaking and exit_on_rewrite and rewrite_detected:
+                    prior_state = now_state
+                    break
 
         prior_state = now_state
 
         if not printed_poll:
             print(
-                json.dumps({"event": "initial_poll", "timestamp_utc": utc_now_iso(), "state": prior_state}, indent=2),
+                json.dumps(
+                    {"event": "initial_poll", "timestamp_utc": utc_now_iso(), "state": prior_state},
+                    indent=2,
+                ),
                 flush=True,
             )
             printed_poll = True
 
+        if soaking:
+            assert deadline is not None
+            if rewrite_detected and exit_on_rewrite:
+                break
+            if monotonic_fn() >= deadline:
+                break
+            remaining = deadline - monotonic_fn()
+            if remaining <= 0:
+                break
+            sleep_fn(min(poll_seconds, remaining))
+            continue
+
         if once:
             break
-        time.sleep(max(1.0, interval_seconds))
+        sleep_fn(poll_seconds)
+
+    if not soaking:
+        return None
+
+    if rewrite_detected:
+        status = "REWRITE_DETECTED"
+        detail = (
+            "ProxyEnable flipped from 0 to 1 during soak. Suspected active reverter. "
+            "Capture Procmon/Sysmon for writer proof; do not loop proxy-disable."
+        )
+    elif changes_observed > 0:
+        status = "CHANGED"
+        detail = f"Observed {changes_observed} WinINET drift event(s); ProxyEnable did not flip 0→1."
+    else:
+        status = "STABLE"
+        detail = "no_wininet_drift_during_soak"
+
+    result = WatchSoakResult(
+        status=status,
+        soak_minutes=float(soak_minutes),
+        poll_seconds=poll_seconds,
+        samples=samples,
+        changes_observed=changes_observed,
+        detail=detail,
+        baseline_proxy_enable=baseline_enable,
+        last_proxy_enable=last_enable,
+    )
+    print(
+        json.dumps({"event": "watch_soak_result", **result.to_dict()}, indent=2),
+        flush=True,
+    )
+    return result

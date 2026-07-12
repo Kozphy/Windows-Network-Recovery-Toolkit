@@ -56,6 +56,7 @@ from edge_device.cli_handlers import cmd_edge_diagnose, cmd_edge_replay
 
 from .command_handlers import (
     cmd_diagnose_live,
+    cmd_procmon_filter_set,
     cmd_proxy_attribution,
     cmd_proxy_causation,
     cmd_proxy_classify,
@@ -1316,6 +1317,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_pxw.add_argument("--interval", type=float, default=5.0, help="Seconds between polls (default 5).")
     p_pxw.add_argument("--once", action="store_true", help="Poll twice (detect first change if any) then exit.")
     p_pxw.add_argument(
+        "--soak-minutes",
+        type=float,
+        default=0.0,
+        dest="soak_minutes",
+        help="Short soak: poll for N minutes then exit with watch_soak_result (0=unbounded). Use 2 for rewrite checks.",
+    )
+    p_pxw.add_argument(
+        "--exit-on-rewrite",
+        dest="exit_on_rewrite",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="During soak, exit early when ProxyEnable flips 0→1 (default: true). Use --no-exit-on-rewrite to run full window.",
+    )
+    p_pxw.add_argument(
         "--evidence-csv",
         type=str,
         default=None,
@@ -1330,6 +1345,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="On drift, run final causation collector (best-effort; does not require Sysmon).",
     )
     p_pxw.set_defaults(func=cmd_proxy_watch)
+
+    p_pmf = sub.add_parser(
+        "procmon-filter-set",
+        help="Print or export Procmon Include filters for WinINET proxy RegSetValue writer capture.",
+    )
+    p_pmf.add_argument("--json", dest="emit_json", action="store_true", help="Emit machine-readable filter set JSON.")
+    p_pmf.add_argument(
+        "--export",
+        dest="procmon_filter_export",
+        metavar="PATH",
+        default=None,
+        help="Write filter set JSON to PATH (creates parents).",
+    )
+    p_pmf.set_defaults(func=cmd_procmon_filter_set)
 
     p_pxw = sub.add_parser(
         "proxy-watch-report",

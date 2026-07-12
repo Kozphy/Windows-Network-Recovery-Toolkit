@@ -184,6 +184,73 @@ def cmd_bad_gateway_diagnose(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_localhost_diagnose(args: argparse.Namespace) -> int:
+    """Diagnose localhost web-app failures (ERR_CONNECTION_REFUSED) — read-only."""
+
+    from windows_network_toolkit.diagnostics.localhost import (
+        render_localhost_diagnose,
+        run_localhost_diagnose,
+    )
+
+    inject = None
+    fixture = getattr(args, "fixture", "") or ""
+    if fixture:
+        inject = _load_fixture_data(fixture)
+
+    report = run_localhost_diagnose(
+        url=getattr(args, "url", None) or None,
+        host=getattr(args, "host", None) or None,
+        port=getattr(args, "port", None),
+        path=getattr(args, "path", None) or None,
+        timeout=float(getattr(args, "timeout", 2.0) or 2.0),
+        include_process=bool(getattr(args, "include_process", False)),
+        include_http=bool(getattr(args, "include_http", False)),
+        include_proxy_comparison=bool(getattr(args, "include_proxy_comparison", False)),
+        include_nearby_listeners=bool(getattr(args, "include_nearby_listeners", False)),
+        remediation_preview=bool(getattr(args, "remediation_preview", False)),
+        evidence_out=getattr(args, "evidence_out", None) or None,
+        allow_non_loopback=bool(getattr(args, "allow_non_loopback", False)),
+        inject=inject,
+        prior_listener_evidence=bool((inject or {}).get("prior_listener_evidence")),
+        verbose=bool(getattr(args, "verbose", False)),
+    )
+    as_json = bool(getattr(args, "json", False)) or bool(getattr(args, "emit_json", False))
+    sys.stdout.write(
+        render_localhost_diagnose(
+            report,
+            as_json=as_json,
+            verbose=bool(getattr(args, "verbose", False)),
+        )
+    )
+    if report.get("validation_error"):
+        return 2
+    return 0
+
+
+def cmd_localhost_watch(args: argparse.Namespace) -> int:
+    """Watch a localhost target for listener/TCP/HTTP transitions — read-only."""
+
+    from windows_network_toolkit.diagnostics.localhost import run_localhost_watch
+
+    try:
+        summary = run_localhost_watch(
+            url=getattr(args, "url", None) or None,
+            host=getattr(args, "host", None) or None,
+            port=getattr(args, "port", None),
+            path=getattr(args, "path", None) or None,
+            interval=float(getattr(args, "interval", 2.0) or 2.0),
+            duration=float(getattr(args, "duration", 60.0) or 60.0),
+            timeout=float(getattr(args, "timeout", 2.0) or 2.0),
+            include_http=bool(getattr(args, "include_http", False)),
+            jsonl_out=getattr(args, "jsonl_out", None) or None,
+        )
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        return 2
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    return 0
+
+
 def cmd_proxy_status(args: argparse.Namespace) -> int:
     """Emit read-only WinINET/WinHTTP proxy status JSON.
 
@@ -1660,6 +1727,54 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     bg.add_argument("--json-only", action="store_true", help="Emit JSON only")
     bg.add_argument("--summary-only", action="store_true", help="Human summary without full JSON")
     bg.set_defaults(func=cmd_bad_gateway_diagnose)
+
+    lh = sub.add_parser(
+        "localhost-diagnose",
+        help="Diagnose localhost web-app failures (ERR_CONNECTION_REFUSED) — read-only",
+    )
+    lh.add_argument("--url", default="", help="Preferred form: http://localhost:PORT/path")
+    lh.add_argument("--host", default="", help="Loopback host when --url is omitted")
+    lh.add_argument("--port", type=int, default=None, help="Port when --url is omitted")
+    lh.add_argument("--path", default="", help="URL path when --url is omitted")
+    lh.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON report")
+    lh.add_argument("--timeout", type=float, default=2.0, help="Per-probe timeout seconds (default 2)")
+    lh.add_argument("--include-process", action="store_true", help="Collect process evidence for listener PIDs")
+    lh.add_argument("--include-http", action="store_true", help="HTTP probe after TCP success")
+    lh.add_argument(
+        "--include-proxy-comparison",
+        action="store_true",
+        help="Compare direct vs proxy-aware HTTP (implies HTTP probe when TCP connects)",
+    )
+    lh.add_argument(
+        "--include-nearby-listeners",
+        action="store_true",
+        help="Bounded related loopback listeners (no port scan)",
+    )
+    lh.add_argument("--evidence-out", default="", help="Write full JSON report to path")
+    lh.add_argument("--remediation-preview", action="store_true", help="Include PREVIEW/BLOCK remediation items")
+    lh.add_argument("--verbose", action="store_true", help="Human summary plus full JSON")
+    lh.add_argument(
+        "--allow-non-loopback",
+        action="store_true",
+        help="Override loopback-only guard (policy-sensitive; default rejects non-loopback)",
+    )
+    lh.add_argument("--fixture", default="", help="Optional inject fixture JSON")
+    lh.set_defaults(func=cmd_localhost_diagnose)
+
+    lhw = sub.add_parser(
+        "localhost-watch",
+        help="Watch localhost target for listener/TCP/HTTP transitions (read-only)",
+    )
+    lhw.add_argument("--url", default="", help="Preferred form: http://localhost:PORT/path")
+    lhw.add_argument("--host", default="", help="Loopback host when --url is omitted")
+    lhw.add_argument("--port", type=int, default=None, help="Port when --url is omitted")
+    lhw.add_argument("--path", default="", help="URL path when --url is omitted")
+    lhw.add_argument("--interval", type=float, default=2.0, help="Seconds between polls (min 1)")
+    lhw.add_argument("--duration", type=float, default=60.0, help="Watch window seconds")
+    lhw.add_argument("--timeout", type=float, default=2.0, help="Per-probe timeout")
+    lhw.add_argument("--include-http", action="store_true", help="Include HTTP health in snapshots")
+    lhw.add_argument("--jsonl-out", default="", help="Append transition events to JSONL path")
+    lhw.set_defaults(func=cmd_localhost_watch)
 
     ps = sub.add_parser("proxy-status", help="Read-only WinINET/WinHTTP proxy status")
     ps.add_argument("--fixture", default="", help="Optional fixture JSON")

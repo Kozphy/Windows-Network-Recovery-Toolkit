@@ -105,7 +105,9 @@ python -m src proxy-investigate --audit
 python -m src proxy-diagnose
 python -m src proxy-diagnose --json
 python -m src proxy-attribution
+python -m src procmon-filter-set
 python -m src proxy-watch --interval 5
+python -m src proxy-watch --interval 3 --soak-minutes 2 --exit-on-rewrite
 python -m src proxy-report
 python -m src proxy disable
 python -m src proxy disable --dry-run

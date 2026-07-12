@@ -91,6 +91,37 @@ That limitation keeps the event at `STATE_CHANGE` or `CORRELATED_PROCESS`; it do
 WinINET proxy values. The import is read-only and append-only. Preserve the original Procmon trace
 when audit chain of custody matters.
 
+### Filter set (shipped)
+
+Use the toolkit recipe so captures match the importer:
+
+```powershell
+python -m src procmon-filter-set
+python -m src procmon-filter-set --json
+```
+
+Canonical JSON: `telemetry/procmon/wininet_proxy_regsetvalue.filter.json`.  
+Operator guide: [procmon_proxy_filter.md](procmon_proxy_filter.md).
+
+After export:
+
+```powershell
+python -m src proxy-attribution --procmon path\to\export.csv --json
+```
+
+### Short proxy-watch soak
+
+While Procmon is capturing (or after a clear), run a bounded watch for rewrite stickiness:
+
+```powershell
+python -m src proxy-watch --interval 3 --soak-minutes 2 --exit-on-rewrite
+# or
+.\scripts\proxy-watch-soak.ps1
+```
+
+Exit code `1` means `REWRITE_DETECTED` (`ProxyEnable` flipped `0→1`). That is **observation of
+re-enable**, not writer proof — combine with the Procmon CSV for proof-tier evidence.
+
 ## Classifications
 
 - `MANUAL_USER_CHANGE`

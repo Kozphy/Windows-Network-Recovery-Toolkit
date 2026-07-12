@@ -13,8 +13,9 @@ and append-only auditing under **`logs/proxy_guard.jsonl`**. Builds on existing 
 | `src/proxy_guard/process_inventory.py` | Capture capped CIM rows + localhost listener correlations (best-effort, no elevated default). |
 | `src/proxy_guard/change_attribution.py` | Score candidate PIDs/heuristics; explicit `limitations` (not write-proof). |
 | `src/proxy_guard/evidence_import.py` | Optional Procmon CSV / Sysmon JSONL-derived confidence boosts only. |
+| `src/proxy_guard/procmon_filter_set.py` | Canonical Procmon Include filter recipe (`procmon-filter-set` CLI). |
 | `src/proxy_guard/audit.py` | Append `logs/proxy_guard.jsonl` (`schema_version` `1`). |
-| `src/proxy_guard/proxy_watch.py` | Poll loop wiring policy → diff → inventory → attribution → audit + stderr banners. |
+| `src/proxy_guard/proxy_watch.py` | Poll loop + optional `--soak-minutes` rewrite soak; policy → diff → inventory → attribution → audit. |
 
 ## Why ping fits but HTTPS fails
 
@@ -39,10 +40,12 @@ Sysmon **`Event ID 13`** (registry value sets) materially improves fidelity when
 
 1. **`python -m src proxy-diagnose`** — classify FailureBlocks/risk narratives.
 2. **`python -m src proxy-watch --interval 5`** — HKCU snapshots + diff engine + attribution + **`logs/proxy_guard.jsonl`**.
-3. **`python -m src proxy-report --tail 50`** — summarize recent audited transitions.
-4. **`python -m src proxy-attribution`** — deepen listener/process rows for localhost ports.
-5. Decide: allowlist benign tooling (**`config/proxy_policy.json`**) vs **`proxy-disable`** / typed rollback.
-6. File restore: **`python -m src proxy-rollback --from-snapshot config\\last_known_good_proxy.json`** (preview defaults; live **`--confirm RESTORE_PROXY_SNAPSHOT_FILE`**).
+3. **Short soak (rewrite check):** `python -m src proxy-watch --interval 3 --soak-minutes 2` or `.\scripts\proxy-watch-soak.ps1`.
+4. **Writer proof (optional):** `python -m src procmon-filter-set` → capture CSV → `proxy-attribution --procmon` / `--evidence-csv`.
+5. **`python -m src proxy-report --tail 50`** — summarize recent audited transitions.
+6. **`python -m src proxy-attribution`** — deepen listener/process rows for localhost ports.
+7. Decide: allowlist benign tooling (**`config/proxy_policy.json`**) vs **`proxy-disable`** / typed rollback.
+8. File restore: **`python -m src proxy-rollback --from-snapshot config\\last_known_good_proxy.json`** (preview defaults; live **`--confirm RESTORE_PROXY_SNAPSHOT_FILE`**).
 
 ## Architecture
 
@@ -74,6 +77,8 @@ use **`proxy-guard`** typed flows or **`proxy-rollback`** for execution.
 
 ```powershell
 python -m src proxy-watch --interval 5 --once
+python -m src proxy-watch --interval 3 --soak-minutes 2 --exit-on-rewrite
+python -m src procmon-filter-set
 python -m src proxy-watch --interval 10 --evidence-csv .\procmon_inet_settings.csv
 python -m src proxy-report --json --tail 20
 python -m src proxy-rollback --from-snapshot .\config\last_known_good_proxy.json --dry-run

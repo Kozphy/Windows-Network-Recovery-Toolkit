@@ -68,7 +68,7 @@ flowchart LR
 
 | Stage | Role |
 |-------|------|
-| **Evidence Collection** | Read-only CLI probes: `proxy-status`, `proxy-health`, `proxy-watch`, `diagnose --proof`, optional fixture inject |
+| **Evidence Collection** | Read-only CLI probes: `proxy-status`, `proxy-health`, `localhost-diagnose`, `proxy-watch`, `diagnose --proof`, optional fixture inject |
 | **Evidence Normalization** | Canonical `EvidenceEvent` rows with deterministic `event_id`, `evidence_tier`, `limitations[]` |
 | **Deterministic Classification** | Full before/after state machine + incident classifier — same fixture → same label |
 | **Proof Tiering** | T0–T5 claim-strength cap; prevents skipping rungs in audit narrative |
