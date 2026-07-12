@@ -88,7 +88,7 @@ def probe_ssdp(
                         st = line.strip()
                         break
                 services.append({"source_ip": src_ip, "header": st[:120]})
-            except socket.timeout:
+            except TimeoutError:
                 break
     finally:
         sock.close()

@@ -24,12 +24,15 @@ from pathlib import Path
 from typing import Any
 
 from .classifier import classify_lan_behavior
-from .collectors import collect_inventory, collect_mdns_summary, collect_ssdp_summary, observations_from_watch_events
+from .collectors import (
+    collect_inventory,
+    observations_from_watch_events,
+)
 from .executive_report import build_executive_report, write_executive_report
 from .privacy_risk_score import compute_privacy_risk_score
 from .report import build_lan_privacy_report, render_lan_privacy_markdown
 from .segmentation_advisor import advise_segmentation
-from .watch import load_watch_jsonl, run_lan_watch
+from .watch import load_watch_jsonl
 
 try:
     from windows_network_toolkit.diagnostics.router_evidence.correlator import correlate_host_router

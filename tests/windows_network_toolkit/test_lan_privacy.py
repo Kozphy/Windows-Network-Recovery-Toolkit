@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from windows_network_toolkit.diagnostics.lan_privacy.classifier import classify_lan_behavior
 from windows_network_toolkit.diagnostics.lan_privacy.collectors import (
     collect_inventory,
@@ -14,7 +12,9 @@ from windows_network_toolkit.diagnostics.lan_privacy.collectors import (
 )
 from windows_network_toolkit.diagnostics.lan_privacy.models import LanClassification
 from windows_network_toolkit.diagnostics.lan_privacy.oui_lookup import lookup_vendor
-from windows_network_toolkit.diagnostics.lan_privacy.privacy_risk_score import compute_privacy_risk_score
+from windows_network_toolkit.diagnostics.lan_privacy.privacy_risk_score import (
+    compute_privacy_risk_score,
+)
 from windows_network_toolkit.diagnostics.lan_privacy.runner import (
     load_bundle,
     run_lan_risk_score_pipeline,
