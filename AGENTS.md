@@ -38,9 +38,12 @@ python -m windows_network_toolkit proxy-disable --dry-run true
 python -m src install-startup-observability --json
 python -m src collect-evidence-bundle
 python -m src ensure-proxy-health
+python -m src procmon-filter-set
+python -m src proxy-watch --interval 3 --soak-minutes 2 --exit-on-rewrite
 python -m windows_network_toolkit audit verify .audit/canonical_custody.jsonl --check-tip
 pytest -q tests/test_policy_safety_contract.py
 pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
+pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
 ```
 
 ## Key paths

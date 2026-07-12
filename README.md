@@ -375,6 +375,10 @@ A process **listening** on that port is **not** enough for a healthy proxy:
 python -m windows_network_toolkit proxy-health
 python -m windows_network_toolkit proxy-health --host 127.0.0.1 --port 62285 --json
 
+# Localhost web-app refused-to-connect (e.g. popup on http://localhost:61161/…)
+python -m windows_network_toolkit localhost-diagnose --url "http://localhost:61161/ChtPopupForm" --json --remediation-preview
+python -m windows_network_toolkit localhost-watch --url "http://localhost:61161/ChtPopupForm" --interval 2 --duration 60
+
 # Watch for drift; human summary on localhost transitions
 python -m windows_network_toolkit proxy-watch --interval 5 --format human --coalesce-ms 1000
 
@@ -382,7 +386,7 @@ python -m windows_network_toolkit proxy-watch --interval 5 --format human --coal
 python -m windows_network_toolkit proxy-replay --input tests/fixtures/proxy_loop.jsonl
 ```
 
-Classifications use full before/after state (not single-field diffs). See [docs/proxy-state-transitions.md](docs/proxy-state-transitions.md).
+Classifications use full before/after state (not single-field diffs). See [docs/proxy-state-transitions.md](docs/proxy-state-transitions.md). Localhost app diagnose: [docs/localhost-diagnose.md](docs/localhost-diagnose.md).
 
 ```powershell
 # Latest proxy-path evidence report (markdown)

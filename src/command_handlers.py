@@ -1016,21 +1016,25 @@ def cmd_proxy_watch(args: argparse.Namespace) -> int:
     """Run the ``proxy-watch`` loop: HKCU snapshots, drift diff, attribution, JSONL auditing.
 
     Args:
-        args: Namespace carrying ``interval``, ``once``, ``repo_root``, optional ``proxy_watch_evidence_csv``.
+        args: Namespace carrying ``interval``, ``once``, ``repo_root``, optional ``proxy_watch_evidence_csv``,
+            optional ``soak_minutes`` / ``exit_on_rewrite`` for a short rewrite soak.
 
     Returns:
-        ``0`` on normal completion (including ``--once`` short runs), ``2`` when the host OS is non-Windows.
+        ``0`` on normal completion (including ``--once`` and soak ``STABLE``/``CHANGED``),
+        ``1`` when soak reports ``REWRITE_DETECTED``,
+        ``2`` when the host OS is non-Windows.
 
     Side effects:
         Calls :func:`~src.proxy_guard.proxy_watch.run_proxy_watch_loop`, which reads policy files, invokes
         subprocess probes, appends NDJSON audits, prints ``initial_poll`` JSON to stdout, and prints alerts to stderr.
+        Soak runs also print ``watch_soak_result`` JSON.
 
     Privileges:
         Follows downstream probe requirements—typically interactive user token without mandatory elevation.
 
     Audit Notes:
         Persisted artifacts live under :func:`~src.proxy_guard.audit.proxy_change_audit_jsonl_path`; optional CSV
-        boosts only adjust scoring mass, not row schema.
+        boosts only adjust scoring mass, not row schema. Soak stickiness is observation, not writer proof.
 
     Failure modes:
         Missing evidence CSV paths log to stderr and continue with zero boost.
@@ -1051,13 +1055,55 @@ def cmd_proxy_watch(args: argparse.Namespace) -> int:
             eb += float(boost)
         else:
             print(f"Evidence CSV not found: {csv_path}", file=sys.stderr)
-    run_proxy_watch_loop(
+    soak_minutes = float(getattr(args, "soak_minutes", 0.0) or 0.0)
+    soak_result = run_proxy_watch_loop(
         repo_root=repo,
         interval_seconds=max(1.0, float(getattr(args, "interval", 5.0))),
         once=bool(getattr(args, "once", False)),
         evidence_boost=eb,
         final_causation=bool(getattr(args, "proxy_watch_final_causation", False)),
+        soak_minutes=soak_minutes,
+        exit_on_rewrite=bool(getattr(args, "exit_on_rewrite", True)),
     )
+    if soak_result is not None and soak_result.status == "REWRITE_DETECTED":
+        print(f"\nSOAK RESULT: {soak_result.status}", file=sys.stderr)
+        print(soak_result.detail, file=sys.stderr)
+        print(
+            "Identify the registry writer (Procmon filter set / Sysmon E13) before looping resets.",
+            file=sys.stderr,
+        )
+        return 1
+    if soak_result is not None:
+        print(f"\nSOAK RESULT: {soak_result.status} — {soak_result.detail}", file=sys.stderr)
+    return 0
+
+
+def cmd_procmon_filter_set(args: argparse.Namespace) -> int:
+    """Print or export the canonical Procmon filter set for WinINET proxy RegSetValue capture."""
+
+    from .proxy_guard.procmon_filter_set import (
+        default_filter_set_path,
+        export_procmon_filter_set,
+        format_procmon_filter_instructions,
+        procmon_filter_set_payload,
+    )
+
+    repo = _repo_root(getattr(args, "repo_root", None))
+    export_arg = getattr(args, "procmon_filter_export", None)
+    if export_arg:
+        out = Path(str(export_arg))
+        written = export_procmon_filter_set(out)
+        print(json.dumps({"exported": str(written), "filter_set": procmon_filter_set_payload()}, indent=2))
+        return 0
+    if bool(getattr(args, "emit_json", False)):
+        payload = procmon_filter_set_payload()
+        payload["shipped_path"] = str(default_filter_set_path(repo))
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+    print(format_procmon_filter_instructions(), end="")
+    shipped = default_filter_set_path(repo)
+    if shipped.is_file():
+        print(f"Shipped JSON: {shipped}")
     return 0
 
 
