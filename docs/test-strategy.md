@@ -11,6 +11,7 @@ How this repository stays **deterministic**, **offline-safe**, and **audit-defen
 | Proxy parser / loopback | `tests/test_proxy_guard_parser.py` | Host/port parsing, IPv6 loopback |
 | Proxy state machine | `tests/test_proxy_state_transitions.py` | Fixture-driven transitions |
 | Safety contracts | `tests/test_proxy_classifier_safety_contract.py` | No remote proxy on empty after; no malware language |
+| Startup observability | `tests/test_proxy_drift_toolkit.py` | Install preview, Startup hook fallback, evidence bundle, safe-search caps |
 | Policy gates | `tests/test_policy_safety_contract.py` | No silent mutation/kill/firewall |
 | Audit hash chain | `tests/platform_core/governance/test_audit_tamper_detection.py` | Tamper detection |
 | Power BI schema | `tests/test_powerbi_star_export.py` | Stable CSV export |
@@ -64,8 +65,11 @@ pytest -q tests/test_proxy_state_transitions.py
 ```powershell
 pytest -q                                    # full suite
 pytest -q tests/test_proxy_state_transitions.py tests/test_proxy_classifier_safety_contract.py
+pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 python tools/public_release_audit.py --tracked-only
 ```
+
+`pytest.ini` sets `--import-mode=importlib` and `--basetemp=.pytest_tmp` (see `docs/DOCUMENTATION_INDEX.md`).
 
 ---
 

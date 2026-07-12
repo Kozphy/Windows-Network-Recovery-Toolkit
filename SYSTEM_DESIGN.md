@@ -106,8 +106,9 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 | **FastAPI read-only API** | HTTP governance views | Fixture query param | Paginated JSON | Open demo endpoints | Reviewer demo without CLI |
 | **AI explanation layer** | Draft narrative | Incident context | Sanitized summary | Hallucinated malware claim | Guardrailed advisory only |
 | **Evaluation harness** | Offline benchmark | Golden fixtures | Metrics markdown/JSON | Fixture drift undetected | Regression before deploy |
+| **Startup observability** | Post-logon guardian + boot trace JSONL | WinINET/WinHTTP/listeners | `logs/proxy_boot_trace.jsonl`, evidence bundles | Task Scheduler denied → Startup hook fallback | Operator triage without writer proof |
 
-**Modules:** `windows_network_toolkit/cli.py`, `evidence_schema.py`, `incident_classifier.py`, `proxy_state_machine.py`, `control_tests.py`, `decision/policy_engine.py`, `src/platform_core/governance/`, `src/platform_core/evaluation/`, `backend/technology_risk_routes.py`
+**Modules:** `windows_network_toolkit/cli.py`, `evidence_schema.py`, `incident_classifier.py`, `proxy_state_machine.py`, `control_tests.py`, `decision/policy_engine.py`, `src/proxy_drift/`, `src/platform_core/governance/`, `src/platform_core/evaluation/`, `backend/technology_risk_routes.py`
 
 ---
 
@@ -465,6 +466,29 @@ Reference: [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) ·
 | PagerDuty alerting | **Future** | No alert routing in portfolio |
 
 Operations doc: [docs/observability.md](docs/observability.md)
+
+### 14.1 Endpoint startup observability (Windows)
+
+Separate from API/Prometheus observability above. Collects **post-logon WinINET drift** on the endpoint via `src/proxy_drift/`.
+
+| Capability | Status | Notes |
+|------------|--------|-------|
+| Combined install (`install-startup-observability`) | **Implemented** | Guardian + boot trace; task-first with Startup hook fallback |
+| Boot trace JSONL (`proxy-boot-trace`) | **Implemented** | WinINET/WinHTTP/listener deltas |
+| Dead-proxy guardian (`proxy-guardian`) | **Implemented** | Dead localhost only; typed confirmation |
+| Evidence bundle (`collect-evidence-bundle`) | **Implemented** | Read-only `reports/evidence-bundle-*` |
+| Boot trace report (`startup-observability-report`) | **Implemented** | Summarizes JSONL without manual parsing |
+| Bounded search (`safe-search`) | **Implemented** | No full profile recursion |
+
+```text
+logon → install-startup-observability → guardian loop + boot trace → JSONL
+                                              ↓
+                         collect-evidence-bundle → startup-observability-report
+```
+
+Docs: [docs/startup-observability.md](docs/startup-observability.md) · [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md) · Tests: `tests/test_proxy_drift_toolkit.py`
+
+**Epistemic limit:** Boot trace and listener attribution are observational — not registry writer proof or malware verdicts.
 
 ---
 

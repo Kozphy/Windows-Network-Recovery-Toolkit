@@ -292,6 +292,98 @@ def cmd_version(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """Start the read-only local NiceGUI monitoring dashboard.
+
+    Args:
+        args: Namespace with ``dashboard_host``, ``dashboard_port``, ``watch_interval``,
+            ``max_visible_events``, ``storage_path``, ``allow_non_loopback_bind``.
+
+    Returns:
+        ``0`` on clean exit; ``2`` on bind/config/missing-dependency errors.
+
+    Side effects:
+        Binds HTTP on host:port; starts proxy watcher; appends JSONL evidence events.
+        Does not remediate proxy/registry/process state.
+
+    Audit Notes:
+        Rejects ``0.0.0.0`` / ``::`` unless ``--allow-non-loopback-bind``. Review
+        ``.audit/dashboard-events.jsonl`` after a session.
+    """
+
+    from windows_network_toolkit.dashboard import DashboardConfig, run_dashboard
+
+    host = str(getattr(args, "dashboard_host", None) or "127.0.0.1")
+    if host in {"0.0.0.0", "::", "[::]"} and not bool(getattr(args, "allow_non_loopback_bind", False)):
+        print(
+            "Refusing to bind on all interfaces. Use --host 127.0.0.1 "
+            "or pass --allow-non-loopback-bind only if you accept the exposure risk.",
+            file=sys.stderr,
+        )
+        return 2
+    storage = getattr(args, "storage_path", "") or ""
+    try:
+        run_dashboard(
+            DashboardConfig(
+                host=host,
+                port=int(getattr(args, "dashboard_port", 8765) or 8765),
+                watch_interval=float(getattr(args, "watch_interval", 1.0) or 1.0),
+                max_visible_events=int(getattr(args, "max_visible_events", 200) or 200),
+                storage_path=Path(storage) if storage else None,
+            )
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    except SystemExit as exc:
+        print(str(exc), file=sys.stderr)
+        return int(exc.code) if isinstance(exc.code, int) else 2
+    return 0
+
+
+def cmd_procmon_import(args: argparse.Namespace) -> int:
+    """Import Procmon CSV registry writes into normalized evidence events.
+
+    Args:
+        args: Namespace with ``procmon_csv``, optional ``storage_path``, ``max_visible_events``.
+
+    Returns:
+        ``0`` with JSON summary on success; ``2`` when CSV is missing/invalid.
+
+    Side effects:
+        Appends imported events to ``EvidenceEventStore`` (JSONL). Does not write HKCU.
+        Does not launch Procmon.
+
+    Audit Notes:
+        Imported RegSetValue rows are process-level write observations — not intent proof.
+    """
+
+    from windows_network_toolkit.collectors.procmon_import import (
+        ProcmonImportError,
+        import_procmon_csv,
+        import_procmon_csv_summary,
+    )
+    from windows_network_toolkit.storage.event_store import EvidenceEventStore
+
+    csv_path = getattr(args, "procmon_csv", None)
+    try:
+        summary = import_procmon_csv_summary(str(csv_path))
+    except ProcmonImportError as exc:
+        print(json.dumps({"error": exc.to_dict()}, indent=2))
+        return 2
+
+    store = EvidenceEventStore(
+        max_visible=int(getattr(args, "max_visible_events", 200) or 200),
+        storage_path=Path(args.storage_path) if getattr(args, "storage_path", "") else None,
+        persist=True,
+    )
+    for ev in import_procmon_csv(str(csv_path)):
+        store.append(ev)
+
+    _emit_json(summary)
+    return 0
+
+
 def cmd_principles_explain(_args: argparse.Namespace) -> int:
     from src.platform_core.principles.validator import explain_principles
 
@@ -811,23 +903,37 @@ def cmd_audit_verify(args: argparse.Namespace) -> int:
     """Verify hash chain integrity of an audit JSONL file.
 
     Args:
-        args: ``audit_file`` path to JSONL records.
+        args: ``audit_file`` path to JSONL records; optional tip check flags.
 
     Returns:
-        0 when chain verifies; 1 when file missing or chain invalid.
+        0 when chain verifies (and tip when requested); 1 when file missing or invalid.
 
     Side effects:
         Read-only file read.
 
     Audit Notes:
         Chain integrity proves append-only consistency — not truth of observations.
+        Tip match proves consistency with a previously written tip file — not WORM.
     """
+    from src.platform_core.audit.tip_anchor import verify_audit_with_tip
     from src.platform_core.governance.chain_of_custody import verify_chain
 
     path = Path(args.audit_file)
     if not path.is_file():
         print(f"Audit file not found: {path}", file=sys.stderr)
         return 1
+
+    check_tip = bool(getattr(args, "check_tip", False) or getattr(args, "require_tip", False))
+    if check_tip:
+        tip = Path(args.tip_path) if getattr(args, "tip_path", "") else None
+        result = verify_audit_with_tip(
+            path,
+            tip_path=tip,
+            require_tip=bool(getattr(args, "require_tip", False)),
+        )
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("verified") else 1
+
     records: list[dict] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
@@ -1480,6 +1586,59 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     ver = sub.add_parser("version", help="Print installed package version (read-only)")
     ver.set_defaults(func=cmd_version)
 
+    dash = sub.add_parser(
+        "dashboard",
+        help="Start read-only local monitoring dashboard (NiceGUI on 127.0.0.1:8765)",
+    )
+    dash.add_argument("--host", dest="dashboard_host", default="127.0.0.1", help="Bind host (default 127.0.0.1)")
+    dash.add_argument("--port", dest="dashboard_port", type=int, default=8765, help="Bind port (default 8765)")
+    dash.add_argument(
+        "--interval",
+        dest="watch_interval",
+        type=float,
+        default=1.0,
+        help="Proxy watcher interval seconds (default 1.0)",
+    )
+    dash.add_argument(
+        "--max-visible-events",
+        dest="max_visible_events",
+        type=int,
+        default=200,
+        help="UI timeline ring-buffer size (default 200)",
+    )
+    dash.add_argument(
+        "--storage-path",
+        dest="storage_path",
+        default="",
+        help="Optional JSONL path for evidence events (default .audit/dashboard-events.jsonl)",
+    )
+    dash.add_argument(
+        "--allow-non-loopback-bind",
+        action="store_true",
+        help="Allow binding to non-loopback hosts (not recommended)",
+    )
+    dash.set_defaults(func=cmd_dashboard)
+
+    pmi = sub.add_parser(
+        "procmon-import",
+        help="Import Procmon CSV RegSetValue rows for WinINET proxy keys (read-only)",
+    )
+    pmi.add_argument("procmon_csv", help="Path to Procmon CSV export")
+    pmi.add_argument(
+        "--storage-path",
+        dest="storage_path",
+        default="",
+        help="Optional JSONL path for imported evidence events",
+    )
+    pmi.add_argument(
+        "--max-visible-events",
+        dest="max_visible_events",
+        type=int,
+        default=200,
+        help="In-memory ring size when persisting imports",
+    )
+    pmi.set_defaults(func=cmd_procmon_import)
+
     replay = sub.add_parser("replay", help="Replay a JSONL incident fixture")
     replay.add_argument("fixture", help="Path to JSONL fixture")
     replay.add_argument("--format", choices=["json", "markdown"], default="markdown")
@@ -1711,6 +1870,21 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     audit_sub = audit.add_subparsers(dest="audit_cmd", required=True)
     verify = audit_sub.add_parser("verify", help="Verify hash chain integrity")
     verify.add_argument("audit_file", help="Path to audit JSONL")
+    verify.add_argument(
+        "--check-tip",
+        action="store_true",
+        help="Also compare sibling tip anchor ({stem}.tip.json) to the chain tip",
+    )
+    verify.add_argument(
+        "--require-tip",
+        action="store_true",
+        help="Fail if tip anchor is missing (implies --check-tip)",
+    )
+    verify.add_argument(
+        "--tip-path",
+        default="",
+        help="Optional tip anchor path (default: sibling {stem}.tip.json)",
+    )
     verify.set_defaults(func=cmd_audit_verify)
 
     ra = sub.add_parser("risk-assess", help="Technology risk assessment from case fixture (JSON)")

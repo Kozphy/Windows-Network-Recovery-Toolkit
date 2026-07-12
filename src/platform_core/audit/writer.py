@@ -1,4 +1,4 @@
-"""Hash-chained audit JSONL writer."""
+"""Hash-chained audit JSONL writer with optional tip anchor refresh."""
 
 from __future__ import annotations
 
@@ -9,11 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from src.platform_core import AUDIT_SCHEMA_VERSION
+from src.platform_core.audit.paths import default_canonical_path
+from src.platform_core.audit.tip_anchor import write_tip_anchor
 from src.platform_core.contracts import AuditActionType, AuditRecord
 from src.platform_core.governance.chain_of_custody import audit_hash_body, chain_hash
 from src.platform_core.io.locked_jsonl import jsonl_file_lock
 
-_DEFAULT_PATH = Path("logs/canonical_decision_audit.jsonl")
 _LAST_HASH = "genesis"
 
 
@@ -34,6 +35,12 @@ def _read_chain_tip(path: Path) -> str:
     return str(last.get("current_hash") or "genesis")
 
 
+def _count_records(path: Path) -> int:
+    if not path.is_file():
+        return 0
+    return sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+
+
 def append_audit(
     action_type: AuditActionType,
     *,
@@ -43,10 +50,15 @@ def append_audit(
     actor: str = "platform",
     payload: dict[str, Any] | None = None,
     path: Path | None = None,
+    write_tip: bool = True,
 ) -> AuditRecord:
-    """Append one hash-chained audit row (file-locked for concurrent writers)."""
+    """Append one hash-chained audit row (file-locked for concurrent writers).
+
+    When ``write_tip`` is True (default), refreshes the sibling tip anchor file
+    ``{stem}.tip.json`` under the same lock window.
+    """
     global _LAST_HASH
-    target = path or _DEFAULT_PATH
+    target = path or default_canonical_path()
     target.parent.mkdir(parents=True, exist_ok=True)
 
     with jsonl_file_lock(target):
@@ -71,6 +83,12 @@ def append_audit(
         with target.open("a", encoding="utf-8") as fh:
             fh.write(record.model_dump_json() + "\n")
         _LAST_HASH = current_hash
+        if write_tip:
+            write_tip_anchor(
+                tip_hash=current_hash,
+                record_count=_count_records(target),
+                audit_path=target,
+            )
     return record
 
 

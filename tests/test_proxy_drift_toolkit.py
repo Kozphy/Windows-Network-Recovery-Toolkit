@@ -7,11 +7,21 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.proxy_drift.boot_trace_task import (
+    CONFIRM_INSTALL as BOOT_TRACE_CONFIRM_INSTALL,
+)
+from src.proxy_drift.boot_trace_task import (
+    build_boot_trace_task_command,
+    install_boot_trace_task,
+    preview_install_boot_trace_task,
+    uninstall_boot_trace_task,
+)
 from src.proxy_drift.classify import classify_proxy_drift
 from src.proxy_drift.guardian import CONFIRM_CLEAR_DEAD, run_dead_proxy_guardian_once
 from src.proxy_drift.proxy_fix import build_proxy_fix_mutations
 from src.proxy_drift.safe_search import _should_exclude_dir, safe_search
 from src.proxy_drift.startup_inventory import collect_startup_inventory
+from src.proxy_drift.startup_observability_report import summarize_boot_trace
 from src.proxy_guard.parser import parse_proxy_server
 
 
@@ -190,6 +200,117 @@ def test_auto_fix_proxy_fallback_when_still_dead() -> None:
     assert out["outcome"] == "healthy"
 
 
+def test_ensure_proxy_health_dry_run_skips_prefer_direct_mutation(tmp_path, monkeypatch) -> None:
+    from src.proxy_drift.ensure_health import CONFIRM_PREFER_DIRECT, run_ensure_proxy_health
+
+    monkeypatch.setenv("WNT_AUDIT_DIR", str(tmp_path))
+    active = {
+        "classification": "LOCAL_PROXY_ACTIVE",
+        "legacy_classification": "LOCAL_PROXY_ACTIVE",
+        "is_dead_localhost_proxy": False,
+        "proxy_enable": 1,
+        "proxy_server": "127.0.0.1:54305",
+        "localhost_port": 54305,
+        "listener_found": True,
+    }
+    with (
+        patch("src.proxy_drift.ensure_health.run_auto_fix_proxy", return_value={"outcome": "healthy"}) as auto,
+        patch("src.proxy_drift.ensure_health.apply_proxy_fix") as fix,
+        patch("src.proxy_drift.ensure_health.read_proxy_drift_status", return_value=active),
+        patch(
+            "src.proxy_drift.ensure_health.observability_install_status",
+            return_value={"fully_installed": True, "guardian_present": True, "boot_trace_present": True},
+        ),
+        patch("src.proxy_drift.ensure_health.install_startup_observability") as install,
+    ):
+        out = run_ensure_proxy_health(
+            dry_run=True,
+            prefer_direct=True,
+            confirm=CONFIRM_PREFER_DIRECT,
+            skip_cursor_fix=True,
+        )
+    auto.assert_called_once()
+    fix.assert_not_called()
+    install.assert_not_called()
+    assert out["outcome"] == "localhost_proxy_active"
+    prefer_steps = [s for s in out["steps"] if s.get("step") == "prefer_direct"]
+    assert prefer_steps and prefer_steps[0]["result"]["action_taken"] == "preview_only"
+
+
+def test_ensure_proxy_health_prefer_direct_requires_confirm(tmp_path, monkeypatch) -> None:
+    from src.proxy_drift.ensure_health import run_ensure_proxy_health
+
+    monkeypatch.setenv("WNT_AUDIT_DIR", str(tmp_path))
+    active = {
+        "classification": "LOCAL_PROXY_ACTIVE",
+        "legacy_classification": "LOCAL_PROXY_ACTIVE",
+        "is_dead_localhost_proxy": False,
+        "proxy_enable": 1,
+        "proxy_server": "127.0.0.1:54305",
+        "localhost_port": 54305,
+        "listener_found": True,
+    }
+    with (
+        patch("src.proxy_drift.ensure_health.run_auto_fix_proxy", return_value={"outcome": "healthy"}),
+        patch("src.proxy_drift.ensure_health.apply_proxy_fix") as fix,
+        patch("src.proxy_drift.ensure_health.read_proxy_drift_status", return_value=active),
+        patch(
+            "src.proxy_drift.ensure_health.observability_install_status",
+            return_value={"fully_installed": True, "guardian_present": True, "boot_trace_present": True},
+        ),
+    ):
+        out = run_ensure_proxy_health(dry_run=False, prefer_direct=True, confirm="", skip_cursor_fix=True)
+    fix.assert_not_called()
+    assert out["outcome"] == "needs_prefer_direct_confirm"
+
+
+def test_ensure_proxy_health_prefer_direct_applies_with_token(tmp_path, monkeypatch) -> None:
+    from src.proxy_drift.ensure_health import CONFIRM_PREFER_DIRECT, run_ensure_proxy_health
+
+    monkeypatch.setenv("WNT_AUDIT_DIR", str(tmp_path))
+    active = {
+        "classification": "LOCAL_PROXY_ACTIVE",
+        "legacy_classification": "LOCAL_PROXY_ACTIVE",
+        "is_dead_localhost_proxy": False,
+        "proxy_enable": 1,
+        "proxy_server": "127.0.0.1:54305",
+        "localhost_port": 54305,
+        "listener_found": True,
+    }
+    healthy = {
+        "classification": "NO_PROXY",
+        "legacy_classification": "NO_PROXY",
+        "is_dead_localhost_proxy": False,
+        "proxy_enable": 0,
+        "proxy_server": None,
+        "localhost_port": None,
+        "listener_found": None,
+    }
+    with (
+        patch("src.proxy_drift.ensure_health.run_auto_fix_proxy", return_value={"outcome": "healthy"}),
+        patch(
+            "src.proxy_drift.ensure_health.apply_proxy_fix",
+            return_value={"action_taken": "applied", "action_allowed": True},
+        ) as fix,
+        patch(
+            "src.proxy_drift.ensure_health.read_proxy_drift_status",
+            side_effect=[active, active, healthy],
+        ),
+        patch(
+            "src.proxy_drift.ensure_health.observability_install_status",
+            return_value={"fully_installed": True, "guardian_present": True, "boot_trace_present": True},
+        ),
+    ):
+        out = run_ensure_proxy_health(
+            dry_run=False,
+            prefer_direct=True,
+            confirm=CONFIRM_PREFER_DIRECT,
+            skip_cursor_fix=True,
+        )
+    fix.assert_called_once()
+    assert out["outcome"] == "healthy"
+
+
 def test_classify_preserves_non_localhost_proxy() -> None:
     out = classify_proxy_drift(
         proxy_enable=1,
@@ -197,3 +318,88 @@ def test_classify_preserves_non_localhost_proxy() -> None:
         listener_found=None,
     )
     assert out["classification"] == "INSUFFICIENT_EVIDENCE"
+
+
+def test_boot_trace_snapshot_uses_proxy_actor_image_path() -> None:
+    from src.proxy_drift.boot_trace import _snapshot
+    from src.proxy_guard.attribution_model import LayeredAttributionResult, ProxyActor
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:60505", auto_config_url=None, proxy_override=None)
+    actor = ProxyActor(
+        pid=1234,
+        process_name="node.exe",
+        image_path=r"C:\Program Files\node.exe",
+        command_line="node proxy.js",
+        parent_pid=999,
+        parent_process_name="Cursor.exe",
+    )
+    attr = LayeredAttributionResult(
+        candidate_actor=actor,
+        attribution_confidence="medium",
+        attribution_method="localhost_listener",
+    )
+    with (
+        patch("src.proxy_drift.boot_trace.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.boot_trace._port_listening", return_value=True),
+        patch("src.proxy_drift.boot_trace.attribute_localhost_proxy_listener", return_value=attr),
+        patch("src.proxy_drift.boot_trace._winhttp_direct", return_value=True),
+    ):
+        snap = _snapshot(MagicMock())
+    assert snap["listener"]["exe_path"] == r"C:\Program Files\node.exe"
+    assert snap["listener"]["process_name"] == "node.exe"
+
+
+def test_boot_trace_task_preview_uses_expected_command() -> None:
+    preview = preview_install_boot_trace_task(duration=240, interval=3)
+    assert preview["task_name"] == "WNRT-ProxyBootTrace"
+    assert preview["trigger"] == "ONLOGON"
+    assert preview["confirmation_required"] == BOOT_TRACE_CONFIRM_INSTALL
+    assert preview["command"] == build_boot_trace_task_command(duration=240, interval=3)
+    assert "--duration 240 --interval 3" in preview["command"]
+
+
+def test_boot_trace_task_falls_back_to_startup_hook_on_access_denied(tmp_path: Path) -> None:
+    fake_proc = MagicMock(returncode=1, stdout="", stderr="ERROR: Access is denied.")
+    with (
+        patch("src.proxy_drift.boot_trace_task.subprocess.run", return_value=fake_proc),
+        patch("src.proxy_drift.boot_trace_task.startup_hook_path", return_value=tmp_path / "WNRT-ProxyBootTrace.cmd"),
+        patch("src.proxy_drift.boot_trace_task.write_startup_hook", return_value=tmp_path / "WNRT-ProxyBootTrace.cmd"),
+    ):
+        result = install_boot_trace_task(
+            duration=240,
+            interval=3,
+            confirm=BOOT_TRACE_CONFIRM_INSTALL,
+            dry_run=False,
+        )
+    assert result["action_taken"] == "installed"
+    assert result["actual_method"] == "startup_hook"
+    assert result["fallback_used"] is True
+
+
+def test_boot_trace_uninstall_succeeds_when_only_startup_hook_removed() -> None:
+    fake_proc = MagicMock(returncode=1, stdout="", stderr="ERROR: The system cannot find the file specified.")
+    with (
+        patch("src.proxy_drift.boot_trace_task.subprocess.run", return_value=fake_proc),
+        patch("src.proxy_drift.boot_trace_task.remove_startup_hook", return_value=True),
+    ):
+        result = uninstall_boot_trace_task(confirm="UNINSTALL_BOOT_TRACE_TASK", dry_run=False)
+    assert result["action_taken"] == "uninstalled"
+    assert result["startup_hook_removed"] is True
+
+
+def test_startup_observability_report_summarizes_trace(tmp_path: Path) -> None:
+    trace = tmp_path / "trace.jsonl"
+    trace.write_text(
+        "\n".join(
+            [
+                '{"timestamp_utc":"2026-07-07T04:14:00Z","wininet":{"proxy_enable":0,"proxy_server":null},"listener_found":false,"classification":{"classification":"NO_PROXY"},"delta_events":["initial_sample"]}',
+                '{"timestamp_utc":"2026-07-07T04:14:03Z","wininet":{"proxy_enable":1,"proxy_server":"127.0.0.1:6000"},"listener_found":true,"classification":{"classification":"KNOWN_DEV_PROXY"},"delta_events":["proxy_enable_changed","proxy_server_changed","listener_appeared"]}',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    summary = summarize_boot_trace(trace)
+    assert summary["samples"] == 2
+    assert summary["final_classification"] == "KNOWN_DEV_PROXY"
+    assert "proxy_server_changed" in summary["delta_events_seen"]

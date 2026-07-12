@@ -266,6 +266,12 @@ python -m windows_network_toolkit analytics-export --fixture tests/fixtures/anal
 python -m windows_network_toolkit evidence-report --analytics --fixture tests/fixtures/analytics_pipeline_fixture.json
 python -m windows_network_toolkit diagnose --proof --fixture examples/evidence/DEAD_PROXY_CONFIG.json
 
+# Local monitoring dashboard (read-only; requires optional dashboard extras)
+pip install -e ".[dashboard]"
+python -m windows_network_toolkit dashboard
+# Opens http://127.0.0.1:8765 — Overview, Live Timeline, Process Snapshot, Incident Detail
+python -m windows_network_toolkit procmon-import .\capture.csv
+
 # Risk & governance
 python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
 python -m windows_network_toolkit control-test --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
@@ -288,6 +294,21 @@ make proxy-intermittent
 ```
 
 Legacy / extended CLI: `python -m src` · Full reference: [docs/cli_reference.md](docs/cli_reference.md)
+
+For startup-time proxy drift on Windows, the recommended operator flow is:
+
+```powershell
+.\ensure-proxy.cmd
+# LinkedIn / flaky local Node proxy → force direct:
+.\ensure-proxy.cmd prefer-direct
+
+python -m src install-startup-observability
+python -m src install-startup-observability --dry-run false --confirm INSTALL_STARTUP_OBSERVABILITY
+python -m src collect-evidence-bundle
+python -m src startup-observability-report --json
+```
+
+That path keeps `python -m src` as the single startup-observability CLI, prefers per-user Scheduled Tasks, and automatically falls back to Startup hooks if Task Scheduler is denied. `start-api.ps1` also runs `ensure-proxy-health` before the API starts.
 
 ### FastAPI — Technology Risk Analytics (read-only)
 
@@ -383,6 +404,18 @@ python -m windows_network_toolkit evidence-report --latest --fixture tests/fixtu
 
 Listener and process names are **correlation only** unless registry writer evidence exists. See [docs/case-study-1-proxy-drift.md](docs/case-study-1-proxy-drift.md).
 
+**Local monitoring dashboard (read-only)**
+
+| Item | Detail |
+|------|--------|
+| Launch | `python -m windows_network_toolkit dashboard` → http://127.0.0.1:8765 |
+| Screens | Overview cards, Live Timeline (pause/resume/clear UI/filters), Process Snapshot, Incident Detail |
+| Procmon | `python -m windows_network_toolkit procmon-import .\capture.csv` |
+| Security | No disable-proxy / kill-process / registry-write buttons; remediation stays on gated CLIs |
+| Install | `pip install -e ".[dashboard]"` (nicegui, psutil, pywin32 on Windows) |
+
+Troubleshooting: if bind fails, confirm nothing else uses port 8765; never use `--host 0.0.0.0` unless you intentionally accept exposure via `--allow-non-loopback-bind`.
+
 ### Why `ERR_PROXY_CONNECTION_FAILED` happens (and ping still works)
 
 Browsers route HTTP/HTTPS through **WinINET** (`HKCU\...\Internet Settings`). When `ProxyEnable=1` and `ProxyServer=127.0.0.1:<port>`, the browser opens a TCP connection to that localhost port. If **nothing is listening** (the dev proxy, VPN shim, or MCP helper exited or changed ports), the connection fails → `ERR_PROXY_CONNECTION_FAILED`.
@@ -428,9 +461,18 @@ python -m src install-guardian-task --confirm INSTALL_GUARDIAN_TASK --dry-run fa
 
 # Timeout-safe search (startup target, no profile walk)
 python -m src safe-search --query WNRT-DeadProxyGuardian --target startup
+
+# v0.3.0 startup observability (recommended)
+python -m src install-startup-observability
+python -m src install-startup-observability --dry-run false --confirm INSTALL_STARTUP_OBSERVABILITY
+python -m src collect-evidence-bundle
+python -m src startup-observability-report --json
+python -m src uninstall-startup-observability --dry-run false --confirm UNINSTALL_STARTUP_OBSERVABILITY
 ```
 
 Audit logs: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`, `logs/proxy_guardian.jsonl`. Emergency CMD wrapper: `scripts/fix-wininet-proxy.cmd`.
+
+Runbook: [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md) · Architecture: [docs/startup-observability.md](docs/startup-observability.md).
 
 ---
 
@@ -660,6 +702,8 @@ Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch
 | [docs/scale-testing.md](docs/scale-testing.md)               | Synthetic local scale limits |
 | [docs/cross-platform-support.md](docs/cross-platform-support.md) | Linux/macOS PARTIAL foundation |
 | [docs/packaging-installer.md](docs/packaging-installer.md)     | pipx/wheel/portable install plan |
+| [docs/startup-observability.md](docs/startup-observability.md) | v0.3.0 startup observability architecture |
+| [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md)   | Dead localhost proxy recovery runbook |
 
 
 ---

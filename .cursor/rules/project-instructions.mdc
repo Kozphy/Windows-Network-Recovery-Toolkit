@@ -66,3 +66,4 @@ End each task with a short summary: **changed files**, **tests run** (and result
 - Humans: `docs/ONBOARDING.md`, `docs/DOCUMENTATION_INDEX.md`
 - Agents: `AGENTS.md`
 - Docstrings: `docs/code-documentation-standards.md`
+- Startup observability: `docs/startup-observability.md`, `docs/dead-proxy-guardian.md` (`python -m src`)

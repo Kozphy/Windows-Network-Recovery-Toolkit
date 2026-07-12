@@ -84,6 +84,41 @@ PowerShell helper:
 .\scripts\auto-fix-proxy.ps1
 ```
 
+## Startup observability (Windows, `python -m src`)
+
+**Every session (recommended):** clear dead localhost proxies and keep the guardian installed:
+
+```powershell
+.\ensure-proxy.cmd
+# or
+make ensure
+python -m src ensure-proxy-health
+```
+
+**LinkedIn / browser `ERR_PROXY_CONNECTION_FAILED`** when a flaky local Node proxy is still active:
+
+```powershell
+.\ensure-proxy.cmd prefer-direct
+# or
+make ensure-direct
+python -m src ensure-proxy-health --prefer-direct --confirm PREFER_DIRECT_WININET
+```
+
+Then fully quit and reopen LinkedIn. `start-api.ps1` also runs ensure automatically (use `-PreferDirectProxy` to force direct).
+
+Preview-first install for post-logon guardian + boot trace. See `docs/startup-observability.md`.
+
+```powershell
+python -m src install-startup-observability --json
+python -m src install-startup-observability --dry-run false --confirm INSTALL_STARTUP_OBSERVABILITY
+python -m src collect-evidence-bundle
+python -m src startup-observability-report --json
+python -m src proxy-boot-trace --duration 180 --interval 2
+python -m src proxy-guardian --once
+```
+
+Operator runbook: `docs/dead-proxy-guardian.md`.
+
 ## Telemetry and writer attribution
 
 * `telemetry/` — Sysmon, EventLog, ETW fixture parsers, and registry-writer fusion
@@ -126,8 +161,9 @@ Read in this order:
 | 3 | `docs/ONBOARDING.md`                          | Ten-minute engineer onboarding    |
 | 4 | `docs/evidence_to_action_governance_model.md` | Six governance principles         |
 | 5 | `docs/dead-proxy-guardian.md`                 | Guardian and remediation gates    |
-| 6 | `docs/telemetry_registry_writer_proof.md`     | Telemetry evidence levels         |
-| 7 | `docs/code-documentation-standards.md`        | Docstring style                   |
+| 6 | `docs/startup-observability.md`               | v0.3.0 startup observability architecture |
+| 7 | `docs/telemetry_registry_writer_proof.md`     | Telemetry evidence levels         |
+| 8 | `docs/code-documentation-standards.md`        | Docstring style                   |
 
 Golden fixtures for tests and demos:
 
@@ -144,12 +180,14 @@ tests/fixtures/telemetry/
 
 ```text
 windows_network_toolkit/     Primary CLI — proxy-status, diagnose, agent, analytics
-  cli.py                     Register and verify subcommands here
   proxy_remediation.py       Gated WinINET disable; dry-run default
   proxy_guardian.py          Dead-proxy policy gate
   collectors/                Read-only evidence facades
   diagnostics/               Proxy, LAN, router evidence runners
   safety.py                  Blocked destructive actions
+
+src/proxy_drift/             Startup observability, boot trace, guardian, evidence bundle
+src/cli.py                   Extended operator CLI (python -m src)
 
 src/platform_core/           Policy, evidence tiers, governance envelope, audit
 telemetry/                   Registry-writer telemetry; fixture-first
@@ -172,7 +210,7 @@ reports/                     Local exports; gitignored; do not commit
 1. Inspect nearby modules and existing tests.
 2. Match existing naming, patterns, and safety model.
 3. Do not invent CLI commands, APIs, flags, or files.
-4. Verify available CLI commands in `windows_network_toolkit/cli.py`.
+4. Verify available CLI commands in `windows_network_toolkit/cli.py` and `src/cli.py` (startup observability lives in `src/proxy_drift/`).
 5. Prefer fixture injection using `--fixture` and `tests/fixtures/` over live registry or network changes.
 6. Preserve backward-compatible CLI behavior unless the task explicitly changes behavior.
 

@@ -142,6 +142,78 @@ Preview is not execute:
 - Regression-aware outcomes include states like `allowed_no_regression` and `allowed_but_connectivity_regressed`.
 - Rollback actions remain policy-gated and explicit (`rollback_preview` / applied paths) and are limited to proxy-relevant surfaces.
 
+## Startup observability & proxy_drift (`python -m src`)
+
+Windows endpoint startup-time proxy drift collection and dead-proxy automation. **Canonical architecture:** [startup-observability.md](startup-observability.md) · **Operator runbook:** [dead-proxy-guardian.md](dead-proxy-guardian.md).
+
+### Combined install (recommended)
+
+```powershell
+python -m src install-startup-observability
+python -m src install-startup-observability --dry-run false --confirm INSTALL_STARTUP_OBSERVABILITY
+python -m src uninstall-startup-observability --dry-run false --confirm UNINSTALL_STARTUP_OBSERVABILITY
+```
+
+Installs **WNRT-DeadProxyGuardian** and **WNRT-ProxyBootTrace**. Prefers per-user Scheduled Tasks; on `Access is denied`, falls back to Startup-folder `.cmd` hooks automatically.
+
+### Boot trace and inventory
+
+```powershell
+python -m src startup-inventory [--json]
+python -m src proxy-boot-trace --duration 180 --interval 2 [--json]
+python -m src install-boot-trace-task [--confirm INSTALL_BOOT_TRACE_TASK --dry-run false]
+python -m src uninstall-boot-trace-task [--confirm UNINSTALL_BOOT_TRACE_TASK --dry-run false]
+```
+
+Audit: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`.
+
+### Guardian (dead localhost only)
+
+```powershell
+python -m src proxy-guardian [--once] [--loop --interval 60]
+python -m src proxy-guardian --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false
+python -m src install-guardian-task [--confirm INSTALL_GUARDIAN_TASK --dry-run false]
+python -m src uninstall-guardian-task [--confirm UNINSTALL_GUARDIAN_TASK --dry-run false]
+python -m src auto-fix-proxy [--dry-run] [--skip-guardian-install]
+python -m src proxy-fix --confirm DISABLE_WININET_PROXY [--dry-run false] [--clear-pac]
+```
+
+Audit: `logs/proxy_guardian.jsonl`. Distinct from `proxy-guard` (rollback/LKG workflow above).
+
+### Evidence bundle and report
+
+```powershell
+python -m src collect-evidence-bundle [--out-dir reports/custom] [--duration 30 --interval 2]
+python -m src startup-observability-report [--trace-path logs/proxy_boot_trace.jsonl] [--json]
+```
+
+### Session ensure (run when opening the repo)
+
+```powershell
+.\ensure-proxy.cmd
+make ensure
+python -m src ensure-proxy-health
+
+# LinkedIn / browser reliability — clear active localhost WinINET too
+.\ensure-proxy.cmd prefer-direct
+python -m src ensure-proxy-health --prefer-direct --confirm PREFER_DIRECT_WININET
+```
+
+`start-api.ps1` runs ensure automatically (skip with `-SkipProxyEnsure`; force direct with `-PreferDirectProxy`).
+
+Default ensure clears **dead** localhost only and installs startup observability if missing. `--prefer-direct` also clears an *active* localhost proxy (may break intentional local tunnels).
+
+### Bounded file search
+
+```powershell
+python -m src safe-search --query WNRT-DeadProxyGuardian --target startup
+python -m src safe-search --query proxy --target project --max-seconds 20 --max-files 3000 [--json]
+```
+
+Targets: `project`, `startup`, `logs`, `scripts`. Caps: `--max-seconds`, `--max-files`. Profile `Temp`/`Packages` dirs excluded only during profile scans; explicit scan roots are not skipped.
+
+**Safety:** Boot trace and evidence bundle are read-only. Guardian clears **dead** localhost proxies only. Observation ≠ registry writer proof.
+
 ## Network State Manager
 
 ```powershell

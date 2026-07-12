@@ -36,8 +36,29 @@ param(
     #
     # When enabled, backend changes may automatically restart the server.
     # Useful during development, but not recommended for stable demo/review runs.
-    [switch]$Reload
+    [switch]$Reload,
+
+    # Skip WinINET dead-proxy ensure before starting the API.
+    [switch]$SkipProxyEnsure,
+
+    # Also clear an active localhost WinINET proxy (LinkedIn/browser reliability).
+    [switch]$PreferDirectProxy
 )
+
+# Clear dead localhost WinINET proxies and ensure guardian install before API start.
+# Does not kill processes or change firewall. PreferDirectProxy requires explicit switch.
+if (-not $SkipProxyEnsure) {
+    $ensureScript = Join-Path $PSScriptRoot "scripts\ensure-proxy-health.ps1"
+    if (Test-Path -LiteralPath $ensureScript) {
+        Write-Host "Ensuring proxy health before API start..." -ForegroundColor Cyan
+        $ensureArgs = @{}
+        if ($PreferDirectProxy) { $ensureArgs["PreferDirect"] = $true }
+        & $ensureScript @ensureArgs
+        if ($LASTEXITCODE -notin 0, $null) {
+            Write-Host "WARN: ensure-proxy-health exited $LASTEXITCODE — continuing API start." -ForegroundColor Yellow
+        }
+    }
+}
 
 # Check whether the requested TCP port is already listening.
 #
