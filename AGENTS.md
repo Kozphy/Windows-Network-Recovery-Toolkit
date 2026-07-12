@@ -38,6 +38,7 @@ python -m windows_network_toolkit proxy-disable --dry-run true
 python -m src install-startup-observability --json
 python -m src collect-evidence-bundle
 python -m src ensure-proxy-health
+python -m windows_network_toolkit audit verify .audit/canonical_custody.jsonl --check-tip
 pytest -q tests/test_policy_safety_contract.py
 pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 ```
@@ -50,6 +51,7 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 | `src/proxy_drift/` | Startup observability, boot trace, guardian, evidence bundle |
 | `src/cli.py` | Extended operator CLI (`python -m src`) |
 | `src/platform_core/` | Policy, governance envelope, audit |
+| `src/platform_core/audit/` | Hash-chained custody + tip anchor (`docs/audit-custody.md`) |
 | `telemetry/` | Registry-writer telemetry (fixture-first) |
 | `tests/fixtures/` | Deterministic test inputs |
 | `docs/ONBOARDING.md` | Human onboarding |

@@ -33,8 +33,36 @@ def _port_listening(port: int) -> bool:
 
 
 def _audit(log_path: Path, row: dict[str, Any]) -> None:
+    """Dual-write: legacy JSONL under logs/ + hash-chained custody under WNT_AUDIT_DIR."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     append_jsonl(log_path, row)
+    try:
+        from src.platform_core.audit.custody import append_custody_event
+
+        event = str(row.get("event") or "guardian_check")
+        append_custody_event(
+            event,
+            actor="proxy_guardian",
+            subsystem="proxy_guardian",
+            dry_run=row.get("dry_run"),
+            confirmation_supplied=bool(row.get("action_taken") == "remediated"),
+            before={
+                "proxy_enable": row.get("proxy_enable"),
+                "proxy_server": row.get("proxy_server"),
+            },
+            after=None,
+            outcome=str(row.get("action_taken") or ""),
+            limitations=list(row.get("limitations") or []),
+            extra={
+                "classification": row.get("classification"),
+                "dead_localhost_proxy": row.get("dead_localhost_proxy"),
+                "reason": row.get("reason"),
+            },
+            soft_fail=True,
+        )
+    except Exception:
+        # Custody must not break guardian remediation path.
+        pass
 
 
 def run_dead_proxy_guardian_once(

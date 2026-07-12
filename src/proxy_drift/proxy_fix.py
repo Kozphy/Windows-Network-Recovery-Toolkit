@@ -22,6 +22,27 @@ _CONNECTIONS_SUBKEY = r"Software\Microsoft\Windows\CurrentVersion\Internet Setti
 _PROXY_TYPE_PROXY = 0x02
 
 
+def _custody_proxy_fix(event: str, payload: dict[str, Any], *, confirmation_supplied: bool) -> None:
+    try:
+        from src.platform_core.audit.custody import append_custody_event
+
+        append_custody_event(
+            event,
+            actor="proxy_fix",
+            subsystem="proxy_fix",
+            dry_run=bool(payload.get("dry_run")),
+            confirmation_supplied=confirmation_supplied,
+            before=payload.get("before") if isinstance(payload.get("before"), dict) else None,
+            after=payload.get("after") if isinstance(payload.get("after"), dict) else None,
+            outcome="applied" if payload.get("action_allowed") else "blocked_or_preview",
+            limitations=list(payload.get("limitations") or []),
+            extra={"reason": payload.get("reason"), "prefer_direct": payload.get("prefer_direct")},
+            soft_fail=True,
+        )
+    except Exception:
+        pass
+
+
 def _now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -164,6 +185,7 @@ def apply_proxy_fix(
         )
         payload["action_allowed"] = False
         payload["reason"] = "Dry-run preview only."
+        _custody_proxy_fix("proxy_fix_preview", payload, confirmation_supplied=False)
         return payload
 
     if confirm != required_confirm:
@@ -171,7 +193,7 @@ def apply_proxy_fix(
             proxy_server=reg.proxy_server,
             clear_pac=clear_pac,
         )
-        return {
+        blocked = {
             "timestamp_utc": _now(),
             "dry_run": False,
             "planned_changes": list(human_lines),
@@ -187,6 +209,8 @@ def apply_proxy_fix(
                 "Does not prove malware or registry writer identity.",
             ],
         }
+        _custody_proxy_fix("proxy_fix_blocked", blocked, confirmation_supplied=False)
+        return blocked
 
     decision, reason, _action = validate_action_confirmation(
         action_id="disable_wininet_proxy",
@@ -231,4 +255,5 @@ def apply_proxy_fix(
         "auto_config_url": after.auto_config_url,
     }
     payload["reason"] = "HKCU WinINET proxy fix applied (including Connections blob)."
+    _custody_proxy_fix("proxy_fix_applied", payload, confirmation_supplied=True)
     return payload

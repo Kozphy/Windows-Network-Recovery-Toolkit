@@ -200,9 +200,10 @@ def test_auto_fix_proxy_fallback_when_still_dead() -> None:
     assert out["outcome"] == "healthy"
 
 
-def test_ensure_proxy_health_dry_run_skips_prefer_direct_mutation() -> None:
+def test_ensure_proxy_health_dry_run_skips_prefer_direct_mutation(tmp_path, monkeypatch) -> None:
     from src.proxy_drift.ensure_health import CONFIRM_PREFER_DIRECT, run_ensure_proxy_health
 
+    monkeypatch.setenv("WNT_AUDIT_DIR", str(tmp_path))
     active = {
         "classification": "LOCAL_PROXY_ACTIVE",
         "legacy_classification": "LOCAL_PROXY_ACTIVE",
@@ -236,9 +237,10 @@ def test_ensure_proxy_health_dry_run_skips_prefer_direct_mutation() -> None:
     assert prefer_steps and prefer_steps[0]["result"]["action_taken"] == "preview_only"
 
 
-def test_ensure_proxy_health_prefer_direct_requires_confirm() -> None:
+def test_ensure_proxy_health_prefer_direct_requires_confirm(tmp_path, monkeypatch) -> None:
     from src.proxy_drift.ensure_health import run_ensure_proxy_health
 
+    monkeypatch.setenv("WNT_AUDIT_DIR", str(tmp_path))
     active = {
         "classification": "LOCAL_PROXY_ACTIVE",
         "legacy_classification": "LOCAL_PROXY_ACTIVE",
@@ -262,9 +264,10 @@ def test_ensure_proxy_health_prefer_direct_requires_confirm() -> None:
     assert out["outcome"] == "needs_prefer_direct_confirm"
 
 
-def test_ensure_proxy_health_prefer_direct_applies_with_token() -> None:
+def test_ensure_proxy_health_prefer_direct_applies_with_token(tmp_path, monkeypatch) -> None:
     from src.proxy_drift.ensure_health import CONFIRM_PREFER_DIRECT, run_ensure_proxy_health
 
+    monkeypatch.setenv("WNT_AUDIT_DIR", str(tmp_path))
     active = {
         "classification": "LOCAL_PROXY_ACTIVE",
         "legacy_classification": "LOCAL_PROXY_ACTIVE",

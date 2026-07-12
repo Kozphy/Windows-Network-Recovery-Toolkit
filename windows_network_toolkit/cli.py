@@ -811,23 +811,37 @@ def cmd_audit_verify(args: argparse.Namespace) -> int:
     """Verify hash chain integrity of an audit JSONL file.
 
     Args:
-        args: ``audit_file`` path to JSONL records.
+        args: ``audit_file`` path to JSONL records; optional tip check flags.
 
     Returns:
-        0 when chain verifies; 1 when file missing or chain invalid.
+        0 when chain verifies (and tip when requested); 1 when file missing or invalid.
 
     Side effects:
         Read-only file read.
 
     Audit Notes:
         Chain integrity proves append-only consistency — not truth of observations.
+        Tip match proves consistency with a previously written tip file — not WORM.
     """
+    from src.platform_core.audit.tip_anchor import verify_audit_with_tip
     from src.platform_core.governance.chain_of_custody import verify_chain
 
     path = Path(args.audit_file)
     if not path.is_file():
         print(f"Audit file not found: {path}", file=sys.stderr)
         return 1
+
+    check_tip = bool(getattr(args, "check_tip", False) or getattr(args, "require_tip", False))
+    if check_tip:
+        tip = Path(args.tip_path) if getattr(args, "tip_path", "") else None
+        result = verify_audit_with_tip(
+            path,
+            tip_path=tip,
+            require_tip=bool(getattr(args, "require_tip", False)),
+        )
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("verified") else 1
+
     records: list[dict] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
@@ -1711,6 +1725,21 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     audit_sub = audit.add_subparsers(dest="audit_cmd", required=True)
     verify = audit_sub.add_parser("verify", help="Verify hash chain integrity")
     verify.add_argument("audit_file", help="Path to audit JSONL")
+    verify.add_argument(
+        "--check-tip",
+        action="store_true",
+        help="Also compare sibling tip anchor ({stem}.tip.json) to the chain tip",
+    )
+    verify.add_argument(
+        "--require-tip",
+        action="store_true",
+        help="Fail if tip anchor is missing (implies --check-tip)",
+    )
+    verify.add_argument(
+        "--tip-path",
+        default="",
+        help="Optional tip anchor path (default: sibling {stem}.tip.json)",
+    )
     verify.set_defaults(func=cmd_audit_verify)
 
     ra = sub.add_parser("risk-assess", help="Technology risk assessment from case fixture (JSON)")

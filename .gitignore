@@ -8,6 +8,7 @@ __pycache__/
 .pytest_cache/
 .pytest-tmp/
 .pytest_tmp/
+.pytest_tmp_*/
 .coverage
 coverage/
 htmlcov/
@@ -35,6 +36,8 @@ build/
 *.tmp
 logs/
 !logs/.gitignore
+.audit/
+!.audit/.gitignore
 reports/
 !reports/.gitignore
 !reports/sample_*.md

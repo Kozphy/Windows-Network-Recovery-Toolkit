@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Added — Audit custody Level 1 + tip anchor
+
+- Canonical hash-chained sink: `.audit/canonical_custody.jsonl` (`WNT_AUDIT_DIR`)
+- Tip anchor sibling: `.audit/canonical_custody.tip.json`
+- Dual-write from `proxy-guardian`, `proxy-fix`, `ensure-proxy-health` into custody
+- CLI: `audit verify --check-tip` / `--require-tip`
+- Docs: `docs/audit-custody.md`
+- Tests: `tests/platform_core/audit/test_custody_tip_anchor.py`
+
 ### Added — Startup observability (v0.3.0)
 
 - `src/proxy_drift/` — combined install (`install-startup-observability`), boot trace task, dead-proxy guardian, evidence bundle, operator report, bounded `safe-search`
