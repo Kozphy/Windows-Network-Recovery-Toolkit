@@ -314,6 +314,7 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 | [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery runbook |
 | [audit-custody.md](audit-custody.md) | Level 1 hash-chained custody + tip anchor verify |
 | [procmon_proxy_filter.md](procmon_proxy_filter.md) | Procmon RegSetValue filter set + CSV import |
+| [monitoring-dashboard.md](monitoring-dashboard.md) | Read-only NiceGUI local monitoring dashboard |
 | [cli_reference.md](cli_reference.md) | Full `python -m src` command inventory |
 
 ## Audit checklist
