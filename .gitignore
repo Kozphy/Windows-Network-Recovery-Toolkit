@@ -1,0 +1,104 @@
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+*.egg-info/
+.pytest_cache/
+.pytest-tmp/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+coverage/
+htmlcov/
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Node / frontend build
+node_modules/
+.next/
+dist/
+build/
+.cache/
+
+# Environment secrets (keep examples)
+.env
+.env.local
+.env.*.local
+!.env.example
+!**/.env.example
+
+# Runtime output (local only — never commit real machine data)
+*.log
+*.err.log
+*.tmp
+logs/
+!logs/.gitignore
+reports/
+!reports/.gitignore
+!reports/sample_*.md
+!src/reports/
+!src/reports/**
+src/reports/**/__pycache__/
+src/reports/**/*.py[cod]
+!analytics/powerbi/reports/
+!analytics/powerbi/reports/**
+
+# Local audit trails (operator / test runs)
+.audit/
+
+# Fleet / demo data generated on host
+platform_data/
+platform_data_fleet_demo/
+data/failure_blocks/
+!data/failure_blocks/.gitignore
+!platform_data/.gitkeep
+
+# Operator-generated snapshots (use *.example.json in repo)
+config/last_known_good_proxy.json
+
+# JSONL audit/runtime exports — allow synthetic demo fixtures only
+*.jsonl
+!tests/fixtures/**/*.jsonl
+!examples/**/*.jsonl
+!demo_data/**/*.jsonl
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# Large / binary / local DB artifacts
+*.sqlite
+*.sqlite3
+trisk_local.db
+schemathesis-junit.xml
+schemathesis-run.log
+schemathesis-full-run.log
+schemathesis-run.err.log
+schemathesis-full-run.err.log
+*.zip
+*.exe
+*.msi
+
+# Demo output artifacts (keep directory structure via .gitkeep)
+demo-output/*
+!demo-output/.gitkeep
+!demo-output/audit/
+demo-output/audit/*
+!demo-output/audit/.gitkeep
+!demo-output/reports/
+demo-output/reports/*
+!demo-output/reports/.gitkeep
+!demo-output/timelines/
+demo-output/timelines/*
+!demo-output/timelines/.gitkeep
