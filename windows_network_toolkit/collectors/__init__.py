@@ -1,4 +1,4 @@
-"""Signal collectors — thin facades over src/proxy_guard and network_agent."""
+"""Signal collectors — thin facades over ``src.proxy_guard`` collectors."""
 
 from .browser_collector import collect_browser_signals
 from .dns_collector import collect_dns_signals

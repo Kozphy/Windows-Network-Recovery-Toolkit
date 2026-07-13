@@ -1,7 +1,8 @@
 """Market events domain adapter — catalyst calendar research (no trade execution).
 
-Loads calendar rows via :mod:`src.market_events.calendar`. Research signals only —
-does not place orders or move capital.
+Loads calendar rows from ``fixtures/market_events/calendar.json`` (or
+``context.fixture_path``). Research signals only — does not place orders or move capital.
+Does not depend on the archived ``src.market_events`` package.
 
 Input assumptions:
     ``payload["event_id"]`` defaults to ``CPI_2026_06``.
@@ -10,13 +11,48 @@ Input assumptions:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
-from src.market_events.calendar import get_event
-
 from ..adapter import AdapterContext, DomainAdapter
 from ..models import Evidence, Observation, PlatformDomain
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_CALENDAR = _REPO_ROOT / "fixtures" / "market_events" / "calendar.json"
+
+
+def _load_event(event_id: str, calendar_path: Path | None) -> dict[str, Any]:
+    path = calendar_path if calendar_path is not None else _DEFAULT_CALENDAR
+    if not path.is_file():
+        return {
+            "event_id": event_id,
+            "confidence": 0.0,
+            "source": "missing_source",
+            "expected_volatility": "unknown",
+            "direction_bias": "neutral",
+        }
+    data = json.loads(path.read_text(encoding="utf-8"))
+    events = data.get("events") if isinstance(data, dict) else data
+    if not isinstance(events, list):
+        events = []
+    for row in events:
+        if isinstance(row, dict) and str(row.get("event_id") or "") == event_id:
+            return row
+    return {
+        "event_id": event_id,
+        "confidence": 0.0,
+        "source": "missing_source",
+        "expected_volatility": "unknown",
+        "direction_bias": "neutral",
+    }
+
+
+def _field(event: dict[str, Any], key: str, default: str = "") -> str:
+    value = event.get(key, default)
+    if isinstance(value, dict):
+        return str(value.get("value") or value.get("name") or default)
+    return str(value if value is not None else default)
 
 
 class MarketAdapter(DomainAdapter):
@@ -28,26 +64,28 @@ class MarketAdapter(DomainAdapter):
 
     def collect_observations(self, context: AdapterContext) -> list[Observation]:
         event_id = context.payload.get("event_id", "CPI_2026_06")
-        calendar_path = context.fixture_path or None
-        event = get_event(event_id, Path(calendar_path) if calendar_path else None)
+        calendar_path = Path(context.fixture_path) if context.fixture_path else None
+        event = _load_event(str(event_id), calendar_path)
+        confidence = float(event.get("confidence") or 0.0)
+        source = _field(event, "source", "missing_source") or "missing_source"
         return [
             Observation(
                 domain=self.domain.value,
                 signal="calendar_event",
-                value=event.event_id,
-                confidence=event.confidence,
-                source_ref=event.source or "missing_source",
+                value=event.get("event_id") or event_id,
+                confidence=confidence,
+                source_ref=source,
             ),
             Observation(
                 domain=self.domain.value,
                 signal="expected_volatility",
-                value=event.expected_volatility.value,
+                value=_field(event, "expected_volatility", "unknown"),
                 confidence=0.7,
             ),
             Observation(
                 domain=self.domain.value,
                 signal="direction_bias",
-                value=event.direction_bias.value,
+                value=_field(event, "direction_bias", "neutral"),
                 confidence=0.6,
             ),
         ]

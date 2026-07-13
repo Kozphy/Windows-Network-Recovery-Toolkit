@@ -70,13 +70,11 @@ include = [
     "telemetry*",
     "failure_system*",
     "src*",
-    "edge_device*",
     "endpoint_agent*",
     "windows_network_toolkit*",
     "toolkit*",
-    "mcp_server*",
 ]
-exclude = ["tests*", "frontend*", "scripts*", "docs*"]
+exclude = ["tests*", "frontend*", "scripts*", "docs*", "archive*"]
 
 [tool.pytest.ini_options]
 # Primary config lives in pytest.ini (pytest prefers pytest.ini over this section).
@@ -116,6 +114,7 @@ target-version = "py311"
 extend-exclude = [
     "frontend",
     "hybrid_frontend",
+    "archive",
     "node_modules",
     "platform_data",
 ]
@@ -141,7 +140,7 @@ ignore = [
 "platform_core/reasoning/layers.py" = ["UP042"]
 "platform_core/reliability/models.py" = ["UP042"]
 "platform_core/sre/**/*.py" = ["UP042"]
-"network_agent/**/*.py" = ["E402"]
+"archive/network_agent/**/*.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.11"
