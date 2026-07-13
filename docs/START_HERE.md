@@ -47,14 +47,14 @@ See [demo_5_min.md](demo_5_min.md) for expected output.
 | **`src/proxy_guard/`** | Live Windows proxy probes and remediation previews |
 | **`backend/`** | FastAPI — `/v1/*` canonical + legacy `/platform/*` |
 | **`platform_core/`** (root) | Legacy ops (fleet, SRE, remediation registry) — shim to canonical where possible |
-| **`labs/`** | Experimental — not mainline |
+| **`archive/`** | Experimental labs moved off mainline (see `archive/README.md`) |
 
 Full map: [architecture.md](architecture.md)
 
 ## Mainline vs labs
 
 - **Mainline:** `src/platform_core`, `windows_network_toolkit`, `backend/canonical_routes.py`, `tests/platform_core`
-- **Labs:** `labs/`, `backend/decision_intelligence/`, `platform_core/outcome_learning/` — portfolio demos only
+- **Labs:** `archive/`, `backend/decision_intelligence/`, `platform_core/outcome_learning/` — portfolio demos only
 
 ## Key commands
 

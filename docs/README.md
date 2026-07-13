@@ -64,7 +64,7 @@ Reading order (~10 minutes for new engineers): root `README.md` → `[architectu
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/*.bat`, `scripts/monitor_network.ps1`                  | Operator-facing probes and repairs; primary beginner path.                                                                                                                                                                                           |
 | `src/` (`python -m src`)                                        | Stdlib **observe → Hypotheses(v2)** + **legacy v1** scoring + Proxy Guard CLI.                                                                                                                                                                       |
-| `network_agent/` + `hybrid_frontend/`                           | Local FastAPI + collector/decision/report flow (see component docstrings).                                                                                                                                                                           |
+| `archive/network_agent/` + `archive/hybrid_frontend/` | Archived hybrid demo stacks; not required for `python -m src` flows. See `archive/README.md`. |
 | `failure_system/`                                               | Failure Knowledge System — read-only probes, FailureBlocks, JSONL, FastAPI + CLI (**no repair execution**).                                                                                                                                          |
 | `backend/` + `frontend/` + `endpoint_agent/` + `platform_core/` | Optional **Endpoint Reliability Platform** prototype: FastAPI `/platform/*`, Next.js dashboard, append-only `platform_data/*.jsonl`, local collector (**no silent auto-repair**). Same paths may also host other demo APIs—see component docstrings. |
 
@@ -85,7 +85,7 @@ Reading order (~10 minutes for new engineers): root `README.md` → `[architectu
 
 - **Batch path**: Timestamped logs land under `logs/`; compare before/after artifacts when validating a repair.
 - `**python -m src` path**: Inspect `reports/last_diagnosis.json`, `reports/last_diagnosis_live.json`, `logs/decision_audit.jsonl`, `logs/network_snapshots.jsonl`, `logs/repair_audit.jsonl`, `logs/proxy_guard.jsonl` (`proxy-watch` drift + attribution), and `reports/snapshots/` for deterministic evidence, live hypothesis exports, snapshot history, and proxy-disable audits.
-- **Hybrid API path**: JSON reports under `reports/` and API payloads include diagnosis evidence; repair execution requires explicit JSON confirmation (see `network_agent/api.py` docstrings).
+- **Hybrid API path (archived):** former `network_agent` demo lives under `archive/network_agent/`; mainline API is `backend/` (`wnrt-api`).
 - **Endpoint Reliability Platform path**: Correlate `platform_data/audit.jsonl` with `platform_data/remediation_executions.jsonl` and previews; blocked rows (`result=blocked`, policy rationales) should still append even when HTTP 200 responds. Metrics (`GET /platform/metrics`) recompute from JSONL scans—skew indicates corrupt tails or malformed lines skipped by readers.
 
 ## Critical paths (where state changes matter)
@@ -133,10 +133,10 @@ Automated suites live under `**tests/`** (see `**docs/test_strategy.md**` for de
 
 | Path                                  | Purpose                                                                           |
 | ------------------------------------- | --------------------------------------------------------------------------------- |
-| `proxy_attribution/`                  | Read-only classifier/diagnostic CLI layering on Windows proxy artefacts.          |
+| `archive/proxy_attribution/`          | Archived standalone attribution CLI (prefer `src.proxy_guard` / WNT).             |
 | `src/proxy_investigation/`            | Read-only localhost proxy drift investigation → JSONL + markdown report.          |
 | `proxy_reasoning/`                    | Proxy scenario ranking, verification, policy, replay audit (root package).        |
-| `network_agent/` + `hybrid_frontend/` | Alternate demo stacks documented in-repo; not required for `python -m src` flows. |
+| `archive/network_agent/` + `archive/hybrid_frontend/` | Alternate demo stacks archived off mainline; not required for `python -m src` flows. |
 
 
 ## Start Here

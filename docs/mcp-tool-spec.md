@@ -4,7 +4,7 @@ Read-only Model Context Protocol tools for technology risk evidence.
 
 ## Server
 
-- Entry: `python -m mcp_server`
+- Entry (archived): `PYTHONPATH=archive python -m mcp_server` — prefer mainline `backend/` / WNT CLIs.
 - Transport: stdio
 - Env: `MCP_READ_ONLY=1` (default) — writes rejected
 

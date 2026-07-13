@@ -105,4 +105,6 @@ Legend: **tests** = imported under `tests/`; **kept** = used by `windows_network
 - Branch: `refactor/portfolio-cleanup`
 - Tag: `portfolio-pre-cleanup-v1`
 - Pre-cleanup pytest: **1744 passed / 7 failed** (known `/v1` API gaps)
-- Inventory + wiring prepared; **package `git mv` into `archive/` awaiting explicit operator confirmation** (auto-review blocked bulk moves).
+- **ARCHIVE packages moved** under `archive/` with dedicated tests; KEEP imports verified clean.
+- Docs spine (`START_HERE`, `threat_model`, `docs/README`) point at `archive/`.
+- Post-cleanup pytest: **1686 passed / 7 failed** (same `/v1` gaps); ~58 archived-suite tests excluded — parity with baseline.

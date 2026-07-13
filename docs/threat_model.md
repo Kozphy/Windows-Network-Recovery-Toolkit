@@ -60,7 +60,7 @@ Local-first **Endpoint Reliability Platform** — security observability and saf
 - Generic AI agent decision-making
 - Multi-tenant SaaS security in this repository
 
-Experimental modules (decision intelligence, market events, edge device simulators) live under [`labs/`](../labs/README.md) and are **not** part of the main endpoint reliability threat boundary.
+Experimental modules (decision intelligence, market events, edge device simulators) live under [`archive/`](../archive/README.md) and are **not** part of the main endpoint reliability threat boundary.
 
 ## Architecture diagram (trust boundaries)
 
