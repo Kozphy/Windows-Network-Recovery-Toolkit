@@ -142,10 +142,16 @@ def run_auto_fix_proxy(
     skip_guardian_install: bool = False,
     skip_cursor_fix: bool = False,
     guardian_interval_seconds: int = 60,
+    prefer_direct: bool = False,
+    confirm: str = "",
     repo_root: Path | None = None,
     run: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
-    """Clear dead localhost WinINET proxy and install background guardian when safe."""
+    """Clear dead localhost WinINET proxy and install background guardian when safe.
+
+    Optional ``prefer_direct`` (requires confirm ``PREFER_DIRECT_WININET``) also clears
+    an *active* localhost proxy (KNOWN_DEV_PROXY / Cursor Node listener).
+    """
     if platform.system() != "Windows":
         return {
             "schema_version": _SCHEMA,
@@ -153,6 +159,8 @@ def run_auto_fix_proxy(
             "platform": platform.system(),
             "outcome": "unsupported",
         }
+
+    from src.proxy_drift.ensure_health import CONFIRM_PREFER_DIRECT
 
     subprocess_run = run if run is not None else subprocess.run
     repo = (repo_root or Path.cwd()).resolve()
@@ -184,6 +192,34 @@ def run_auto_fix_proxy(
         )
         steps.append({"step": "proxy_fix_fallback", "result": fix_result})
 
+    prefer_result: dict[str, Any] | None = None
+    after_dead = read_proxy_drift_status(run=subprocess_run)
+    localhost_enabled = (
+        int(after_dead.get("proxy_enable") or 0) == 1 and after_dead.get("localhost_port") is not None
+    )
+    if prefer_direct and localhost_enabled:
+        if dry_run:
+            prefer_result = {
+                "action_taken": "preview_only",
+                "reason": f"Would clear active localhost WinINET proxy (confirm {CONFIRM_PREFER_DIRECT}).",
+                "proxy_server": after_dead.get("proxy_server"),
+            }
+        elif confirm != CONFIRM_PREFER_DIRECT:
+            prefer_result = {
+                "action_taken": "blocked",
+                "reason": f"Confirmation required: {CONFIRM_PREFER_DIRECT}",
+                "proxy_server": after_dead.get("proxy_server"),
+            }
+        else:
+            prefer_result = apply_proxy_fix(
+                dry_run=False,
+                confirm=CONFIRMATION_PHRASE,
+                clear_pac=False,
+                run=subprocess_run,
+            )
+            prefer_result["prefer_direct"] = True
+        steps.append({"step": "prefer_direct", "result": prefer_result})
+
     final = read_proxy_drift_status(run=subprocess_run)
     steps.append({"step": "status_final", "result": final})
 
@@ -196,27 +232,31 @@ def run_auto_fix_proxy(
             )
         )
 
-    legacy = str(final.get("legacy_classification") or "")
-    if legacy == "NO_PROXY" or not final.get("is_dead_localhost_proxy"):
-        outcome = "healthy"
-    elif dry_run and final.get("is_dead_localhost_proxy"):
-        outcome = "would_remediate"
-    elif final.get("is_dead_localhost_proxy"):
-        outcome = "still_dead"
+    final_localhost = (
+        int(final.get("proxy_enable") or 0) == 1 and final.get("localhost_port") is not None
+    )
+    if final.get("is_dead_localhost_proxy"):
+        outcome = "would_remediate" if dry_run else "still_dead"
+    elif prefer_direct and localhost_enabled and prefer_result and prefer_result.get("action_taken") == "blocked":
+        outcome = "needs_prefer_direct_confirm"
+    elif final_localhost:
+        outcome = "localhost_proxy_active"
     else:
-        outcome = "review"
+        outcome = "healthy"
 
     return {
         "schema_version": _SCHEMA,
         "timestamp_utc": _now(),
         "dry_run": dry_run,
+        "prefer_direct": prefer_direct,
         "outcome": outcome,
         "classification": final.get("classification"),
-        "legacy_classification": legacy,
+        "legacy_classification": final.get("legacy_classification"),
         "steps": steps,
         "limitations": [
-            "Auto-fix clears dead localhost WinINET proxy only — not corporate proxy policy.",
+            "Default auto-fix clears dead localhost WinINET proxy only — not corporate proxy policy.",
+            "prefer_direct also clears active localhost proxies; may break intentional local tunnels.",
             "Listener correlation is not registry writer proof.",
-            "Background guardian re-checks every interval; active dev proxies are left alone.",
+            "Background guardian only remediates dead (no-listener) proxies unless prefer-direct is used.",
         ],
     }

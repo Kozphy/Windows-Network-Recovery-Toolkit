@@ -32,6 +32,40 @@ def test_dead_proxy_config() -> None:
     assert "8080" in rationale
 
 
+def test_resolve_listener_matches_wildcard_bind() -> None:
+    """Node/Cursor often bind 0.0.0.0:port — must not be reported as dead."""
+    from src.platform_core.attribution.collector import resolve_listener_process
+
+    netstat = (
+        "  TCP    0.0.0.0:60072          0.0.0.0:0              LISTENING       62284\n"
+        "  TCP    [::]:60072             [::]:0                 LISTENING       62284\n"
+    )
+
+    def fake_run(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        class R:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        first = cmd[0] if isinstance(cmd, (list, tuple)) and cmd else ""
+        if first == "netstat":
+            r = R()
+            r.stdout = netstat
+            return r
+        if first == "tasklist":
+            r = R()
+            r.stdout = '"node.exe","62284","Console","1","100 K"\n'
+            return r
+        r = R()
+        r.stdout = '{"Path":"C:\\\\node.exe","Cmd":"node","Parent":1,"User":"u","Start":""}'
+        return r
+
+    attr, found = resolve_listener_process(60072, run=fake_run, timeout=5.0)
+    assert found is True
+    assert attr.pid == 62284
+    assert "node" in (attr.process_name or "").lower()
+
+
 def test_known_dev_proxy() -> None:
     proxy = ProxyStateSnapshot(
         wininet_proxy_enable=1,

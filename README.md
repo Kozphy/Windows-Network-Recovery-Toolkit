@@ -205,24 +205,34 @@ See also: [analytics/powerbi/README.md](analytics/powerbi/README.md) (earlier po
 ## Architecture overview
 
 ```text
-Evidence collection → Classification → Proof / control tests → Policy gates
-  → Remediation preview → Audit trail → Governance reporting → Replay verification
+Evidence
+→ Hypothesis
+→ Proof
+→ Policy
+→ Stakeholder
+→ Timing
+→ Remediation Preview
+→ Audit
+→ Replay
+→ Learning
 ```
+
+Stakeholder and Timing do **not** alter technical facts. They determine whether, by whom, and when an evidence-backed action may proceed. Policy permission remains separate from coordination status (for example `PREVIEW_ONLY` + `NEEDS_APPROVAL`).
 
 ```mermaid
 flowchart LR
-  E[Evidence] --> C[Classify]
-  C --> P[Proof]
-  P --> R[Risk rate]
-  R --> Pol[Policy]
-  Pol --> Prev[Preview]
+  E[Evidence] --> H[Hypothesis]
+  H --> Pf[Proof]
+  Pf --> Pol[Policy]
+  Pol --> St[Stakeholder]
+  St --> Tm[Timing]
+  Tm --> Prev[Remediation Preview]
   Prev --> Aud[Audit]
-  Aud --> Rep[Report]
+  Aud --> Rp[Replay]
+  Rp --> Ln[Learning]
 ```
 
-
-
-Details: [docs/architecture.md](docs/architecture.md) · [docs/architecture-infographic.md](docs/architecture-infographic.md)
+Details: [docs/architecture.md](docs/architecture.md) · [docs/decision-context.md](docs/decision-context.md) · [docs/architecture-infographic.md](docs/architecture-infographic.md)
 
 ---
 
@@ -234,8 +244,13 @@ Six principles (`evidence_to_action.v1`):
 2. **Correlation is not causation**
 3. **Confidence is not certainty** (ordinal, not probability)
 4. **Classification is not accusation**
-5. **Policy permission is not safety guarantee**
+5. **Policy permission is not a safety guarantee**
 6. **Recommendation is not execution authority**
+
+Additional coordination principles:
+
+7. **Stakeholder assignment is not approval**
+8. **A valid maintenance window is not execution authorization**
 
 ```text
 Collect → Classify → Prove → Rate risk → Policy → Preview → Audit → Report → Replay

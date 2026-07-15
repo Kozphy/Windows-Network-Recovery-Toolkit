@@ -2164,6 +2164,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip configure-cursor-no-proxy.ps1 step.",
     )
     p_afp.add_argument(
+        "--prefer-direct",
+        action="store_true",
+        help="Also clear an active localhost WinINET proxy (requires --confirm PREFER_DIRECT_WININET).",
+    )
+    p_afp.add_argument(
+        "--confirm",
+        dest="confirm_phrase",
+        default="",
+        help="PREFER_DIRECT_WININET when using --prefer-direct.",
+    )
+    p_afp.add_argument(
         "--guardian-interval",
         type=int,
         default=60,

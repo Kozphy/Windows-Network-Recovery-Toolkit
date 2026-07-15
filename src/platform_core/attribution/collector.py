@@ -67,19 +67,30 @@ def resolve_listener_process(
 ) -> tuple[ProcessAttribution, bool]:
     if port is None:
         return ProcessAttribution(), False
-    needle = f"127.0.0.1:{port}"
+    # Match loopback and wildcard binds (Node/Cursor often listen on 0.0.0.0:port).
+    local_needles = (
+        f"127.0.0.1:{port}",
+        f"0.0.0.0:{port}",
+        f"[::]:{port}",
+        f"[::1]:{port}",
+        f"*:{port}",
+    )
     code, out = _run_cmd(["netstat", "-ano"], run=run, timeout=timeout)
     pid: int | None = None
     if code == 0:
         for line in out.splitlines():
-            if "LISTENING" in line.upper() and needle in line:
-                parts = line.split()
-                if parts:
-                    try:
-                        pid = int(parts[-1])
-                    except ValueError:
-                        pid = None
-                break
+            upper = line.upper()
+            if "LISTENING" not in upper:
+                continue
+            if not any(needle in line for needle in local_needles):
+                continue
+            parts = line.split()
+            if parts:
+                try:
+                    pid = int(parts[-1])
+                except ValueError:
+                    pid = None
+            break
     if pid is None:
         return ProcessAttribution(), False
 

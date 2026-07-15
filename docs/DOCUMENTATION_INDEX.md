@@ -106,6 +106,35 @@ python -m windows_network_toolkit localhost-diagnose --url "http://localhost:611
 
 Docs: [localhost-diagnose.md](localhost-diagnose.md)
 
+### 1c. Browser profile differential (normal vs InPrivate)
+
+```text
+raw OS/protocol probe → HAR / controlled probe / profile metadata → classify → repair-preview (PREVIEW default)
+```
+
+```powershell
+python -m windows_network_toolkit browser-diff https://www.104.com.tw/ --fixture tests/fixtures/browser_profile/104_profile_fail.json --format text
+python -m windows_network_toolkit browser-diff https://example.com/ --browser edge --import-normal-har normal.har --import-private-har private.har --proof
+python -m windows_network_toolkit browser-profile repair-preview 104.com.tw --browser edge
+```
+
+Docs: [browser-profile-differential.md](browser-profile-differential.md) · [har-redaction.md](har-redaction.md) · [browser-repair-safety.md](browser-repair-safety.md) · [browser-evidence-model.md](browser-evidence-model.md)
+
+### 1d. Decision context (stakeholder + timing)
+
+```text
+Proof/policy (unchanged) → stakeholder resolve → timing evaluate → coordination status → preview
+```
+
+```powershell
+python -m windows_network_toolkit diagnose --proof --decision-context --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit stakeholder-resolve --case-id CASE --classification DEAD_PROXY_CONFIG
+python -m windows_network_toolkit timing-evaluate --case-id CASE --timezone Asia/Taipei
+python -m windows_network_toolkit decision-explain --case-id CASE --format text
+```
+
+Docs: [decision-context.md](decision-context.md)
+
 ### 2. Multi-domain decision platform (fixture-based)
 
 ```text

@@ -304,6 +304,7 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
 
     With ``--proof``, runs the full proof envelope (signals, attempts, conclusion).
     Without ``--proof``, emits read-only proxy status summary from fixture or live probes.
+    With ``--decision-context``, attaches stakeholder/timing/coordination without changing proof.
     """
     inject = None
     fixture_data: dict | None = None
@@ -339,6 +340,45 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     if getattr(args, "principles", False):
         out = enrich_diagnose_payload(out, include_principles=True)
     out["proof_mode"] = "full"
+
+    if getattr(args, "decision_context", False):
+        from platform_core.models import utc_now_iso
+        from src.platform_core.decision_context import (
+            build_decision_envelope,
+            format_decision_text,
+            save_decision_envelope,
+        )
+
+        classification = ""
+        if isinstance(out.get("classification"), dict):
+            classification = str(out["classification"].get("primary_classification") or "")
+        elif fixture_data and isinstance(fixture_data.get("classification"), dict):
+            classification = str(fixture_data["classification"].get("primary_classification") or "")
+        pol = (fixture_data or {}).get("policy_decision") or {}
+        case_id = str((fixture_data or {}).get("case_id") or out.get("incident_id") or "")
+        if not case_id:
+            from platform_core.models import utc_now_iso
+
+            case_id = f"diag-{utc_now_iso().replace(':', '').replace('+', 'p')}"
+        envelope = build_decision_envelope(
+            case_id=case_id,
+            decision_id=str(out.get("decision_id") or case_id),
+            classification=classification,
+            policy_decision=str(pol.get("outcome") or out.get("policy_gate") or "PREVIEW_ONLY"),
+            policy_allowed=bool(pol.get("allowed", False)),
+            policy_requires_approval=bool(pol.get("requires_confirmation", True)),
+            proof_result=out,
+            timezone_name=getattr(args, "timezone", None) or None,
+            write_audit=True,
+        )
+        save_decision_envelope(envelope)
+        out["decision_context"] = envelope.to_dict()
+        out["policy_decision"] = envelope.policy_decision
+        out["coordination_status"] = envelope.coordination_status.value
+        if getattr(args, "format", "json") == "text":
+            print(format_decision_text(envelope))
+            return 0
+
     _emit_json(out)
     return 0
 
@@ -1058,6 +1098,13 @@ def cmd_governance_report(args: argparse.Namespace) -> int:
         return 2
 
     fixture = load_fixture(_resolve_fixture(args.fixture))
+    if getattr(args, "include_decision_context", False):
+        fixture = dict(fixture)
+        fixture["include_decision_context"] = True
+        if getattr(args, "timezone", None):
+            fixture["timezone"] = args.timezone
+        if getattr(args, "audit_dir_kpi", None):
+            fixture["audit_dir"] = args.audit_dir_kpi
     result = build_governance_report(fixture, format=args.format if args.format != "html" else "markdown")
     if args.format == "markdown":
         print(result)
@@ -1067,6 +1114,79 @@ def cmd_governance_report(args: argparse.Namespace) -> int:
         print(_markdown_to_html(str(result)))
     else:
         _emit_json(result)
+    return 0
+
+
+def cmd_stakeholder_resolve(args: argparse.Namespace) -> int:
+    """Resolve stakeholder roles for a stored case (roles/config only)."""
+    from src.platform_core.decision_context import load_decision_envelope
+    from src.platform_core.stakeholder import resolve_stakeholders
+
+    case_id = str(args.case_id)
+    existing = load_decision_envelope(case_id)
+    classification = getattr(args, "classification", "") or ""
+    policy_outcome = getattr(args, "policy_outcome", "") or "PREVIEW_ONLY"
+    if existing and existing.stakeholder and not classification:
+        classification = existing.stakeholder.classification
+    if existing and not getattr(args, "policy_outcome", ""):
+        policy_outcome = existing.policy_decision
+    config = None
+    if getattr(args, "config", None):
+        config = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    ctx = resolve_stakeholders(
+        case_id=case_id,
+        classification=classification,
+        policy_outcome=policy_outcome,
+        policy_requires_approval=bool(getattr(args, "requires_approval", True)),
+        config=config,
+    )
+    _emit_json(ctx.to_dict())
+    return 0
+
+
+def cmd_timing_evaluate(args: argparse.Namespace) -> int:
+    """Evaluate timing/SLA/window for a case (does not authorize execution)."""
+    from platform_core.models import utc_now_iso
+    from src.platform_core.decision_context import load_decision_envelope
+    from src.platform_core.timing import evaluate_timing
+
+    case_id = str(args.case_id)
+    existing = load_decision_envelope(case_id)
+    detected = getattr(args, "detected_at", None) or (
+        existing.timing.detected_at_utc if existing and existing.timing else utc_now_iso()
+    )
+    classification = getattr(args, "classification", "") or (
+        existing.stakeholder.classification if existing and existing.stakeholder else ""
+    )
+    tm = evaluate_timing(
+        case_id=case_id,
+        detected_at_utc=str(detected),
+        timezone_name=getattr(args, "timezone", None) or None,
+        classification=classification,
+        policy_outcome=(existing.policy_decision if existing else "PREVIEW_ONLY"),
+        maintenance_window_required=bool(getattr(args, "maintenance_window_required", False)),
+        change_freeze_active=bool(getattr(args, "change_freeze", False)),
+    )
+    _emit_json(tm.to_dict())
+    return 0
+
+
+def cmd_decision_explain(args: argparse.Namespace) -> int:
+    """Explain a stored DecisionEnvelope without inventing stronger causation."""
+    from src.platform_core.decision_context import (
+        explain_decision_envelope,
+        format_decision_text,
+        load_decision_envelope,
+    )
+
+    env = load_decision_envelope(str(args.case_id))
+    if env is None:
+        print(f"No decision context for case-id={args.case_id}", file=sys.stderr)
+        return 2
+    if getattr(args, "format", "json") == "text":
+        print(format_decision_text(env))
+        return 0
+    _emit_json(explain_decision_envelope(env))
     return 0
 
 
@@ -1332,6 +1452,58 @@ def cmd_browser_evidence(args: argparse.Namespace) -> int:
     else:
         print(pkg.model_dump_json(indent=2))
     return 0
+
+
+def cmd_browser_diff(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from windows_network_toolkit.diagnostics.browser_profile import run_browser_diff
+
+    fixture = Path(args.fixture) if getattr(args, "fixture", "") else None
+    normal = Path(args.import_normal_har) if getattr(args, "import_normal_har", "") else None
+    private = Path(args.import_private_har) if getattr(args, "import_private_har", "") else None
+    if fixture is None and not args.url:
+        print("Provide URL or --fixture", file=sys.stderr)
+        return 2
+    result = run_browser_diff(
+        args.url or "https://example.invalid/",
+        browser=args.browser,
+        proof=bool(args.proof),
+        normal_har=normal,
+        private_har=private,
+        fixture=fixture if fixture and fixture.is_file() else None,
+    )
+    payload = result.to_dict()
+    if args.format == "text":
+        print(result.text_report)
+    else:
+        _emit_json(payload)
+    return 0
+
+
+def cmd_browser_profile(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.browser_profile import (
+        run_browser_profile_inspect,
+        run_browser_site_state,
+        run_repair_apply,
+        run_repair_preview,
+    )
+
+    sub = args.browser_profile_cmd
+    if sub == "inspect":
+        _emit_json(run_browser_profile_inspect(browser=args.browser))
+        return 0
+    if sub == "site-state":
+        _emit_json(run_browser_site_state(args.domain, browser=args.browser))
+        return 0
+    if sub == "repair-preview":
+        _emit_json(run_repair_preview(args.domain, browser=args.browser))
+        return 0
+    if sub == "repair-apply":
+        _emit_json(run_repair_apply(args.preview_id, confirm=args.confirm or ""))
+        return 0
+    print("Unknown browser-profile subcommand", file=sys.stderr)
+    return 2
 
 
 def cmd_classifier_benchmark(args: argparse.Namespace) -> int:
@@ -1928,6 +2100,22 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         action="store_true",
         help="Include principle compliance sections in output",
     )
+    diag.add_argument(
+        "--decision-context",
+        action="store_true",
+        help="Attach stakeholder/timing/coordination envelope (does not change proof)",
+    )
+    diag.add_argument(
+        "--timezone",
+        default="",
+        help="IANA timezone for timing evaluation (default UTC; e.g. Asia/Taipei)",
+    )
+    diag.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format when --decision-context is set (default json)",
+    )
     diag.add_argument("--url", default="", help="Optional URL for network probes")
     diag.add_argument("--fixture", default="", help="Optional fixture JSON")
     diag.set_defaults(func=cmd_diagnose)
@@ -2014,8 +2202,42 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     gr.add_argument("--fixture", default="", help="Case study fixture JSON path or name")
     gr.add_argument("--audit-dir", default="", help="Audit JSONL directory for audit-backed report")
     gr.add_argument("--risk-register", default="", help="Optional risk register JSON path")
+    gr.add_argument(
+        "--include-decision-context",
+        action="store_true",
+        help="Enrich fixture report with stakeholder/timing/coordination sections",
+    )
+    gr.add_argument("--timezone", default="", help="IANA timezone when including decision context")
+    gr.add_argument(
+        "--audit-dir-kpi",
+        default="",
+        dest="audit_dir_kpi",
+        help="Optional audit dir for coordination KPI rollup",
+    )
     gr.add_argument("--format", choices=["json", "markdown", "html"], default="json")
     gr.set_defaults(func=cmd_governance_report)
+
+    sr = sub.add_parser("stakeholder-resolve", help="Resolve stakeholder roles for a case (roles/config only)")
+    sr.add_argument("--case-id", required=True, help="Case / incident id")
+    sr.add_argument("--classification", default="", help="Primary classification label")
+    sr.add_argument("--policy-outcome", default="", help="Policy outcome string")
+    sr.add_argument("--config", default="", help="Optional stakeholder config JSON path")
+    sr.add_argument("--requires-approval", action="store_true", default=True)
+    sr.set_defaults(func=cmd_stakeholder_resolve)
+
+    te = sub.add_parser("timing-evaluate", help="Evaluate timing/SLA/window for a case (read-only)")
+    te.add_argument("--case-id", required=True, help="Case / incident id")
+    te.add_argument("--detected-at", default="", dest="detected_at", help="ISO8601 detection time (UTC)")
+    te.add_argument("--timezone", default="", help="IANA timezone (default UTC)")
+    te.add_argument("--classification", default="", help="Optional classification for urgency")
+    te.add_argument("--maintenance-window-required", action="store_true")
+    te.add_argument("--change-freeze", action="store_true")
+    te.set_defaults(func=cmd_timing_evaluate)
+
+    de = sub.add_parser("decision-explain", help="Explain stored decision-context envelope")
+    de.add_argument("--case-id", required=True, help="Case / incident id")
+    de.add_argument("--format", choices=["json", "text"], default="json")
+    de.set_defaults(func=cmd_decision_explain)
 
     rks = sub.add_parser("risk-kpi-summary", help="Risk KPI rollup from audit JSONL (read-only)")
     rks.add_argument("--audit-dir", default="tests/fixtures/risk_analytics/audit_sample", help="Audit directory")
@@ -2171,6 +2393,37 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     be.add_argument("--headed", action="store_true", help="Run browser headed (not headless)")
     be.add_argument("--format", choices=["json", "package"], default="json")
     be.set_defaults(func=cmd_browser_evidence)
+
+    bd = sub.add_parser(
+        "browser-diff",
+        help="Normal vs InPrivate browser-profile differential (privacy-preserving, read-only)",
+    )
+    bd.add_argument("url", nargs="?", default="", help="Target URL (e.g. https://www.104.com.tw/)")
+    bd.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
+    bd.add_argument("--proof", action="store_true", help="Emphasize proof ladder / request stronger evidence")
+    bd.add_argument("--fixture", default="", help="Fixture JSON for offline replay")
+    bd.add_argument("--import-normal-har", default="", help="HAR from normal browser profile")
+    bd.add_argument("--import-private-har", default="", help="HAR from InPrivate/Incognito")
+    bd.add_argument("--format", choices=["json", "text"], default="json")
+    bd.set_defaults(func=cmd_browser_diff)
+
+    bp = sub.add_parser("browser-profile", help="Inspect/repair-preview Chromium profiles (metadata only)")
+    bp_sub = bp.add_subparsers(dest="browser_profile_cmd", required=True)
+    bp_ins = bp_sub.add_parser("inspect", help="List profiles / installation / policies")
+    bp_ins.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
+    bp_ins.set_defaults(func=cmd_browser_profile)
+    bp_ss = bp_sub.add_parser("site-state", help="Cookie count/meta + storage flags for a domain")
+    bp_ss.add_argument("domain", help="Domain e.g. 104.com.tw")
+    bp_ss.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
+    bp_ss.set_defaults(func=cmd_browser_profile)
+    bp_rp = bp_sub.add_parser("repair-preview", help="Preview site-scoped cleanup (never applies)")
+    bp_rp.add_argument("domain", help="Domain e.g. 104.com.tw")
+    bp_rp.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
+    bp_rp.set_defaults(func=cmd_browser_profile)
+    bp_ra = bp_sub.add_parser("repair-apply", help="Gated apply (requires --confirm; may be unimplemented)")
+    bp_ra.add_argument("preview_id", help="Preview id from repair-preview")
+    bp_ra.add_argument("--confirm", default="", help="BROWSER_SITE_REPAIR_APPLY")
+    bp_ra.set_defaults(func=cmd_browser_profile)
 
     cb = sub.add_parser("classifier-benchmark", help="Offline classifier evaluation harness")
     cb.add_argument("--cases", default="examples/evaluation/classifier_benchmark_sample.json")

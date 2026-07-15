@@ -310,6 +310,8 @@ def cmd_auto_fix_proxy(args: argparse.Namespace) -> int:
         skip_guardian_install=bool(getattr(args, "skip_guardian_install", False)),
         skip_cursor_fix=bool(getattr(args, "skip_cursor_fix", False)),
         guardian_interval_seconds=int(getattr(args, "guardian_interval", 60)),
+        prefer_direct=bool(getattr(args, "prefer_direct", False)),
+        confirm=str(getattr(args, "confirm_phrase", "") or ""),
         repo_root=Path.cwd(),
     )
     if getattr(args, "emit_json", False):
@@ -321,10 +323,14 @@ def cmd_auto_fix_proxy(args: argparse.Namespace) -> int:
             print("OK: Proxy path is clean. Restart your browser.")
         elif result.get("outcome") == "still_dead":
             print("WARN: Still dead — try scripts/fix-wininet-proxy.cmd")
+        elif result.get("outcome") == "localhost_proxy_active":
+            print("WARN: Localhost proxy still active — re-run with --prefer-direct --confirm PREFER_DIRECT_WININET")
+        elif result.get("outcome") == "needs_prefer_direct_confirm":
+            print("WARN: prefer-direct blocked — supply --confirm PREFER_DIRECT_WININET")
         elif dry_run:
             print("Dry-run preview — no registry changes or guardian install.")
     outcome = str(result.get("outcome") or "")
-    if outcome == "still_dead":
+    if outcome in {"still_dead", "needs_prefer_direct_confirm"}:
         return 1
     if outcome == "unsupported":
         return 2

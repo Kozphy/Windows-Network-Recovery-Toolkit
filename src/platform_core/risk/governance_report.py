@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from src.platform_core.governance.evidence_to_action import attach_governance_envelope
 from src.platform_core.governance.proof_tier import resolve_proof_tier
-from src.platform_core.governance.report_sections import AI_TRANSPARENCY_SECTION, NON_CLAIMS
+from src.platform_core.governance.report_sections import AI_TRANSPARENCY_SECTION, GOVERNANCE_PRINCIPLES, NON_CLAIMS
 from src.platform_core.governance.risk_decision_record import build_risk_decision_record
 from src.platform_core.risk.business_impact_mapping import map_business_impact
 from src.platform_core.risk.control_test_mature import run_mature_control_tests
@@ -117,6 +117,38 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
     assessment["control_tests"] = [t.model_dump() for t in tests]
     assessment["mature_control_tests"] = [t.model_dump() for t in mature]
 
+    # Optional decision-context enrichment (does not alter technical proof fields).
+    decision_context = fixture.get("decision_context")
+    if not decision_context and fixture.get("include_decision_context"):
+        from src.platform_core.decision_context import build_decision_envelope
+
+        policy = fixture.get("policy_decision") or {}
+        classification = (fixture.get("classification") or {}).get("primary_classification", "")
+        envelope = build_decision_envelope(
+            case_id=str(fixture.get("case_id") or "gov-case"),
+            classification=str(classification),
+            policy_decision=str(policy.get("outcome") or "PREVIEW_ONLY"),
+            policy_allowed=bool(policy.get("allowed", False)),
+            policy_requires_approval=bool(policy.get("requires_confirmation", True)),
+            proof_result=fixture.get("proof") if isinstance(fixture.get("proof"), dict) else {},
+            write_audit=False,
+            timezone_name=fixture.get("timezone"),
+            stakeholder_config=fixture.get("stakeholder_config"),
+            timing_config=fixture.get("timing_config"),
+        )
+        decision_context = envelope.to_dict()
+    if decision_context:
+        assessment["decision_context"] = decision_context
+        assessment["coordination_status"] = decision_context.get("coordination_status")
+        assessment["policy_decision_separate"] = decision_context.get("policy_decision")
+        assessment["governance_principles"] = list(GOVERNANCE_PRINCIPLES)
+
+    from src.platform_core.governance.coordination_kpis import compute_coordination_kpis
+
+    audit_dir = fixture.get("audit_dir")
+    if audit_dir:
+        assessment["coordination_kpis"] = compute_coordination_kpis(Path(audit_dir))
+
     if format == "json":
         return assessment
 
@@ -128,6 +160,7 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
     findings = assessment["findings"]
     rdr = assessment.get("risk_decision_record") or {}
     proof = assessment.get("proof_tier") or {}
+    dc = assessment.get("decision_context") or {}
 
     lines = [
         "# Technology Risk & Control Governance Report",
@@ -144,27 +177,90 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
         "",
         rating["summary"],
         "",
-        "## Risk Decision Record",
+        "## 1. Technical evidence",
         "",
-        f"- Incident: {rdr.get('incident_id')}",
+        f"- Bundle / case references under findings and proof tier sections.",
+        "",
+        "## 2. Hypothesis and proof status",
+        "",
         f"- Classification: {rdr.get('classification')}",
+        f"- Proof tier: {rdr.get('proof_tier', proof.get('proof_tier'))}",
         f"- Human review required: {rdr.get('human_review_required')}",
-        f"- Execution authority: {rdr.get('execution_authority')}",
-        f"- Evidence hash: `{rdr.get('evidence_hash', '')[:16]}...`",
         "",
-        "## Business Objective",
+        "## 3. Policy decision",
         "",
-        f"- **{obj['name']}** — {obj['description']}",
-        f"- Owner: {obj['owner']}",
+        f"- Outcome: **{gov['outcome']}** (dry-run={gov['dry_run']})",
         "",
-        "## Asset & Threat",
-        "",
-        f"- **Asset:** {asset['name']} ({asset['asset_type']})",
-        f"- **Threat:** {threat['name']} — {threat['failure_mode']}",
-        "",
-        "## Findings",
+        "## 4. Stakeholder ownership",
         "",
     ]
+    sh = dc.get("stakeholder") or {}
+    if sh:
+        ao = (sh.get("asset_owner") or {}).get("display_name") or "(unresolved)"
+        lines.append(f"- Asset owner role: {ao}")
+        lines.append(f"- Unresolved fields: {', '.join(sh.get('unresolved_fields') or []) or 'none'}")
+    else:
+        lines.append("- Decision context not supplied for this fixture.")
+    lines.extend(
+        [
+            "",
+            "## 5. Approval and execution authority",
+            "",
+            f"- Approver roles: {len((sh.get('approver_roles') or []))}",
+            f"- Execution authority present: {bool(sh.get('execution_authority'))}",
+            f"- Coordination status: {dc.get('coordination_status', 'n/a')}",
+            "",
+            "## 6. Timing, SLA and evidence validity",
+            "",
+        ]
+    )
+    tm = dc.get("timing") or {}
+    if tm:
+        lines.append(f"- Timing decision: {tm.get('decision')}")
+        lines.append(f"- SLA due (UTC): {tm.get('sla_due_utc')}")
+        lines.append(f"- Evidence expires (UTC): {tm.get('evidence_expires_utc')}")
+        lines.append(f"- Timezone: {tm.get('timezone')}")
+    else:
+        lines.append("- Timing context not supplied.")
+    lines.extend(
+        [
+            "",
+            "## 7. Coordination status",
+            "",
+            f"- **{dc.get('coordination_status', 'n/a')}** (separate from policy decision)",
+            "",
+            "## 8. Remediation preview",
+            "",
+            f"- {gov['recommended_action']}",
+            f"- Preview/dry-run default: **{gov['dry_run']}**",
+            "",
+            "## 9. Residual risk",
+            "",
+            f"- Residual level: {rating.get('residual_level')}",
+            "",
+            "## 10. Audit integrity",
+            "",
+            "- Use `audit verify` to validate the hash chain; this report does not rewrite logs.",
+            "",
+            "## Risk Decision Record",
+            "",
+            f"- Incident: {rdr.get('incident_id')}",
+            f"- Evidence hash: `{rdr.get('evidence_hash', '')[:16]}...`",
+            "",
+            "## Business Objective",
+            "",
+            f"- **{obj['name']}** — {obj['description']}",
+            f"- Owner: {obj['owner']}",
+            "",
+            "## Asset & Threat",
+            "",
+            f"- **Asset:** {asset['name']} ({asset['asset_type']})",
+            f"- **Threat:** {threat['name']} — {threat['failure_mode']}",
+            "",
+            "## Findings",
+            "",
+        ]
+    )
     for f in findings:
         lines.append(
             f"- **{f['title']}** ({f['classification']}) — tier: {f['evidence_tier']}, "
@@ -189,6 +285,21 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
     lines.extend(["", "## Mature control tests", ""])
     for mt in mature:
         lines.append(f"- **{mt.control_name}** ({mt.test_result.value}): {mt.control_objective}")
+    if assessment.get("coordination_kpis"):
+        k = assessment["coordination_kpis"]
+        lines.extend(
+            [
+                "",
+                "## Coordination KPIs (counts — not probabilities)",
+                "",
+                f"- Unassigned owner cases: {k.get('unassigned_owner_cases')}",
+                f"- Awaiting approval: {k.get('cases_awaiting_approval')}",
+                f"- Deferred to maintenance windows: {k.get('cases_deferred_to_maintenance_windows')}",
+                f"- SLA overdue: {k.get('sla_overdue_cases')}",
+                f"- Evidence expired: {k.get('evidence_expired_cases')}",
+                f"- Immediate escalation: {k.get('immediate_escalation_cases')}",
+            ]
+        )
     lines.extend(
         [
             "",
@@ -203,10 +314,13 @@ def build_governance_report(fixture: dict[str, Any], *, format: str = "json") ->
             f"- Recommended action: {gov['recommended_action']}",
             f"- Owner: {gov['governance_owner']}",
             "",
-            "## Limitations",
+            "## Principles",
             "",
         ]
     )
+    for p in GOVERNANCE_PRINCIPLES:
+        lines.append(f"- {p}")
+    lines.extend(["", "## Limitations", ""])
     for lim in assessment.get("limitations", []):
         lines.append(f"- {lim}")
     lines.extend(["", "## Non-claims", ""])

@@ -9,9 +9,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from src.platform_core import SCHEMA_VERSION
+from src.platform_core.audit.paths import default_canonical_path
 from src.platform_core.audit.reader import read_audit_for_decision
 from src.platform_core.audit.schema import export_schema_json
-from src.platform_core.audit.writer import _DEFAULT_PATH as AUDIT_PATH
 from src.platform_core.governance.control_mapping import map_policy_outcome_to_controls
 from src.platform_core.governance.policy_compiler import compile_policy_matrix
 from src.platform_core.learning.feedback import record_feedback
@@ -167,7 +167,7 @@ def v1_metrics() -> dict[str, Any]:
 
 @router.get("/audit/{decision_id}")
 def v1_audit(decision_id: str) -> dict[str, Any]:
-    rows = read_audit_for_decision(path=AUDIT_PATH, decision_id=decision_id)
+    rows = read_audit_for_decision(path=default_canonical_path(), decision_id=decision_id)
     return {"decision_id": decision_id, "records": rows}
 
 

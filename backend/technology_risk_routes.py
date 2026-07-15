@@ -249,3 +249,126 @@ def executive_report(
     """Return executive governance report — KPIs, risk scores, control summary (read-only)."""
     payload = _load_pipeline_payload(fixture=fixture)
     return build_executive_report(payload)
+
+
+# --- Browser-profile differential (read-only / preview) ---
+
+
+def _resolve_browser_fixture(path: str | None) -> Path | None:
+    if not path:
+        return None
+    p = Path(path)
+    if not p.is_file():
+        p = _REPO / path
+    if not p.is_file():
+        raise HTTPException(status_code=404, detail="fixture not found")
+    resolved = p.resolve()
+    if not any(str(resolved).startswith(str(root.resolve())) for root in _ALLOWED_FIXTURE_ROOTS):
+        raise HTTPException(status_code=403, detail="fixture path outside allowlist")
+    return resolved
+
+
+@router.get("/trisk/browser/diff", response_model=dict[str, Any])
+def browser_diff(
+    url: str = Query(..., description="Target URL"),
+    browser: str = Query(default="auto"),
+    fixture: str | None = Query(default=None),
+) -> dict[str, Any]:
+    """Read-only browser differential result (prefer fixture for demos)."""
+    from windows_network_toolkit.diagnostics.browser_profile import run_browser_diff
+
+    fix = _resolve_browser_fixture(fixture)
+    if fix is not None:
+        return run_browser_diff(url, browser=browser, fixture=fix).to_dict()
+    # Live path is still read-only but may touch OS network + profile metadata
+    return run_browser_diff(url, browser=browser, proof=False).to_dict()
+
+
+@router.get("/trisk/browser/profiles", response_model=dict[str, Any])
+def browser_profiles(browser: str = Query(default="auto")) -> dict[str, Any]:
+    from windows_network_toolkit.diagnostics.browser_profile import run_browser_profile_inspect
+
+    return run_browser_profile_inspect(browser=browser)
+
+
+@router.get("/trisk/browser/site-state", response_model=dict[str, Any])
+def browser_site_state(
+    domain: str = Query(...),
+    browser: str = Query(default="auto"),
+) -> dict[str, Any]:
+    from windows_network_toolkit.diagnostics.browser_profile import run_browser_site_state
+
+    return run_browser_site_state(domain, browser=browser)
+
+
+@router.get("/trisk/browser/extensions", response_model=dict[str, Any])
+def browser_extensions(browser: str = Query(default="auto")) -> dict[str, Any]:
+    from windows_network_toolkit.diagnostics.browser_profile.adapters import get_adapter
+
+    adapter = get_adapter(browser)
+    profiles = adapter.discover_profiles()
+    default = next((p for p in profiles if p.is_default), profiles[0] if profiles else None)
+    if default is None:
+        return {"extensions": [], "limitations": ["No profile found."]}
+    exts = adapter.collect_extension_metadata(default)
+    return {
+        "browser": adapter.name,
+        "profile_id": default.profile_id,
+        "extensions": [e.model_dump(mode="json") for e in exts],
+        "limitations": ["Extension metadata only — not malware attribution."],
+    }
+
+
+@router.get("/trisk/browser/policies", response_model=dict[str, Any])
+def browser_policies(browser: str = Query(default="auto")) -> dict[str, Any]:
+    from windows_network_toolkit.diagnostics.browser_profile.adapters import get_adapter
+
+    adapter = get_adapter(browser)
+    policies = adapter.collect_policy_metadata()
+    return {
+        "browser": adapter.name,
+        "policies": [p.model_dump(mode="json") for p in policies],
+        "limitations": ["Policy discovery is best-effort metadata."],
+    }
+
+
+class HarCompareBody(BaseModel):
+    normal_har: dict[str, Any]
+    private_har: dict[str, Any]
+    target_url: str = "https://example.invalid/"
+    browser: str = "auto"
+
+
+@router.post("/trisk/browser/har/compare", response_model=dict[str, Any])
+def browser_har_compare(body: HarCompareBody) -> dict[str, Any]:
+    """Compare two HAR payloads (already client-side; server redacts again)."""
+    import tempfile
+    from pathlib import Path
+
+    from windows_network_toolkit.diagnostics.browser_profile import run_browser_diff
+
+    with tempfile.TemporaryDirectory() as td:
+        n = Path(td) / "normal.har"
+        p = Path(td) / "private.har"
+        n.write_text(json.dumps(body.normal_har), encoding="utf-8")
+        p.write_text(json.dumps(body.private_har), encoding="utf-8")
+        return run_browser_diff(
+            body.target_url,
+            browser=body.browser,
+            proof=True,
+            normal_har=n,
+            private_har=p,
+            inspect_profile=False,
+        ).to_dict()
+
+
+class RepairPreviewBody(BaseModel):
+    domain: str
+    browser: str = "auto"
+
+
+@router.post("/trisk/browser/repair/preview", response_model=dict[str, Any])
+def browser_repair_preview(body: RepairPreviewBody) -> dict[str, Any]:
+    from windows_network_toolkit.diagnostics.browser_profile import run_repair_preview
+
+    return run_repair_preview(body.domain, browser=body.browser)
