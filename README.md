@@ -11,7 +11,7 @@
 
 **One-line summary:** An evidence-backed platform that turns Windows endpoint reliability signals into explainable classifications, control test results, policy-gated remediation previews, hash-chained audit trails, and committee-ready analytics.
 
-**Portfolio:** [PORTFOLIO.md](PORTFOLIO.md) · **Architecture (Mermaid):** [docs/architecture-infographic.md](docs/architecture-infographic.md) · **Case study:** [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md) · **Onboarding:** [docs/ONBOARDING.md](docs/ONBOARDING.md)
+**Portfolio:** [PORTFOLIO.md](PORTFOLIO.md) · **Architecture:** [Architecture overview](#architecture-overview) · [docs/architecture-infographic.md](docs/architecture-infographic.md) · **Case study:** [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md) · **Onboarding:** [docs/ONBOARDING.md](docs/ONBOARDING.md)
 
 ---
 
@@ -204,35 +204,93 @@ See also: [analytics/powerbi/README.md](analytics/powerbi/README.md) (earlier po
 
 ## Architecture overview
 
-```text
-Evidence
-→ Hypothesis
-→ Proof
-→ Policy
-→ Stakeholder
-→ Timing
-→ Remediation Preview
-→ Audit
-→ Replay
-→ Learning
+Evidence pipeline for Windows endpoint reliability / technology risk — **not** antivirus, EDR, XDR, malware attribution, or autonomous remediation.
+
+### System context
+
+```mermaid
+flowchart TB
+  subgraph Sources["Evidence sources"]
+    EP[Windows endpoint<br/>WinINET / WinHTTP · listeners · TLS]
+    FX[tests/fixtures/<br/>preferred deterministic inputs]
+  end
+
+  subgraph CLIs["Operator surfaces"]
+    CLI["Primary CLI<br/>python -m windows_network_toolkit"]
+    SRC["Operator CLI<br/>python -m src · guardian · boot trace"]
+  end
+
+  CORE["platform_core<br/>src/ + platform_core/ · policy · audit"]
+  API["FastAPI backend/<br/>/trisk/* · /platform/*"]
+  AUD["Audit and export<br/>.audit/ · platform_data/ · Power BI"]
+
+  OC[["OpenClaw side lane<br/>policy-gated · draft PR only"]]
+
+  EP --> CLI
+  EP --> SRC
+  FX --> CLI
+  FX --> SRC
+  CLI --> CORE
+  SRC --> CORE
+  CORE --> API
+  CORE --> AUD
+  API --> AUD
+  OC -.->|not on remediation path| CLI
 ```
 
-Stakeholder and Timing do **not** alter technical facts. They determine whether, by whom, and when an evidence-backed action may proceed. Policy permission remains separate from coordination status (for example `PREVIEW_ONLY` + `NEEDS_APPROVAL`).
+### Governance pipeline
+
+Stages stay separated. Dry-run / preview-only is the default; humans authorize risky execution.
+
+```text
+Observation → Hypothesis → Proof → Policy → Stakeholder → Timing
+  → Preview → Approval → Execution → Audit → Replay
+```
 
 ```mermaid
 flowchart LR
-  E[Evidence] --> H[Hypothesis]
+  O[Observation] --> H[Hypothesis]
   H --> Pf[Proof]
   Pf --> Pol[Policy]
   Pol --> St[Stakeholder]
   St --> Tm[Timing]
-  Tm --> Prev[Remediation Preview]
-  Prev --> Aud[Audit]
+  Tm --> Prev[Preview]
+  Prev --> Ap[Approval]
+  Ap --> Ex[Execution]
+  Ex --> Aud[Audit]
   Aud --> Rp[Replay]
-  Rp --> Ln[Learning]
 ```
 
-Details: [docs/architecture.md](docs/architecture.md) · [docs/decision-context.md](docs/decision-context.md) · [docs/architecture-infographic.md](docs/architecture-infographic.md)
+Stakeholder and Timing do **not** alter technical facts. They determine whether, by whom, and when an evidence-backed action may proceed. Policy permission remains separate from coordination status (for example `PREVIEW_ONLY` + `NEEDS_APPROVAL`).
+
+### Key packages
+
+| Path | Role |
+|------|------|
+| `windows_network_toolkit/` | Primary CLI + diagnostics |
+| `src/proxy_drift/` | Startup observability, boot trace, dead-proxy guardian |
+| `src/platform_core/` | Policy, governance envelope, hash-chained audit |
+| `backend/` | FastAPI — `/trisk/*`, `/platform/*` (optional Postgres) |
+| `telemetry/` | Registry-writer telemetry (fixture-first) |
+| `tests/fixtures/` | Deterministic evidence inputs |
+| `skills/wnrt-coder/` + `.openclaw/` | Optional controlled coding agent (draft PR only) |
+
+### Safety / remediation lane
+
+| Posture | Behavior |
+|---------|----------|
+| **Read-only first** | `proxy-status`, `diagnose`, `agent once` |
+| **Gated** | Dry-run default; typed confirmation (e.g. `DISABLE_WININET_PROXY`) |
+| **Blocked by default** | Process kill, firewall reset, adapter disable |
+| **CI contracts** | `test_policy_safety_contract`, classifier safety contracts |
+
+Default branch: `Multi_Domain_Decision_Platform` (CI also covers `main` / `master`).
+
+Details: [docs/architecture.md](docs/architecture.md) · [docs/decision-context.md](docs/decision-context.md) · [docs/architecture-infographic.md](docs/architecture-infographic.md) · [docs/openclaw-coding-agent.md](docs/openclaw-coding-agent.md)
+
+> **Cursor Canvas (local IDE):** contributors using Cursor can open the interactive architecture view at  
+> `%USERPROFILE%\.cursor\projects\c-Users-Zixsa-Kozphy-Windows-Network-Recovery-Toolkit\canvases\wnrt-architecture.canvas.tsx`  
+> (not shipped in git — IDE-only artifact).
 
 ---
 

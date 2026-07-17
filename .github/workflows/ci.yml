@@ -7,10 +7,12 @@ name: CI
 on:
   pull_request:
     branches:
+      - Multi_Domain_Decision_Platform
       - main
       - master
   push:
     branches:
+      - Multi_Domain_Decision_Platform
       - main
       - master
   workflow_dispatch:

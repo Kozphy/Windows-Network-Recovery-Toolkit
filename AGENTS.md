@@ -59,6 +59,8 @@ pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
 | `tests/fixtures/` | Deterministic test inputs |
 | `docs/ONBOARDING.md` | Human onboarding |
 | `docs/startup-observability.md` | Startup observability architecture |
+| `docs/openclaw-coding-agent.md` | Policy-gated OpenClaw coding agent (draft PR only) |
+| `skills/wnrt-coder/` | OpenClaw skill for controlled coding automation |
 
 ## Deeper reference
 

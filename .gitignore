@@ -38,6 +38,11 @@ logs/
 !logs/.gitignore
 .audit/
 !.audit/.gitignore
+# OpenClaw coding-agent run audits (local only)
+.openclaw/runs/
+!.openclaw/openclaw.example.json5
+!.openclaw/task.example.json
+!.openclaw/README.md
 reports/
 !reports/.gitignore
 !reports/sample_*.md

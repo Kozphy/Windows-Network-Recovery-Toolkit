@@ -1,0 +1,43 @@
+// Example OpenClaw configuration for WNRT controlled coding agent.
+// Copy to your local OpenClaw config directory (never commit real tokens or private paths).
+// Schema aligned with OpenClaw agents.list[].sandbox (docs.openclaw.ai/gateway/config-agents).
+//
+// Prerequisites:
+//   - OpenClaw installed and `openclaw doctor` healthy
+//   - Docker available for sandbox backend
+//   - Isolated clone of this repository as the agent workspace
+//
+// Security notes:
+//   - network: "none" — no egress from the sandbox by default
+//   - Do NOT mount the host Docker socket into the agent sandbox
+//   - Do NOT point workspace at host credential directories (~/.ssh, %USERPROFILE%\.aws, etc.)
+//   - Use a least-privilege GitHub token (contents/PRs write; no admin, secrets, or deployments)
+
+{
+  agents: {
+    list: [
+      {
+        id: "wnrt-coder",
+        // Replace with your isolated workspace path (example placeholders only).
+        workspace: "/path/to/isolated/wnrt-workspace",
+        // Optional alias used by some OpenClaw builds; keep equal to workspace.
+        // repoRoot: "/path/to/isolated/wnrt-workspace",
+        skills: ["wnrt-coder"],
+        sandbox: {
+          mode: "all",
+          backend: "docker",
+          scope: "session",
+          workspaceAccess: "rw",
+          docker: {
+            image: "openclaw-sandbox:bookworm-slim",
+            workdir: "/workspace",
+            network: "none",
+            readOnlyRoot: true,
+            capDrop: ["ALL"],
+            // Do not add binds for host credential dirs or docker.sock.
+          },
+        },
+      },
+    ],
+  },
+}
