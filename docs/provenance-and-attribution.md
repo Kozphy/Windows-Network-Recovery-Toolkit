@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document makes the project's authorship and reuse expectations easy to verify. It does not replace the MIT License and is not legal advice.
+This document makes the project's authorship and reuse expectations easy to verify. It supplements—but does not replace—the GNU Affero General Public License version 3.0. It is not legal advice.
 
 ## Canonical source
 
@@ -11,16 +11,25 @@ The canonical public source is:
 - Repository: `Kozphy/Windows-Network-Recovery-Toolkit`
 - Original author/maintainer: Zixsa (`Kozphy`)
 - Copyright year: 2026
+- Current license: `AGPL-3.0-only`
 
 Forks and mirrors should link back to the canonical repository.
 
-## What the MIT License allows
+## What AGPL-3.0-only allows and requires
 
-The MIT License permits people to use, copy, modify, merge, publish, distribute, sublicense, and sell copies of the software. It requires the copyright notice and permission notice to remain in all copies or substantial portions.
+AGPL-3.0-only permits use, modification, redistribution, and commercial use, subject to strong copyleft conditions. Covered modifications and combined covered works must remain under AGPL-3.0-only when conveyed. Copyright and license notices must be preserved, modifications must be identified, and Corresponding Source must be supplied as required.
 
-Therefore, a public repository cannot be made impossible to copy. The defensible goal is to preserve attribution, establish provenance, and make deceptive claims easier to identify.
+When a modified version is offered to users over a network, those users must be given an opportunity to receive the Corresponding Source for that modified version, as required by section 13 of the license.
 
-## Required attribution
+AGPL does not make a public repository impossible to copy. It makes compliant source disclosure, same-license distribution, change notices, and attribution legally meaningful conditions.
+
+## Licensing transition
+
+The repository previously used the MIT License. Versions validly received under MIT remain usable under the MIT terms that applied to those historical versions. The AGPL-3.0-only change applies from the relicensing commit forward and does not revoke rights already granted under earlier releases.
+
+Before merging the relicensing change, the maintainer should verify that they have authority to relicense all covered contributions. Third-party dependencies and separately licensed material remain under their own licenses.
+
+## Required attribution and change disclosure
 
 A reuse or substantial adaptation should:
 
@@ -28,11 +37,13 @@ A reuse or substantial adaptation should:
 2. Identify the original project and author.
 3. Link to the canonical repository when presented online.
 4. Clearly distinguish original work from modifications.
-5. Avoid claiming sole authorship of copied architecture, documentation, datasets, examples, or code.
+5. State the relevant modification dates.
+6. Provide Corresponding Source when required by AGPL-3.0-only.
+7. Avoid claiming sole authorship of copied architecture, documentation, datasets, examples, or code.
 
 Suggested wording:
 
-> Based on Windows Network Recovery Toolkit by Zixsa (Kozphy), licensed under the MIT License. Modifications are described in this fork's commit history.
+> Based on Windows Network Recovery Toolkit by Zixsa (Kozphy), licensed under AGPL-3.0-only. Modifications and dates are described in this fork's commit history, and corresponding source is available in this repository.
 
 ## Provenance evidence
 
@@ -51,27 +62,25 @@ For important public releases, create a signed Git tag and publish checksums or 
 
 ## Portfolio and interview use
 
-Permitted users may discuss and demonstrate their modifications, but should state:
+Users may discuss and demonstrate compliant modifications, but should state:
 
 - what came from the original project;
 - what they personally changed;
-- which tests or evidence support their claims; and
-- whether the work is a prototype, fork, or production deployment.
+- which tests or evidence support their claims;
+- whether the work is a prototype, fork, or production deployment; and
+- where the corresponding source is available when network deployment triggers AGPL obligations.
 
-Presenting an unchanged or lightly modified fork as an independently designed system is misleading even when the underlying license permits copying.
+Presenting an unchanged or lightly modified fork as an independently designed system is misleading even when the underlying license permits compliant reuse.
 
-## Suspected unattributed copying
+## Suspected non-compliance or unattributed copying
 
-When suspected copying is found:
+When suspected copying or AGPL non-compliance is found:
 
-1. Preserve evidence: URLs, screenshots, commit SHAs, timestamps, release archives, and copied passages.
+1. Preserve evidence: URLs, screenshots, commit SHAs, timestamps, release archives, service interfaces, and copied passages.
 2. Compare the suspect material with specific original files and commits.
-3. Contact the maintainer or platform owner with a factual attribution request.
-4. Use GitHub's copyright or trademark reporting channels only when appropriate and when you have the necessary rights.
-5. Obtain qualified legal advice before making formal legal claims.
+3. Determine whether the copied version came from a historical MIT release or an AGPL-covered release.
+4. Send a factual request for attribution, notices, change disclosure, or Corresponding Source as applicable.
+5. Use GitHub's copyright or trademark reporting channels only when appropriate and when you have the necessary rights.
+6. Obtain qualified legal advice before making formal legal claims.
 
-Avoid public accusations before preserving evidence and checking whether the reuse complies with the MIT attribution requirement.
-
-## Stronger licensing option
-
-Changing from MIT to a more restrictive license could reduce permitted reuse, but it would materially change the project's open-source terms and may require reviewing contributor rights and prior releases. Such a change should be made deliberately in a separate licensing decision, not silently as part of a documentation update.
+Avoid public accusations before preserving evidence and checking the exact version and license that applies.
