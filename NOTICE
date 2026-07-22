@@ -1,20 +1,39 @@
 Windows Network Recovery Toolkit / Technology Risk & Control Analytics Platform
-Copyright (c) 2026 Zixsa (GitHub: Kozphy)
-Original repository: https://github.com/Kozphy/Windows-Network-Recovery-Toolkit
+Copyright (C) 2026 Zixsa (GitHub: Kozphy)
+Canonical repository: https://github.com/Kozphy/Windows-Network-Recovery-Toolkit
 
-This project is distributed under the MIT License. Reuse, modification, and redistribution are permitted only when the copyright notice and MIT permission notice are retained in copies or substantial portions of the software.
+License
+-------
+Current versions of this project are distributed under AGPL-3.0-only.
+Anyone who redistributes or modifies the covered work must comply with the
+GNU Affero General Public License, preserve applicable notices, state changes,
+and provide Corresponding Source as required. Modified versions offered to
+users over a network must provide those users access to the corresponding
+source code under AGPL-3.0-only.
+
+Earlier versions that were validly released under the MIT License remain under
+the MIT terms that applied to those versions. This relicensing does not revoke
+rights already granted for those historical releases.
 
 Attribution guidance
 --------------------
-When this project, its architecture, documentation, control framework, proof-tier model, governance pipeline, examples, or substantial code are reused, adapted, discussed, demonstrated, or included in a portfolio, retain this NOTICE and provide a visible attribution to the original repository and author.
+When this project, its architecture, documentation, control framework,
+proof-tier model, governance pipeline, examples, or substantial code are
+reused, adapted, discussed, demonstrated, or included in a portfolio, retain
+this NOTICE and provide visible attribution to the canonical repository and
+author.
 
 Acceptable attribution example:
-"Based on Windows Network Recovery Toolkit by Zixsa (Kozphy), licensed under the MIT License."
+"Based on Windows Network Recovery Toolkit by Zixsa (Kozphy), licensed under AGPL-3.0-only. Modifications are identified in the fork's history."
 
 Misrepresentation
 -----------------
-The MIT License permits reuse; it does not permit removal of required copyright and license notices, false claims of sole authorship, falsified contribution history, or deceptive portfolio presentation.
+The license permits compliant reuse; it does not authorize removal of required
+notices, false claims of sole authorship, falsified contribution history, or
+deceptive portfolio presentation.
 
-Git history, signed releases where available, tagged versions, repository timestamps, CITATION.cff, architectural decision records, and generated audit artifacts may be used as provenance evidence.
+Git history, signed releases where available, tagged versions, repository
+timestamps, CITATION.cff, architectural decision records, and generated audit
+artifacts may be used as provenance evidence.
 
 Third-party components retain their respective copyrights and licenses.
