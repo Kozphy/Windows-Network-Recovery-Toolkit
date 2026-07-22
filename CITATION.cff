@@ -7,7 +7,7 @@ authors:
     alias: "Kozphy"
 repository-code: "https://github.com/Kozphy/Windows-Network-Recovery-Toolkit"
 url: "https://github.com/Kozphy/Windows-Network-Recovery-Toolkit"
-license: MIT
+license: AGPL-3.0-only
 date-released: 2026-07-23
 keywords:
   - technology risk
