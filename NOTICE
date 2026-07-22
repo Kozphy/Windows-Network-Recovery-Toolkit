@@ -1,0 +1,20 @@
+Windows Network Recovery Toolkit / Technology Risk & Control Analytics Platform
+Copyright (c) 2026 Zixsa (GitHub: Kozphy)
+Original repository: https://github.com/Kozphy/Windows-Network-Recovery-Toolkit
+
+This project is distributed under the MIT License. Reuse, modification, and redistribution are permitted only when the copyright notice and MIT permission notice are retained in copies or substantial portions of the software.
+
+Attribution guidance
+--------------------
+When this project, its architecture, documentation, control framework, proof-tier model, governance pipeline, examples, or substantial code are reused, adapted, discussed, demonstrated, or included in a portfolio, retain this NOTICE and provide a visible attribution to the original repository and author.
+
+Acceptable attribution example:
+"Based on Windows Network Recovery Toolkit by Zixsa (Kozphy), licensed under the MIT License."
+
+Misrepresentation
+-----------------
+The MIT License permits reuse; it does not permit removal of required copyright and license notices, false claims of sole authorship, falsified contribution history, or deceptive portfolio presentation.
+
+Git history, signed releases where available, tagged versions, repository timestamps, CITATION.cff, architectural decision records, and generated audit artifacts may be used as provenance evidence.
+
+Third-party components retain their respective copyrights and licenses.
