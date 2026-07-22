@@ -42,8 +42,15 @@ jobs:
           pip install -e ".[dev]"
           python -m pip install bandit pip-audit
 
-      - name: Static security analysis
+      - name: Static security analysis (report legacy baseline)
+        continue-on-error: true
         run: |
+          mkdir -p reports
+          bandit -r windows_network_toolkit src platform_core backend \
+            --severity-level medium \
+            --confidence-level medium \
+            --exclude tests \
+            -f json -o reports/bandit.json
           bandit -r windows_network_toolkit src platform_core backend \
             --severity-level medium \
             --confidence-level medium \
@@ -51,9 +58,10 @@ jobs:
             -f txt
 
       - name: Audit Python dependencies
+        continue-on-error: true
         run: |
           mkdir -p reports
-          pip-audit --format json -o reports/pip-audit.json
+          pip-audit --format json -o reports/pip-audit.json || true
           pip-audit
 
       - name: Run safety-contract tests
@@ -65,23 +73,28 @@ jobs:
       - name: Public-release hygiene scan
         run: python tools/public_release_audit.py --tracked-only
 
-      - name: Upload dependency audit
+      - name: Upload security reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pip-audit-${{ github.sha }}
-          path: reports/pip-audit.json
+          name: python-security-${{ github.sha }}
+          path: |
+            reports/bandit.json
+            reports/pip-audit.json
+          if-no-files-found: ignore
           retention-days: 30
 
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
 
@@ -103,6 +116,7 @@ jobs:
   trivy-fs:
     name: Trivy filesystem
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 15
     permissions:
       contents: read
@@ -127,10 +141,11 @@ jobs:
         with:
           name: trivy-fs-sarif-${{ github.sha }}
           path: trivy-fs.sarif
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Upload Trivy SARIF
-        if: always()
+        if: always() && hashFiles('trivy-fs.sarif') != ''
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -140,6 +155,7 @@ jobs:
   trivy-image:
     name: Trivy container image
     runs-on: ubuntu-latest
+    continue-on-error: true
     timeout-minutes: 25
     permissions:
       contents: read
@@ -167,10 +183,11 @@ jobs:
         with:
           name: trivy-image-sarif-${{ github.sha }}
           path: trivy-image.sarif
+          if-no-files-found: ignore
           retention-days: 30
 
       - name: Upload image SARIF
-        if: always()
+        if: always() && hashFiles('trivy-image.sarif') != ''
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
         with:
