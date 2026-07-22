@@ -3,17 +3,15 @@ name: Security
 on:
   push:
     branches:
+      - Multi_Domain_Decision_Platform
       - main
       - master
       - amd_version
       - "feature/**"
+      - "feat/**"
       - "fix/**"
       - "ci/**"
   pull_request:
-    branches:
-      - main
-      - master
-      - amd_version
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
@@ -24,14 +22,12 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write
-  packages: read
 
 jobs:
-  pip-audit:
-    name: pip-audit
+  python-security:
+    name: Python security and safety contracts
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -40,18 +36,36 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install project + audit tool
+      - name: Install project and scanners
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
+          python -m pip install bandit pip-audit
 
-      - name: Run pip-audit
+      - name: Static security analysis
+        run: |
+          bandit -r windows_network_toolkit src platform_core backend \
+            --severity-level medium \
+            --confidence-level medium \
+            --exclude tests \
+            -f txt
+
+      - name: Audit Python dependencies
         run: |
           mkdir -p reports
           pip-audit --format json -o reports/pip-audit.json
           pip-audit
 
-      - name: Upload pip-audit report
+      - name: Run safety-contract tests
+        run: |
+          python -m pytest -q \
+            tests/test_proxy_classifier_safety_contract.py \
+            tests/test_policy_safety_contract.py
+
+      - name: Public-release hygiene scan
+        run: python tools/public_release_audit.py --tracked-only
+
+      - name: Upload dependency audit
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -59,16 +73,44 @@ jobs:
           path: reports/pip-audit.json
           retention-days: 30
 
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+
   trivy-fs:
-    name: trivy (filesystem)
+    name: Trivy filesystem
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
-      # exit-code "0" reports findings without failing the workflow (portfolio / bootstrap phase).
-      # To gate merges on HIGH/CRITICAL filesystem findings, change both Trivy steps to exit-code: "1".
-      - name: Run Trivy vulnerability scanner (repo)
+      - name: Scan repository
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: fs
@@ -79,7 +121,7 @@ jobs:
           output: trivy-fs.sarif
           exit-code: "0"
 
-      - name: Upload Trivy SARIF
+      - name: Upload Trivy artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -87,7 +129,7 @@ jobs:
           path: trivy-fs.sarif
           retention-days: 30
 
-      - name: Upload Trivy SARIF to GitHub Security
+      - name: Upload Trivy SARIF
         if: always()
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
@@ -96,16 +138,19 @@ jobs:
           category: trivy-filesystem
 
   trivy-image:
-    name: trivy (container)
+    name: Trivy container image
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build local image for scan
+      - name: Build image
         run: docker build -t er-platform-api:scan-${{ github.sha }} .
 
-      - name: Run Trivy vulnerability scanner (image)
+      - name: Scan image
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: image
@@ -116,7 +161,7 @@ jobs:
           output: trivy-image.sarif
           exit-code: "0"
 
-      - name: Upload Trivy image SARIF
+      - name: Upload image scan artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -124,7 +169,7 @@ jobs:
           path: trivy-image.sarif
           retention-days: 30
 
-      - name: Upload Trivy image SARIF to GitHub Security
+      - name: Upload image SARIF
         if: always()
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@v3
