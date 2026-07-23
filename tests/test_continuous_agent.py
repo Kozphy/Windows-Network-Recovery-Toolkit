@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,8 +8,9 @@ from pathlib import Path
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "continuous_agent" / "agent.py"
 SPEC = importlib.util.spec_from_file_location("continuous_agent_module", MODULE_PATH)
-AGENT = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
+AGENT = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = AGENT
 SPEC.loader.exec_module(AGENT)
 
 
