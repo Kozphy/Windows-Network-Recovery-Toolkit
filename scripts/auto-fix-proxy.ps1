@@ -9,8 +9,9 @@
     1. configure-cursor-no-proxy.ps1
     2. proxy-guardian live clear (dead localhost only)
     3. proxy-fix fallback if still stale
-    4. optional -PreferDirect to clear active Node/Cursor localhost proxy
-    5. install-dead-proxy-guardian.ps1 background loop (60s default)
+    4. active-but-broken path probe (listener up, proxy fail, direct ok) → clear with PREFER_DIRECT_WININET
+    5. optional -PreferDirect to clear healthy active Node/Cursor localhost proxy
+    6. install-dead-proxy-guardian.ps1 background loop (60s default)
 
   Example:
     .\scripts\auto-fix-proxy.ps1
@@ -53,6 +54,14 @@ if ($json -match '"outcome":\s*"healthy"') {
 }
 if ($json -match '"outcome":\s*"still_dead"') {
     Write-Host "WARN: Still dead — try scripts\fix-wininet-proxy.cmd" -ForegroundColor Yellow
+    exit 1
+}
+if ($json -match '"outcome":\s*"needs_prefer_direct_confirm"') {
+    Write-Host "WARN: Confirm required — re-run with -PreferDirect (active or active-but-broken proxy)" -ForegroundColor Yellow
+    exit 1
+}
+if ($json -match '"outcome":\s*"localhost_proxy_broken"') {
+    Write-Host "WARN: Active-but-broken localhost proxy — re-run with -PreferDirect" -ForegroundColor Yellow
     exit 1
 }
 if ($json -match '"outcome":\s*"localhost_proxy_active"') {

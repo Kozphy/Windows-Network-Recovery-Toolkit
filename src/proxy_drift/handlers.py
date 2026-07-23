@@ -323,6 +323,11 @@ def cmd_auto_fix_proxy(args: argparse.Namespace) -> int:
             print("OK: Proxy path is clean. Restart your browser.")
         elif result.get("outcome") == "still_dead":
             print("WARN: Still dead — try scripts/fix-wininet-proxy.cmd")
+        elif result.get("outcome") == "localhost_proxy_broken":
+            print(
+                "WARN: Active-but-broken localhost proxy (listener up, path failed, direct ok). "
+                "Re-run with --confirm PREFER_DIRECT_WININET"
+            )
         elif result.get("outcome") == "localhost_proxy_active":
             print("WARN: Localhost proxy still active — re-run with --prefer-direct --confirm PREFER_DIRECT_WININET")
         elif result.get("outcome") == "needs_prefer_direct_confirm":
@@ -330,7 +335,7 @@ def cmd_auto_fix_proxy(args: argparse.Namespace) -> int:
         elif dry_run:
             print("Dry-run preview — no registry changes or guardian install.")
     outcome = str(result.get("outcome") or "")
-    if outcome in {"still_dead", "needs_prefer_direct_confirm"}:
+    if outcome in {"still_dead", "needs_prefer_direct_confirm", "localhost_proxy_broken"}:
         return 1
     if outcome == "unsupported":
         return 2
@@ -362,7 +367,7 @@ def cmd_ensure_proxy_health(args: argparse.Namespace) -> int:
         print(f"Observability installed: {result.get('observability_installed')}")
         print(result.get("recommended_next_step") or "")
     outcome = str(result.get("outcome") or "")
-    if outcome in {"still_dead", "needs_prefer_direct_confirm"}:
+    if outcome in {"still_dead", "needs_prefer_direct_confirm", "localhost_proxy_broken"}:
         return 1
     if outcome == "unsupported":
         return 2

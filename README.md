@@ -475,6 +475,7 @@ python -m windows_network_toolkit evidence-report --latest --fixture tests/fixtu
 **Troubleshooting patterns**
 
 - **Dead localhost proxy:** `proxy_status` = `DEAD_LOCALHOST_PROXY` or `DIRECT_ONLY_WORKS`; policy suggests preview disable, not auto-fix.
+- **Active-but-broken localhost proxy:** listener present but path probe fails while direct works → drift `BROKEN_LOCALHOST_PROXY`; clear with `--prefer-direct --confirm PREFER_DIRECT_WININET` (or confirm alone on auto-fix/ensure).
 - **Active local proxy:** `HEALTHY_LOCALHOST_PROXY` / `BOTH_DIRECT_AND_PROXY_WORK`; review whether `node.exe` or dev tooling is expected.
 - **Reverter suspected:** `proxy-watch` reports `REVERTER_SUSPECTED`; registry writer proof still requires Sysmon/Procmon/EventLog.
 - **WinINET vs WinHTTP mismatch:** compare `proxy-status` WinINET block with WinHTTP direct-access flag.
@@ -517,6 +518,9 @@ $env:PYTHONPATH = (Get-Location).Path
 # One-shot auto-fix + install 60s background guardian (recommended after ERR_PROXY)
 .\scripts\auto-fix-proxy.ps1
 python -m src auto-fix-proxy
+# Active-but-broken (listener up, proxy path fail, direct ok) or force direct:
+.\scripts\auto-fix-proxy.ps1 -PreferDirect
+python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --json
 
 # Startup inventory (no full profile recursion)
 python -m src startup-inventory

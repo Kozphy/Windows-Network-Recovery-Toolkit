@@ -2,11 +2,13 @@
 
 Default behavior (safe):
   - Clear **dead** localhost WinINET proxies only.
+  - Detect **active-but-broken** (listener up, proxy path fail, direct HTTPS ok)
+    and clear with ``PREFER_DIRECT_WININET`` when confirm is supplied.
   - Install startup observability (guardian + boot trace) if missing.
-  - Leave active localhost / corporate proxies alone.
+  - Leave healthy active localhost / corporate proxies alone unless prefer_direct.
 
 Optional ``prefer_direct`` (requires ``PREFER_DIRECT_WININET``):
-  - Also clear an *active* localhost WinINET proxy so browsers/apps (e.g. LinkedIn)
+  - Also clear an *active* (healthy) localhost WinINET proxy so browsers/apps
     always use direct access. Use when a flaky local Node proxy causes
     ``ERR_PROXY_CONNECTION_FAILED``.
 """
@@ -112,6 +114,8 @@ def run_ensure_proxy_health(
         skip_guardian_install=True,
         skip_cursor_fix=skip_cursor_fix or dry_run,
         guardian_interval_seconds=guardian_interval_seconds,
+        prefer_direct=prefer_direct,
+        confirm=confirm,
         repo_root=repo,
         run=subprocess_run,
     )
@@ -123,18 +127,28 @@ def run_ensure_proxy_health(
         int(after_auto.get("proxy_enable") or 0) == 1
         and after_auto.get("localhost_port") is not None
     )
-    if prefer_direct and localhost_enabled:
+    broken = bool(after_auto.get("is_broken_localhost_proxy"))
+    # Broken path uses prefer-direct confirm even without --prefer-direct.
+    should_prefer_clear = localhost_enabled and (prefer_direct or broken)
+    if should_prefer_clear:
         if dry_run:
             prefer_result = {
                 "action_taken": "preview_only",
-                "reason": f"Would clear localhost WinINET proxy (confirm {CONFIRM_PREFER_DIRECT}).",
+                "reason": (
+                    f"Would clear active-but-broken localhost WinINET proxy "
+                    f"(confirm {CONFIRM_PREFER_DIRECT})."
+                    if broken
+                    else f"Would clear localhost WinINET proxy (confirm {CONFIRM_PREFER_DIRECT})."
+                ),
                 "proxy_server": after_auto.get("proxy_server"),
+                "classification": after_auto.get("classification"),
             }
         elif confirm != CONFIRM_PREFER_DIRECT:
             prefer_result = {
                 "action_taken": "blocked",
                 "reason": f"Confirmation required: {CONFIRM_PREFER_DIRECT}",
                 "proxy_server": after_auto.get("proxy_server"),
+                "classification": after_auto.get("classification"),
             }
         else:
             prefer_result = apply_proxy_fix(
@@ -144,6 +158,7 @@ def run_ensure_proxy_health(
                 run=subprocess_run,
             )
             prefer_result["prefer_direct"] = True
+            prefer_result["cleared_broken_localhost"] = broken
         steps.append({"step": "prefer_direct", "result": prefer_result})
 
     obs_install: dict[str, Any] | None = None
@@ -175,9 +190,15 @@ def run_ensure_proxy_health(
     obs_final = observability_install_status(run=subprocess_run)
     steps.append({"step": "observability_status_final", "result": obs_final})
 
+    final_broken = bool(final.get("is_broken_localhost_proxy"))
+    prefer_blocked = bool(prefer_result and prefer_result.get("action_taken") == "blocked")
     if final.get("is_dead_localhost_proxy"):
         outcome = "still_dead" if not dry_run else "would_remediate"
-    elif prefer_direct and localhost_enabled and prefer_result and prefer_result.get("action_taken") == "blocked":
+    elif final_broken and prefer_blocked:
+        outcome = "needs_prefer_direct_confirm"
+    elif final_broken:
+        outcome = "would_remediate" if dry_run else "localhost_proxy_broken"
+    elif prefer_direct and localhost_enabled and prefer_blocked:
         outcome = "needs_prefer_direct_confirm"
     elif int(final.get("proxy_enable") or 0) == 1 and final.get("localhost_port") is not None:
         outcome = "localhost_proxy_active"
@@ -192,6 +213,9 @@ def run_ensure_proxy_health(
         "outcome": outcome,
         "classification": final.get("classification"),
         "legacy_classification": final.get("legacy_classification"),
+        "is_broken_localhost_proxy": final_broken,
+        "proxy_probe_ok": final.get("proxy_probe_ok"),
+        "direct_probe_ok": final.get("direct_probe_ok"),
         "proxy_enable": final.get("proxy_enable"),
         "proxy_server": final.get("proxy_server"),
         "observability_installed": bool(obs_final.get("fully_installed")),
@@ -199,7 +223,8 @@ def run_ensure_proxy_health(
         "recommended_next_step": _recommend(outcome, prefer_direct),
         "limitations": [
             "Default ensure clears dead localhost WinINET only — not corporate proxies.",
-            "prefer_direct clears active localhost proxies; may break intentional local tunnels.",
+            "Active-but-broken (listener up, proxy path fail, direct ok) clears with PREFER_DIRECT_WININET.",
+            "prefer_direct clears healthy active localhost proxies; may break intentional local tunnels.",
             "Observation ≠ registry writer proof; LinkedIn uses WinINET system proxy.",
         ],
     }
@@ -233,16 +258,21 @@ def _recommend(outcome: str, prefer_direct: bool) -> str:
         return "Proxy path clean. Restart LinkedIn/browser if they still show ERR_PROXY_CONNECTION_FAILED."
     if outcome == "still_dead":
         return "Still dead — run scripts/fix-wininet-proxy.cmd or proxy-fix with DISABLE_WININET_PROXY."
+    if outcome == "localhost_proxy_broken":
+        return (
+            "Active-but-broken localhost proxy (listener up, path probe failed, direct ok). "
+            f"Re-run with --confirm {CONFIRM_PREFER_DIRECT} (or --prefer-direct) to clear."
+        )
     if outcome == "needs_prefer_direct_confirm":
         return (
-            f"Localhost proxy still active. Re-run with --prefer-direct --confirm {CONFIRM_PREFER_DIRECT} "
-            "to force direct access for LinkedIn/browsers."
+            f"Localhost proxy still needs clear confirmation. Re-run with --confirm {CONFIRM_PREFER_DIRECT} "
+            "(add --prefer-direct to clear a healthy active localhost proxy)."
         )
     if outcome == "localhost_proxy_active" and not prefer_direct:
         return (
-            "Localhost proxy is active (not dead). For LinkedIn reliability, run: "
+            "Localhost proxy is active and path probe did not mark it broken. For LinkedIn reliability, run: "
             f"python -m src ensure-proxy-health --prefer-direct --confirm {CONFIRM_PREFER_DIRECT}"
         )
     if outcome == "would_remediate":
-        return "Dry-run: dead proxy would be cleared; re-run without --dry-run to apply."
+        return "Dry-run: dead or broken localhost proxy would be cleared; re-run without --dry-run to apply."
     return "Review ensure-proxy-health JSON output and limitations."

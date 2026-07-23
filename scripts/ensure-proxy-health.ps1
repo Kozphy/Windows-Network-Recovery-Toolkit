@@ -4,8 +4,9 @@
   Ensure WinINET proxy health when opening / running this repo.
 
 .DESCRIPTION
-  Clears dead localhost proxies, installs startup observability if missing,
-  and optionally forces direct access (-PreferDirect) for browser reliability.
+  Clears dead localhost proxies, detects active-but-broken (listener up / path fail /
+  direct ok), installs startup observability if missing, and optionally forces direct
+  access (-PreferDirect) for browser reliability.
 
   Safety boundaries:
     Prefer -DryRun for preview. Does not kill processes or reset firewall/adapters.
@@ -69,6 +70,10 @@ Write-Host $json
 if ($json -match '"outcome":\s*"healthy"') {
     Write-Host "OK: Proxy path is clean. Restart LinkedIn/browser if needed." -ForegroundColor Green
     exit 0
+}
+if ($json -match '"outcome":\s*"localhost_proxy_broken"') {
+    Write-Host "WARN: Active-but-broken localhost proxy — re-run with -PreferDirect." -ForegroundColor Yellow
+    exit 1
 }
 if ($json -match '"outcome":\s*"localhost_proxy_active"') {
     Write-Host "INFO: Localhost proxy still active. For LinkedIn, re-run with -PreferDirect." -ForegroundColor Yellow

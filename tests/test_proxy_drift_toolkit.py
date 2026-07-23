@@ -50,6 +50,31 @@ def test_classify_active_localhost_proxy() -> None:
     assert out["classification"] == "KNOWN_DEV_PROXY"
 
 
+def test_classify_broken_localhost_proxy_listener_up_path_fail() -> None:
+    out = classify_proxy_drift(
+        proxy_enable=1,
+        proxy_server="127.0.0.1:57150",
+        listener_found=True,
+        process_name="node.exe",
+        proxy_probe_ok=False,
+        direct_probe_ok=True,
+    )
+    assert out["classification"] == "BROKEN_LOCALHOST_PROXY"
+    assert "prefer-direct" in out["rationale"].lower() or "broken" in out["rationale"].lower()
+
+
+def test_classify_listener_up_inconclusive_when_both_probes_fail() -> None:
+    out = classify_proxy_drift(
+        proxy_enable=1,
+        proxy_server="127.0.0.1:57150",
+        listener_found=True,
+        process_name="node.exe",
+        proxy_probe_ok=False,
+        direct_probe_ok=False,
+    )
+    assert out["classification"] == "KNOWN_DEV_PROXY"
+
+
 def test_proxy_fix_does_not_clear_corporate_proxy_server() -> None:
     mutations, lines = build_proxy_fix_mutations(proxy_server="proxy.corp.example.com:8080", clear_pac=False)
     human = "\n".join(lines)
@@ -180,24 +205,160 @@ def test_auto_fix_proxy_fallback_when_still_dead() -> None:
         "classification": "STALE_LOCALHOST_PROXY",
         "legacy_classification": "DEAD_PROXY_CONFIG",
         "is_dead_localhost_proxy": True,
+        "is_broken_localhost_proxy": False,
     }
     healthy = {
         "classification": "NO_PROXY",
         "legacy_classification": "NO_PROXY",
         "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": False,
+        "proxy_enable": 0,
+        "localhost_port": None,
     }
     with (
         patch("src.proxy_drift.auto_fix.run_dead_proxy_guardian_once", return_value={"action_taken": "preview_only"}),
         patch("src.proxy_drift.auto_fix.apply_proxy_fix", return_value={"action_allowed": True}) as fix,
         patch(
             "src.proxy_drift.auto_fix.read_proxy_drift_status",
-            side_effect=[dead, dead, healthy],
+            side_effect=[dead, dead, healthy, healthy],
         ),
         patch("src.proxy_drift.auto_fix._install_guardian_loop", return_value={"step": "guardian_install"}),
     ):
         out = run_auto_fix_proxy(dry_run=False, skip_cursor_fix=True, skip_guardian_install=True)
     fix.assert_called_once()
     assert out["outcome"] == "healthy"
+
+
+def test_auto_fix_broken_localhost_requires_confirm() -> None:
+    from src.proxy_drift.auto_fix import run_auto_fix_proxy
+    from src.proxy_drift.ensure_health import CONFIRM_PREFER_DIRECT
+
+    broken = {
+        "classification": "BROKEN_LOCALHOST_PROXY",
+        "legacy_classification": "DEAD_PROXY_CONFIG",
+        "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": True,
+        "proxy_enable": 1,
+        "proxy_server": "127.0.0.1:57150",
+        "localhost_port": 57150,
+        "listener_found": True,
+        "proxy_probe_ok": False,
+        "direct_probe_ok": True,
+    }
+    with (
+        patch("src.proxy_drift.auto_fix.run_dead_proxy_guardian_once", return_value={"action_taken": "none"}),
+        patch("src.proxy_drift.auto_fix.apply_proxy_fix") as fix,
+        patch("src.proxy_drift.auto_fix.read_proxy_drift_status", return_value=broken),
+    ):
+        out = run_auto_fix_proxy(
+            dry_run=False,
+            skip_cursor_fix=True,
+            skip_guardian_install=True,
+            confirm="",
+        )
+    fix.assert_not_called()
+    assert out["outcome"] == "needs_prefer_direct_confirm"
+    prefer_steps = [s for s in out["steps"] if s.get("step") == "prefer_direct"]
+    assert prefer_steps and prefer_steps[0]["result"]["action_taken"] == "blocked"
+    assert CONFIRM_PREFER_DIRECT in prefer_steps[0]["result"]["reason"]
+
+
+def test_auto_fix_broken_localhost_clears_with_confirm_without_prefer_direct_flag() -> None:
+    from src.proxy_drift.auto_fix import run_auto_fix_proxy
+    from src.proxy_drift.ensure_health import CONFIRM_PREFER_DIRECT
+
+    broken = {
+        "classification": "BROKEN_LOCALHOST_PROXY",
+        "legacy_classification": "DEAD_PROXY_CONFIG",
+        "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": True,
+        "proxy_enable": 1,
+        "proxy_server": "127.0.0.1:57150",
+        "localhost_port": 57150,
+        "listener_found": True,
+        "proxy_probe_ok": False,
+        "direct_probe_ok": True,
+    }
+    healthy = {
+        "classification": "NO_PROXY",
+        "legacy_classification": "NO_PROXY",
+        "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": False,
+        "proxy_enable": 0,
+        "proxy_server": None,
+        "localhost_port": None,
+        "listener_found": None,
+    }
+    with (
+        patch("src.proxy_drift.auto_fix.run_dead_proxy_guardian_once", return_value={"action_taken": "none"}),
+        patch(
+            "src.proxy_drift.auto_fix.apply_proxy_fix",
+            return_value={"action_taken": "applied", "action_allowed": True},
+        ) as fix,
+        patch(
+            "src.proxy_drift.auto_fix.read_proxy_drift_status",
+            side_effect=[broken, broken, broken, healthy],
+        ),
+    ):
+        out = run_auto_fix_proxy(
+            dry_run=False,
+            skip_cursor_fix=True,
+            skip_guardian_install=True,
+            prefer_direct=False,
+            confirm=CONFIRM_PREFER_DIRECT,
+        )
+    fix.assert_called_once()
+    assert out["outcome"] == "healthy"
+    prefer_steps = [s for s in out["steps"] if s.get("step") == "prefer_direct"]
+    assert prefer_steps and prefer_steps[0]["result"].get("cleared_broken_localhost") is True
+
+
+def test_auto_fix_healthy_active_localhost_not_cleared_without_prefer_direct() -> None:
+    from src.proxy_drift.auto_fix import run_auto_fix_proxy
+
+    active = {
+        "classification": "KNOWN_DEV_PROXY",
+        "legacy_classification": "KNOWN_DEV_PROXY",
+        "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": False,
+        "proxy_enable": 1,
+        "proxy_server": "127.0.0.1:57150",
+        "localhost_port": 57150,
+        "listener_found": True,
+        "proxy_probe_ok": True,
+        "direct_probe_ok": True,
+    }
+    with (
+        patch("src.proxy_drift.auto_fix.run_dead_proxy_guardian_once", return_value={"action_taken": "none"}),
+        patch("src.proxy_drift.auto_fix.apply_proxy_fix") as fix,
+        patch("src.proxy_drift.auto_fix.read_proxy_drift_status", return_value=active),
+    ):
+        out = run_auto_fix_proxy(
+            dry_run=False,
+            skip_cursor_fix=True,
+            skip_guardian_install=True,
+            prefer_direct=False,
+            confirm="PREFER_DIRECT_WININET",
+        )
+    fix.assert_not_called()
+    assert out["outcome"] == "localhost_proxy_active"
+
+
+def test_read_proxy_drift_status_uses_path_health_inject() -> None:
+    from src.proxy_drift.auto_fix import read_proxy_drift_status
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:57150", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.auto_fix.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.auto_fix._port_listening", return_value=True),
+    ):
+        out = read_proxy_drift_status(
+            path_health={"proxy_probe_ok": False, "direct_probe_ok": True, "proxy_status": "DIRECT_ONLY_WORKS"}
+        )
+    assert out["classification"] == "BROKEN_LOCALHOST_PROXY"
+    assert out["is_broken_localhost_proxy"] is True
+    assert out["legacy_classification"] == "DEAD_PROXY_CONFIG"
+    assert out["proxy_status"] == "DIRECT_ONLY_WORKS"
 
 
 def test_ensure_proxy_health_dry_run_skips_prefer_direct_mutation(tmp_path, monkeypatch) -> None:
@@ -272,6 +433,7 @@ def test_ensure_proxy_health_prefer_direct_applies_with_token(tmp_path, monkeypa
         "classification": "LOCAL_PROXY_ACTIVE",
         "legacy_classification": "LOCAL_PROXY_ACTIVE",
         "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": False,
         "proxy_enable": 1,
         "proxy_server": "127.0.0.1:54305",
         "localhost_port": 54305,
@@ -281,6 +443,7 @@ def test_ensure_proxy_health_prefer_direct_applies_with_token(tmp_path, monkeypa
         "classification": "NO_PROXY",
         "legacy_classification": "NO_PROXY",
         "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": False,
         "proxy_enable": 0,
         "proxy_server": None,
         "localhost_port": None,
@@ -309,6 +472,59 @@ def test_ensure_proxy_health_prefer_direct_applies_with_token(tmp_path, monkeypa
         )
     fix.assert_called_once()
     assert out["outcome"] == "healthy"
+
+
+def test_ensure_proxy_health_broken_clears_with_confirm_without_prefer_direct_flag(tmp_path, monkeypatch) -> None:
+    from src.proxy_drift.ensure_health import CONFIRM_PREFER_DIRECT, run_ensure_proxy_health
+
+    monkeypatch.setenv("WNT_AUDIT_DIR", str(tmp_path))
+    broken = {
+        "classification": "BROKEN_LOCALHOST_PROXY",
+        "legacy_classification": "DEAD_PROXY_CONFIG",
+        "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": True,
+        "proxy_enable": 1,
+        "proxy_server": "127.0.0.1:57150",
+        "localhost_port": 57150,
+        "listener_found": True,
+        "proxy_probe_ok": False,
+        "direct_probe_ok": True,
+    }
+    healthy = {
+        "classification": "NO_PROXY",
+        "legacy_classification": "NO_PROXY",
+        "is_dead_localhost_proxy": False,
+        "is_broken_localhost_proxy": False,
+        "proxy_enable": 0,
+        "proxy_server": None,
+        "localhost_port": None,
+        "listener_found": None,
+    }
+    with (
+        patch("src.proxy_drift.ensure_health.run_auto_fix_proxy", return_value={"outcome": "needs_prefer_direct_confirm"}),
+        patch(
+            "src.proxy_drift.ensure_health.apply_proxy_fix",
+            return_value={"action_taken": "applied", "action_allowed": True},
+        ) as fix,
+        patch(
+            "src.proxy_drift.ensure_health.read_proxy_drift_status",
+            side_effect=[broken, broken, healthy],
+        ),
+        patch(
+            "src.proxy_drift.ensure_health.observability_install_status",
+            return_value={"fully_installed": True, "guardian_present": True, "boot_trace_present": True},
+        ),
+    ):
+        out = run_ensure_proxy_health(
+            dry_run=False,
+            prefer_direct=False,
+            confirm=CONFIRM_PREFER_DIRECT,
+            skip_cursor_fix=True,
+        )
+    fix.assert_called_once()
+    assert out["outcome"] == "healthy"
+    prefer_steps = [s for s in out["steps"] if s.get("step") == "prefer_direct"]
+    assert prefer_steps and prefer_steps[0]["result"].get("cleared_broken_localhost") is True
 
 
 def test_classify_preserves_non_localhost_proxy() -> None:

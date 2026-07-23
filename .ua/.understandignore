@@ -1,0 +1,12 @@
+# Generated for structural UA run on WNRT
+tests/
+**/__pycache__/
+.tools/
+.venv/
+frontend/node_modules/
+node_modules/
+.pytest_tmp*/
+.audit/
+reports/
+**/fixtures/
+real_evidence/

@@ -27,6 +27,7 @@ htmlcov/
 venv/
 ENV/
 env/
+.tools/
 
 # Node / frontend build
 node_modules/
@@ -82,6 +83,9 @@ config/last_known_good_proxy.json
 
 # Local IDE / plugin caches (do not commit)
 .understand-anything/
+.ua/intermediate/
+.ua/tmp/
+.ua/.trash-*/
 .cursor/plans/
 *.canvas.data.json
 

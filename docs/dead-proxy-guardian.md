@@ -28,6 +28,22 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 
 `proxy-guardian` only remediates when classification is **`DEAD_PROXY_CONFIG`** (enabled localhost proxy, **no listener**). It does **not** clear an active localhost dev proxy while a process is still bound to the port.
 
+### Active-but-broken (listener up, path failed)
+
+When a process is listening on the configured localhost port but **HTTPS via the proxy fails** while **direct HTTPS works**, drift classification is **`BROKEN_LOCALHOST_PROXY`** (legacy: `DEAD_PROXY_CONFIG` for analytics).
+
+| Surface | Behavior |
+|---------|----------|
+| `auto-fix-proxy` / `ensure-proxy-health` | Detects via proxy-vs-direct path probe; clears with confirm `PREFER_DIRECT_WININET` (same token as prefer-direct). Without confirm → `needs_prefer_direct_confirm` / `localhost_proxy_broken`. |
+| `proxy-guardian` loop | Still **dead-only** (no listener). Does not clear broken-listener cases. |
+| Healthy active localhost | Unchanged — requires `--prefer-direct --confirm PREFER_DIRECT_WININET`. |
+
+```powershell
+# Clear active-but-broken (or force direct for healthy active)
+.\scripts\auto-fix-proxy.ps1 -PreferDirect
+python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --json
+```
+
 ### ChatGPT auto-fix safety (layer 0b)
 
 [auto-fix-chatgpt.ps1](chatgpt-auto-fix.md) chains layer 0 with ChatGPT scenario diagnosis and **LOW-risk only** remediations:
