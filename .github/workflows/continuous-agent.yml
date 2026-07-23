@@ -1,0 +1,49 @@
+name: Continuous Agent Validation
+
+on:
+  pull_request:
+    paths:
+      - "continuous_agent/**"
+      - "tests/test_continuous_agent.py"
+      - ".github/workflows/continuous-agent.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile agent
+        run: python -m py_compile continuous_agent/agent.py
+
+      - name: Run unit tests
+        run: python -m unittest tests/test_continuous_agent.py -v
+
+      - name: Run one monitoring cycle
+        run: python continuous_agent/agent.py --config continuous_agent/config.example.json --once
+
+      - name: Validate evidence output
+        shell: bash
+        run: |
+          test -s artifacts/continuous-agent-audit.jsonl
+          test -s artifacts/continuous-agent-state.json
+
+      - name: Upload continuous-agent evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: continuous-agent-evidence
+          path: |
+            artifacts/continuous-agent-*.json*
+            artifacts/continuous-harness-results.jsonl
+          if-no-files-found: warn
+          retention-days: 14
