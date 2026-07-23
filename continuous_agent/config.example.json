@@ -1,0 +1,40 @@
+{
+  "interval_seconds": 300,
+  "state_path": "artifacts/continuous-agent-state.json",
+  "audit_path": "artifacts/continuous-agent-audit.jsonl",
+  "alerts_path": "artifacts/continuous-agent-alerts.jsonl",
+  "checks": [
+    {
+      "id": "harness-policy-present",
+      "type": "file_exists",
+      "path": "harness/policy.json",
+      "expected": true,
+      "alert_on": ["degraded", "error"]
+    },
+    {
+      "id": "rego-policy-present",
+      "type": "file_exists",
+      "path": "policy/remediation.rego",
+      "expected": true,
+      "alert_on": ["degraded", "error"]
+    },
+    {
+      "id": "bounded-harness-verification",
+      "type": "command",
+      "command": [
+        "python",
+        "harness/run_loop.py",
+        "--tasks",
+        "harness/tasks/sample_tasks.jsonl",
+        "--policy",
+        "harness/policy.json",
+        "--out",
+        "artifacts/continuous-harness-results.jsonl"
+      ],
+      "expected_exit_code": 0,
+      "timeout_seconds": 60,
+      "alert_on": ["degraded", "error"],
+      "repeat_alerts": false
+    }
+  ]
+}
