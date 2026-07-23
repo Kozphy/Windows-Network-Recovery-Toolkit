@@ -33,7 +33,8 @@ def build_guardian_task_command(*, interval: int = 60) -> str:
     py = _python_exe()
     return (
         f'"{py}" -m src proxy-guardian --loop --interval {interval} '
-        f"--confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false"
+        f"--confirm CLEAR_DEAD_LOCALHOST_PROXY "
+        f"--clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false"
     )
 
 

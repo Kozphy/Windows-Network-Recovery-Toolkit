@@ -174,6 +174,7 @@ Audit: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`.
 ```powershell
 python -m src proxy-guardian [--once] [--loop --interval 60]
 python -m src proxy-guardian --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false
+python -m src proxy-guardian --once --clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false
 python -m src install-guardian-task [--confirm INSTALL_GUARDIAN_TASK --dry-run false]
 python -m src uninstall-guardian-task [--confirm UNINSTALL_GUARDIAN_TASK --dry-run false]
 python -m src auto-fix-proxy [--dry-run] [--skip-guardian-install]

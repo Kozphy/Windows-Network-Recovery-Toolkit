@@ -46,7 +46,7 @@ Operator runbook with recovery layers: [dead-proxy-guardian.md](dead-proxy-guard
 ```text
 install-startup-observability
         ├── WNRT-DeadProxyGuardian (scheduled task or Startup hook)
-        │         └── proxy-guardian --loop (dead localhost only)
+        │         └── proxy-guardian --loop (dead + opt-in broken)
         └── WNRT-ProxyBootTrace (scheduled task or Startup hook, 30s delay)
                   └── proxy-boot-trace (read-only JSONL)
                             ↓
@@ -69,7 +69,7 @@ install-startup-observability
 | `uninstall-guardian-task` | Guardian only | preview | `UNINSTALL_GUARDIAN_TASK` |
 | `proxy-boot-trace` | One-shot trace loop | read-only | — |
 | `startup-inventory` | Targeted startup inventory | read-only | — |
-| `proxy-guardian` | Dead localhost guardian | dry-run | `CLEAR_DEAD_LOCALHOST_PROXY` |
+| `proxy-guardian` | Dead / active-but-broken guardian | dry-run | `CLEAR_DEAD_LOCALHOST_PROXY`; broken: `--clear-broken` + `PREFER_DIRECT_WININET` |
 | `collect-evidence-bundle` | Package endpoint evidence | read-only | — |
 | `startup-observability-report` | Summarize boot trace JSONL | read-only | — |
 | `safe-search` | Timeout-capped file search | read-only | — |

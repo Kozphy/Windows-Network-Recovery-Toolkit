@@ -27,6 +27,8 @@ REM ============================================================================
 cd /d "%~dp0"
 if /I "%~1"=="prefer-direct" (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-proxy-health.ps1" -PreferDirect
+) else if /I "%~1"=="linkedin" (
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\fix-linkedin-proxy.ps1"
 ) else (
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\ensure-proxy-health.ps1"
 )

@@ -179,6 +179,74 @@ def test_guardian_applies_with_confirmation() -> None:
     assert out["action_taken"] == "remediated"
 
 
+def test_guardian_broken_requires_prefer_direct_confirm() -> None:
+    from src.proxy_drift.guardian import CONFIRM_CLEAR_BROKEN
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch("src.proxy_drift.guardian.apply_proxy_fix") as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm=CONFIRM_CLEAR_DEAD,
+            clear_broken=True,
+            confirm_broken="",
+            path_health={"proxy_probe_ok": False, "direct_probe_ok": True, "proxy_status": "DIRECT_ONLY_WORKS"},
+        )
+    fix.assert_not_called()
+    assert out["broken_localhost_proxy"] is True
+    assert out["action_taken"] == "blocked"
+    assert CONFIRM_CLEAR_BROKEN in out["reason"]
+
+
+def test_guardian_broken_clears_with_prefer_direct_token() -> None:
+    from src.proxy_drift.guardian import CONFIRM_CLEAR_BROKEN
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch(
+            "src.proxy_drift.guardian.apply_proxy_fix",
+            return_value={"action_allowed": True},
+        ) as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm="",
+            clear_broken=True,
+            confirm_broken=CONFIRM_CLEAR_BROKEN,
+            path_health={"proxy_probe_ok": False, "direct_probe_ok": True, "proxy_status": "DIRECT_ONLY_WORKS"},
+        )
+    fix.assert_called_once()
+    assert out["action_taken"] == "remediated"
+    assert out["cleared_broken_localhost"] is True
+    assert out["classification"] == "BROKEN_LOCALHOST_PROXY"
+
+
+def test_guardian_healthy_active_not_cleared_even_with_clear_broken() -> None:
+    from src.proxy_drift.guardian import CONFIRM_CLEAR_BROKEN
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch("src.proxy_drift.guardian.apply_proxy_fix") as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm=CONFIRM_CLEAR_DEAD,
+            clear_broken=True,
+            confirm_broken=CONFIRM_CLEAR_BROKEN,
+            path_health={"proxy_probe_ok": True, "direct_probe_ok": True, "proxy_status": "BOTH_DIRECT_AND_PROXY_WORK"},
+        )
+    fix.assert_not_called()
+    assert out["broken_localhost_proxy"] is False
+    assert out["action_taken"] == "none"
+
+
 def test_auto_fix_proxy_dry_run_skips_mutations() -> None:
     from src.proxy_drift.auto_fix import run_auto_fix_proxy
 

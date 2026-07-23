@@ -26,7 +26,16 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 
 ### Guardian safety
 
-`proxy-guardian` only remediates when classification is **`DEAD_PROXY_CONFIG`** (enabled localhost proxy, **no listener**). It does **not** clear an active localhost dev proxy while a process is still bound to the port.
+`proxy-guardian` remediates:
+
+| Case | Condition | Confirm token |
+|------|-----------|---------------|
+| **Dead** | enabled localhost proxy, **no listener** | `CLEAR_DEAD_LOCALHOST_PROXY` |
+| **Active-but-broken** (opt-in `--clear-broken`) | listener up, proxy path fail, direct HTTPS ok | `PREFER_DIRECT_WININET` |
+
+It does **not** clear a healthy active localhost proxy (path probe still works).
+
+Background loop (`scripts/run-proxy-guardian-loop.ps1`) enables both tokens so LinkedIn-style recurrence is cleared without wiping intentional tunnels.
 
 ### Active-but-broken (listener up, path failed)
 
@@ -35,13 +44,22 @@ When a process is listening on the configured localhost port but **HTTPS via the
 | Surface | Behavior |
 |---------|----------|
 | `auto-fix-proxy` / `ensure-proxy-health` | Detects via proxy-vs-direct path probe; clears with confirm `PREFER_DIRECT_WININET` (same token as prefer-direct). Without confirm → `needs_prefer_direct_confirm` / `localhost_proxy_broken`. |
-| `proxy-guardian` loop | Still **dead-only** (no listener). Does not clear broken-listener cases. |
-| Healthy active localhost | Unchanged — requires `--prefer-direct --confirm PREFER_DIRECT_WININET`. |
+| `proxy-guardian --clear-broken` | Same broken clear in the loop (recurrence protection). |
+| Healthy active localhost | Unchanged — requires `--prefer-direct --confirm PREFER_DIRECT_WININET` on ensure/auto-fix. |
 
 ```powershell
+# LinkedIn / browser timeout — one shot (Python optional)
+.\fix-linkedin-proxy.cmd
+.\scripts\fix-linkedin-proxy.ps1
+
+# Emergency clear (no Python)
+.\scripts\emergency-clear-wininet-proxy.ps1 -Force
+.\scripts\fix-wininet-proxy.cmd /Y
+
 # Clear active-but-broken (or force direct for healthy active)
 .\scripts\auto-fix-proxy.ps1 -PreferDirect
 python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --json
+python -m src proxy-guardian --once --clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false --json
 ```
 
 ### ChatGPT auto-fix safety (layer 0b)

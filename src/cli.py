@@ -2029,7 +2029,21 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         dest="confirm_phrase",
         metavar="PHRASE",
-        help="Live clear requires CLEAR_DEAD_LOCALHOST_PROXY.",
+        help="Live dead-proxy clear requires CLEAR_DEAD_LOCALHOST_PROXY.",
+    )
+    p_pgd.add_argument(
+        "--clear-broken",
+        action="store_true",
+        dest="clear_broken",
+        help="Also detect active-but-broken (listener up, path fail, direct ok).",
+    )
+    p_pgd.add_argument(
+        "--confirm-broken",
+        type=str,
+        default="",
+        dest="confirm_broken",
+        metavar="PHRASE",
+        help="Live broken-proxy clear requires PREFER_DIRECT_WININET (with --clear-broken).",
     )
     p_pgd.add_argument("--json", dest="emit_json", action="store_true")
     p_pgd.set_defaults(func=cmd_proxy_guardian_drift, once=True)

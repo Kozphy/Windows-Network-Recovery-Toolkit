@@ -1,12 +1,12 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Install guardian-only auto-clear for dead localhost WinINET proxy drift.
+  Install guardian auto-clear for dead / active-but-broken localhost WinINET proxy.
 .DESCRIPTION
   For the combined v0.3.0 operator workflow, prefer
   scripts/install-startup-observability.ps1.
   Registers a per-user Startup hook running scripts/run-proxy-guardian-loop.ps1.
-  Guardian invokes proxy-guardian --once on an interval; only remediates DEAD_PROXY_CONFIG.
+  Loop invokes proxy-guardian --once with dead + broken tokens on an interval.
 
   Inputs:
     -IntervalMinutes   Loop sleep in minutes (default 5; auto-fix-proxy uses 1)
@@ -23,10 +23,10 @@
   Side effects:
     - Creates Startup\WNRT-DeadProxyGuardian.cmd
     - Hidden powershell loop calling proxy-guardian
-    - HKCU WinINET mutation only when guardian detects dead proxy (no listener)
+    - HKCU WinINET mutation when dead (no listener) or active-but-broken (path fail)
 
   Safety boundaries:
-    Never disables proxy while localhost listener is bound. Does not touch WinHTTP by default.
+    Never clears a healthy active localhost proxy (path still works). Does not touch WinHTTP by default.
 
   Idempotency:
     Re-install overwrites the same Startup hook. -Uninstall is reversible.
@@ -54,8 +54,14 @@ $TaskName = 'WNRT-DeadProxyGuardian'
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $Python = Join-Path $RepoRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $Python)) {
-    $Python = (Get-Command python -ErrorAction Stop).Source
+    $portable = Join-Path $RepoRoot '.tools\python312\python.exe'
+    if (Test-Path -LiteralPath $portable) {
+        $Python = $portable
+    } else {
+        $Python = (Get-Command python -ErrorAction Stop).Source
+    }
 }
+$GuardianOnceArgs = '-m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false'
 
 if ($IntervalSeconds -le 0) {
     $IntervalSeconds = [Math]::Max(60, $IntervalMinutes * 60)
@@ -101,7 +107,7 @@ function Install-ScheduledTasks {
 function Install-ScheduledTasksCmdlet {
     $action = New-ScheduledTaskAction `
         -Execute $Python `
-        -Argument "-m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false" `
+        -Argument $GuardianOnceArgs `
         -WorkingDirectory $RepoRoot
     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
@@ -126,7 +132,7 @@ if ($Uninstall) {
     exit 0
 }
 
-$taskCmd = "`"$Python`" -m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false"
+$taskCmd = "`"$Python`" $GuardianOnceArgs"
 $scheduledOk = $false
 
 Install-StartupHook
@@ -171,7 +177,7 @@ if ($UseScheduledTask) {
 Write-Host ""
 Write-Host "Test now:" -ForegroundColor Cyan
 Write-Host "  & `"$Python`" -m src auto-fix-proxy"
-Write-Host "  & `"$Python`" -m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false"
+Write-Host "  & `"$Python`" $GuardianOnceArgs"
 Write-Host ""
 Write-Host "Uninstall:" -ForegroundColor DarkGray
 Write-Host "  .\scripts\install-dead-proxy-guardian.ps1 -Uninstall"

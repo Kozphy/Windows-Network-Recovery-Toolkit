@@ -161,27 +161,37 @@ def cmd_uninstall_startup_observability(args: argparse.Namespace) -> int:
 
 
 def cmd_proxy_guardian_drift(args: argparse.Namespace) -> int:
-    """Dead localhost proxy guardian (dry-run by default)."""
+    """Dead / active-but-broken localhost proxy guardian (dry-run by default)."""
     if (code := exit_code_if_not_windows("proxy-guardian")) is not None:
         return code
     dry_run = bool(getattr(args, "dry_run", True))
     once = bool(getattr(args, "once", True)) and not bool(getattr(args, "guardian_loop", False))
     confirm = str(getattr(args, "confirm_phrase", "") or "")
+    clear_broken = bool(getattr(args, "clear_broken", False))
+    confirm_broken = str(getattr(args, "confirm_broken", "") or "")
     interval = float(getattr(args, "interval", 60.0))
     if once:
-        result = run_dead_proxy_guardian_once(dry_run=dry_run, confirm=confirm)
+        result = run_dead_proxy_guardian_once(
+            dry_run=dry_run,
+            confirm=confirm,
+            clear_broken=clear_broken,
+            confirm_broken=confirm_broken,
+        )
     else:
         result = run_dead_proxy_guardian_loop(
             interval_seconds=interval,
             once=False,
             dry_run=dry_run,
             confirm=confirm,
+            clear_broken=clear_broken,
+            confirm_broken=confirm_broken,
         )
     display = result if once else result.get("last_result", result)
     if getattr(args, "emit_json", False):
         _print_json(display)
     else:
         print(f"Classification: {display.get('classification')}")
+        print(f"Dead: {display.get('dead_localhost_proxy')} Broken: {display.get('broken_localhost_proxy')}")
         print(f"Action: {display.get('action_taken')} — {display.get('reason')}")
         print("Audit: logs/proxy_guardian.jsonl")
     return 0
