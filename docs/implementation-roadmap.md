@@ -7,13 +7,17 @@
 - Generate SBOM evidence when dependency manifests are present.
 - Run CodeQL on pull requests.
 - Validate Rego syntax and policy test cases before policy enforcement.
+- Run the continuous agent in read-only mode with bounded configured checks.
+- Persist state-change fingerprints, audit JSONL, and escalation evidence.
+- Start the agent automatically through a restartable Windows startup task.
 
 ## Phase 2 — Runtime integration
 
-- Instrument FastAPI and harness operations with OpenTelemetry.
+- Instrument FastAPI, harness and continuous-agent operations with OpenTelemetry.
 - Export decision latency, replay consistency, approval backlog and policy-denial metrics.
 - Add application calls to OPA using a versioned input schema.
 - Replace placeholder container images with signed, digest-pinned releases.
+- Route continuous-agent alerts to an approved notification destination.
 
 ## Phase 3 — Reliability engineering
 
@@ -21,6 +25,7 @@
 - Define measurable availability and latency objectives from real baselines.
 - Add controlled fault tests for dependency timeouts, malformed evidence and stale state.
 - Build Grafana dashboards from Prometheus metrics.
+- Add heartbeat and missed-cycle alerts for the continuous agent.
 
 ## Phase 4 — AI-assisted explanation
 
@@ -36,6 +41,7 @@
 - Add environment promotion and approval stages in GitHub Actions or Harness CI/CD.
 - Sign images and attest provenance with Sigstore-compatible tooling.
 - Export control evidence to Power BI and governance reports.
+- Package the continuous agent with a signed native service wrapper and dedicated low-privilege identity.
 
 ## Deliberately deferred
 
