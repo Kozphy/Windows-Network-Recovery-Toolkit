@@ -1,0 +1,6 @@
+{"id":"readme-positioning","action":"check_text_contains","path":"README.md","contains":"Technology Risk & Control Analytics Platform"}
+{"id":"sre-profile","action":"check_path_exists","path":"docs/sre-reliability-profile.md"}
+{"id":"security-crosswalk","action":"check_path_exists","path":"docs/security-governance-crosswalk.md"}
+{"id":"ai-policy","action":"check_path_exists","path":"ai_governance/evaluation-policy.yaml"}
+{"id":"prometheus-alerts","action":"check_path_exists","path":"observability/prometheus-alerts.yml"}
+{"id":"kubernetes-reference","action":"check_path_exists","path":"deploy/kubernetes/reference.yaml"}
