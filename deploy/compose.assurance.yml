@@ -1,0 +1,41 @@
+services:
+  opa:
+    image: openpolicyagent/opa:latest-static
+    command: ["run", "--server", "--log-level=info", "/policies"]
+    volumes:
+      - ../policy:/policies:ro
+    ports:
+      - "8181:8181"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ../observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "9464:9464"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ../observability/prometheus.local.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus-alerts.yml:/etc/prometheus/rules/wnrt.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+# Reference environment only. Pin all images by digest before controlled deployment.
