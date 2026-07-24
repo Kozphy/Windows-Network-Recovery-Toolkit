@@ -4,7 +4,7 @@
   Preview or install startup observability (guardian + boot trace).
 #>
 param(
-    [int]$GuardianIntervalSeconds = 60,
+    [int]$GuardianIntervalSeconds = 15,
     [int]$BootTraceDurationSeconds = 180,
     [int]$BootTraceIntervalSeconds = 2,
     [switch]$Uninstall,

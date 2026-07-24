@@ -87,7 +87,7 @@ def run_ensure_proxy_health(
     confirm: str = "",
     skip_observability_install: bool = False,
     skip_cursor_fix: bool = False,
-    guardian_interval_seconds: int = 60,
+    guardian_interval_seconds: int = 15,
     repo_root: Path | None = None,
     run: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:

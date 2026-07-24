@@ -69,7 +69,7 @@ install-startup-observability
 | `uninstall-guardian-task` | Guardian only | preview | `UNINSTALL_GUARDIAN_TASK` |
 | `proxy-boot-trace` | One-shot trace loop | read-only | — |
 | `startup-inventory` | Targeted startup inventory | read-only | — |
-| `proxy-guardian` | Dead / active-but-broken guardian | dry-run | `CLEAR_DEAD_LOCALHOST_PROXY`; broken: `--clear-broken` + `PREFER_DIRECT_WININET` |
+| `proxy-guardian` | Dead / broken / hold-direct guardian | dry-run | `CLEAR_DEAD_LOCALHOST_PROXY`; broken/hold: `--clear-broken` / `--hold-direct` + `PREFER_DIRECT_WININET` |
 | `collect-evidence-bundle` | Package endpoint evidence | read-only | — |
 | `startup-observability-report` | Summarize boot trace JSONL | read-only | — |
 | `safe-search` | Timeout-capped file search | read-only | — |

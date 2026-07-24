@@ -1955,7 +1955,7 @@ def build_parser() -> argparse.ArgumentParser:
         "install-startup-observability",
         help="Preview/install guardian + boot trace startup observability.",
     )
-    p_iso.add_argument("--guardian-interval", type=int, default=60, dest="guardian_interval")
+    p_iso.add_argument("--guardian-interval", type=int, default=15, dest="guardian_interval")
     p_iso.add_argument("--duration", type=int, default=180, dest="boot_trace_duration")
     p_iso.add_argument("--interval", type=int, default=2, dest="boot_trace_interval")
     p_iso.add_argument(
@@ -2043,7 +2043,16 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         dest="confirm_broken",
         metavar="PHRASE",
-        help="Live broken-proxy clear requires PREFER_DIRECT_WININET (with --clear-broken).",
+        help="Live broken/hold-direct clear requires PREFER_DIRECT_WININET.",
+    )
+    p_pgd.add_argument(
+        "--hold-direct",
+        action="store_true",
+        dest="hold_direct",
+        help=(
+            "Clear ANY enabled localhost WinINET proxy (including healthy tunnels) "
+            "using --confirm-broken PREFER_DIRECT_WININET. For LinkedIn-style rewrite recurrence."
+        ),
     )
     p_pgd.add_argument("--json", dest="emit_json", action="store_true")
     p_pgd.set_defaults(func=cmd_proxy_guardian_drift, once=True)
@@ -2191,9 +2200,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_afp.add_argument(
         "--guardian-interval",
         type=int,
-        default=60,
+        default=15,
         dest="guardian_interval",
-        help="Background guardian check interval in seconds (default 60).",
+        help="Background guardian check interval in seconds (default 15, hold-direct loop).",
     )
     p_afp.add_argument("--json", dest="emit_json", action="store_true")
     p_afp.set_defaults(func=cmd_auto_fix_proxy, dry_run=False)
@@ -2234,9 +2243,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_eph.add_argument(
         "--guardian-interval",
         type=int,
-        default=60,
+        default=15,
         dest="guardian_interval",
-        help="Guardian check interval in seconds (default 60).",
+        help="Guardian check interval in seconds (default 15).",
     )
     p_eph.add_argument("--json", dest="emit_json", action="store_true")
     p_eph.set_defaults(func=cmd_ensure_proxy_health, dry_run=False)

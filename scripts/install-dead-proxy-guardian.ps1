@@ -1,15 +1,16 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Install guardian auto-clear for dead / active-but-broken localhost WinINET proxy.
+  Install guardian auto-clear for dead / broken / hold-direct localhost WinINET.
 .DESCRIPTION
   For the combined v0.3.0 operator workflow, prefer
   scripts/install-startup-observability.ps1.
   Registers a per-user Startup hook running scripts/run-proxy-guardian-loop.ps1.
-  Loop invokes proxy-guardian --once with dead + broken tokens on an interval.
+  Loop invokes proxy-guardian --once with dead + broken + hold-direct tokens.
 
   Inputs:
-    -IntervalMinutes   Loop sleep in minutes (default 5; auto-fix-proxy uses 1)
+    -IntervalSeconds   Loop sleep in seconds (default 15 for rewrite recurrence)
+    -IntervalMinutes   If > 0, overrides IntervalSeconds (minutes * 60)
     -UseScheduledTask  Also try Task Scheduler (may fail on locked-down PCs)
     -StartNow          Launch background loop immediately (default true)
     -Uninstall         Remove hook, tasks, and background loop
@@ -23,10 +24,11 @@
   Side effects:
     - Creates Startup\WNRT-DeadProxyGuardian.cmd
     - Hidden powershell loop calling proxy-guardian
-    - HKCU WinINET mutation when dead (no listener) or active-but-broken (path fail)
+    - HKCU WinINET mutation for dead, broken, or any localhost (hold-direct)
 
   Safety boundaries:
-    Never clears a healthy active localhost proxy (path still works). Does not touch WinHTTP by default.
+    Hold-direct clears intentional local tunnels. Does not touch WinHTTP by default.
+    Does not kill processes.
 
   Idempotency:
     Re-install overwrites the same Startup hook. -Uninstall is reversible.
@@ -43,8 +45,8 @@
   Audit: guardian apply rows in .audit/proxy-disable.jsonl when remediation runs.
 #>
 param(
-    [int]$IntervalMinutes = 5,
-    [int]$IntervalSeconds = 0,
+    [int]$IntervalMinutes = 0,
+    [int]$IntervalSeconds = 15,
     [switch]$UseScheduledTask,
     [bool]$StartNow = $true,
     [switch]$Uninstall
@@ -61,11 +63,13 @@ if (-not (Test-Path -LiteralPath $Python)) {
         $Python = (Get-Command python -ErrorAction Stop).Source
     }
 }
-$GuardianOnceArgs = '-m src proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false'
+$Runner = Join-Path $RepoRoot 'scripts\run_src.py'
+$GuardianOnceArgs = "`"$Runner`" proxy-guardian --once --confirm CLEAR_DEAD_LOCALHOST_PROXY --clear-broken --hold-direct --confirm-broken PREFER_DIRECT_WININET --dry-run false"
 
-if ($IntervalSeconds -le 0) {
-    $IntervalSeconds = [Math]::Max(60, $IntervalMinutes * 60)
+if ($IntervalMinutes -gt 0) {
+    $IntervalSeconds = [Math]::Max(5, $IntervalMinutes * 60)
 }
+$IntervalSeconds = [Math]::Max(5, $IntervalSeconds)
 $StartupHook = Join-Path ([Environment]::GetFolderPath('Startup')) 'WNRT-DeadProxyGuardian.cmd'
 $LoopScript = Join-Path $RepoRoot 'scripts\run-proxy-guardian-loop.ps1'
 

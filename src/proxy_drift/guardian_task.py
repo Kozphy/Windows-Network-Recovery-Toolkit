@@ -31,10 +31,11 @@ def _repo_root() -> Path:
 def build_guardian_task_command(*, interval: int = 60) -> str:
     """Return the command line the scheduled task should execute."""
     py = _python_exe()
+    runner = _repo_root() / "scripts" / "run_src.py"
     return (
-        f'"{py}" -m src proxy-guardian --loop --interval {interval} '
+        f'"{py}" "{runner}" proxy-guardian --loop --interval {interval} '
         f"--confirm CLEAR_DEAD_LOCALHOST_PROXY "
-        f"--clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false"
+        f"--clear-broken --hold-direct --confirm-broken PREFER_DIRECT_WININET --dry-run false"
     )
 
 

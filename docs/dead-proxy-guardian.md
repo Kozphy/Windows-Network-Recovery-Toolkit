@@ -31,11 +31,22 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 | Case | Condition | Confirm token |
 |------|-----------|---------------|
 | **Dead** | enabled localhost proxy, **no listener** | `CLEAR_DEAD_LOCALHOST_PROXY` |
-| **Active-but-broken** (opt-in `--clear-broken`) | listener up, proxy path fail, direct HTTPS ok | `PREFER_DIRECT_WININET` |
+| **Active-but-broken** (opt-in `--clear-broken`) | listener up, proxy path probe failed | `PREFER_DIRECT_WININET` |
+| **Hold-direct** (opt-in `--hold-direct`) | **any** enabled localhost WinINET (incl. healthy tunnels) | `PREFER_DIRECT_WININET` |
 
-It does **not** clear a healthy active localhost proxy (path probe still works).
+Background loop (`scripts/run-proxy-guardian-loop.ps1`) enables dead + broken + **hold-direct** at a **15s** interval, with a **PowerShell emergency fallback** if Python fails. After one install you should not need manual clears.
 
-Background loop (`scripts/run-proxy-guardian-loop.ps1`) enables both tokens so LinkedIn-style recurrence is cleared without wiping intentional tunnels.
+```powershell
+# Set-and-forget (recommended)
+.\enable-proxy-autofix.cmd
+# Status heartbeat
+Get-Content .\reports\proxy_guardian_heartbeat.json
+# Uninstall
+.\enable-proxy-autofix.cmd uninstall
+```
+
+Listener process name/cmdline is recorded in the audit as **correlation only** (not registry-writer proof).
+
 
 ### Active-but-broken (listener up, path failed)
 
@@ -44,8 +55,9 @@ When a process is listening on the configured localhost port but **HTTPS via the
 | Surface | Behavior |
 |---------|----------|
 | `auto-fix-proxy` / `ensure-proxy-health` | Detects via proxy-vs-direct path probe; clears with confirm `PREFER_DIRECT_WININET` (same token as prefer-direct). Without confirm → `needs_prefer_direct_confirm` / `localhost_proxy_broken`. |
-| `proxy-guardian --clear-broken` | Same broken clear in the loop (recurrence protection). |
-| Healthy active localhost | Unchanged — requires `--prefer-direct --confirm PREFER_DIRECT_WININET` on ensure/auto-fix. |
+| `proxy-guardian --clear-broken` | Broken/unusable path clear in the loop. |
+| `proxy-guardian --hold-direct` | Clears **any** enabled localhost WinINET (recurrence / prefer-direct policy). |
+| Healthy active localhost (no hold-direct) | Left alone unless `--prefer-direct` on ensure/auto-fix. |
 
 ```powershell
 # LinkedIn / browser timeout — one shot (Python optional)
@@ -59,7 +71,9 @@ When a process is listening on the configured localhost port but **HTTPS via the
 # Clear active-but-broken (or force direct for healthy active)
 .\scripts\auto-fix-proxy.ps1 -PreferDirect
 python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --json
-python -m src proxy-guardian --once --clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false --json
+python -m src proxy-guardian --once --clear-broken --hold-direct --confirm-broken PREFER_DIRECT_WININET --dry-run false --json
+# Install 15s auto-clear loop (hold-direct on)
+.\scripts\install-dead-proxy-guardian.ps1 -IntervalSeconds 15
 ```
 
 ### ChatGPT auto-fix safety (layer 0b)

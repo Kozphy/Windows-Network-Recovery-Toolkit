@@ -247,6 +247,78 @@ def test_guardian_healthy_active_not_cleared_even_with_clear_broken() -> None:
     assert out["action_taken"] == "none"
 
 
+def test_guardian_both_probes_fail_clears_with_clear_broken() -> None:
+    """Proxy path fail with inconclusive direct still clears under clear_broken."""
+    from src.proxy_drift.guardian import CONFIRM_CLEAR_BROKEN
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch(
+            "src.proxy_drift.guardian.apply_proxy_fix",
+            return_value={"action_allowed": True},
+        ) as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm="",
+            clear_broken=True,
+            confirm_broken=CONFIRM_CLEAR_BROKEN,
+            path_health={"proxy_probe_ok": False, "direct_probe_ok": False, "proxy_status": "BOTH_FAIL"},
+        )
+    fix.assert_called_once()
+    assert out["broken_localhost_proxy"] is True
+    assert out["action_taken"] == "remediated"
+
+
+def test_guardian_hold_direct_clears_healthy_active_localhost() -> None:
+    from src.proxy_drift.guardian import CONFIRM_HOLD_DIRECT
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch(
+            "src.proxy_drift.guardian.apply_proxy_fix",
+            return_value={"action_allowed": True},
+        ) as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm="",
+            clear_broken=True,
+            hold_direct=True,
+            confirm_broken=CONFIRM_HOLD_DIRECT,
+            path_health={"proxy_probe_ok": True, "direct_probe_ok": True, "proxy_status": "BOTH_OK"},
+        )
+    fix.assert_called_once()
+    assert out["hold_direct_hit"] is True
+    assert out["cleared_hold_direct"] is True
+    assert out["action_taken"] == "remediated"
+
+
+def test_guardian_hold_direct_requires_prefer_direct_token() -> None:
+    from src.proxy_drift.guardian import CONFIRM_HOLD_DIRECT
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch("src.proxy_drift.guardian.apply_proxy_fix") as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm=CONFIRM_CLEAR_DEAD,
+            hold_direct=True,
+            confirm_broken="",
+        )
+    fix.assert_not_called()
+    assert out["hold_direct_hit"] is True
+    assert out["action_taken"] == "blocked"
+    assert CONFIRM_HOLD_DIRECT in out["reason"]
+
+
 def test_auto_fix_proxy_dry_run_skips_mutations() -> None:
     from src.proxy_drift.auto_fix import run_auto_fix_proxy
 

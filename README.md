@@ -523,6 +523,7 @@ python -m src auto-fix-proxy
 python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --json
 # LinkedIn timeout — prefer-direct + Cursor no-proxy + guardian (Python optional)
 .\fix-linkedin-proxy.cmd
+.\enable-proxy-autofix.cmd
 .\scripts\emergency-clear-wininet-proxy.ps1 -Force
 .\scripts\fix-wininet-proxy.cmd /Y
 
@@ -536,8 +537,8 @@ python -m src proxy-boot-trace --duration 180 --interval 2
 # Dead localhost guardian (dry-run by default)
 python -m src proxy-guardian --once
 python -m src proxy-guardian --loop --interval 60 --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false
-# Also clear active-but-broken (LinkedIn recurrence)
-python -m src proxy-guardian --once --clear-broken --confirm CLEAR_DEAD_LOCALHOST_PROXY --confirm-broken PREFER_DIRECT_WININET --dry-run false
+# Also clear active-but-broken + hold-direct (LinkedIn recurrence)
+python -m src proxy-guardian --once --clear-broken --hold-direct --confirm CLEAR_DEAD_LOCALHOST_PROXY --confirm-broken PREFER_DIRECT_WININET --dry-run false
 
 # Emergency HKCU fix (localhost ProxyServer only)
 python -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
