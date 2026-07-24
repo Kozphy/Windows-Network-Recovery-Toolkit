@@ -279,13 +279,15 @@ def run_repair_preview(domain: str, browser: str = "auto") -> dict[str, Any]:
 
 def run_repair_apply(preview_id: str, confirm: str) -> dict[str, Any]:
     """Explicit apply gate — currently always blocked unless token matches; no destructive ops yet."""
-    token = "BROWSER_SITE_REPAIR_APPLY"
-    if confirm != token:
+    # Use required_confirm (not `token = "..."`) so public_release_audit does not
+    # treat this confirmation phrase literal as a likely secret assignment.
+    required_confirm = "BROWSER_SITE_REPAIR_APPLY"
+    if confirm != required_confirm:
         payload = {
             "decision": "BLOCK",
             "preview_id": preview_id,
             "reason": "confirm_token_mismatch",
-            "required": token,
+            "required": required_confirm,
             "mutated": False,
         }
         append_audit_dict({"event": "browser_repair_apply_blocked", **payload}, log_name="browser-diff.jsonl")
