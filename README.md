@@ -524,8 +524,11 @@ python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --j
 # LinkedIn timeout — prefer-direct + Cursor no-proxy + guardian (Python optional)
 .\fix-linkedin-proxy.cmd
 .\enable-proxy-autofix.cmd
+.\fix-dns.cmd
 .\scripts\emergency-clear-wininet-proxy.ps1 -Force
 .\scripts\fix-wininet-proxy.cmd /Y
+# DNS_PROBE_FINISHED_BAD_CONFIG triage (read-only)
+python -m src dns-health --json
 
 # Startup inventory (no full profile recursion)
 python -m src startup-inventory

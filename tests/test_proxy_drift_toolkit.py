@@ -759,3 +759,28 @@ def test_startup_observability_report_summarizes_trace(tmp_path: Path) -> None:
     assert summary["samples"] == 2
     assert summary["final_classification"] == "KNOWN_DEV_PROXY"
     assert "proxy_server_changed" in summary["delta_events_seen"]
+
+
+def test_dns_primary_off_subnet_flagged() -> None:
+    from src.proxy_drift.dns_health import assess_dns_mismatch
+
+    out = assess_dns_mismatch(
+        interface_ipv4="192.168.68.52",
+        gateway="192.168.68.1",
+        dns_servers=["192.168.1.1", "192.168.68.1"],
+    )
+    assert out["classification"] == "DNS_PRIMARY_OFF_SUBNET"
+    assert out["primary_off_subnet"] is True
+    assert "fix-dns" in out["recommended_action"]
+
+
+def test_dns_same_subnet_ok() -> None:
+    from src.proxy_drift.dns_health import assess_dns_mismatch
+
+    out = assess_dns_mismatch(
+        interface_ipv4="192.168.68.52",
+        gateway="192.168.68.1",
+        dns_servers=["192.168.68.1", "1.1.1.1"],
+    )
+    assert out["classification"] == "DNS_OK"
+    assert out["primary_off_subnet"] is False

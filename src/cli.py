@@ -132,6 +132,7 @@ from .proof.proxy_https import run_localhost_proxy_https_proof
 from .proxy_drift.handlers import (
     cmd_auto_fix_proxy,
     cmd_collect_evidence_bundle,
+    cmd_dns_health,
     cmd_ensure_proxy_health,
     cmd_install_boot_trace_task,
     cmd_install_guardian_task,
@@ -2249,6 +2250,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_eph.add_argument("--json", dest="emit_json", action="store_true")
     p_eph.set_defaults(func=cmd_ensure_proxy_health, dry_run=False)
+
+    p_dns = sub.add_parser(
+        "dns-health",
+        help="Read-only Wi-Fi DNS heuristic for DNS_PROBE_FINISHED_BAD_CONFIG triage.",
+    )
+    p_dns.add_argument(
+        "--interface",
+        default="Wi-Fi",
+        dest="interface_alias",
+        help="Adapter alias to inspect (default Wi-Fi).",
+    )
+    p_dns.add_argument("--json", dest="emit_json", action="store_true")
+    p_dns.set_defaults(func=cmd_dns_health)
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)

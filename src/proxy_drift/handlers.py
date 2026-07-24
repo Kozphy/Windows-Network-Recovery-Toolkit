@@ -381,11 +381,42 @@ def cmd_ensure_proxy_health(args: argparse.Namespace) -> int:
         print(f"Outcome: {result.get('outcome')}")
         print(f"Classification: {result.get('classification')}")
         print(f"Proxy: enable={result.get('proxy_enable')} server={result.get('proxy_server')}")
+        dns = result.get("dns_health") or {}
+        if dns:
+            print(
+                f"DNS: {dns.get('classification')} primary={dns.get('primary_dns')} "
+                f"servers={dns.get('dns_servers')}"
+            )
         print(f"Observability installed: {result.get('observability_installed')}")
         print(result.get("recommended_next_step") or "")
     outcome = str(result.get("outcome") or "")
+    dns = result.get("dns_health") or {}
     if outcome in {"still_dead", "needs_prefer_direct_confirm", "localhost_proxy_broken"}:
         return 1
     if outcome == "unsupported":
         return 2
+    if dns.get("primary_off_subnet"):
+        return 3
     return 0
+
+
+def cmd_dns_health(args: argparse.Namespace) -> int:
+    """Read-only Wi-Fi DNS health heuristic (DNS_PROBE_FINISHED_BAD_CONFIG triage)."""
+    if (code := exit_code_if_not_windows("dns-health")) is not None:
+        return code
+    from src.proxy_drift.dns_health import collect_wifi_dns_snapshot
+
+    alias = str(getattr(args, "interface_alias", "Wi-Fi") or "Wi-Fi")
+    result = collect_wifi_dns_snapshot(interface_alias=alias)
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(f"Classification: {result.get('classification')}")
+        print(f"Interface: {result.get('interface_alias')} IPv4={result.get('interface_ipv4')}")
+        print(f"Gateway: {result.get('gateway')}")
+        print(f"DNS servers: {result.get('dns_servers')}")
+        print(f"Primary off-subnet: {result.get('primary_off_subnet')}")
+        print(result.get("recommended_action") or "")
+        for lim in result.get("limitations") or []:
+            print(f"Limitation: {lim}")
+    return 3 if result.get("primary_off_subnet") else 0

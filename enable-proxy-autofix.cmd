@@ -20,7 +20,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\configure-curs
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\emergency-clear-wininet-proxy.ps1" -Force
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\install-dead-proxy-guardian.ps1" -IntervalSeconds 15
 echo.
+echo Optional DNS repair for DNS_PROBE_FINISHED_BAD_CONFIG (UAC prompt):
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\fix-dns-wifi.ps1"
+echo.
 echo Autofix installed: clears localhost WinINET rewrites every 15s.
 echo Heartbeat: reports\proxy_guardian_heartbeat.json
+echo DNS-only: fix-dns.cmd
 echo Uninstall: enable-proxy-autofix.cmd uninstall
 exit /b %ERRORLEVEL%
