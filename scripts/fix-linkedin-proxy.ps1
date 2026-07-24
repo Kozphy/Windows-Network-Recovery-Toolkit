@@ -20,7 +20,7 @@ param(
     [switch]$SkipCursorFix,
     [switch]$DryRun,
     [switch]$PreferPythonEnsure,
-    [int]$IntervalSeconds = 60
+    [int]$IntervalSeconds = 15
 )
 
 $ErrorActionPreference = 'Continue'

@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from src.proxy_drift.auto_fix import read_proxy_drift_status, run_auto_fix_proxy
+from src.proxy_drift.dns_health import collect_wifi_dns_snapshot
 from src.proxy_drift.guardian_task import TASK_NAME as GUARDIAN_TASK
 from src.proxy_drift.proxy_fix import apply_proxy_fix
 from src.proxy_drift.startup_hook import startup_hook_path
@@ -87,7 +88,7 @@ def run_ensure_proxy_health(
     confirm: str = "",
     skip_observability_install: bool = False,
     skip_cursor_fix: bool = False,
-    guardian_interval_seconds: int = 60,
+    guardian_interval_seconds: int = 15,
     repo_root: Path | None = None,
     run: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
@@ -205,6 +206,12 @@ def run_ensure_proxy_health(
     else:
         outcome = "healthy"
 
+    dns = collect_wifi_dns_snapshot(run=subprocess_run)
+    steps.append({"step": "dns_health", "result": dns})
+    if dns.get("primary_off_subnet") and outcome == "healthy":
+        # Keep outcome healthy for proxy path; surface DNS as adjacent browser risk.
+        pass
+
     result = {
         "schema_version": _SCHEMA,
         "timestamp_utc": _now(),
@@ -218,14 +225,16 @@ def run_ensure_proxy_health(
         "direct_probe_ok": final.get("direct_probe_ok"),
         "proxy_enable": final.get("proxy_enable"),
         "proxy_server": final.get("proxy_server"),
+        "dns_health": dns,
         "observability_installed": bool(obs_final.get("fully_installed")),
         "steps": steps,
-        "recommended_next_step": _recommend(outcome, prefer_direct),
+        "recommended_next_step": _recommend(outcome, prefer_direct, dns),
         "limitations": [
             "Default ensure clears dead localhost WinINET only — not corporate proxies.",
             "Active-but-broken (listener up, proxy path fail, direct ok) clears with PREFER_DIRECT_WININET.",
             "prefer_direct clears healthy active localhost proxies; may break intentional local tunnels.",
             "Observation ≠ registry writer proof; LinkedIn uses WinINET system proxy.",
+            "dns_health is adapter heuristic only — not DNS malware attribution.",
         ],
     }
     try:
@@ -253,7 +262,12 @@ def run_ensure_proxy_health(
     return result
 
 
-def _recommend(outcome: str, prefer_direct: bool) -> str:
+def _recommend(outcome: str, prefer_direct: bool, dns: dict[str, Any] | None = None) -> str:
+    if dns and dns.get("primary_off_subnet"):
+        return (
+            "DNS primary appears off-subnet (browser DNS_PROBE_FINISHED_BAD_CONFIG risk). "
+            "Run .\\fix-dns.cmd elevated, then refresh the browser."
+        )
     if outcome == "healthy":
         return "Proxy path clean. Restart LinkedIn/browser if they still show ERR_PROXY_CONNECTION_FAILED."
     if outcome == "still_dead":

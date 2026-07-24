@@ -202,7 +202,7 @@ def _install_guardian_loop(
     script = repo_root / "scripts" / "install-dead-proxy-guardian.ps1"
     if not script.is_file():
         return {"step": "guardian_install", "skipped": True, "reason": "installer missing"}
-    interval_minutes = max(1, (interval_seconds + 59) // 60)
+    interval_seconds = max(5, int(interval_seconds))
     proc = run(
         [
             "powershell",
@@ -213,8 +213,6 @@ def _install_guardian_loop(
             str(script),
             "-IntervalSeconds",
             str(interval_seconds),
-            "-IntervalMinutes",
-            str(interval_minutes),
         ],
         capture_output=True,
         text=True,
@@ -269,7 +267,7 @@ def run_auto_fix_proxy(
     dry_run: bool = False,
     skip_guardian_install: bool = False,
     skip_cursor_fix: bool = False,
-    guardian_interval_seconds: int = 60,
+    guardian_interval_seconds: int = 15,
     prefer_direct: bool = False,
     confirm: str = "",
     repo_root: Path | None = None,

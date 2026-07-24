@@ -114,7 +114,7 @@ def cmd_install_startup_observability(args: argparse.Namespace) -> int:
     """Preview or install startup observability automation."""
     if (code := exit_code_if_not_windows("install-startup-observability")) is not None:
         return code
-    guardian_interval = int(getattr(args, "guardian_interval", 60))
+    guardian_interval = int(getattr(args, "guardian_interval", 15))
     boot_duration = int(getattr(args, "boot_trace_duration", 180))
     boot_interval = int(getattr(args, "boot_trace_interval", 2))
     dry_run = bool(getattr(args, "dry_run", True))
@@ -161,7 +161,7 @@ def cmd_uninstall_startup_observability(args: argparse.Namespace) -> int:
 
 
 def cmd_proxy_guardian_drift(args: argparse.Namespace) -> int:
-    """Dead / active-but-broken localhost proxy guardian (dry-run by default)."""
+    """Dead / broken / hold-direct localhost proxy guardian (dry-run by default)."""
     if (code := exit_code_if_not_windows("proxy-guardian")) is not None:
         return code
     dry_run = bool(getattr(args, "dry_run", True))
@@ -169,6 +169,7 @@ def cmd_proxy_guardian_drift(args: argparse.Namespace) -> int:
     confirm = str(getattr(args, "confirm_phrase", "") or "")
     clear_broken = bool(getattr(args, "clear_broken", False))
     confirm_broken = str(getattr(args, "confirm_broken", "") or "")
+    hold_direct = bool(getattr(args, "hold_direct", False))
     interval = float(getattr(args, "interval", 60.0))
     if once:
         result = run_dead_proxy_guardian_once(
@@ -176,6 +177,7 @@ def cmd_proxy_guardian_drift(args: argparse.Namespace) -> int:
             confirm=confirm,
             clear_broken=clear_broken,
             confirm_broken=confirm_broken,
+            hold_direct=hold_direct,
         )
     else:
         result = run_dead_proxy_guardian_loop(
@@ -185,13 +187,18 @@ def cmd_proxy_guardian_drift(args: argparse.Namespace) -> int:
             confirm=confirm,
             clear_broken=clear_broken,
             confirm_broken=confirm_broken,
+            hold_direct=hold_direct,
         )
     display = result if once else result.get("last_result", result)
     if getattr(args, "emit_json", False):
         _print_json(display)
     else:
         print(f"Classification: {display.get('classification')}")
-        print(f"Dead: {display.get('dead_localhost_proxy')} Broken: {display.get('broken_localhost_proxy')}")
+        print(
+            f"Dead: {display.get('dead_localhost_proxy')} "
+            f"Broken: {display.get('broken_localhost_proxy')} "
+            f"HoldDirect: {display.get('hold_direct_hit')}"
+        )
         print(f"Action: {display.get('action_taken')} — {display.get('reason')}")
         print("Audit: logs/proxy_guardian.jsonl")
     return 0
@@ -319,7 +326,7 @@ def cmd_auto_fix_proxy(args: argparse.Namespace) -> int:
         dry_run=dry_run,
         skip_guardian_install=bool(getattr(args, "skip_guardian_install", False)),
         skip_cursor_fix=bool(getattr(args, "skip_cursor_fix", False)),
-        guardian_interval_seconds=int(getattr(args, "guardian_interval", 60)),
+        guardian_interval_seconds=int(getattr(args, "guardian_interval", 15)),
         prefer_direct=bool(getattr(args, "prefer_direct", False)),
         confirm=str(getattr(args, "confirm_phrase", "") or ""),
         repo_root=Path.cwd(),
@@ -365,7 +372,7 @@ def cmd_ensure_proxy_health(args: argparse.Namespace) -> int:
         confirm=str(getattr(args, "confirm_phrase", "") or ""),
         skip_observability_install=bool(getattr(args, "skip_observability_install", False)),
         skip_cursor_fix=bool(getattr(args, "skip_cursor_fix", False)),
-        guardian_interval_seconds=int(getattr(args, "guardian_interval", 60)),
+        guardian_interval_seconds=int(getattr(args, "guardian_interval", 15)),
         repo_root=Path.cwd(),
     )
     if getattr(args, "emit_json", False):
@@ -374,11 +381,42 @@ def cmd_ensure_proxy_health(args: argparse.Namespace) -> int:
         print(f"Outcome: {result.get('outcome')}")
         print(f"Classification: {result.get('classification')}")
         print(f"Proxy: enable={result.get('proxy_enable')} server={result.get('proxy_server')}")
+        dns = result.get("dns_health") or {}
+        if dns:
+            print(
+                f"DNS: {dns.get('classification')} primary={dns.get('primary_dns')} "
+                f"servers={dns.get('dns_servers')}"
+            )
         print(f"Observability installed: {result.get('observability_installed')}")
         print(result.get("recommended_next_step") or "")
     outcome = str(result.get("outcome") or "")
+    dns = result.get("dns_health") or {}
     if outcome in {"still_dead", "needs_prefer_direct_confirm", "localhost_proxy_broken"}:
         return 1
     if outcome == "unsupported":
         return 2
+    if dns.get("primary_off_subnet"):
+        return 3
     return 0
+
+
+def cmd_dns_health(args: argparse.Namespace) -> int:
+    """Read-only Wi-Fi DNS health heuristic (DNS_PROBE_FINISHED_BAD_CONFIG triage)."""
+    if (code := exit_code_if_not_windows("dns-health")) is not None:
+        return code
+    from src.proxy_drift.dns_health import collect_wifi_dns_snapshot
+
+    alias = str(getattr(args, "interface_alias", "Wi-Fi") or "Wi-Fi")
+    result = collect_wifi_dns_snapshot(interface_alias=alias)
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(f"Classification: {result.get('classification')}")
+        print(f"Interface: {result.get('interface_alias')} IPv4={result.get('interface_ipv4')}")
+        print(f"Gateway: {result.get('gateway')}")
+        print(f"DNS servers: {result.get('dns_servers')}")
+        print(f"Primary off-subnet: {result.get('primary_off_subnet')}")
+        print(result.get("recommended_action") or "")
+        for lim in result.get("limitations") or []:
+            print(f"Limitation: {lim}")
+    return 3 if result.get("primary_off_subnet") else 0

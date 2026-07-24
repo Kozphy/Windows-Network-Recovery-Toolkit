@@ -132,6 +132,7 @@ from .proof.proxy_https import run_localhost_proxy_https_proof
 from .proxy_drift.handlers import (
     cmd_auto_fix_proxy,
     cmd_collect_evidence_bundle,
+    cmd_dns_health,
     cmd_ensure_proxy_health,
     cmd_install_boot_trace_task,
     cmd_install_guardian_task,
@@ -1955,7 +1956,7 @@ def build_parser() -> argparse.ArgumentParser:
         "install-startup-observability",
         help="Preview/install guardian + boot trace startup observability.",
     )
-    p_iso.add_argument("--guardian-interval", type=int, default=60, dest="guardian_interval")
+    p_iso.add_argument("--guardian-interval", type=int, default=15, dest="guardian_interval")
     p_iso.add_argument("--duration", type=int, default=180, dest="boot_trace_duration")
     p_iso.add_argument("--interval", type=int, default=2, dest="boot_trace_interval")
     p_iso.add_argument(
@@ -2043,7 +2044,16 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         dest="confirm_broken",
         metavar="PHRASE",
-        help="Live broken-proxy clear requires PREFER_DIRECT_WININET (with --clear-broken).",
+        help="Live broken/hold-direct clear requires PREFER_DIRECT_WININET.",
+    )
+    p_pgd.add_argument(
+        "--hold-direct",
+        action="store_true",
+        dest="hold_direct",
+        help=(
+            "Clear ANY enabled localhost WinINET proxy (including healthy tunnels) "
+            "using --confirm-broken PREFER_DIRECT_WININET. For LinkedIn-style rewrite recurrence."
+        ),
     )
     p_pgd.add_argument("--json", dest="emit_json", action="store_true")
     p_pgd.set_defaults(func=cmd_proxy_guardian_drift, once=True)
@@ -2191,9 +2201,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_afp.add_argument(
         "--guardian-interval",
         type=int,
-        default=60,
+        default=15,
         dest="guardian_interval",
-        help="Background guardian check interval in seconds (default 60).",
+        help="Background guardian check interval in seconds (default 15, hold-direct loop).",
     )
     p_afp.add_argument("--json", dest="emit_json", action="store_true")
     p_afp.set_defaults(func=cmd_auto_fix_proxy, dry_run=False)
@@ -2234,12 +2244,25 @@ def build_parser() -> argparse.ArgumentParser:
     p_eph.add_argument(
         "--guardian-interval",
         type=int,
-        default=60,
+        default=15,
         dest="guardian_interval",
-        help="Guardian check interval in seconds (default 60).",
+        help="Guardian check interval in seconds (default 15).",
     )
     p_eph.add_argument("--json", dest="emit_json", action="store_true")
     p_eph.set_defaults(func=cmd_ensure_proxy_health, dry_run=False)
+
+    p_dns = sub.add_parser(
+        "dns-health",
+        help="Read-only Wi-Fi DNS heuristic for DNS_PROBE_FINISHED_BAD_CONFIG triage.",
+    )
+    p_dns.add_argument(
+        "--interface",
+        default="Wi-Fi",
+        dest="interface_alias",
+        help="Adapter alias to inspect (default Wi-Fi).",
+    )
+    p_dns.add_argument("--json", dest="emit_json", action="store_true")
+    p_dns.set_defaults(func=cmd_dns_health)
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)

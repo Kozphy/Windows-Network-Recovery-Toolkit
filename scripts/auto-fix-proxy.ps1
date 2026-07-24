@@ -3,15 +3,15 @@
 .SYNOPSIS
   One-shot automatic fix for dead/active localhost WinINET proxy (no prompts).
 .DESCRIPTION
-  Delegates to: python -m src auto-fix-proxy
+  Delegates to: python -m src auto-fix-proxy (or scripts/run_src.py)
 
   Steps (in Python orchestrator):
     1. configure-cursor-no-proxy.ps1
-    2. proxy-guardian live clear (dead localhost only)
+    2. proxy-guardian live clear (dead + broken + prefer-direct paths)
     3. proxy-fix fallback if still stale
-    4. active-but-broken path probe (listener up, proxy fail, direct ok) → clear with PREFER_DIRECT_WININET
-    5. optional -PreferDirect to clear healthy active Node/Cursor localhost proxy
-    6. install-dead-proxy-guardian.ps1 background loop (60s default)
+    4. install-dead-proxy-guardian.ps1 background loop (15s hold-direct default)
+
+  Prefer set-and-forget: ..\enable-proxy-autofix.cmd
 
   Example:
     .\scripts\auto-fix-proxy.ps1
@@ -23,14 +23,20 @@ param(
     [switch]$SkipGuardianInstall,
     [switch]$DryRun,
     [switch]$PreferDirect,
-    [int]$IntervalSeconds = 60
+    [int]$IntervalSeconds = 15
 )
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $Python = Join-Path $RepoRoot '.venv\Scripts\python.exe'
+$Runner = Join-Path $PSScriptRoot 'run_src.py'
 if (-not (Test-Path -LiteralPath $Python)) {
-    $Python = (Get-Command python -ErrorAction Stop).Source
+    $portable = Join-Path $RepoRoot '.tools\python312\python.exe'
+    if (Test-Path -LiteralPath $portable) {
+        $Python = $portable
+    } else {
+        $Python = (Get-Command python -ErrorAction Stop).Source
+    }
 }
 
 Set-Location -LiteralPath $RepoRoot
@@ -38,7 +44,7 @@ $env:PYTHONPATH = $RepoRoot
 
 Write-Host "=== Auto-fix dead/active localhost proxy (WNRT) ===" -ForegroundColor Cyan
 
-$argsList = @('-m', 'src', 'auto-fix-proxy', '--json', '--guardian-interval', "$IntervalSeconds")
+$argsList = @($Runner, 'auto-fix-proxy', '--json', '--guardian-interval', "$IntervalSeconds")
 if ($SkipGuardianInstall) { $argsList += '--skip-guardian-install' }
 if ($DryRun) { $argsList += '--dry-run' }
 if ($PreferDirect) {

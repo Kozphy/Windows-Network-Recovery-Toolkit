@@ -247,6 +247,78 @@ def test_guardian_healthy_active_not_cleared_even_with_clear_broken() -> None:
     assert out["action_taken"] == "none"
 
 
+def test_guardian_both_probes_fail_clears_with_clear_broken() -> None:
+    """Proxy path fail with inconclusive direct still clears under clear_broken."""
+    from src.proxy_drift.guardian import CONFIRM_CLEAR_BROKEN
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch(
+            "src.proxy_drift.guardian.apply_proxy_fix",
+            return_value={"action_allowed": True},
+        ) as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm="",
+            clear_broken=True,
+            confirm_broken=CONFIRM_CLEAR_BROKEN,
+            path_health={"proxy_probe_ok": False, "direct_probe_ok": False, "proxy_status": "BOTH_FAIL"},
+        )
+    fix.assert_called_once()
+    assert out["broken_localhost_proxy"] is True
+    assert out["action_taken"] == "remediated"
+
+
+def test_guardian_hold_direct_clears_healthy_active_localhost() -> None:
+    from src.proxy_drift.guardian import CONFIRM_HOLD_DIRECT
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch(
+            "src.proxy_drift.guardian.apply_proxy_fix",
+            return_value={"action_allowed": True},
+        ) as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm="",
+            clear_broken=True,
+            hold_direct=True,
+            confirm_broken=CONFIRM_HOLD_DIRECT,
+            path_health={"proxy_probe_ok": True, "direct_probe_ok": True, "proxy_status": "BOTH_OK"},
+        )
+    fix.assert_called_once()
+    assert out["hold_direct_hit"] is True
+    assert out["cleared_hold_direct"] is True
+    assert out["action_taken"] == "remediated"
+
+
+def test_guardian_hold_direct_requires_prefer_direct_token() -> None:
+    from src.proxy_drift.guardian import CONFIRM_HOLD_DIRECT
+
+    reg = MagicMock(proxy_enable=1, proxy_server="127.0.0.1:52133", auto_config_url=None)
+    with (
+        patch("src.proxy_drift.guardian.read_proxy_registry", return_value=reg),
+        patch("src.proxy_drift.guardian._port_listening", return_value=True),
+        patch("src.proxy_drift.guardian.apply_proxy_fix") as fix,
+    ):
+        out = run_dead_proxy_guardian_once(
+            dry_run=False,
+            confirm=CONFIRM_CLEAR_DEAD,
+            hold_direct=True,
+            confirm_broken="",
+        )
+    fix.assert_not_called()
+    assert out["hold_direct_hit"] is True
+    assert out["action_taken"] == "blocked"
+    assert CONFIRM_HOLD_DIRECT in out["reason"]
+
+
 def test_auto_fix_proxy_dry_run_skips_mutations() -> None:
     from src.proxy_drift.auto_fix import run_auto_fix_proxy
 
@@ -687,3 +759,28 @@ def test_startup_observability_report_summarizes_trace(tmp_path: Path) -> None:
     assert summary["samples"] == 2
     assert summary["final_classification"] == "KNOWN_DEV_PROXY"
     assert "proxy_server_changed" in summary["delta_events_seen"]
+
+
+def test_dns_primary_off_subnet_flagged() -> None:
+    from src.proxy_drift.dns_health import assess_dns_mismatch
+
+    out = assess_dns_mismatch(
+        interface_ipv4="192.168.68.52",
+        gateway="192.168.68.1",
+        dns_servers=["192.168.1.1", "192.168.68.1"],
+    )
+    assert out["classification"] == "DNS_PRIMARY_OFF_SUBNET"
+    assert out["primary_off_subnet"] is True
+    assert "fix-dns" in out["recommended_action"]
+
+
+def test_dns_same_subnet_ok() -> None:
+    from src.proxy_drift.dns_health import assess_dns_mismatch
+
+    out = assess_dns_mismatch(
+        interface_ipv4="192.168.68.52",
+        gateway="192.168.68.1",
+        dns_servers=["192.168.68.1", "1.1.1.1"],
+    )
+    assert out["classification"] == "DNS_OK"
+    assert out["primary_off_subnet"] is False
