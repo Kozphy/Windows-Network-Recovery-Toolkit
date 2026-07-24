@@ -21,6 +21,12 @@ from src.platform_core.risk.risk_rating import rate_risk
 from src.platform_core.serialization import content_hash
 
 
+DEFAULT_EVIDENCE_SCHEMA_VERSION = "evidence_bundle.v1"
+DEFAULT_CLASSIFIER_VERSION = "proxy_classifier.v1"
+DEFAULT_POLICY_VERSION = "technology_risk_policy.v1"
+DEFAULT_CONTROL_SET_VERSION = "endpoint_controls.v1"
+
+
 def _utc_now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -35,10 +41,26 @@ def _confidence_label(score: float) -> str:
     return "very_low"
 
 
+def _version_from_fixture(
+    fixture: dict[str, Any],
+    key: str,
+    default: str,
+) -> str:
+    """Resolve a pinned component version without trusting empty values."""
+    versions = fixture.get("versions") or {}
+    value = versions.get(key) or fixture.get(f"{key}_version") or default
+    return str(value).strip() or default
+
+
 class RiskDecisionRecord(BaseModel):
-    schema_version: str = "risk_decision_record.v1"
+    schema_version: str = "risk_decision_record.v2"
     incident_id: str
     evidence_id: str = ""
+    decision_key: str = ""
+    evidence_schema_version: str = DEFAULT_EVIDENCE_SCHEMA_VERSION
+    classifier_version: str = DEFAULT_CLASSIFIER_VERSION
+    policy_version: str = DEFAULT_POLICY_VERSION
+    control_set_version: str = DEFAULT_CONTROL_SET_VERSION
     classification: str = ""
     secondary_signals: list[str] = Field(default_factory=list)
     proof_tier: ProofTier = ProofTier.T0_OBSERVATION_ONLY
@@ -63,7 +85,7 @@ def build_risk_decision_record(
     operator_id: str = "unassigned",
     incident_id: str | None = None,
 ) -> RiskDecisionRecord:
-    """Build a RiskDecisionRecord from a case or evidence fixture."""
+    """Build a version-pinned RiskDecisionRecord from a case or evidence fixture."""
     classification_block = fixture.get("classification") or {}
     primary = str(classification_block.get("primary_classification") or "").upper()
     secondary = list(classification_block.get("secondary_signals") or [])
@@ -106,6 +128,16 @@ def build_risk_decision_record(
 
     inc_id = incident_id or str(fixture.get("case_id") or fixture.get("incident_id") or f"INC-{uuid.uuid4().hex[:8]}")
     evidence_id = f"ev-{inc_id}"
+    evidence_schema_version = _version_from_fixture(
+        fixture, "evidence_schema", DEFAULT_EVIDENCE_SCHEMA_VERSION
+    )
+    classifier_version = _version_from_fixture(
+        fixture, "classifier", DEFAULT_CLASSIFIER_VERSION
+    )
+    policy_version = _version_from_fixture(fixture, "policy", DEFAULT_POLICY_VERSION)
+    control_set_version = _version_from_fixture(
+        fixture, "control_set", DEFAULT_CONTROL_SET_VERSION
+    )
 
     body = {
         "incident_id": inc_id,
@@ -113,10 +145,29 @@ def build_risk_decision_record(
         "secondary_signals": secondary,
         "proof_tier": proof.proof_tier.value,
         "confidence_score": confidence,
+        "evidence_schema_version": evidence_schema_version,
+        "classifier_version": classifier_version,
+        "policy_version": policy_version,
+        "control_set_version": control_set_version,
     }
+    evidence_hash = content_hash(body)
+    decision_key = content_hash(
+        {
+            "evidence_hash": evidence_hash,
+            "classifier_version": classifier_version,
+            "policy_version": policy_version,
+            "control_set_version": control_set_version,
+        }
+    )
+
     record = RiskDecisionRecord(
         incident_id=inc_id,
         evidence_id=evidence_id,
+        decision_key=decision_key,
+        evidence_schema_version=evidence_schema_version,
+        classifier_version=classifier_version,
+        policy_version=policy_version,
+        control_set_version=control_set_version,
         classification=primary,
         secondary_signals=secondary,
         proof_tier=proof.proof_tier,
@@ -132,7 +183,7 @@ def build_risk_decision_record(
         human_review_required=human_review,
         limitations=limitations,
         operator_id=operator_id,
-        evidence_hash=content_hash(body),
+        evidence_hash=evidence_hash,
     )
 
     envelope = attach_governance_envelope(
