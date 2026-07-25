@@ -76,11 +76,12 @@ def run_browser_diff(
 ) -> BrowserDifferentialResult:
     """Run Observation→Hypothesis pipeline for normal vs private browser failures."""
     if fixture is not None:
-        data = (
-            json.loads(Path(fixture).read_text(encoding="utf-8"))
-            if isinstance(fixture, Path)
-            else fixture
-        )
+        if isinstance(fixture, Path):
+            data = json.loads(fixture.read_text(encoding="utf-8"))
+        elif isinstance(fixture, dict):
+            data = fixture
+        else:
+            raise TypeError("fixture must be a Path or dict[str, Any]")
         result = BrowserDifferentialResult.model_validate(data)
         if not result.text_report:
             result.text_report = _text_report(result)
