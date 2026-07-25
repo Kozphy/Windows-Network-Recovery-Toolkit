@@ -84,37 +84,22 @@ def test_rewritten_chain_mismatches_old_tip(tmp_path: Path) -> None:
     assert result["verified"] is False
 
 
-def test_append_custody_event_tolerates_append_audit_without_write_tip(
-    tmp_path: Path, monkeypatch
-) -> None:
-    """Regression: soft-fail path must not raise when writer rejects write_tip."""
-    from src.platform_core.audit import custody as custody_mod
-
+def test_append_custody_event_uses_domain_writer(tmp_path: Path, monkeypatch) -> None:
+    """Custody append goes through the domain event kernel."""
+    reset_chain_for_tests()
     monkeypatch.setenv("WNT_AUDIT_DIR", str(tmp_path))
-
-    def _legacy_append(action_type, *, actor="platform", payload=None, path=None):
-        return type(
-            "Rec",
-            (),
-            {
-                "audit_id": "x",
-                "action_type": action_type,
-                "current_hash": "abc",
-            },
-        )()
-
-    monkeypatch.setattr(
-        "src.platform_core.audit.writer.append_audit",
-        _legacy_append,
-    )
-    out = custody_mod.append_custody_event(
+    path = tmp_path / "c.jsonl"
+    out = append_custody_event(
         "ensure_proxy_health",
         dry_run=True,
-        path=tmp_path / "c.jsonl",
+        path=path,
         soft_fail=True,
     )
     assert out["ok"] is True, out
-    assert out["current_hash"] == "abc"
+    assert out["current_hash"]
+    row = json.loads(path.read_text(encoding="utf-8").splitlines()[-1])
+    assert row["schema_version"] == "wnrt.domain_event.v1"
+    assert row["event_type"] == "ensure_proxy_health"
 
 
 def test_append_custody_event_scrubs_confirm_keys(tmp_path: Path, monkeypatch) -> None:

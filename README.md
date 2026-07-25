@@ -623,9 +623,10 @@ Legacy platform risk rollup (incidents.jsonl KPIs) remains available via `analyt
 
 | Store                                         | Purpose                                           |
 | --------------------------------------------- | ------------------------------------------------- |
+| `.audit/canonical_custody.jsonl`              | Unified domain event stream (`wnrt.domain_event.v1`) |
 | `.audit/*.jsonl`                              | Operator actions (status, disable preview, watch) |
 | `tests/fixtures/risk_analytics/audit_sample/` | KPI / governance demo data                        |
-| Hash chain                                    | `audit verify` integrity check                    |
+| Hash chain + tip                              | `audit verify` / `audit verify --check-tip` — see [docs/domain-event-kernel.md](docs/domain-event-kernel.md) |
 
 
 Every decision output can include `governance` envelope + limitations. AI reasoning (when used) logs `provider` and `audit_id` — advisory metadata only.

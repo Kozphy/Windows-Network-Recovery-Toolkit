@@ -477,6 +477,29 @@ def _audit(repo: Path, payload: dict[str, Any]) -> None:
         "commands_executed": payload["commands_executed"],
     }
     append_jsonl(audit_path, record)
+    # Dual-write into the canonical domain event stream (hash-chained custody).
+    try:
+        from src.platform_core.domain_events.writer import append_domain_event
+
+        append_domain_event(
+            "decision.diagnosis",
+            source="src.cli.diagnose",
+            actor="diagnose",
+            correlation_id=str(payload.get("diagnosis_id") or ""),
+            action_type="decision_created",
+            payload={
+                "subsystem": "decision",
+                "event": "decision.diagnosis",
+                "legacy_log": "logs/decision_audit.jsonl",
+                "diagnosis_id": payload.get("diagnosis_id"),
+                "selected_root_cause": payload.get("selected_root_cause"),
+                "selected_confidence": payload.get("selected_confidence"),
+                "script_version": SCRIPT_VERSION,
+            },
+        )
+    except Exception:
+        # Custody must not block diagnose.
+        pass
 
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
