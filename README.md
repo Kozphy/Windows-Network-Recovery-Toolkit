@@ -32,6 +32,7 @@ Read in this order to understand structure and core flows without running Window
 
 ```text
 windows_network_toolkit/   Primary CLI — proxy-status, diagnose, governance-report, agent *
+riskclaw/                  Agent runtime contracts, tool registry, skill loader, policy adapter
 src/platform_core/         Canonical policy, evidence tiers, remediation preview, audit writers
 platform_core/             Platform JSONL storage, classic policy previews, fleet helpers
 backend/                   FastAPI — /trisk/*, /platform/*, /v1/enterprise/* (optional Postgres)
@@ -268,6 +269,7 @@ Stakeholder and Timing do **not** alter technical facts. They determine whether,
 | Path | Role |
 |------|------|
 | `windows_network_toolkit/` | Primary CLI + diagnostics |
+| `riskclaw/` | Product-agent runtime foundation; no LLM or live remediation |
 | `src/proxy_drift/` | Startup observability, boot trace, dead-proxy guardian |
 | `src/platform_core/` | Policy, governance envelope, hash-chained audit |
 | `backend/` | FastAPI — `/trisk/*`, `/platform/*` (optional Postgres) |
@@ -701,6 +703,7 @@ pytest -q tests/test_portfolio_case_studies.py tests/test_portfolio_evidence_sui
 ```text
 src/platform_core/         Canonical decision engine, operability, evidence_collection, rollback preview
 windows_network_toolkit/   Primary JSON-first CLI + read-only agent (agent *)
+riskclaw/                  RiskClaw schemas, skill discovery, typed tool registry, policy adapter
 platform_core/             Platform JSONL (platform_data/), classic RemediationPreview models
 backend/                   FastAPI — /trisk/*, /platform/*, SQLModel TRISK tables (SQLite or Postgres)
 endpoint_agent/            Legacy remote diagnose loop (optional; distinct from read-only agent)
@@ -789,6 +792,7 @@ Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch
 | [docs/security-review.md](docs/security-review.md)           | Threat model + abuse cases |
 | [docs/rollback-strategy.md](docs/rollback-strategy.md)       | Preview-first rollback model |
 | [docs/agent-deployment.md](docs/agent-deployment.md)         | Read-only agent CLI |
+| [docs/riskclaw-runtime-foundation.md](docs/riskclaw-runtime-foundation.md) | RiskClaw contracts, skills, tools, and policy boundary |
 | [docs/observability.md](docs/observability.md)               | trace_id, audit_id, /metrics |
 | [docs/scale-testing.md](docs/scale-testing.md)               | Synthetic local scale limits |
 | [docs/cross-platform-support.md](docs/cross-platform-support.md) | Linux/macOS PARTIAL foundation |

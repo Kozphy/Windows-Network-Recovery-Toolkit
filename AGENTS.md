@@ -51,6 +51,7 @@ pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
 | Path | Role |
 |------|------|
 | `windows_network_toolkit/` | Primary CLI and diagnostics |
+| `riskclaw/` | Product-agent contracts, SKILL.md loader, typed tools, policy adapter |
 | `src/proxy_drift/` | Startup observability, boot trace, guardian, evidence bundle |
 | `src/cli.py` | Extended operator CLI (`python -m src`) |
 | `src/platform_core/` | Policy, governance envelope, audit |
