@@ -4,7 +4,28 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
+
+
+class SampleSizes(TypedDict):
+    stakeholder_resolved: int
+    timing_evaluated: int
+    coordination_status_set: int
+
+
+class CoordinationKpis(TypedDict):
+    schema_version: str
+    unassigned_owner_cases: int
+    cases_awaiting_approval: int
+    cases_deferred_to_maintenance_windows: int
+    sla_overdue_cases: int
+    evidence_expired_cases: int
+    immediate_escalation_cases: int
+    mean_time_to_owner_assignment_seconds: float | None
+    mean_time_proof_to_approval_seconds: float | None
+    mean_time_approval_to_remediation_preview_seconds: float | None
+    sample_sizes: SampleSizes
+    limitations: list[str]
 
 
 def compute_coordination_kpis(audit_dir: Path) -> dict[str, Any]:
@@ -12,7 +33,7 @@ def compute_coordination_kpis(audit_dir: Path) -> dict[str, Any]:
 
     Metrics are counts and mean durations where timestamps exist — not statistical probabilities.
     """
-    kpi = {
+    kpi: CoordinationKpis = {
         "schema_version": "coordination_kpis.v1",
         "unassigned_owner_cases": 0,
         "cases_awaiting_approval": 0,
@@ -34,7 +55,7 @@ def compute_coordination_kpis(audit_dir: Path) -> dict[str, Any]:
         ],
     }
     if not audit_dir.is_dir():
-        return kpi
+        return dict(kpi)
 
     owner_deltas: list[float] = []
     for path in sorted(audit_dir.glob("*.jsonl")):
@@ -81,4 +102,4 @@ def compute_coordination_kpis(audit_dir: Path) -> dict[str, Any]:
 
     if owner_deltas:
         kpi["mean_time_to_owner_assignment_seconds"] = sum(owner_deltas) / len(owner_deltas)
-    return kpi
+    return dict(kpi)
