@@ -21,6 +21,7 @@ from src.proxy_drift.guardian_task import (
     uninstall_guardian_task,
 )
 from src.proxy_drift.proxy_fix import apply_proxy_fix
+from src.proxy_drift.rewriter_containment import CONFIRM_CONTAIN, run_rewriter_containment
 from src.proxy_drift.safe_search import safe_search
 from src.proxy_drift.startup_inventory import collect_startup_inventory, format_startup_table
 from src.proxy_drift.startup_observability import (
@@ -312,6 +313,40 @@ def cmd_startup_observability_report(args: argparse.Namespace) -> int:
         print(f"Final proxy: {result.get('final_proxy_server')}")
         print(f"Delta events: {', '.join(result.get('delta_events_seen') or []) or '(none)'}")
         print(result.get("recommended_next_step") or "")
+    return 0
+
+
+def cmd_contain_localhost_rewriter(args: argparse.Namespace) -> int:
+    """Detect/preview/contain suspicious localhost rewriter persistence."""
+    if (code := exit_code_if_not_windows("contain-localhost-rewriter")) is not None:
+        return code
+    dry_run = bool(getattr(args, "dry_run", True))
+    confirm = str(getattr(args, "confirm_phrase", "") or "")
+    result = run_rewriter_containment(
+        dry_run=dry_run,
+        confirm=confirm,
+        repo_root=Path.cwd(),
+    )
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(f"Match: {result.get('match')}  Score: {result.get('score')}")
+        print(f"Signals: {', '.join(result.get('signals') or []) or '(none)'}")
+        print(f"Action: {result.get('action_taken')} — {result.get('reason')}")
+        for step in result.get("planned_steps") or []:
+            print(f"  - {step}")
+        if result.get("action_taken") == "preview_only":
+            print(
+                f"Apply: python -m src contain-localhost-rewriter "
+                f"--confirm {CONFIRM_CONTAIN} --dry-run false --json"
+            )
+        print("Audit: logs/rewriter_containment.jsonl")
+        print("Keep hold-direct: enable-proxy-autofix.cmd / reports/proxy_guardian_heartbeat.json")
+    action = str(result.get("action_taken") or "")
+    if action in {"failed", "blocked"}:
+        return 1
+    if not result.get("match"):
+        return 0
     return 0
 
 

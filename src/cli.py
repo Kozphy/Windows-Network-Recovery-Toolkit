@@ -132,6 +132,7 @@ from .proof.proxy_https import run_localhost_proxy_https_proof
 from .proxy_drift.handlers import (
     cmd_auto_fix_proxy,
     cmd_collect_evidence_bundle,
+    cmd_contain_localhost_rewriter,
     cmd_dns_health,
     cmd_ensure_proxy_health,
     cmd_install_boot_trace_task,
@@ -2057,6 +2058,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_pgd.add_argument("--json", dest="emit_json", action="store_true")
     p_pgd.set_defaults(func=cmd_proxy_guardian_drift, once=True)
+
+    p_clr = sub.add_parser(
+        "contain-localhost-rewriter",
+        help=(
+            "Detect/preview/contain suspicious localhost rewriter persistence "
+            "(scheduled task + system32 payload + remote iex). Dry-run by default."
+        ),
+    )
+    p_clr.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm CONTAIN_LOCALHOST_REWRITER.",
+    )
+    p_clr.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live containment requires CONTAIN_LOCALHOST_REWRITER.",
+    )
+    p_clr.add_argument("--json", dest="emit_json", action="store_true")
+    p_clr.set_defaults(func=cmd_contain_localhost_rewriter)
 
     p_igt = sub.add_parser(
         "install-guardian-task",

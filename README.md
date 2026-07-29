@@ -526,6 +526,8 @@ python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --j
 # LinkedIn timeout — prefer-direct + Cursor no-proxy + guardian (Python optional)
 .\fix-linkedin-proxy.cmd
 .\enable-proxy-autofix.cmd
+.\contain-localhost-rewriter.cmd
+.\contain-localhost-rewriter.cmd /APPLY
 .\fix-dns.cmd
 .\scripts\emergency-clear-wininet-proxy.ps1 -Force
 .\scripts\fix-wininet-proxy.cmd /Y
@@ -545,6 +547,10 @@ python -m src proxy-guardian --loop --interval 60 --confirm CLEAR_DEAD_LOCALHOST
 # Also clear active-but-broken + hold-direct (LinkedIn recurrence)
 python -m src proxy-guardian --once --clear-broken --hold-direct --confirm CLEAR_DEAD_LOCALHOST_PROXY --confirm-broken PREFER_DIRECT_WININET --dry-run false
 
+# Recurring rewrite + suspicious Session-0 persistence (preview then apply)
+python -m src contain-localhost-rewriter --json
+python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --dry-run false --json
+
 # Emergency HKCU fix (localhost ProxyServer only)
 python -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
 
@@ -563,7 +569,7 @@ python -m src startup-observability-report --json
 python -m src uninstall-startup-observability --dry-run false --confirm UNINSTALL_STARTUP_OBSERVABILITY
 ```
 
-Audit logs: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`, `logs/proxy_guardian.jsonl`. Emergency CMD wrapper: `scripts/fix-wininet-proxy.cmd`.
+Audit logs: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`, `logs/proxy_guardian.jsonl`, `logs/rewriter_containment.jsonl`. Emergency CMD wrappers: `scripts/fix-wininet-proxy.cmd`, `contain-localhost-rewriter.cmd`.
 
 Runbook: [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md) · Architecture: [docs/startup-observability.md](docs/startup-observability.md).
 

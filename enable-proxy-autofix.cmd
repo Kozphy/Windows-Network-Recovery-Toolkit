@@ -26,5 +26,8 @@ echo.
 echo Autofix installed: clears localhost WinINET rewrites every 15s.
 echo Heartbeat: reports\proxy_guardian_heartbeat.json
 echo DNS-only: fix-dns.cmd
+echo If rewrite keeps returning (suspicious scheduled task / system32 payload):
+echo   contain-localhost-rewriter.cmd
+echo   contain-localhost-rewriter.cmd /APPLY
 echo Uninstall: enable-proxy-autofix.cmd uninstall
 exit /b %ERRORLEVEL%

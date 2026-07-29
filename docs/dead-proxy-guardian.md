@@ -76,6 +76,31 @@ python -m src proxy-guardian --once --clear-broken --hold-direct --confirm-broke
 .\scripts\install-dead-proxy-guardian.ps1 -IntervalSeconds 15
 ```
 
+### Recurring rewrite with suspicious persistence (operator containment)
+
+Hold-direct **clears** WinINET but does **not** remove a Session-0 scheduled task / `system32` payload that keeps rewriting (example pattern: task actions with `iex (iwr …)` + `Add-MpPreference` exclusions + `VersionUpdater*` under `%WINDIR%\System32`).
+
+Use the one-command containment path (**no AI prompt required**):
+
+```powershell
+# Preview (default)
+.\contain-localhost-rewriter.cmd
+python -m src contain-localhost-rewriter --json
+
+# Live apply (elevated; typed token CONTAIN_LOCALHOST_REWRITER)
+.\contain-localhost-rewriter.cmd /APPLY
+python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --dry-run false --json
+```
+
+| Step | Behavior |
+|------|----------|
+| Detect | Heuristic match on remote-iex tasks, Defender exclusion tasks, `system32\<non-OS>\node.exe` / `VersionUpdater*` |
+| Preview | Default — planned task delete / process stop / exclusion remove / quarantine |
+| Apply | Requires confirm `CONTAIN_LOCALHOST_REWRITER` (or `/APPLY` on the `.cmd`) |
+| After | Keep `enable-proxy-autofix.cmd` / hold-direct until `logs\proxy_guardian.jsonl` shows no further `guardian_hold_direct_apply` |
+
+**Boundaries:** Not malware attribution; not registry-writer proof; does not weaken `KILL_PROXY_PROCESS` in `safety.py` (this is a distinct operator-gated composite). WNRT guardian / boot-trace tasks and `\Microsoft\Windows\*` tasks are never targeted. Audit: `logs/rewriter_containment.jsonl`. Quarantine: `reports/quarantine/`.
+
 ### ChatGPT auto-fix safety (layer 0b)
 
 [auto-fix-chatgpt.ps1](chatgpt-auto-fix.md) chains layer 0 with ChatGPT scenario diagnosis and **LOW-risk only** remediations:
@@ -97,6 +122,7 @@ If messages stay blank after a clean proxy path, follow manual recovery in [chat
 - WinHTTP-only or per-app proxy settings (Git, npm, `HTTP_PROXY` env vars) — see `scripts/proxy_guard/reset_proxy_safe.ps1` for broader cleanup
 - Proof of who wrote the registry key (listener correlation is not writer proof)
 - Malware or MITM — this is endpoint reliability triage, not EDR
+- **Silent** process kill via the agent/policy path (`KILL_PROXY_PROCESS` stays blocked). Operator containment of matched rewriter persistence is opt-in via `contain-localhost-rewriter` + `CONTAIN_LOCALHOST_REWRITER`.
 
 ## Install (no admin required)
 

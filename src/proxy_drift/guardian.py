@@ -287,7 +287,9 @@ def run_dead_proxy_guardian_once(
         blocked_reason = f"Confirmation required: {CONFIRM_CLEAR_DEAD}"
     elif hold_hit:
         result["recommended_action"] = (
-            f"Hold-direct: clear localhost WinINET rewrite (confirm {CONFIRM_HOLD_DIRECT})."
+            f"Hold-direct: clear localhost WinINET rewrite (confirm {CONFIRM_HOLD_DIRECT}). "
+            "If rewrite recurs with Session-0 / VersionUpdater-like persistence, "
+            "run contain-localhost-rewriter.cmd (confirm CONTAIN_LOCALHOST_REWRITER)."
         )
         required = CONFIRM_HOLD_DIRECT
         confirm_ok = confirm_broken == CONFIRM_HOLD_DIRECT
