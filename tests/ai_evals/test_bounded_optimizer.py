@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from platform_core.ai_evals.candidate_generator import generate_neighbors
-from platform_core.ai_evals.failure_taxonomy import EvalPolicyGate
-from platform_core.ai_evals.optimization_schemas import OptimizationCandidate
-from platform_core.ai_evals.optimizer import optimize_candidate
+from src.platform_core.ai_evals.candidate_generator import generate_neighbors
+from src.platform_core.ai_evals.failure_taxonomy import EvalPolicyGate
+from src.platform_core.ai_evals.optimization_schemas import OptimizationCandidate
+from src.platform_core.ai_evals.optimizer import optimize_candidate
 
 
 def _baseline() -> OptimizationCandidate:
