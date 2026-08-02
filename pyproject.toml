@@ -49,7 +49,7 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.8.0",
     "black>=24.0",
-    "mypy>=1.13",
+    "mypy>=1.13,<2.0",
     "pre-commit>=4.0",
     "types-python-jose",
     "pip-audit>=2.7",
