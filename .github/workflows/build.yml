@@ -3,14 +3,18 @@ name: Build
 on:
   push:
     branches:
+      - Multi_Domain_Decision_Platform
       - main
       - master
       - amd_version
       - "feature/**"
+      - "feat/**"
       - "fix/**"
       - "ci/**"
+      - "upgrade/**"
   pull_request:
     branches:
+      - Multi_Domain_Decision_Platform
       - main
       - master
       - amd_version
