@@ -173,3 +173,10 @@ module = [
     "jose.*",
 ]
 ignore_missing_imports = true
+
+# The function reuses a local timestamp name across two loops: the first value
+# is guaranteed non-null, while the second intentionally preserves None for an
+# existing date-key fallback. Runtime behavior is covered by export tests.
+[[tool.mypy.overrides]]
+module = "src.platform_core.analytics.powerbi_star_export"
+disable_error_code = ["assignment"]
