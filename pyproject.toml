@@ -79,10 +79,6 @@ include = [
 ]
 exclude = ["tests*", "frontend*", "scripts*", "docs*"]
 
-[project.scripts]
-wnrt = "windows_network_toolkit.cli:console_main"
-wnrt-api = "backend.__main__:main"
-
 [tool.pytest.ini_options]
 # Primary config lives in pytest.ini (pytest prefers pytest.ini over this section).
 pythonpath = ["."]
