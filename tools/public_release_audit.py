@@ -34,9 +34,16 @@ ALLOWED_JSONL_PREFIXES = (
     "demo_data\\",
 )
 
-# Committed synthetic portfolio samples (see reports/.gitignore !sample_*.md).
 ALLOWED_RUNTIME_ARTIFACT_PREFIXES = (
     "reports/sample_",
+)
+
+# Files that intentionally contain secret-detection regexes rather than secrets.
+SECRET_PATTERN_SOURCE_ALLOWLIST = frozenset(
+    {
+        "tools/public_release_audit.py",
+        "windows_network_toolkit/diagnostics/browser_profile/runner.py",
+    }
 )
 
 ALLOWED_EMAIL_DOMAINS = frozenset(
@@ -156,6 +163,7 @@ def scan_repo(
             continue
 
         rel = _rel(path, root)
+        normalized_rel = rel.replace("\\", "/")
         if tracked_only and tracked is not None and rel not in tracked:
             continue
         name = path.name.lower()
@@ -202,16 +210,19 @@ def scan_repo(
 
         for match in PRIVATE_IP.finditer(text):
             ip = match.group(0)
-            if "tests" in parts or "platform_core/privacy" in rel.replace("\\", "/"):
+            if "tests" in parts or "platform_core/privacy" in normalized_rel:
                 continue
             if ip not in ALLOWED_IPS:
                 findings["private_ip_addresses"].append(f"{rel}: {ip}")
 
-        for pattern in TOKEN_PATTERNS:
-            if pattern.search(text):
-                if "tests" in parts or ".example" in name:
-                    continue
-                findings["likely_secrets"].append(f"{rel}: pattern {pattern.pattern[:40]}")
+        if normalized_rel not in SECRET_PATTERN_SOURCE_ALLOWLIST:
+            for pattern in TOKEN_PATTERNS:
+                if pattern.search(text):
+                    if "tests" in parts or ".example" in name:
+                        continue
+                    findings["likely_secrets"].append(
+                        f"{rel}: pattern {pattern.pattern[:40]}"
+                    )
 
     for key in findings:
         findings[key] = sorted(set(findings[key]))
