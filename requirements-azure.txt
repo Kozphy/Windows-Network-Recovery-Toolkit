@@ -1,0 +1,3 @@
+# Azure deployment / observability extras.
+# The base project remains local-first and does not require Azure packages.
+-e .[azure,postgres]
