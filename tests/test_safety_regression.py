@@ -206,14 +206,15 @@ def test_attribution_process_heuristic_never_claims_proof() -> None:
 
 
 def test_smoke_python_m_src_fixture_diagnose_isolated_repo(tmp_path: Path) -> None:
+    """Fixture diagnose via run_src.py (embeddable CPython ignores PYTHONPATH via ._pth)."""
     iso = tmp_path / "isolate_root"
     fixture = _REPO_ROOT / "tests" / "fixtures" / "features_healthy_signals.json"
+    launcher = _REPO_ROOT / "scripts" / "run_src.py"
     env = {**os.environ, "PYTHONPATH": str(_REPO_ROOT)}
     r = subprocess.run(
         [
             sys.executable,
-            "-m",
-            "src",
+            str(launcher),
             "--repo-root",
             str(iso),
             "diagnose",

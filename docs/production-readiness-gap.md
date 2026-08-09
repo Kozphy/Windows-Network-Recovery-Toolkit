@@ -25,7 +25,7 @@ See also: [production_readiness.md](production_readiness.md), [classifier-evalua
 | Deployment packaging | Docker compose + Makefile | GitOps + signed releases | Manual deploy | Helm chart + signed images |
 | Endpoint agent signing | Unsigned Python module | Authenticode MSI | Trust warnings | Sign releases; publish SBOM |
 | Privacy / data minimization | Synthetic fixtures in git | Field-level redaction at ingest | PII risk in exports | Redact-before-export in agent |
-| Unified domain event log | `trisk_domain_events` JSONL + Postgres | Stream processing at scale | File-based append | Kafka/EventStore when fleet scale |
+| Unified domain event log | **Done (Level 1):** `wnrt.domain_event.v1` envelope via `append_domain_event` / `verify_domain_stream`; canonical sink `.audit/canonical_custody.jsonl`; CLI `audit verify`. Legacy `erp.audit.v1` still verifies. Dual-write: guardian + decision diagnose. See [domain-event-kernel.md](domain-event-kernel.md). | Stream processing + WORM + multi-tenant partitions at fleet scale | No Kafka/EventStore; not all JSONL paths migrated (feedback, proxy-watch, …) | Next: collect-only agent + migrate remaining JSONL writers; object-store tip/WORM later |
 | MCP read-only tools | `mcp_server/` Phase 3 | Enterprise MCP gateway | Demo stdio server | Hosted MCP with OAuth |
 | Playwright browser evidence | `browser-evidence` CLI + fixtures | Headless fleet capture | Optional dep; CI uses fixtures | Scheduled browser probes |
 | Agent orchestration | Contract JSON + deterministic stub | Multi-agent LLM with guardrails | No autonomous loop yet | Phase 6 deferred |

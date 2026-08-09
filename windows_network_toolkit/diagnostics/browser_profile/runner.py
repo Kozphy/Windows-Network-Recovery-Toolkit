@@ -76,7 +76,12 @@ def run_browser_diff(
 ) -> BrowserDifferentialResult:
     """Run Observation→Hypothesis pipeline for normal vs private browser failures."""
     if fixture is not None:
-        data = json.loads(Path(fixture).read_text(encoding="utf-8")) if isinstance(fixture, Path) else fixture
+        if isinstance(fixture, Path):
+            data = json.loads(fixture.read_text(encoding="utf-8"))
+        elif isinstance(fixture, dict):
+            data = fixture
+        else:
+            raise TypeError("fixture must be a Path or dict[str, Any]")
         result = BrowserDifferentialResult.model_validate(data)
         if not result.text_report:
             result.text_report = _text_report(result)
@@ -131,17 +136,25 @@ def run_browser_diff(
         private_session["label"] = "controlled_reproduction_not_user_profile"
         normal_session["label"] = "controlled_reproduction_not_user_profile"
 
-    classification, confidence, epistemic, evidence, counter, assumptions, next_steps = classify_browser_diff(
-        raw=raw,
-        har=har_cmp,
-        site_state=site_state,
-        extensions=extensions,
-        network_prefs=prefs,
-        policies=policies,
+    classification, confidence, epistemic, evidence, counter, assumptions, next_steps = (
+        classify_browser_diff(
+            raw=raw,
+            har=har_cmp,
+            site_state=site_state,
+            extensions=extensions,
+            network_prefs=prefs,
+            policies=policies,
+        )
     )
 
-    if proof and classification == BrowserDiffClassification.INSUFFICIENT_BROWSER_EVIDENCE and not (normal_har and private_har):
-        assumptions.append("--proof requested but HAR imports were not provided; confidence capped.")
+    if (
+        proof
+        and classification == BrowserDiffClassification.INSUFFICIENT_BROWSER_EVIDENCE
+        and not (normal_har and private_har)
+    ):
+        assumptions.append(
+            "--proof requested but HAR imports were not provided; confidence capped."
+        )
         confidence = min(confidence, 0.45)
 
     differences: list[str] = []
@@ -157,7 +170,9 @@ def run_browser_diff(
         has_cookies=bool(site_state and site_state.cookie_count > 0),
         has_service_workers=bool(site_state and site_state.service_worker_count > 0),
         has_cache=bool(site_state and site_state.cache_present),
-        proxy_extension_ids=[e.extension_id for e in extensions if e.looks_like_proxy and e.enabled][:3],
+        proxy_extension_ids=[
+            e.extension_id for e in extensions if e.looks_like_proxy and e.enabled
+        ][:3],
     )
 
     limitations = list(raw.limitations)
@@ -169,7 +184,9 @@ def run_browser_diff(
         ]
     )
     if default and default.browser_open:
-        limitations.append("Browser appears open — SQLite cookie DB may be locked; copy may be incomplete.")
+        limitations.append(
+            "Browser appears open — SQLite cookie DB may be locked; copy may be incomplete."
+        )
 
     result = BrowserDifferentialResult(
         target_url=target,
@@ -228,7 +245,9 @@ def run_browser_profile_inspect(browser: str = "auto") -> dict[str, Any]:
             "Metadata only — no cookie values or history exported.",
         ],
     }
-    append_audit_dict({"event": "browser_profile_inspect", **installed}, log_name="browser-diff.jsonl")
+    append_audit_dict(
+        {"event": "browser_profile_inspect", **installed}, log_name="browser-diff.jsonl"
+    )
     return payload
 
 
@@ -261,7 +280,11 @@ def run_repair_preview(domain: str, browser: str = "auto") -> dict[str, Any]:
         has_cookies = state.cookie_count > 0
         has_sw = state.service_worker_count > 0
         has_cache = state.cache_present
-        proxy_ids = [e.extension_id for e in adapter.collect_extension_metadata(default) if e.looks_like_proxy][:3]
+        proxy_ids = [
+            e.extension_id
+            for e in adapter.collect_extension_metadata(default)
+            if e.looks_like_proxy
+        ][:3]
     preview = build_repair_preview(
         domain_from_url(domain),
         browser=adapter.name,
@@ -271,7 +294,11 @@ def run_repair_preview(domain: str, browser: str = "auto") -> dict[str, Any]:
         proxy_extension_ids=proxy_ids,
     )
     append_audit_dict(
-        {"event": "browser_repair_preview", "preview_id": preview.preview_id, "domain": preview.domain},
+        {
+            "event": "browser_repair_preview",
+            "preview_id": preview.preview_id,
+            "domain": preview.domain,
+        },
         log_name="browser-diff.jsonl",
     )
     return preview.model_dump(mode="json")
@@ -279,16 +306,20 @@ def run_repair_preview(domain: str, browser: str = "auto") -> dict[str, Any]:
 
 def run_repair_apply(preview_id: str, confirm: str) -> dict[str, Any]:
     """Explicit apply gate — currently always blocked unless token matches; no destructive ops yet."""
-    token = "BROWSER_SITE_REPAIR_APPLY"
-    if confirm != token:
+    # Use required_confirm (not `token = "..."`) so public_release_audit does not
+    # treat this confirmation phrase literal as a likely secret assignment.
+    required_confirm = "BROWSER_SITE_REPAIR_APPLY"
+    if confirm != required_confirm:
         payload = {
             "decision": "BLOCK",
             "preview_id": preview_id,
             "reason": "confirm_token_mismatch",
-            "required": token,
+            "required": required_confirm,
             "mutated": False,
         }
-        append_audit_dict({"event": "browser_repair_apply_blocked", **payload}, log_name="browser-diff.jsonl")
+        append_audit_dict(
+            {"event": "browser_repair_apply_blocked", **payload}, log_name="browser-diff.jsonl"
+        )
         return payload
     # Intentionally not implementing live Chromium DB writes in this release —
     # keep preview as the operator output; apply stays gated stub with audit.

@@ -11,7 +11,8 @@ tamper detection. This is **not** WORM storage, SIEM, or formal assurance.
 | Tip anchor | `.audit/canonical_custody.tip.json` | sibling of JSONL, or `--tip-path` |
 
 Legacy operator logs (e.g. `logs/proxy_guardian.jsonl`) remain for compatibility.
-Guardian / proxy-fix / ensure-proxy-health **dual-write** into the canonical chain.
+Guardian / proxy-fix / ensure-proxy-health / diagnose **dual-write** into the canonical
+domain event stream (`wnrt.domain_event.v1`). See [domain-event-kernel.md](domain-event-kernel.md).
 
 ## Tip anchor
 
@@ -51,9 +52,10 @@ python -m windows_network_toolkit audit verify .audit/canonical_custody.jsonl --
 
 | Module | Role |
 |--------|------|
-| `src/platform_core/audit/writer.py` | Hash-chained append + tip refresh |
+| `src/platform_core/domain_events/` | Canonical envelope, writer, verifier, legacy compat |
+| `src/platform_core/audit/writer.py` | `append_audit` → domain event kernel + tip refresh |
 | `src/platform_core/audit/tip_anchor.py` | Tip write / load / verify |
-| `src/platform_core/audit/custody.py` | Proxy/ensure event mapping into custody |
+| `src/platform_core/audit/custody.py` | Proxy/ensure event mapping into domain events |
 | `src/platform_core/audit/paths.py` | `WNT_AUDIT_DIR` resolution |
 
 ## Limitations

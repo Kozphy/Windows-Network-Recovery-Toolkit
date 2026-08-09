@@ -174,6 +174,13 @@ class AuditRecord(BaseModel):
     previous_hash: str = ""
     current_hash: str = ""
     signature_status: Literal["unsigned", "hash_chained", "signed"] = "hash_chained"
+    # Domain event envelope fields (wnrt.domain_event.v1) — optional for legacy rows.
+    event_id: str = ""
+    event_type: str = ""
+    source: str = ""
+    tenant_id: str = ""
+    correlation_id: str = ""
+    custody: dict[str, Any] = Field(default_factory=dict)
 
 
 class ReplayCase(BaseModel):

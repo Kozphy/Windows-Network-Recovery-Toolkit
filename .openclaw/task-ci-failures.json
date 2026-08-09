@@ -1,0 +1,18 @@
+{
+  "task_id": "ci-pytest-2",
+  "title": "Fix public_release_audit and isolated src smoke CI failures",
+  "description": "Make CI green for: (1) test_public_release_audit_passes_on_tracked_files_only — avoid likely_secrets false positive from token=\\\"...\\\" confirmation literal in windows_network_toolkit/diagnostics/browser_profile/runner.py (rename to required_confirm). (2) test_smoke_python_m_src_fixture_diagnose_isolated_repo — embeddable CPython ignores PYTHONPATH via ._pth; launch diagnose via scripts/run_src.py instead of python -m src. Do not weaken safety gates or change CI workflows. Acceptance: both targeted tests pass; python tools/public_release_audit.py --tracked-only exits 0 for high-risk categories.",
+  "approved": true,
+  "risk_level": "low",
+  "allowed_paths": [
+    "windows_network_toolkit/",
+    "tests/",
+    "scripts/"
+  ],
+  "forbidden_paths": [
+    ".github/workflows/",
+    ".env",
+    "platform_data/",
+    ".audit/"
+  ]
+}

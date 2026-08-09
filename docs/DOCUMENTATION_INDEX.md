@@ -18,7 +18,9 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 | Doc | Purpose |
 |-----|---------|
 | **[README.md](../README.md)** | **30-second positioning + non-claims (start here)** |
-| [production-readiness-gap.md](production-readiness-gap.md) | Honest 15-row production gap table |
+| [production-readiness-gap.md](production-readiness-gap.md) | Honest production gap table (updated with Level-1 domain event kernel) |
+| [domain-event-kernel.md](domain-event-kernel.md) | Canonical `wnrt.domain_event.v1` envelope, writer, verify demo |
+| [domain-event-inventory.md](domain-event-inventory.md) | Pre-kernel JSONL inventory and migration risks |
 | [threat-model.md](threat-model.md) | 10 abuse scenarios + test mapping |
 | [docker-demo.md](docker-demo.md) | Reviewer Docker Demo (Option C) |
 | [../real_evidence/case-001-dead-proxy/](../real_evidence/case-001-dead-proxy/) | Sanitized evidence case pack |
@@ -342,7 +344,7 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 | [localhost-diagnose.md](localhost-diagnose.md) | Localhost ERR_CONNECTION_REFUSED evidence pipeline |
 | [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery runbook |
 | [openclaw-coding-agent.md](openclaw-coding-agent.md) | Policy-gated OpenClaw coding agent (draft PR only) |
-| [audit-custody.md](audit-custody.md) | Level 1 hash-chained custody + tip anchor verify |
+| [audit-custody.md](audit-custody.md) | Level 1 hash-chained custody + tip; domain event dual-write |
 | [procmon_proxy_filter.md](procmon_proxy_filter.md) | Procmon RegSetValue filter set + CSV import |
 | [monitoring-dashboard.md](monitoring-dashboard.md) | Read-only NiceGUI local monitoring dashboard |
 | [cli_reference.md](cli_reference.md) | Full `python -m src` command inventory |

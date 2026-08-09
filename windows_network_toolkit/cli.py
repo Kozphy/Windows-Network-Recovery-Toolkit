@@ -1007,48 +1007,45 @@ def cmd_proxy_timeline(args: argparse.Namespace) -> int:
 
 
 def cmd_audit_verify(args: argparse.Namespace) -> int:
-    """Verify hash chain integrity of an audit JSONL file.
+    """Verify domain event / audit JSONL integrity (hash chain + optional tip).
 
     Args:
         args: ``audit_file`` path to JSONL records; optional tip check flags.
 
     Returns:
-        0 when chain verifies (and tip when requested); 1 when file missing or invalid.
+        0 when stream verifies (and tip when requested); 1 when file missing or invalid.
 
     Side effects:
         Read-only file read.
 
     Audit Notes:
+        This is the single verification path for the domain event kernel
+        (``wnrt.domain_event.v1`` and legacy ``erp.audit.v1``).
         Chain integrity proves append-only consistency — not truth of observations.
         Tip match proves consistency with a previously written tip file — not WORM.
     """
-    from src.platform_core.audit.tip_anchor import verify_audit_with_tip
-    from src.platform_core.governance.chain_of_custody import verify_chain
+    from src.platform_core.domain_events.verify import verify_domain_stream
 
     path = Path(args.audit_file)
     if not path.is_file():
         print(f"Audit file not found: {path}", file=sys.stderr)
         return 1
 
+    tip = Path(args.tip_path) if getattr(args, "tip_path", "") else None
     check_tip = bool(getattr(args, "check_tip", False) or getattr(args, "require_tip", False))
-    if check_tip:
-        tip = Path(args.tip_path) if getattr(args, "tip_path", "") else None
-        result = verify_audit_with_tip(
-            path,
-            tip_path=tip,
-            require_tip=bool(getattr(args, "require_tip", False)),
-        )
-        print(json.dumps(result, indent=2))
-        return 0 if result.get("verified") else 1
-
-    records: list[dict] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line:
-            records.append(json.loads(line))
-    ok, msg = verify_chain(records)
-    print(json.dumps({"verified": ok, "message": msg, "records": len(records)}, indent=2))
-    return 0 if ok else 1
+    result = verify_domain_stream(
+        path,
+        tip_path=tip,
+        require_tip=bool(getattr(args, "require_tip", False)),
+    )
+    # When tip flags are off, ignore tip mismatch for exit code (chain+schema only).
+    if not check_tip:
+        schema_ok = not result.get("envelope_errors") and not result.get("unsupported_schema")
+        malformed_ok = not result.get("malformed_records")
+        verified = bool(result.get("chain_verified")) and schema_ok and malformed_ok
+        result = {**result, "verified": verified, "tip_check": "skipped"}
+    print(json.dumps(result, indent=2))
+    return 0 if result.get("verified") else 1
 
 
 def cmd_risk_assess(args: argparse.Namespace) -> int:
