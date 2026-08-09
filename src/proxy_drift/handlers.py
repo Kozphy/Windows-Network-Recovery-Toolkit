@@ -20,6 +20,11 @@ from src.proxy_drift.guardian_task import (
     preview_install_guardian_task,
     uninstall_guardian_task,
 )
+from src.proxy_drift.network_path_health import (
+    CONFIRM_PREFER_IPV4,
+    format_human,
+    run_network_path_health,
+)
 from src.proxy_drift.proxy_fix import apply_proxy_fix
 from src.proxy_drift.rewriter_containment import CONFIRM_CONTAIN, run_rewriter_containment
 from src.proxy_drift.safe_search import safe_search
@@ -455,3 +460,37 @@ def cmd_dns_health(args: argparse.Namespace) -> int:
         for lim in result.get("limitations") or []:
             print(f"Limitation: {lim}")
     return 3 if result.get("primary_off_subnet") else 0
+
+
+def cmd_network_path_health(args: argparse.Namespace) -> int:
+    """Detect broken IPv6 with healthy IPv4; optional Prefer-IPv4 remediation."""
+    if (code := exit_code_if_not_windows("network-path-health")) is not None:
+        return code
+    dry_run = bool(getattr(args, "dry_run", True))
+    confirm = str(getattr(args, "confirm_phrase", "") or "")
+    interface = str(getattr(args, "interface_alias", "Wi-Fi") or "Wi-Fi")
+    result = run_network_path_health(
+        dry_run=dry_run,
+        confirm=confirm,
+        interface=interface,
+        repo_root=Path.cwd(),
+    )
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(format_human(result))
+        if result.get("action_taken") == "preview_only":
+            print(
+                f"Apply: python -m src network-path-health "
+                f"--confirm {CONFIRM_PREFER_IPV4} --dry-run false --json"
+            )
+        print("Audit: logs/network_path_health.jsonl")
+        print("Browser stall: fix-youtube.cmd (Edge --disable-quic)")
+    action = str(result.get("action_taken") or "")
+    if action in {"failed", "blocked"}:
+        return 1
+    if result.get("classification") == "IPV6_BROKEN_IPV4_OK":
+        return 3
+    if result.get("classification") == "PATH_UNREACHABLE":
+        return 2
+    return 0

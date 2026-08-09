@@ -101,6 +101,25 @@ python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --
 
 **Boundaries:** Not malware attribution; not registry-writer proof; does not weaken `KILL_PROXY_PROCESS` in `safety.py` (this is a distinct operator-gated composite). WNRT guardian / boot-trace tasks and `\Microsoft\Windows\*` tasks are never targeted. Audit: `logs/rewriter_containment.jsonl`. Quarantine: `reports/quarantine/`.
 
+### Broken IPv6 + healthy IPv4 (YouTube / Edge stall)
+
+When WinINET is direct but browsers spin on YouTube/Google while `curl -4` works and `curl -6` returns `http_code=000`, classify with **network-path-health**:
+
+```powershell
+python -m src network-path-health --json
+.\fix-network-path.cmd
+.\fix-network-path.cmd /APPLY
+.\fix-youtube.cmd
+```
+
+| Case | Meaning | Action |
+|------|---------|--------|
+| `IPV6_BROKEN_IPV4_OK` | IPv4 probes OK, IPv6 fail | Prefer-IPv4 + disable Wi-Fi IPv6 (`PREFER_IPV4_OVER_IPV6`) |
+| `IPV6_BROKEN_MITIGATED` | Mitigation already on; default path OK | Browser: `fix-youtube.cmd` (`--disable-quic`) |
+| `PROXY_ENABLED_CHECK_GUARDIAN` | ProxyEnable=1 | Use guardian / contain first |
+
+Confirm token: `PREFER_IPV4_OVER_IPV6`. Audit: `logs/network_path_health.jsonl`.
+
 ### ChatGPT auto-fix safety (layer 0b)
 
 [auto-fix-chatgpt.ps1](chatgpt-auto-fix.md) chains layer 0 with ChatGPT scenario diagnosis and **LOW-risk only** remediations:

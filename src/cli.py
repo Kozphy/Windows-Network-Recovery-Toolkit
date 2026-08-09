@@ -138,6 +138,7 @@ from .proxy_drift.handlers import (
     cmd_install_boot_trace_task,
     cmd_install_guardian_task,
     cmd_install_startup_observability,
+    cmd_network_path_health,
     cmd_proxy_boot_trace,
     cmd_proxy_fix,
     cmd_proxy_guardian_drift,
@@ -2291,6 +2292,39 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_dns.add_argument("--json", dest="emit_json", action="store_true")
     p_dns.set_defaults(func=cmd_dns_health)
+
+    p_nph = sub.add_parser(
+        "network-path-health",
+        help=(
+            "Detect broken IPv6 with healthy IPv4 (YouTube/browser stall class). "
+            "Prefer-IPv4 remediation is dry-run by default."
+        ),
+    )
+    p_nph.add_argument(
+        "--interface",
+        default="Wi-Fi",
+        dest="interface_alias",
+        help="Adapter alias for IPv6 binding changes (default Wi-Fi).",
+    )
+    p_nph.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm PREFER_IPV4_OVER_IPV6.",
+    )
+    p_nph.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live Prefer-IPv4 apply requires PREFER_IPV4_OVER_IPV6.",
+    )
+    p_nph.add_argument("--json", dest="emit_json", action="store_true")
+    p_nph.set_defaults(func=cmd_network_path_health)
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)

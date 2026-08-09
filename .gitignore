@@ -93,6 +93,20 @@ config/last_known_good_proxy.json
 *_cleanup_pytest.txt
 pre_cleanup_pytest.txt
 post_cleanup_pytest.txt
+.pytest_full_summary.txt
+
+# Additional local tooling and generated artifacts
+.ipynb_checkpoints/
+.ropeproject/
+.history/
+.azure/
+.terraform/
+.terragrunt-cache/
+.nox/
+*.bak
+*.orig
+*.rej
+*.pid
 
 # OS / editor
 .DS_Store

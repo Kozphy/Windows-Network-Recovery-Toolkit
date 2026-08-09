@@ -528,6 +528,9 @@ python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --j
 .\enable-proxy-autofix.cmd
 .\contain-localhost-rewriter.cmd
 .\contain-localhost-rewriter.cmd /APPLY
+.\fix-network-path.cmd
+.\fix-network-path.cmd /APPLY
+.\fix-youtube.cmd
 .\fix-dns.cmd
 .\scripts\emergency-clear-wininet-proxy.ps1 -Force
 .\scripts\fix-wininet-proxy.cmd /Y
@@ -550,6 +553,10 @@ python -m src proxy-guardian --once --clear-broken --hold-direct --confirm CLEAR
 # Recurring rewrite + suspicious Session-0 persistence (preview then apply)
 python -m src contain-localhost-rewriter --json
 python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --dry-run false --json
+
+# Broken IPv6 + healthy IPv4 (YouTube/Edge stall class)
+python -m src network-path-health --json
+python -m src network-path-health --confirm PREFER_IPV4_OVER_IPV6 --dry-run false --json
 
 # Emergency HKCU fix (localhost ProxyServer only)
 python -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
