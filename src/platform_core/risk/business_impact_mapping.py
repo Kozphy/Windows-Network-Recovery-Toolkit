@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 from pydantic import BaseModel, Field
 
 _DEFAULT_LIMITATIONS = [
     "Forum mapping supports triage narratives — not regulatory attestation.",
     "Classification is not accusation.",
 ]
+
+
+class BusinessImpactData(TypedDict):
+    user_impact: str
+    operational_risk: str
+    security_risk: str
+    audit_risk: str
+    suggested_forum: str
 
 
 class BusinessImpactMapping(BaseModel):
@@ -20,7 +30,7 @@ class BusinessImpactMapping(BaseModel):
     limitations: list[str] = Field(default_factory=lambda: list(_DEFAULT_LIMITATIONS))
 
 
-_MAPPING: dict[str, dict[str, str]] = {
+_MAPPING: dict[str, BusinessImpactData] = {
     "DEAD_PROXY_CONFIG": {
         "user_impact": "Browser and business app connectivity failure while basic network checks may succeed",
         "operational_risk": "Increased support handling time and repeated manual proxy resets",
@@ -86,15 +96,17 @@ _MAPPING: dict[str, dict[str, str]] = {
     },
 }
 
+_DEFAULT_MAPPING: BusinessImpactData = {
+    "user_impact": "Endpoint reliability incident requires structured evidence review",
+    "operational_risk": "Impact depends on classification proof tier and control posture",
+    "security_risk": "Avoid compromise language without proof tier T3+ and independent validation",
+    "audit_risk": "Ensure decision record and audit chain before remediation",
+    "suggested_forum": "Technology risk review",
+}
+
 
 def map_business_impact(classification: str) -> BusinessImpactMapping:
     """Translate technical classification into business-facing impact language."""
     key = (classification or "").upper()
-    data = _MAPPING.get(key, {
-        "user_impact": "Endpoint reliability incident requires structured evidence review",
-        "operational_risk": "Impact depends on classification proof tier and control posture",
-        "security_risk": "Avoid compromise language without proof tier T3+ and independent validation",
-        "audit_risk": "Ensure decision record and audit chain before remediation",
-        "suggested_forum": "Technology risk review",
-    })
+    data = _MAPPING.get(key, _DEFAULT_MAPPING)
     return BusinessImpactMapping(classification=key or "UNCLASSIFIED", **data)
