@@ -13,6 +13,7 @@ from src.proxy_drift.boot_trace_task import (
     preview_install_boot_trace_task,
     uninstall_boot_trace_task,
 )
+from src.proxy_drift.browser_stall import CONFIRM_RESTART_BROWSER, run_browser_stall_fix
 from src.proxy_drift.evidence_bundle import collect_evidence_bundle
 from src.proxy_drift.guardian import run_dead_proxy_guardian_loop, run_dead_proxy_guardian_once
 from src.proxy_drift.guardian_task import (
@@ -473,6 +474,8 @@ def cmd_network_path_health(args: argparse.Namespace) -> int:
         dry_run=dry_run,
         confirm=confirm,
         interface=interface,
+        all_adapters=bool(getattr(args, "all_adapters", True)),
+        force=bool(getattr(args, "force_prefer_ipv4", False)),
         repo_root=Path.cwd(),
     )
     if getattr(args, "emit_json", False):
@@ -485,12 +488,47 @@ def cmd_network_path_health(args: argparse.Namespace) -> int:
                 f"--confirm {CONFIRM_PREFER_IPV4} --dry-run false --json"
             )
         print("Audit: logs/network_path_health.jsonl")
-        print("Browser stall: fix-youtube.cmd (Edge --disable-quic)")
+        print("Browser stall: fix-browser-stall.cmd /APPLY (not fix-youtube.cmd alone)")
     action = str(result.get("action_taken") or "")
     if action in {"failed", "blocked"}:
         return 1
-    if result.get("classification") == "IPV6_BROKEN_IPV4_OK":
+    if result.get("classification") in {
+        "IPV6_BROKEN_IPV4_OK",
+        "IPV6_PARTIAL_MITIGATION",
+        "HAPPY_EYEBALLS_STALL",
+    }:
         return 3
     if result.get("classification") == "PATH_UNREACHABLE":
         return 2
+    return 0
+
+
+def cmd_fix_browser_stall(args: argparse.Namespace) -> int:
+    """Preview/apply Edge/Chrome cold-start with QUIC disabled."""
+    if (code := exit_code_if_not_windows("fix-browser-stall")) is not None:
+        return code
+    dry_run = bool(getattr(args, "dry_run", True))
+    confirm = str(getattr(args, "confirm_phrase", "") or "")
+    result = run_browser_stall_fix(
+        dry_run=dry_run,
+        confirm=confirm,
+        include_webview=bool(getattr(args, "include_webview", False)),
+        open_url=str(getattr(args, "open_url", "") or "https://www.youtube.com"),
+        repo_root=Path.cwd(),
+    )
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(f"Action: {result.get('action_taken')} — {result.get('reason')}")
+        for step in result.get("planned_steps") or []:
+            print(f"  - {step}")
+        if result.get("action_taken") == "preview_only":
+            print(
+                f"Apply: python -m src fix-browser-stall "
+                f"--confirm {CONFIRM_RESTART_BROWSER} --dry-run false --json"
+            )
+        print("Audit: logs/browser_stall.jsonl")
+    action = str(result.get("action_taken") or "")
+    if action in {"failed", "blocked"}:
+        return 1
     return 0

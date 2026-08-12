@@ -98,9 +98,41 @@ def test_blocked_without_token(tmp_path: Path) -> None:
     assert applied == []
 
 
+def test_partial_when_wsl_ipv6_left() -> None:
+    out = assess_network_path(
+        probes=_probe(True, False),
+        wifi_ipv6_enabled=False,
+        prefer_ipv4_set=True,
+        proxy_enable=0,
+        ipv6_enabled_adapters=["vEthernet (WSL (Hyper-V firewall))"],
+    )
+    assert out["classification"] == "IPV6_PARTIAL_MITIGATION"
+
+
+def test_happy_eyeballs_stall() -> None:
+    probes = {
+        "microsoft": {
+            "url": "https://www.microsoft.com",
+            "v4": {"ok": True, "http_code": 200, "time_s": 0.2, "error": None},
+            "v6": {"ok": False, "http_code": 0, "time_s": 0.05, "error": None},
+            "default": {"ok": False, "http_code": 0, "time_s": 8.0, "error": None},
+        }
+    }
+    out = assess_network_path(
+        probes=probes,
+        wifi_ipv6_enabled=False,
+        prefer_ipv4_set=True,
+        proxy_enable=0,
+        ipv6_enabled_adapters=[],
+    )
+    assert out["classification"] == "HAPPY_EYEBALLS_STALL"
+    assert out["happy_eyeballs_stall"] is True
+
+
 def test_apply_with_token(tmp_path: Path) -> None:
-    def _apply(*, interface, run):
+    def _apply(*, interface, run, all_adapters=True):
         assert interface == "Wi-Fi"
+        assert all_adapters is True
         return {"steps": ["Prefer IPv4"], "errors": []}
 
     out = run_network_path_health(

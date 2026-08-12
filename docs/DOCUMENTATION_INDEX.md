@@ -340,7 +340,7 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 | [rollback-strategy.md](rollback-strategy.md) | Preview-first rollback six-part model |
 | [startup-observability.md](startup-observability.md) | v0.3.0 startup observability architecture and CLI |
 | [localhost-diagnose.md](localhost-diagnose.md) | Localhost ERR_CONNECTION_REFUSED evidence pipeline |
-| [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery runbook (rewriter containment + IPv6 path health) |
+| [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery (rewriter containment, IPv6 path, browser stall) |
 | [openclaw-coding-agent.md](openclaw-coding-agent.md) | Policy-gated OpenClaw coding agent (draft PR only) |
 | [audit-custody.md](audit-custody.md) | Level 1 hash-chained custody + tip anchor verify |
 | [procmon_proxy_filter.md](procmon_proxy_filter.md) | Procmon RegSetValue filter set + CSV import |

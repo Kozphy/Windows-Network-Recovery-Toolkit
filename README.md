@@ -530,6 +530,7 @@ python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --j
 .\contain-localhost-rewriter.cmd /APPLY
 .\fix-network-path.cmd
 .\fix-network-path.cmd /APPLY
+.\fix-browser-stall.cmd /APPLY
 .\fix-youtube.cmd
 .\fix-dns.cmd
 .\scripts\emergency-clear-wininet-proxy.ps1 -Force
@@ -556,7 +557,9 @@ python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --
 
 # Broken IPv6 + healthy IPv4 (YouTube/Edge stall class)
 python -m src network-path-health --json
-python -m src network-path-health --confirm PREFER_IPV4_OVER_IPV6 --dry-run false --json
+python -m src network-path-health --all-adapters --force --confirm PREFER_IPV4_OVER_IPV6 --dry-run false --json
+python -m src fix-browser-stall --json
+python -m src fix-browser-stall --confirm RESTART_BROWSER_DISABLE_QUIC --dry-run false --json
 
 # Emergency HKCU fix (localhost ProxyServer only)
 python -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false

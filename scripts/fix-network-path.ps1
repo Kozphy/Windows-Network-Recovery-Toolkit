@@ -37,7 +37,7 @@ if ($Apply) {
     $elev = @"
 `$env:PYTHONPATH = '$RepoRoot'
 Set-Location '$RepoRoot'
-& '$Python' '$Runner' network-path-health --interface '$Interface' --confirm PREFER_IPV4_OVER_IPV6 --dry-run false --json
+& '$Python' '$Runner' network-path-health --interface '$Interface' --all-adapters --force --confirm PREFER_IPV4_OVER_IPV6 --dry-run false --json
 exit `$LASTEXITCODE
 "@
     $tmp = Join-Path $env:TEMP 'wnrt_nph_apply.ps1'
@@ -46,7 +46,7 @@ exit `$LASTEXITCODE
     if ($null -eq $p -or $p.ExitCode -ne 0) {
         $code = if ($null -eq $p) { 'cancelled' } else { $p.ExitCode }
         Write-Host "Elevated apply exit=$code - falling back to non-elevated apply" -ForegroundColor Yellow
-        & $Python $Runner network-path-health --interface $Interface --confirm PREFER_IPV4_OVER_IPV6 --dry-run false --json
+        & $Python $Runner network-path-health --interface $Interface --all-adapters --force --confirm PREFER_IPV4_OVER_IPV6 --dry-run false --json
     }
 } else {
     & $Python @argsList

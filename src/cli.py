@@ -135,6 +135,7 @@ from .proxy_drift.handlers import (
     cmd_contain_localhost_rewriter,
     cmd_dns_health,
     cmd_ensure_proxy_health,
+    cmd_fix_browser_stall,
     cmd_install_boot_trace_task,
     cmd_install_guardian_task,
     cmd_install_startup_observability,
@@ -2324,7 +2325,65 @@ def build_parser() -> argparse.ArgumentParser:
         help="Live Prefer-IPv4 apply requires PREFER_IPV4_OVER_IPV6.",
     )
     p_nph.add_argument("--json", dest="emit_json", action="store_true")
+    p_nph.add_argument(
+        "--all-adapters",
+        action="store_true",
+        dest="all_adapters",
+        help="On apply, disable IPv6 on all Up adapters (Wi-Fi + WSL/vEthernet).",
+    )
+    p_nph.add_argument(
+        "--no-all-adapters",
+        action="store_false",
+        dest="all_adapters",
+        help="Limit IPv6 disable to --interface only.",
+    )
+    p_nph.set_defaults(all_adapters=True)
+    p_nph.add_argument(
+        "--force",
+        action="store_true",
+        dest="force_prefer_ipv4",
+        help="Re-apply Prefer-IPv4 even when classification is IPV6_BROKEN_MITIGATED.",
+    )
     p_nph.set_defaults(func=cmd_network_path_health)
+
+    p_fbs = sub.add_parser(
+        "fix-browser-stall",
+        help=(
+            "Cold-start Edge/Chrome with --disable-quic after a full quit "
+            "(IPv6/QUIC spin). Dry-run by default."
+        ),
+    )
+    p_fbs.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm RESTART_BROWSER_DISABLE_QUIC.",
+    )
+    p_fbs.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live browser restart requires RESTART_BROWSER_DISABLE_QUIC.",
+    )
+    p_fbs.add_argument(
+        "--include-webview",
+        action="store_true",
+        dest="include_webview",
+        help="Also stop msedgewebview2.exe (may affect other apps).",
+    )
+    p_fbs.add_argument(
+        "--url",
+        default="https://www.youtube.com",
+        dest="open_url",
+        help="URL to open after cold start.",
+    )
+    p_fbs.add_argument("--json", dest="emit_json", action="store_true")
+    p_fbs.set_defaults(func=cmd_fix_browser_stall)
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)

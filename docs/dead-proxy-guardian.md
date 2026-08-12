@@ -103,22 +103,26 @@ python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --
 
 ### Broken IPv6 + healthy IPv4 (YouTube / Edge stall)
 
-When WinINET is direct but browsers spin on YouTube/Google while `curl -4` works and `curl -6` returns `http_code=000`, classify with **network-path-health**:
+When WinINET is direct but browsers spin on YouTube/Google while `curl -4` works and `curl -6` returns `http_code=000`, classify with **network-path-health**. Prefer-IPv4 on **Wi-Fi only** is not enough if WSL/vEthernet still has IPv6, or if a running Edge process ignores `--disable-quic`.
 
 ```powershell
 python -m src network-path-health --json
-.\fix-network-path.cmd
 .\fix-network-path.cmd /APPLY
+.\fix-browser-stall.cmd /APPLY
 .\fix-youtube.cmd
 ```
 
 | Case | Meaning | Action |
 |------|---------|--------|
-| `IPV6_BROKEN_IPV4_OK` | IPv4 probes OK, IPv6 fail | Prefer-IPv4 + disable Wi-Fi IPv6 (`PREFER_IPV4_OVER_IPV6`) |
-| `IPV6_BROKEN_MITIGATED` | Mitigation already on; default path OK | Browser: `fix-youtube.cmd` (`--disable-quic`) |
+| `IPV6_BROKEN_IPV4_OK` | IPv4 OK, IPv6 fail | Prefer-IPv4 on **all Up adapters** + prefix policy (`PREFER_IPV4_OVER_IPV6`) |
+| `IPV6_PARTIAL_MITIGATION` | Wi-Fi IPv6 off, other adapters still v6 | Re-apply `--all-adapters --force` |
+| `HAPPY_EYEBALLS_STALL` | `curl -4` OK but default dual-stack hangs | All-adapter Prefer-IPv4 + browser cold-start |
+| `IPV6_BROKEN_MITIGATED` | Path OK; browser may still spin | `fix-browser-stall.cmd /APPLY` (`RESTART_BROWSER_DISABLE_QUIC`) |
 | `PROXY_ENABLED_CHECK_GUARDIAN` | ProxyEnable=1 | Use guardian / contain first |
 
-Confirm token: `PREFER_IPV4_OVER_IPV6`. Audit: `logs/network_path_health.jsonl`.
+Confirm tokens: `PREFER_IPV4_OVER_IPV6`, `RESTART_BROWSER_DISABLE_QUIC`.  
+Audit: `logs/network_path_health.jsonl`, `logs/browser_stall.jsonl`.  
+Does **not** weaken `KILL_PROXY_PROCESS` — browser restart is a separate operator-gated action.
 
 ### ChatGPT auto-fix safety (layer 0b)
 
