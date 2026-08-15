@@ -1,4 +1,9 @@
-"""Formal proof-tier taxonomy for technology risk decisions."""
+"""Formal proof-tier taxonomy for technology risk decisions.
+
+T0–T5 preserve the existing evidence/governance ladder. T6 and T7 add
+assurance requirements: controlled validation and independent verification.
+Proof strength remains separate from execution authority.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +20,8 @@ class ProofTier(StrEnum):
     T3_BEHAVIORAL_REPRODUCTION = "T3_BEHAVIORAL_REPRODUCTION"
     T4_OPERATOR_CONFIRMED = "T4_OPERATOR_CONFIRMED"
     T5_GOVERNANCE_PROOF = "T5_GOVERNANCE_PROOF"
+    T6_CONTROLLED_VALIDATION = "T6_CONTROLLED_VALIDATION"
+    T7_INDEPENDENT_VERIFICATION = "T7_INDEPENDENT_VERIFICATION"
 
 
 _TIER_ORDER = [
@@ -24,11 +31,14 @@ _TIER_ORDER = [
     ProofTier.T3_BEHAVIORAL_REPRODUCTION,
     ProofTier.T4_OPERATOR_CONFIRMED,
     ProofTier.T5_GOVERNANCE_PROOF,
+    ProofTier.T6_CONTROLLED_VALIDATION,
+    ProofTier.T7_INDEPENDENT_VERIFICATION,
 ]
 
 _DEFAULT_LIMITATIONS = [
     "Proof tiers describe evidence strength — not malware, compromise, or MITM confirmation.",
     "Observation is not proof; correlation is not causation.",
+    "Proof tier does not grant execution authority; policy and human approval remain separate.",
 ]
 
 
@@ -102,8 +112,35 @@ def _governance_proof(fixture: dict[str, Any]) -> bool:
     return bool(fixture.get("governance_proof"))
 
 
+def _controlled_validation(fixture: dict[str, Any]) -> bool:
+    """T6: controlled change/failure/rollback/recovery validation is reproducible."""
+    validation = fixture.get("controlled_validation") or {}
+    required = (
+        validation.get("isolated_or_fixture_based") is True,
+        validation.get("change_applied") is True,
+        validation.get("failure_reproduced") is True,
+        validation.get("rollback_applied") is True,
+        validation.get("recovery_verified") is True,
+        validation.get("repeatable") is True,
+    )
+    return _governance_proof(fixture) and all(required)
+
+
+def _independent_verification(fixture: dict[str, Any]) -> bool:
+    """T7: a separate verifier can validate integrity and reproduce the decision."""
+    verification = fixture.get("independent_verification") or {}
+    required = (
+        verification.get("independent_verifier") is True,
+        verification.get("evidence_bundle_verified") is True,
+        verification.get("hash_chain_verified") is True,
+        verification.get("deterministic_replay_verified") is True,
+        verification.get("classification_reproduced") is True,
+    )
+    return _controlled_validation(fixture) and all(required)
+
+
 def map_proof_tier_to_evidence_tier(tier: ProofTier | str) -> str:
-    """Map T0–T5 proof tier labels to canonical evidence tier vocabulary."""
+    """Map T0–T7 proof tiers to canonical evidence-assurance vocabulary."""
     key = tier if isinstance(tier, ProofTier) else ProofTier(str(tier))
     mapping = {
         ProofTier.T0_OBSERVATION_ONLY: "OBSERVED_ONLY",
@@ -111,7 +148,9 @@ def map_proof_tier_to_evidence_tier(tier: ProofTier | str) -> str:
         ProofTier.T2_RUNTIME_CORROBORATION: "CORRELATED",
         ProofTier.T3_BEHAVIORAL_REPRODUCTION: "PROVEN_NETWORK_IMPACT",
         ProofTier.T4_OPERATOR_CONFIRMED: "PROVEN_REGISTRY_WRITER",
-        ProofTier.T5_GOVERNANCE_PROOF: "FINAL_CAUSATION",
+        ProofTier.T5_GOVERNANCE_PROOF: "GOVERNANCE_VERIFIED",
+        ProofTier.T6_CONTROLLED_VALIDATION: "CONTROLLED_VALIDATION",
+        ProofTier.T7_INDEPENDENT_VERIFICATION: "INDEPENDENTLY_VERIFIED",
     }
     return mapping.get(key, "OBSERVED_ONLY")
 
@@ -123,13 +162,38 @@ def resolve_proof_tier(fixture: dict[str, Any]) -> ProofTierResult:
     limitations = list(_DEFAULT_LIMITATIONS)
     rationale_parts: list[str] = []
 
+    # Suspicious/MITM labels are deliberately capped before higher assurance
+    # checks: stronger evidence does not convert a triage label into a verdict.
+    if primary in ("POSSIBLE_MITM_RISK", "SUSPICIOUS_PROXY"):
+        return ProofTierResult(
+            proof_tier=ProofTier.T2_RUNTIME_CORROBORATION,
+            proof_tier_label="Runtime Corroboration",
+            rationale="Suspicious/MITM classifications remain triage-only regardless of governance metadata.",
+            limitations=limitations + ["MITM or suspicious labels remain triage — not confirmed interception."],
+        )
+
+    if _independent_verification(fixture):
+        return ProofTierResult(
+            proof_tier=ProofTier.T7_INDEPENDENT_VERIFICATION,
+            proof_tier_label="Independent verification",
+            rationale="Independent verifier validated evidence integrity and deterministically reproduced the classification after controlled validation.",
+            limitations=limitations + ["Independent verification increases assurance; it does not establish intent or remove human authorization requirements."],
+        )
+
+    if _controlled_validation(fixture):
+        return ProofTierResult(
+            proof_tier=ProofTier.T6_CONTROLLED_VALIDATION,
+            proof_tier_label="Controlled causal validation",
+            rationale="Controlled change reproduced the failure and rollback restored service repeatedly with governance evidence preserved.",
+            limitations=limitations + ["Controlled validation supports a bounded causal mechanism, not universal causation."],
+        )
+
     if _governance_proof(fixture):
         return ProofTierResult(
             proof_tier=ProofTier.T5_GOVERNANCE_PROOF,
             proof_tier_label="Governance-confirmed reproducible evidence chain",
             rationale="Human-confirmed action with audit chain verification.",
-            limitations=limitations
-            + ["Governance proof supports committee reporting — not formal audit opinion."],
+            limitations=limitations + ["Governance proof supports committee reporting — not formal audit opinion."],
         )
 
     if _operator_confirmed(fixture):
@@ -156,23 +220,12 @@ def resolve_proof_tier(fixture: dict[str, Any]) -> ProofTierResult:
         if _runtime_corroboration(fixture):
             tier = ProofTier.T2_RUNTIME_CORROBORATION
         else:
-            rationale_parts.append(
-                "Dead proxy without listener capped at T1–T2; no behavioral reproduction claimed."
-            )
+            rationale_parts.append("Dead proxy without listener capped at T1–T2; no behavioral reproduction claimed.")
         limitations.append("Dead localhost proxy config does not imply malware or MITM.")
 
-    if _proof_supported(fixture) and primary not in ("POSSIBLE_MITM_RISK",):
-        if tier == ProofTier.T2_RUNTIME_CORROBORATION and primary != "DEAD_PROXY_CONFIG":
-            tier = ProofTier.T3_BEHAVIORAL_REPRODUCTION
-            rationale_parts.append("Structured proof checks support reproducible failure pattern.")
-        elif primary == "DEAD_PROXY_CONFIG" and _runtime_corroboration(fixture):
-            tier = ProofTier.T2_RUNTIME_CORROBORATION
-
-    if primary in ("POSSIBLE_MITM_RISK", "SUSPICIOUS_PROXY"):
-        cap = ProofTier.T2_RUNTIME_CORROBORATION
-        if _TIER_ORDER.index(tier) > _TIER_ORDER.index(cap):
-            tier = cap
-        limitations.append("MITM or suspicious labels remain triage — not confirmed interception.")
+    if _proof_supported(fixture) and tier == ProofTier.T2_RUNTIME_CORROBORATION and primary != "DEAD_PROXY_CONFIG":
+        tier = ProofTier.T3_BEHAVIORAL_REPRODUCTION
+        rationale_parts.append("Structured proof checks support reproducible failure pattern.")
 
     return ProofTierResult(
         proof_tier=tier,
