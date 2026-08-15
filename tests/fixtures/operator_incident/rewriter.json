@@ -1,0 +1,16 @@
+{
+  "timestamp_utc": "2026-08-15T00:00:00Z",
+  "proxy": {
+    "classification": "STALE_LOCALHOST_PROXY",
+    "limitations": ["Listener correlation does not prove which process wrote ProxyEnable/ProxyServer."]
+  },
+  "rewriter": {
+    "match": true,
+    "score": 12,
+    "signals": ["scheduled_task_system32_payload", "remote_iex"],
+    "limitations": ["Rewriter match is correlation of persistence signals — not registry writer proof."]
+  },
+  "path_health": {
+    "classification": "PROXY_ENABLED_CHECK_GUARDIAN"
+  }
+}

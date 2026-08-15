@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 from pathlib import Path
 
 from src.core.windows_cli import exit_code_if_not_windows
+from src.proxy_drift.auto_fix import read_proxy_drift_status
 from src.proxy_drift.boot_trace import run_boot_trace_loop
 from src.proxy_drift.boot_trace_task import (
     install_boot_trace_task,
@@ -25,6 +27,11 @@ from src.proxy_drift.network_path_health import (
     CONFIRM_PREFER_IPV4,
     format_human,
     run_network_path_health,
+)
+from src.proxy_drift.operator_incident_card import (
+    compose_operator_incident_card,
+    format_operator_incident_markdown,
+    load_operator_incident_fixture,
 )
 from src.proxy_drift.proxy_fix import apply_proxy_fix
 from src.proxy_drift.rewriter_containment import CONFIRM_CONTAIN, run_rewriter_containment
@@ -461,6 +468,37 @@ def cmd_dns_health(args: argparse.Namespace) -> int:
         for lim in result.get("limitations") or []:
             print(f"Limitation: {lim}")
     return 3 if result.get("primary_off_subnet") else 0
+
+
+def cmd_operator_incident(args: argparse.Namespace) -> int:
+    """Read-only unified incident card (fixture-first; never applies remediation)."""
+    fixture_path = str(getattr(args, "fixture", "") or "").strip()
+    if fixture_path:
+        payload = load_operator_incident_fixture(Path(fixture_path))
+    else:
+        proxy = rewriter = path_health = None
+        if platform.system() == "Windows":
+            try:
+                proxy = read_proxy_drift_status(skip_path_probe=True)
+            except OSError as exc:
+                proxy = {"classification": "INSUFFICIENT_DATA", "limitations": [str(exc)]}
+            rewriter = run_rewriter_containment(dry_run=True, confirm="", repo_root=Path.cwd())
+            path_health = run_network_path_health(
+                dry_run=True,
+                confirm="",
+                repo_root=Path.cwd(),
+            )
+        payload = compose_operator_incident_card(
+            proxy=proxy,
+            rewriter=rewriter,
+            path_health=path_health,
+        )
+    fmt = str(getattr(args, "output_format", "json") or "json")
+    if fmt == "markdown":
+        print(format_operator_incident_markdown(payload))
+    else:
+        _print_json(payload)
+    return 0
 
 
 def cmd_network_path_health(args: argparse.Namespace) -> int:

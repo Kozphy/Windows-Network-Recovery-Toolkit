@@ -105,7 +105,10 @@ python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --
 
 When WinINET is direct but browsers spin on YouTube/Google while `curl -4` works and `curl -6` returns `http_code=000`, classify with **network-path-health**. Prefer-IPv4 on **Wi-Fi only** is not enough if WSL/vEthernet still has IPv6, or if a running Edge process ignores `--disable-quic`.
 
+Start with the unified card so proxy-off does not false-clear a path/browser stall:
+
 ```powershell
+python -m src operator-incident --json
 python -m src network-path-health --json
 .\fix-network-path.cmd /APPLY
 .\fix-browser-stall.cmd /APPLY

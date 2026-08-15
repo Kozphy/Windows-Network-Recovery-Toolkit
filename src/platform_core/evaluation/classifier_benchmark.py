@@ -345,3 +345,24 @@ def render_classifier_benchmark_markdown(summary: BenchmarkSummary) -> str:
         ]
     )
     return "\n".join(lines) + "\n"
+
+
+def classifier_threshold_failures(
+    summary: BenchmarkSummary,
+    *,
+    min_primary_match_rate: float = 0.85,
+    max_unsafe_rate: float = 0.0,
+) -> list[str]:
+    """Return human-readable threshold misses (empty means pass)."""
+    misses: list[str] = []
+    if summary.exact_primary_classification_match_rate < min_primary_match_rate:
+        misses.append(
+            "primary_match_rate "
+            f"{summary.exact_primary_classification_match_rate:.4f} < {min_primary_match_rate:.4f}"
+        )
+    if summary.unsafe_recommendation_rate > max_unsafe_rate:
+        misses.append(
+            "unsafe_recommendation_rate "
+            f"{summary.unsafe_recommendation_rate:.4f} > {max_unsafe_rate:.4f}"
+        )
+    return misses

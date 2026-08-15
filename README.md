@@ -4,7 +4,7 @@
 
 | If you are… | Start here |
 |-------------|------------|
-| **FAANG / platform / SRE** | [docs/faang-platform-review.md](docs/faang-platform-review.md) · [docs/state-machine.md](docs/state-machine.md) · [docs/api-trisk-examples.md](docs/api-trisk-examples.md) |
+| **FAANG / platform / SRE** | [docs/faang-platform-review.md](docs/faang-platform-review.md) · [docs/google-l11-reference.md](docs/google-l11-reference.md) · [docs/slo-endpoint-reliability.md](docs/slo-endpoint-reliability.md) |
 | **Big 4 / technology risk / audit** | [docs/big4-interview-defense.md](docs/big4-interview-defense.md) · [docs/control-matrix.md](docs/control-matrix.md) · [reports/sample_governance_report.md](reports/sample_governance_report.md) |
 | **Power BI / PL-300** | [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) · [analytics/powerbi/report_blueprint.md](analytics/powerbi/report_blueprint.md) |
 | **3-minute live demo** | [docs/interview-demo-3min.md](docs/interview-demo-3min.md) · [docs/replay-demo.md](docs/replay-demo.md) |
@@ -555,6 +555,10 @@ python -m src proxy-guardian --once --clear-broken --hold-direct --confirm CLEAR
 python -m src contain-localhost-rewriter --json
 python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --dry-run false --json
 
+# Unified operator incident card (read-only compose; fixture-first)
+python -m src operator-incident --json
+python -m src operator-incident --fixture tests/fixtures/operator_incident/ipv6_broken.json --format markdown
+
 # Broken IPv6 + healthy IPv4 (YouTube/Edge stall class)
 python -m src network-path-health --json
 python -m src network-path-health --all-adapters --force --confirm PREFER_IPV4_OVER_IPV6 --dry-run false --json
@@ -792,6 +796,7 @@ Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch
 | [docs/replay-demo.md](docs/replay-demo.md)                   | Deterministic replay walkthrough |
 | [docs/test-strategy.md](docs/test-strategy.md)               | Fixtures, safety contracts, tamper detection |
 | [docs/faang-platform-review.md](docs/faang-platform-review.md) | Platform / SRE reviewer pack |
+| [docs/google-l11-reference.md](docs/google-l11-reference.md) | Honest L11 reference vs L6–L7 implemented bar |
 | [docs/big4-interview-defense.md](docs/big4-interview-defense.md) | Technology risk / audit defense |
 | [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) | PL-300 skill mapping |
 | [docs/adr/ADR-portfolio-positioning.md](docs/adr/ADR-portfolio-positioning.md) | Evidence pipeline ADR |

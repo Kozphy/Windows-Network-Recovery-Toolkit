@@ -72,6 +72,44 @@ def test_classify_dead_proxy_config() -> None:
     assert incident.risk_level == "HIGH"
 
 
+def test_classify_ipv6_when_proxy_off() -> None:
+    events = normalize_events_from_fixture(
+        {
+            "proxy_state": {
+                "timestamp_utc": "2026-08-15T00:00:00Z",
+                "wininet_proxy_enabled": False,
+                "wininet_proxy_server": "",
+            },
+            "health_inject": {"direct_probe_ok": True, "proxy_probe_ok": True},
+            "path_health": {
+                "timestamp_utc": "2026-08-15T00:00:00Z",
+                "classification": "IPV6_BROKEN_IPV4_OK",
+            },
+        }
+    )
+    incident = classify_incident_from_events(events)
+    assert incident.incident_class == "IPV6_BROKEN_IPV4_OK"
+    assert incident.risk_level == "MEDIUM"
+
+
+def test_classify_browser_quic_stall() -> None:
+    events = normalize_events_from_fixture(
+        {
+            "proxy_state": {
+                "timestamp_utc": "2026-08-15T00:00:00Z",
+                "wininet_proxy_enabled": False,
+            },
+            "health_inject": {"direct_probe_ok": True},
+            "browser_stall": {
+                "timestamp_utc": "2026-08-15T00:00:00Z",
+                "classification": "BROWSER_QUIC_STALL",
+            },
+        }
+    )
+    incident = classify_incident_from_events(events)
+    assert incident.incident_class == "BROWSER_QUIC_STALL"
+
+
 def test_classify_direct_only_fixture() -> None:
     events = normalize_events_from_fixture(json.loads(FIXTURE.read_text(encoding="utf-8")))
     incident = classify_incident_from_events(events)

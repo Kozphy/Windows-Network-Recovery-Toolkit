@@ -55,7 +55,9 @@ from windows_network_toolkit.control_tests import (
 from windows_network_toolkit.evidence_schema import (
     EvidenceEvent,
     events_to_json,
+    normalize_browser_stall,
     normalize_listener_state,
+    normalize_path_health,
     normalize_probe_result,
     normalize_proxy_change_event,
     normalize_proxy_state,
@@ -120,6 +122,10 @@ def normalize_events_from_fixture(fixture: dict[str, Any]) -> list[EvidenceEvent
         }
     if health_row:
         events.append(normalize_probe_result(health_row, source_command="proxy-health"))
+    if fixture.get("path_health"):
+        events.append(normalize_path_health(fixture["path_health"], source_command="fixture"))
+    if fixture.get("browser_stall"):
+        events.append(normalize_browser_stall(fixture["browser_stall"], source_command="fixture"))
     for item in fixture.get("timeline") or []:
         if item.get("new_state") or item.get("old_state"):
             events.append(normalize_proxy_change_event(item, source_command="proxy-watch"))

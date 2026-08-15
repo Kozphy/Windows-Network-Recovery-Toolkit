@@ -40,6 +40,7 @@ python -m src collect-evidence-bundle
 python -m src ensure-proxy-health
 python -m src procmon-filter-set
 python -m src proxy-watch --interval 3 --soak-minutes 2 --exit-on-rewrite
+python -m src operator-incident --fixture tests/fixtures/operator_incident/ipv6_broken.json
 python -m windows_network_toolkit audit verify .audit/canonical_custody.jsonl --check-tip
 pytest -q tests/test_policy_safety_contract.py
 pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
@@ -52,7 +53,7 @@ pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
 |------|------|
 | `windows_network_toolkit/` | Primary CLI and diagnostics |
 | `riskclaw/` | Product-agent contracts, SKILL.md loader, typed tools, policy adapter |
-| `src/proxy_drift/` | Startup observability, boot trace, guardian, evidence bundle |
+| `src/proxy_drift/` | Startup observability, boot trace, guardian, operator incident card |
 | `src/cli.py` | Extended operator CLI (`python -m src`) |
 | `src/platform_core/` | Policy, governance envelope, audit |
 | `src/platform_core/audit/` | Hash-chained custody + tip anchor (`docs/audit-custody.md`) |

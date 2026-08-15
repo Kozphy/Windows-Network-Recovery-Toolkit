@@ -7,15 +7,15 @@ See also: [production_readiness.md](production_readiness.md), [classifier-evalua
 | Area | Current Portfolio Prototype | Production Requirement | Gap | Recommended Next Step |
 |------|----------------------------|------------------------|-----|------------------------|
 | Endpoint evidence collection | WNT CLI + fixture inject | Signed agent with scheduled collection | No fleet agent | Package Windows service agent |
-| Fixture replay | `replay-benchmark` + deterministic pipeline tests | Continuous replay in CI on every classifier change | Manual local runs | Gate merges on benchmark thresholds |
-| Classifier evaluation | `classifier-benchmark` offline harness | Versioned golden set + drift alerts | No hosted eval service | Publish benchmark CSV in CI artifacts |
+| Fixture replay | `replay-benchmark` + deterministic pipeline tests | Continuous replay in CI on every classifier change | **CI-gated** on PRs (`eval-benchmarks` job, `--min-deterministic-rate 1.0`); no hosted eval service | Keep golden JSONL current |
+| Classifier evaluation | `classifier-benchmark` offline harness | Versioned golden set + drift alerts | **CI-gated** locally (`--min-primary-match-rate 0.85`, `--max-unsafe-rate 0.0`); artifacts uploaded; no hosted eval service | Expand golden set; still not a hosted eval SaaS |
 | Registry writer proof | Sysmon E13 optional; correlation capped | Mandatory writer telemetry for PROVEN tier | Writer proof optional | Enforce T4 gate in production agent |
 | Audit storage | Local JSONL + hash chain tests | WORM / immutability + retention | No external anchor | Object store with lifecycle policy |
 | Authentication | Demo API without auth on `/trisk/*` | OAuth2 / mTLS | Open read endpoints | Entra ID + API keys per tenant |
 | RBAC | Policy registry; no role-scoped API execute | Role-based execute and export | No RBAC middleware | Map roles to preview vs execute |
 | Multi-tenant data separation | Single-tenant local paths | Tenant-scoped storage and RLS | Shared demo paths | Partition `PLATFORM_DATA_DIR` by tenant |
 | API rate limiting | None in demo stack | Per-tenant quotas | Unlimited reads | Add gateway rate limits |
-| Observability | Prometheus/Grafana in full compose | SLO dashboards + tracing | Demo stack only | Define SLIs for ingest and audit writes |
+| Observability | Prometheus/Grafana in full compose | SLO dashboards + tracing | Demo stack only; **local operator SLIs defined** in [slo-endpoint-reliability.md](slo-endpoint-reliability.md) | No PagerDuty; no 99.9% claim |
 | Alerting | Manual review of reports | PagerDuty on control FAIL spikes | No alert routing | Alert on `human_review` queue depth |
 | Power BI Service deployment | Static CSV export + blueprint | Scheduled refresh + RLS in tenant | No deployed dataset | Fabric workspace + gateway |
 | Incident retention policy | Documented only | Legal hold + retention schedules | Unbounded local JSONL | Retention job with legal review |

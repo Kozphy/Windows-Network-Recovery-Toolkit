@@ -1,0 +1,16 @@
+{
+  "timestamp_utc": "2026-08-15T00:00:00Z",
+  "proxy": {
+    "classification": "NO_PROXY"
+  },
+  "rewriter": { "match": false },
+  "path_health": {
+    "classification": "HAPPY_EYEBALLS_STALL",
+    "limitations": ["Happy-Eyeballs stall: IPv4-only curl OK while default dual-stack hangs."]
+  },
+  "browser_stall": {
+    "classification": "BROWSER_QUIC_STALL",
+    "action_taken": "preview_only",
+    "limitations": ["Browser QUIC may still stall until Edge/Chrome is restarted with QUIC disabled."]
+  }
+}

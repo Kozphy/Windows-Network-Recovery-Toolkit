@@ -140,6 +140,7 @@ from .proxy_drift.handlers import (
     cmd_install_guardian_task,
     cmd_install_startup_observability,
     cmd_network_path_health,
+    cmd_operator_incident,
     cmd_proxy_boot_trace,
     cmd_proxy_fix,
     cmd_proxy_guardian_drift,
@@ -2293,6 +2294,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_dns.add_argument("--json", dest="emit_json", action="store_true")
     p_dns.set_defaults(func=cmd_dns_health)
+
+    p_oi = sub.add_parser(
+        "operator-incident",
+        help=(
+            "Read-only unified incident card (proxy + rewriter + path + browser). "
+            "Fixture-first; never applies remediation."
+        ),
+    )
+    p_oi.add_argument(
+        "--fixture",
+        default="",
+        help="JSON fixture with proxy/rewriter/path_health/browser_stall objects.",
+    )
+    p_oi.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default="json",
+        dest="output_format",
+    )
+    p_oi.add_argument("--json", dest="emit_json", action="store_true", help="Alias for --format json.")
+    p_oi.set_defaults(func=cmd_operator_incident)
 
     p_nph = sub.add_parser(
         "network-path-health",

@@ -28,6 +28,8 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 | [replay-demo.md](replay-demo.md) | Deterministic proxy replay |
 | [test-strategy.md](test-strategy.md) | Fixtures, safety contracts, tamper detection |
 | [faang-platform-review.md](faang-platform-review.md) | Platform / SRE reviewer pack |
+| [google-l11-reference.md](google-l11-reference.md) | Google L11 is a **reference**, not a claim; L6–L7 is the implemented bar |
+| [slo-endpoint-reliability.md](slo-endpoint-reliability.md) | Local operator SLIs (false-clear, time-to-direct, dual-stack) |
 | [state-machine.md](state-machine.md) | Proxy transition state diagram |
 | [api-trisk-examples.md](api-trisk-examples.md) | FastAPI read-only `/trisk/*` examples |
 | [adr/ADR-portfolio-positioning.md](adr/ADR-portfolio-positioning.md) | Evidence pipeline ADR |
@@ -341,6 +343,9 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 | [startup-observability.md](startup-observability.md) | v0.3.0 startup observability architecture and CLI |
 | [localhost-diagnose.md](localhost-diagnose.md) | Localhost ERR_CONNECTION_REFUSED evidence pipeline |
 | [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery (rewriter containment, IPv6 path, browser stall) |
+| [adr/ADR-015-no-silent-kill-rewriter-containment.md](adr/ADR-015-no-silent-kill-rewriter-containment.md) | Containment ≠ silent kill |
+| [adr/ADR-016-prefer-ipv4-blast-radius.md](adr/ADR-016-prefer-ipv4-blast-radius.md) | Prefer-IPv4 blast radius |
+| [adr/ADR-017-unified-operator-incident-card.md](adr/ADR-017-unified-operator-incident-card.md) | Unified operator incident card |
 | [openclaw-coding-agent.md](openclaw-coding-agent.md) | Policy-gated OpenClaw coding agent (draft PR only) |
 | [audit-custody.md](audit-custody.md) | Level 1 hash-chained custody + tip anchor verify |
 | [procmon_proxy_filter.md](procmon_proxy_filter.md) | Procmon RegSetValue filter set + CSV import |

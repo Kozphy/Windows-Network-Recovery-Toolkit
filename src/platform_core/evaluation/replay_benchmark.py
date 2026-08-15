@@ -185,3 +185,18 @@ def render_replay_benchmark_markdown(summary: ReplayBenchmarkSummary) -> str:
             f"| {row.case_id} | {'yes' if row.deterministic else 'no'} | {audit_cell} | {row.duration_ms} |"
         )
     return "\n".join(lines) + "\n"
+
+
+def replay_threshold_failures(
+    summary: ReplayBenchmarkSummary,
+    *,
+    min_deterministic_rate: float = 1.0,
+) -> list[str]:
+    """Return human-readable threshold misses (empty means pass)."""
+    misses: list[str] = []
+    if summary.deterministic_match_rate < min_deterministic_rate:
+        misses.append(
+            "deterministic_match_rate "
+            f"{summary.deterministic_match_rate:.4f} < {min_deterministic_rate:.4f}"
+        )
+    return misses

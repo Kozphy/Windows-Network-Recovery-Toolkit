@@ -1,0 +1,14 @@
+{
+  "timestamp_utc": "2026-08-15T00:00:00Z",
+  "proxy": {
+    "classification": "NO_PROXY",
+    "limitations": ["WinINET proxy disabled."]
+  },
+  "rewriter": { "match": false },
+  "path_health": {
+    "classification": "IPV6_BROKEN_IPV4_OK",
+    "limitations": [
+      "IPv4-ok + IPv6-fail is path observation — not proof of ISP misconfiguration root cause."
+    ]
+  }
+}

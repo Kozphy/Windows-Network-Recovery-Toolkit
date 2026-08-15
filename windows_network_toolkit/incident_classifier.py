@@ -288,6 +288,49 @@ def classify_incident_from_events(
         risk = "HIGH"
         interpretation = "Proxy remains enabled after listener exited."
 
+    proxy_high = incident_class in {
+        "REVERTER_SUSPECTED",
+        "PROXY_FLAPPING",
+        "DEAD_PROXY_CONFIG",
+        "DIRECT_ONLY_WORKS",
+        "LISTENER_NOT_PROXY",
+        "PROXY_FORWARDING_FAILED",
+        "STALE_PROXY_AFTER_PROCESS_EXIT",
+        "UNKNOWN_LOCAL_PROXY",
+        "BOTH_DIRECT_AND_PROXY_FAIL",
+    }
+    path_class = _str_field(events, "path_health", "classification")
+    browser_class = _str_field(events, "browser_stall", "classification")
+    path_degraded = path_class in {
+        "IPV6_BROKEN_IPV4_OK",
+        "HAPPY_EYEBALLS_STALL",
+        "IPV6_PARTIAL_MITIGATION",
+        "PATH_UNREACHABLE",
+    }
+    if not proxy_high and path_degraded and path_class:
+        incident_class = path_class
+        risk = "MEDIUM" if path_class != "PATH_UNREACHABLE" else "HIGH"
+        confidence = 0.75
+        policy = "preview"
+        interpretation = (
+            f"Proxy path not the primary blocker; dual-stack/path class is {path_class}. "
+            "Observation only — not ISP or malware proof."
+        )
+        limitations.append(
+            "IPv4-ok + IPv6-fail is path observation — not proof of ISP misconfiguration root cause."
+        )
+    elif not proxy_high and browser_class == "BROWSER_QUIC_STALL":
+        incident_class = "BROWSER_QUIC_STALL"
+        risk = "MEDIUM"
+        confidence = 0.7
+        policy = "preview"
+        interpretation = (
+            "Browser QUIC/Happy-Eyeballs stall class — preview-only restart with QUIC disabled."
+        )
+        limitations.append(
+            "Browser QUIC stall is observation — restart is policy-gated, not proof of malware."
+        )
+
     return IncidentRecord(
         incident_id=make_incident_id(ts, incident_class, endpoint_id),
         timestamp_utc=ts,

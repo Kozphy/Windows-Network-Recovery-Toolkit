@@ -1508,6 +1508,7 @@ def cmd_browser_profile(args: argparse.Namespace) -> int:
 
 def cmd_classifier_benchmark(args: argparse.Namespace) -> int:
     from src.platform_core.evaluation.classifier_benchmark import (
+        classifier_threshold_failures,
         load_benchmark_cases,
         render_classifier_benchmark_markdown,
         run_classifier_benchmark,
@@ -1515,10 +1516,23 @@ def cmd_classifier_benchmark(args: argparse.Namespace) -> int:
 
     cases = load_benchmark_cases(Path(args.cases))
     summary = run_classifier_benchmark(cases)
+    blob = summary.model_dump()
+    out_path = str(getattr(args, "output", "") or "").strip()
+    if out_path:
+        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(out_path).write_text(json.dumps(blob, indent=2), encoding="utf-8")
     if args.format == "markdown":
         print(render_classifier_benchmark_markdown(summary))
     else:
-        _emit_json(summary.model_dump())
+        _emit_json(blob)
+    misses = classifier_threshold_failures(
+        summary,
+        min_primary_match_rate=float(getattr(args, "min_primary_match_rate", 0.0)),
+        max_unsafe_rate=float(getattr(args, "max_unsafe_rate", 1.0)),
+    )
+    if misses:
+        print("classifier-benchmark threshold miss: " + "; ".join(misses), file=sys.stderr)
+        return 1
     return 0
 
 
@@ -1526,15 +1540,28 @@ def cmd_replay_benchmark(args: argparse.Namespace) -> int:
     from src.platform_core.evaluation.replay_benchmark import (
         load_replay_cases,
         render_replay_benchmark_markdown,
+        replay_threshold_failures,
         run_replay_benchmark,
     )
 
     cases = load_replay_cases(Path(args.cases))
     summary = run_replay_benchmark(cases, replay_count=int(args.replay_count))
+    blob = summary.model_dump()
+    out_path = str(getattr(args, "output", "") or "").strip()
+    if out_path:
+        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(out_path).write_text(json.dumps(blob, indent=2), encoding="utf-8")
     if args.format == "markdown":
         print(render_replay_benchmark_markdown(summary))
     else:
-        _emit_json(summary.model_dump())
+        _emit_json(blob)
+    misses = replay_threshold_failures(
+        summary,
+        min_deterministic_rate=float(getattr(args, "min_deterministic_rate", 0.0)),
+    )
+    if misses:
+        print("replay-benchmark threshold miss: " + "; ".join(misses), file=sys.stderr)
+        return 1
     return 0
 
 
@@ -2428,12 +2455,17 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     cb = sub.add_parser("classifier-benchmark", help="Offline classifier evaluation harness")
     cb.add_argument("--cases", default="examples/evaluation/classifier_benchmark_sample.json")
     cb.add_argument("--format", choices=["json", "markdown"], default="json")
+    cb.add_argument("--output", default="", help="Optional JSON artifact path")
+    cb.add_argument("--min-primary-match-rate", type=float, default=0.0)
+    cb.add_argument("--max-unsafe-rate", type=float, default=1.0)
     cb.set_defaults(func=cmd_classifier_benchmark)
 
     rb = sub.add_parser("replay-benchmark", help="Evidence replay determinism benchmark")
     rb.add_argument("--cases", default="tests/fixtures/evaluation/replay_cases.jsonl")
     rb.add_argument("--replay-count", default="2")
     rb.add_argument("--format", choices=["json", "markdown"], default="json")
+    rb.add_argument("--output", default="", help="Optional JSON artifact path")
+    rb.add_argument("--min-deterministic-rate", type=float, default=0.0)
     rb.set_defaults(func=cmd_replay_benchmark)
 
     ae = sub.add_parser("ai-eval", help="Fixture-based AI evals feedback loop (no live model calls)")

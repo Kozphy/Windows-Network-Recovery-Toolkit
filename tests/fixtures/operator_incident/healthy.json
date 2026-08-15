@@ -1,0 +1,16 @@
+{
+  "timestamp_utc": "2026-08-15T00:00:00Z",
+  "proxy": {
+    "classification": "NO_PROXY",
+    "limitations": ["Classification is triage guidance — not malware verdict or registry writer proof."]
+  },
+  "rewriter": {
+    "match": false,
+    "signals": [],
+    "limitations": ["Rewriter match is correlation only."]
+  },
+  "path_health": {
+    "classification": "PATH_OK",
+    "limitations": ["IPv4-ok + IPv6-fail is path observation — not proof of ISP misconfiguration root cause."]
+  }
+}

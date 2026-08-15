@@ -12,6 +12,9 @@ class ReliabilityMetrics(BaseModel):
     mean_time_to_recover_seconds: float | None = None
     remediation_stickiness_rate: float = Field(ge=0.0, le=1.0, default=0.0)
     false_positive_rate: float = Field(ge=0.0, le=1.0, default=0.0)
+    false_clear_rate: float | None = None
+    dual_stack_path_success_rate: float | None = None
+    time_to_direct_after_rewrite_seconds: float | None = None
 
 
 class SloMetrics(BaseModel):
@@ -25,3 +28,8 @@ class SloMetrics(BaseModel):
     proof_unavailable_rate: float = Field(ge=0.0, le=1.0, default=0.0)
     final_causation_rate: float = Field(ge=0.0, le=1.0, default=0.0)
     reliability: ReliabilityMetrics = Field(default_factory=ReliabilityMetrics)
+    false_clear_rate: float | None = None
+    dual_stack_ipv4_success_rate: float | None = None
+    dual_stack_ipv6_success_rate: float | None = None
+    time_to_direct_after_rewrite_seconds: float | None = None
+    slo_limitations: list[str] = Field(default_factory=list)

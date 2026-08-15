@@ -37,6 +37,13 @@ def compute_reliability_metrics(*, data_root: Path | None = None) -> Reliability
     detect_deltas: list[float] = []
     stickiness_success = 0
     stickiness_total = 0
+    false_clear = 0
+    false_clear_den = 0
+    v4_ok = 0
+    v4_total = 0
+    v6_ok = 0
+    v6_total = 0
+    direct_deltas: list[float] = []
 
     for row in iter_jsonl(signals_path):
         kind = str(row.get("kind") or row.get("signal") or "")
@@ -57,6 +64,24 @@ def compute_reliability_metrics(*, data_root: Path | None = None) -> Reliability
             stickiness_total += 1
         elif kind == "remediation_stickiness_failed":
             stickiness_total += 1
+        elif kind in ("proxy_healthy_path_degraded", "false_clear"):
+            false_clear += 1
+            false_clear_den += 1
+        elif kind in ("proxy_healthy_path_ok", "proxy_status_healthy"):
+            false_clear_den += 1
+        elif kind == "path_health_ipv4":
+            v4_total += 1
+            if row.get("ok") is True:
+                v4_ok += 1
+        elif kind == "path_health_ipv6":
+            v6_total += 1
+            if row.get("ok") is True:
+                v6_ok += 1
+        elif kind in ("rewrite_detected", "localhost_rewrite_detected"):
+            recovered_at = _parse_iso(row.get("recovered_at") or row.get("direct_at"))
+            detected_at = _parse_iso(row.get("detected_at"))
+            if recovered_at and detected_at:
+                direct_deltas.append(max(0.0, (recovered_at - detected_at).total_seconds()))
 
         detected_at = _parse_iso(row.get("detected_at"))
         occurred_at = _parse_iso(row.get("occurred_at"))
@@ -69,6 +94,8 @@ def compute_reliability_metrics(*, data_root: Path | None = None) -> Reliability
     browser_rate = (browser_ok / browser_total) if browser_total else 0.0
     fp_rate = (false_positive / fp_denominator) if fp_denominator else 0.0
     stickiness = (stickiness_success / stickiness_total) if stickiness_total else 0.0
+    dual_den = v4_total + v6_total
+    dual_ok = v4_ok + v6_ok
 
     return ReliabilityMetrics(
         browser_path_success_rate=round(browser_rate, 4),
@@ -81,6 +108,11 @@ def compute_reliability_metrics(*, data_root: Path | None = None) -> Reliability
         ),
         remediation_stickiness_rate=round(stickiness, 4),
         false_positive_rate=round(fp_rate, 4),
+        false_clear_rate=(round(false_clear / false_clear_den, 4) if false_clear_den else None),
+        dual_stack_path_success_rate=(round(dual_ok / dual_den, 4) if dual_den else None),
+        time_to_direct_after_rewrite_seconds=(
+            round(sum(direct_deltas) / len(direct_deltas), 2) if direct_deltas else None
+        ),
     )
 
 
@@ -141,6 +173,28 @@ def compute_slo_metrics(*, data_root: Path | None = None) -> SloMetrics:
     proof_unavail_rate = round(proof_unavailable / proof_total, 4) if proof_total else 0.0
     final_rate = round(final_causation / proof_total, 4) if proof_total else 0.0
 
+    v4_ok = v4_total = v6_ok = v6_total = 0
+    for row in iter_jsonl(root / "platform_signals.jsonl"):
+        kind = str(row.get("kind") or row.get("signal") or "")
+        if kind == "path_health_ipv4":
+            v4_total += 1
+            if row.get("ok") is True:
+                v4_ok += 1
+        elif kind == "path_health_ipv6":
+            v6_total += 1
+            if row.get("ok") is True:
+                v6_ok += 1
+
+    slo_limitations = [
+        "SLOs are local operator measurements from JSONL — not fleet error budgets or 99.9% claims.",
+        "Null SLI values mean no matching events in the data root (not a pass).",
+        "No PagerDuty or hosted alerting in this prototype.",
+    ]
+    if reliability.false_clear_rate is None:
+        slo_limitations.append("false_clear_rate unmeasured — no proxy-healthy vs path-degraded events.")
+    if reliability.time_to_direct_after_rewrite_seconds is None:
+        slo_limitations.append("time_to_direct_after_rewrite unmeasured — no rewrite_detected recoveries.")
+
     return SloMetrics(
         mean_time_to_detect_seconds=mttd,
         mean_time_to_explain_seconds=mtexplain,
@@ -150,6 +204,11 @@ def compute_slo_metrics(*, data_root: Path | None = None) -> SloMetrics:
         proof_unavailable_rate=proof_unavail_rate,
         final_causation_rate=final_rate,
         reliability=reliability,
+        false_clear_rate=reliability.false_clear_rate,
+        dual_stack_ipv4_success_rate=(round(v4_ok / v4_total, 4) if v4_total else None),
+        dual_stack_ipv6_success_rate=(round(v6_ok / v6_total, 4) if v6_total else None),
+        time_to_direct_after_rewrite_seconds=reliability.time_to_direct_after_rewrite_seconds,
+        slo_limitations=slo_limitations,
     )
 
 

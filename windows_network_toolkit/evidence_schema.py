@@ -224,6 +224,59 @@ def normalize_proxy_change_event(raw: dict[str, Any], *, source_command: str = "
     )
 
 
+def normalize_path_health(raw: dict[str, Any], *, source_command: str = "network-path-health") -> EvidenceEvent:
+    """Normalize dual-stack path-health observation (T3 path evidence)."""
+    ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
+    endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
+    classification = str(raw.get("classification") or "")
+    normalized = {
+        "classification": classification,
+        "match_broken_ipv6": bool(raw.get("match_broken_ipv6")),
+        "happy_eyeballs_stall": bool(raw.get("happy_eyeballs_stall")),
+        "mitigated": bool(raw.get("mitigated")),
+        "proxy_enable": raw.get("proxy_enable"),
+    }
+    return EvidenceEvent(
+        event_id=make_event_id(ts, "path_health", {"classification": classification}),
+        timestamp_utc=ts,
+        endpoint_id=str(endpoint_id) if endpoint_id else None,
+        evidence_type="path_health",
+        source_command=source_command,
+        raw_snapshot=dict(raw),
+        normalized_fields=normalized,
+        evidence_tier=EvidenceTier.T3_PATH_EVIDENCE.value,
+        evidence_summary=f"path_health={classification or 'unknown'}",
+        limitations=list(STANDARD_LIMITATIONS)
+        + [
+            "IPv4-ok + IPv6-fail is path observation — not proof of ISP root cause.",
+        ],
+    )
+
+
+def normalize_browser_stall(raw: dict[str, Any], *, source_command: str = "fix-browser-stall") -> EvidenceEvent:
+    """Normalize browser QUIC/stall observation (T3 path evidence)."""
+    ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
+    endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
+    classification = str(raw.get("classification") or "BROWSER_QUIC_STALL")
+    normalized = {
+        "classification": classification,
+        "action_taken": raw.get("action_taken"),
+    }
+    return EvidenceEvent(
+        event_id=make_event_id(ts, "browser_stall", {"classification": classification}),
+        timestamp_utc=ts,
+        endpoint_id=str(endpoint_id) if endpoint_id else None,
+        evidence_type="browser_stall",
+        source_command=source_command,
+        raw_snapshot=dict(raw),
+        normalized_fields=normalized,
+        evidence_tier=EvidenceTier.T3_PATH_EVIDENCE.value,
+        evidence_summary=f"browser_stall={classification}",
+        limitations=list(STANDARD_LIMITATIONS)
+        + ["Browser QUIC stall is observation — restart is policy-gated, not proof of malware."],
+    )
+
+
 def events_to_json(events: list[EvidenceEvent]) -> list[dict[str, Any]]:
     return [e.to_dict() for e in events]
 

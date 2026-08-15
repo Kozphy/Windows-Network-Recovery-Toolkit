@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.platform_core.evaluation.classifier_benchmark import (
+    classifier_threshold_failures,
     load_benchmark_cases,
     render_classifier_benchmark_markdown,
     run_classifier_benchmark,
@@ -18,7 +19,7 @@ SAMPLE = ROOT / "examples" / "evaluation" / "classifier_benchmark_sample.json"
 def test_classifier_benchmark_runs_offline() -> None:
     cases = load_benchmark_cases(SAMPLE, repo_root=ROOT)
     summary = run_classifier_benchmark(cases, repo_root=ROOT)
-    assert summary.total_cases >= 8
+    assert summary.total_cases >= 11
     assert summary.unsafe_recommendation_rate == 0.0
     assert summary.exact_primary_classification_match_rate >= 0.85
 
@@ -44,3 +45,10 @@ def test_classifier_benchmark_cli_smoke() -> None:
         )
         == 0
     )
+
+
+def test_classifier_thresholds_fail_on_high_bar() -> None:
+    cases = load_benchmark_cases(SAMPLE, repo_root=ROOT)
+    summary = run_classifier_benchmark(cases, repo_root=ROOT)
+    misses = classifier_threshold_failures(summary, min_primary_match_rate=1.01, max_unsafe_rate=0.0)
+    assert misses
