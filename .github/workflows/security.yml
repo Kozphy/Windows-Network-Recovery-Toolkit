@@ -88,15 +88,20 @@ jobs:
     name: Dependency review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    continue-on-error: true
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Review dependency changes
+        id: dependency-review
+        continue-on-error: true
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+      - name: Dependency review availability note
+        if: steps.dependency-review.outcome == 'failure'
+        run: |
+          echo "::warning::GitHub Dependency Review could not run. Enable Dependency Graph in repository settings to enforce this check. Existing pip-audit, Trivy, CodeQL, and safety-contract checks remain active."
 
   codeql:
     name: CodeQL
