@@ -15,6 +15,9 @@ from src.proxy_guard.investigation_bundle import (
 )
 from src.proxy_guard.investigation_risk import classify_investigation_risk
 
+# Windows-only surfaces: simulate the platform guard so Linux CI keeps this coverage.
+pytestmark = pytest.mark.usefixtures("simulated_windows")
+
 
 def _patch_investigation_deps(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(

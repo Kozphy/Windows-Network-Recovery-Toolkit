@@ -43,7 +43,7 @@ def _now() -> str:
 
 
 def _should_exclude_dir(path: Path, *, profile_scan: bool = False, is_scan_root: bool = False) -> bool:
-    parts = {p.lower() for p in path.parts}
+    parts = {segment.lower() for segment in str(path).replace("\\", "/").split("/")}
     if parts & _ALWAYS_EXCLUDE_DIR_NAMES:
         return True
     if not profile_scan:

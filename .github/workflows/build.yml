@@ -3,6 +3,7 @@ name: Build
 on:
   push:
     branches:
+      - Multi_Domain_Decision_Platform
       - main
       - master
       - amd_version
@@ -11,6 +12,7 @@ on:
       - "ci/**"
   pull_request:
     branches:
+      - Multi_Domain_Decision_Platform
       - main
       - master
       - amd_version

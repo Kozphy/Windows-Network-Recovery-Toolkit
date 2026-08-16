@@ -86,7 +86,10 @@ jobs:
 
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
+    # Requires the GitHub Dependency graph, which is off for this repository, so the
+    # action always errors. Enable it under Settings → Code security, then set the
+    # repository variable ENABLE_DEPENDENCY_REVIEW=true to turn this job back on.
+    if: github.event_name == 'pull_request' && vars.ENABLE_DEPENDENCY_REVIEW == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
