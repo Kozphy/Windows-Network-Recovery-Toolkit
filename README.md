@@ -2,12 +2,14 @@
 
 **In 30 seconds:** Windows endpoints often fail while still “online” — dead localhost proxies, WinINET/WinHTTP drift, TLS path mismatches. This repository **collects deterministic evidence**, **classifies incidents** with proof tiers (T0–T5), **runs control tests**, **gates remediation** (preview-only by default), and **exports audit-backed governance reports** and Power BI star-schema CSVs. It is an **evidence pipeline for technology risk** — not a repair bot or security product.
 
-| If you are… | Start here |
-|-------------|------------|
-| **FAANG / platform / SRE** | [docs/faang-platform-review.md](docs/faang-platform-review.md) · [docs/google-l11-reference.md](docs/google-l11-reference.md) · [docs/slo-endpoint-reliability.md](docs/slo-endpoint-reliability.md) |
-| **Big 4 / technology risk / audit** | [docs/big4-interview-defense.md](docs/big4-interview-defense.md) · [docs/control-matrix.md](docs/control-matrix.md) · [reports/sample_governance_report.md](reports/sample_governance_report.md) |
-| **Power BI / PL-300** | [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) · [analytics/powerbi/report_blueprint.md](analytics/powerbi/report_blueprint.md) |
-| **3-minute live demo** | [docs/interview-demo-3min.md](docs/interview-demo-3min.md) · [docs/replay-demo.md](docs/replay-demo.md) |
+
+| If you are…                         | Start here                                                                                                                                                                                           |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **FAANG / platform / SRE**          | [docs/faang-platform-review.md](docs/faang-platform-review.md) · [docs/google-l11-reference.md](docs/google-l11-reference.md) · [docs/slo-endpoint-reliability.md](docs/slo-endpoint-reliability.md) |
+| **Big 4 / technology risk / audit** | [docs/big4-interview-defense.md](docs/big4-interview-defense.md) · [docs/control-matrix.md](docs/control-matrix.md) · [reports/sample_governance_report.md](reports/sample_governance_report.md)     |
+| **Power BI / PL-300**               | [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) · [analytics/powerbi/report_blueprint.md](analytics/powerbi/report_blueprint.md)                                                  |
+| **3-minute live demo**              | [docs/interview-demo-3min.md](docs/interview-demo-3min.md) · [docs/replay-demo.md](docs/replay-demo.md)                                                                                              |
+
 
 **One-line summary:** An evidence-backed platform that turns Windows endpoint reliability signals into explainable classifications, control test results, policy-gated remediation previews, hash-chained audit trails, and committee-ready analytics.
 
@@ -15,18 +17,32 @@
 
 ---
 
+
+
+## Project instructions (one-pager)
+
+Human-facing poster of the agent contract in [`.cursor/rules/project-instructions.mdc`](.cursor/rules/project-instructions.mdc). PDF: [docs/infographics/wnrt-project-instructions.pdf](docs/infographics/wnrt-project-instructions.pdf).
+
+[![Windows Network Recovery Toolkit — Project Instructions](docs/infographics/wnrt-project-instructions.png)](docs/infographics/wnrt-project-instructions.pdf)
+
+---
+
+
+
 ## Ten-minute orientation (new engineers)
 
 Read in this order to understand structure and core flows without running Windows repair scripts:
 
-| Step | Doc / command | What you learn |
-|------|---------------|----------------|
-| 1 | This README — **Non-claims** + **Safety boundaries** | What the repo is *not*; dry-run defaults |
-| 2 | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md) | Full doc map and golden case `59081` |
-| 3 | [AGENTS.md](AGENTS.md) | Contributor safety rules and test conventions |
-| 4 | `python -m windows_network_toolkit version` | Installed package version (no side effects) |
-| 5 | [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_governance_model.md) | Six governance principles |
-| 6 | [docs/enterprise-hardening-roadmap.md](docs/enterprise-hardening-roadmap.md) | Phases 1–8 (agent, observability, rollback preview) |
+
+| Step | Doc / command                                                                              | What you learn                                      |
+| ---- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| 1    | This README — **Non-claims** + **Safety boundaries**                                       | What the repo is *not*; dry-run defaults            |
+| 2    | [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)                                 | Full doc map and golden case `59081`                |
+| 3    | [AGENTS.md](AGENTS.md)                                                                     | Contributor safety rules and test conventions       |
+| 4    | `python -m windows_network_toolkit version`                                                | Installed package version (no side effects)         |
+| 5    | [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_governance_model.md) | Six governance principles                           |
+| 6    | [docs/enterprise-hardening-roadmap.md](docs/enterprise-hardening-roadmap.md)               | Phases 1–8 (agent, observability, rollback preview) |
+
 
 **Repository map (verified paths):**
 
@@ -46,42 +62,54 @@ docs/                      Architecture, demos, audit defense, operational runbo
 
 ---
 
+
+
 ## Non-claims and boundaries
 
 This project **does not** and **must not** be presented as:
 
-| We do **not** claim | What we **do** instead |
-|---------------------|-------------------------|
-| Antivirus, EDR, XDR, or MITM detection | Path/listener/TLS **evidence** with explicit `limitations[]` |
-| Malware or compromise verdicts | Reliability triage labels (`DEAD_PROXY_CONFIG`, not `MALWARE_DETECTED`) |
-| Autonomous remediation | Dry-run default; typed confirmation for registry mutations |
-| AI-authorized execution | AI assists **explanation only** — humans authorize apply |
-| Formal audit opinions | Governance reports are **management information** for committees |
-| Process kill / firewall reset / adapter disable by default | Blocked in policy registry; not default CLI behavior |
+
+| We do **not** claim                                        | What we **do** instead                                                  |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Antivirus, EDR, XDR, or MITM detection                     | Path/listener/TLS **evidence** with explicit `limitations[]`            |
+| Malware or compromise verdicts                             | Reliability triage labels (`DEAD_PROXY_CONFIG`, not `MALWARE_DETECTED`) |
+| Autonomous remediation                                     | Dry-run default; typed confirmation for registry mutations              |
+| AI-authorized execution                                    | AI assists **explanation only** — humans authorize apply                |
+| Formal audit opinions                                      | Governance reports are **management information** for committees        |
+| Process kill / firewall reset / adapter disable by default | Blocked in policy registry; not default CLI behavior                    |
+
 
 Safety contracts are enforced in CI: `tests/test_proxy_classifier_safety_contract.py`, `tests/test_policy_safety_contract.py`. ADR: [docs/adr/ADR-portfolio-positioning.md](docs/adr/ADR-portfolio-positioning.md).
 
 ---
 
+
+
 ## Production-like prototype upgrades
 
 Reviewer-facing artifacts for a **production-shaped platform prototype** (still portfolio scope — not shipped enterprise software):
 
-| Artifact | Path |
-|----------|------|
-| Real evidence case pack | [real_evidence/case-001-dead-proxy/](real_evidence/case-001-dead-proxy/) |
-| Production readiness gap table | [docs/production-readiness-gap.md](docs/production-readiness-gap.md) |
-| Threat model (10 abuse scenarios) | [docs/threat-model.md](docs/threat-model.md) |
-| Reviewer demo CLI | `python -m windows_network_toolkit reviewer-demo --mode big4\|faang\|mixed` |
-| Fleet simulate (primary CLI) | `python -m windows_network_toolkit fleet-simulate --scenario mixed_proxy_failures --endpoints 100 --seed 42` |
-| Docker reviewer demo | [docs/docker-demo.md](docs/docker-demo.md) |
+
+| Artifact                          | Path                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Real evidence case pack           | [real_evidence/case-001-dead-proxy/](real_evidence/case-001-dead-proxy/)                                     |
+| Production readiness gap table    | [docs/production-readiness-gap.md](docs/production-readiness-gap.md)                                         |
+| Threat model (10 abuse scenarios) | [docs/threat-model.md](docs/threat-model.md)                                                                 |
+| Reviewer demo CLI                 | `python -m windows_network_toolkit reviewer-demo --mode big4|faang|mixed`                                    |
+| Fleet simulate (primary CLI)      | `python -m windows_network_toolkit fleet-simulate --scenario mixed_proxy_failures --endpoints 100 --seed 42` |
+| Docker reviewer demo              | [docs/docker-demo.md](docs/docker-demo.md)                                                                   |
+
+
+
 
 ### Reviewer Docker Demo (Option C)
 
-| Stack | Compose file | Services | Use case |
-|-------|--------------|----------|----------|
-| **Full platform** | `docker-compose.yml` | API + Postgres + Prometheus + Grafana | Production-shaped local stack |
-| **Reviewer demo** | `docker-compose.demo.yml` | API only (`DEMO_MODE=true`, fixture volumes) | Hiring panels, read-only `/trisk/*` |
+
+| Stack             | Compose file              | Services                                     | Use case                            |
+| ----------------- | ------------------------- | -------------------------------------------- | ----------------------------------- |
+| **Full platform** | `docker-compose.yml`      | API + Postgres + Prometheus + Grafana        | Production-shaped local stack       |
+| **Reviewer demo** | `docker-compose.demo.yml` | API only (`DEMO_MODE=true`, fixture volumes) | Hiring panels, read-only `/trisk/`* |
+
 
 ```bash
 docker compose -f docker-compose.demo.yml up --build
@@ -93,6 +121,8 @@ Legacy `python -m src fleet-simulate` remains unchanged.
 
 ---
 
+
+
 ## What this proves in an interview
 
 - **Evidence-based diagnosis** — WinINET/WinHTTP/TLS evidence with explicit limitations  
@@ -101,40 +131,50 @@ Legacy `python -m src fleet-simulate` remains unchanged.
 - **Auditability** — append-only hash-chained JSONL + tamper detection  
 - **Human-in-the-loop governance** — `RiskDecisionRecord`, human-review queue, proof tiers  
 - **Responsible AI boundary** — AI assists explanation; does not authorize execution  
-- **Platform engineering discipline** — fixtures, CI safety contracts, deterministic replay  
+- **Platform engineering discipline** — fixtures, CI safety contracts, deterministic replay
 
 Deterministic classifiers (`proxy_state_machine.py`), fixture replay tests, safety contract CI, hash-chained audit verification, and explicit `limitations[]` on every classification output. See [docs/anti-code-paste-defense.md](docs/anti-code-paste-defense.md) · [docs/test-strategy.md](docs/test-strategy.md).
 
 ---
 
+
+
 ## FAANG engineering review checklist
 
-| Check | Evidence |
-|-------|----------|
-| Deterministic classifiers | `pytest tests/test_proxy_state_transitions.py` |
-| Safety contracts | `pytest tests/test_proxy_classifier_safety_contract.py` |
-| Full test suite | `pytest -q` |
-| Audit hash chain | `tests/platform_core/governance/test_audit_tamper_detection.py` |
-| Replay determinism | [docs/replay-demo.md](docs/replay-demo.md) |
-| State machine | [docs/state-machine.md](docs/state-machine.md) |
-| Platform review pack | [docs/faang-platform-review.md](docs/faang-platform-review.md) |
-| API examples | [docs/api-trisk-examples.md](docs/api-trisk-examples.md) |
+
+| Check                     | Evidence                                                        |
+| ------------------------- | --------------------------------------------------------------- |
+| Deterministic classifiers | `pytest tests/test_proxy_state_transitions.py`                  |
+| Safety contracts          | `pytest tests/test_proxy_classifier_safety_contract.py`         |
+| Full test suite           | `pytest -q`                                                     |
+| Audit hash chain          | `tests/platform_core/governance/test_audit_tamper_detection.py` |
+| Replay determinism        | [docs/replay-demo.md](docs/replay-demo.md)                      |
+| State machine             | [docs/state-machine.md](docs/state-machine.md)                  |
+| Platform review pack      | [docs/faang-platform-review.md](docs/faang-platform-review.md)  |
+| API examples              | [docs/api-trisk-examples.md](docs/api-trisk-examples.md)        |
+
 
 ---
+
+
 
 ## Big 4 audit review checklist
 
-| Check | Evidence |
-|-------|----------|
-| Control matrix CTRL-001–010 | [docs/control-matrix.md](docs/control-matrix.md) |
-| Control methodology | [docs/control-testing-methodology.md](docs/control-testing-methodology.md) |
-| Proof ladder T0–T5 | [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md) |
-| Governance report sample | [reports/sample_governance_report.md](reports/sample_governance_report.md) |
-| Risk register | [docs/risk_register.md](docs/risk_register.md) |
-| Interview defense | [docs/big4-interview-defense.md](docs/big4-interview-defense.md) |
-| 3-min demo paths | [docs/interview-demo-3min.md](docs/interview-demo-3min.md) |
+
+| Check                       | Evidence                                                                   |
+| --------------------------- | -------------------------------------------------------------------------- |
+| Control matrix CTRL-001–010 | [docs/control-matrix.md](docs/control-matrix.md)                           |
+| Control methodology         | [docs/control-testing-methodology.md](docs/control-testing-methodology.md) |
+| Proof ladder T0–T5          | [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md)                   |
+| Governance report sample    | [reports/sample_governance_report.md](reports/sample_governance_report.md) |
+| Risk register               | [docs/risk_register.md](docs/risk_register.md)                             |
+| Interview defense           | [docs/big4-interview-defense.md](docs/big4-interview-defense.md)           |
+| 3-min demo paths            | [docs/interview-demo-3min.md](docs/interview-demo-3min.md)                 |
+
 
 ---
+
+
 
 ## Problem statement
 
@@ -146,6 +186,8 @@ Windows endpoints often appear “online” while browsers and business apps fai
 - Risk committees lack incident KPIs
 
 ---
+
+
 
 ## Why this matters for technology risk
 
@@ -161,29 +203,33 @@ Windows endpoints often appear “online” while browsers and business apps fai
 
 ---
 
+
+
 ## Known limitations
 
 - Portfolio-ready semantic model export — not a deployed Power BI Service tenant  
 - Registry writer proof requires Sysmon/Procmon/EventLog — not bundled by default  
 - Windows-focused WinINET/WinHTTP scope — not cross-platform EDR  
 - Confidence values are ordinal ranking weights, not calibrated probabilities  
-- Governance reports are management information — not formal audit opinions  
+- Governance reports are management information — not formal audit opinions
 
 See [docs/risk-control-framework.md](docs/risk-control-framework.md) and [PUBLIC_RELEASE_CHECKLIST.md](PUBLIC_RELEASE_CHECKLIST.md).
 
 ---
+
+
 
 ## Power BI / PL-300 portfolio layer
 
 This feature converts governance audit evidence into **Power BI-ready star schema tables**. It demonstrates data preparation, semantic modeling, DAX KPI design, report storytelling, and RLS design for technology risk reporting — **without** autonomous security decisions or malware verdicts.
 
 
-| PL-300 skill              | Repository evidence                                                                                                                                |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Prepare the data**      | `powerbi-export` CLI — JSONL → CSV ([power_query_guidance.md](examples/powerbi/power_query_guidance.md))                                           |
-| **Model the data**        | Star schema pack: `fact_`* + `dim_*` in [examples/powerbi/export/](examples/powerbi/export/)                                                       |
+| PL-300 skill              | Repository evidence                                                                                                                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Prepare the data**      | `powerbi-export` CLI — JSONL → CSV ([power_query_guidance.md](examples/powerbi/power_query_guidance.md))                                                                                 |
+| **Model the data**        | Star schema pack: `fact_`* + `dim_`* in [examples/powerbi/export/](examples/powerbi/export/)                                                                                             |
 | **Visualize and analyze** | DAX measures + 4-page blueprint ([analytics/powerbi/dax/measures.md](analytics/powerbi/dax/measures.md), [analytics/powerbi/report_blueprint.md](analytics/powerbi/report_blueprint.md)) |
-| **Manage and secure**     | RLS role design ([analytics/powerbi/rls_design.md](analytics/powerbi/rls_design.md)) · [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) |
+| **Manage and secure**     | RLS role design ([analytics/powerbi/rls_design.md](analytics/powerbi/rls_design.md)) · [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md)                                |
 
 
 ```powershell
@@ -202,6 +248,8 @@ python -m windows_network_toolkit analytics-export-powerbi --portfolio-sample --
 See also: [analytics/powerbi/README.md](analytics/powerbi/README.md) (earlier portfolio iteration)
 
 ---
+
+
 
 ## Architecture overview
 
@@ -239,6 +287,10 @@ flowchart TB
   OC -.->|not on remediation path| CLI
 ```
 
+
+
+
+
 ### Governance pipeline
 
 Stages stay separated. Dry-run / preview-only is the default; humans authorize risky execution.
@@ -262,29 +314,37 @@ flowchart LR
   Aud --> Rp[Replay]
 ```
 
+
+
 Stakeholder and Timing do **not** alter technical facts. They determine whether, by whom, and when an evidence-backed action may proceed. Policy permission remains separate from coordination status (for example `PREVIEW_ONLY` + `NEEDS_APPROVAL`).
 
 ### Key packages
 
-| Path | Role |
-|------|------|
-| `windows_network_toolkit/` | Primary CLI + diagnostics |
-| `riskclaw/` | Product-agent runtime foundation; no LLM or live remediation |
-| `src/proxy_drift/` | Startup observability, boot trace, dead-proxy guardian |
-| `src/platform_core/` | Policy, governance envelope, hash-chained audit |
-| `backend/` | FastAPI — `/trisk/*`, `/platform/*` (optional Postgres) |
-| `telemetry/` | Registry-writer telemetry (fixture-first) |
-| `tests/fixtures/` | Deterministic evidence inputs |
-| `skills/wnrt-coder/` + `.openclaw/` | Optional controlled coding agent (draft PR only) |
+
+| Path                                | Role                                                         |
+| ----------------------------------- | ------------------------------------------------------------ |
+| `windows_network_toolkit/`          | Primary CLI + diagnostics                                    |
+| `riskclaw/`                         | Product-agent runtime foundation; no LLM or live remediation |
+| `src/proxy_drift/`                  | Startup observability, boot trace, dead-proxy guardian       |
+| `src/platform_core/`                | Policy, governance envelope, hash-chained audit              |
+| `backend/`                          | FastAPI — `/trisk/*`, `/platform/*` (optional Postgres)      |
+| `telemetry/`                        | Registry-writer telemetry (fixture-first)                    |
+| `tests/fixtures/`                   | Deterministic evidence inputs                                |
+| `skills/wnrt-coder/` + `.openclaw/` | Optional controlled coding agent (draft PR only)             |
+
+
+
 
 ### Safety / remediation lane
 
-| Posture | Behavior |
-|---------|----------|
-| **Read-only first** | `proxy-status`, `diagnose`, `agent once` |
-| **Gated** | Dry-run default; typed confirmation (e.g. `DISABLE_WININET_PROXY`) |
-| **Blocked by default** | Process kill, firewall reset, adapter disable |
-| **CI contracts** | `test_policy_safety_contract`, classifier safety contracts |
+
+| Posture                | Behavior                                                           |
+| ---------------------- | ------------------------------------------------------------------ |
+| **Read-only first**    | `proxy-status`, `diagnose`, `agent once`                           |
+| **Gated**              | Dry-run default; typed confirmation (e.g. `DISABLE_WININET_PROXY`) |
+| **Blocked by default** | Process kill, firewall reset, adapter disable                      |
+| **CI contracts**       | `test_policy_safety_contract`, classifier safety contracts         |
+
 
 Default branch: `Multi_Domain_Decision_Platform` (CI also covers `main` / `master`).
 
@@ -295,6 +355,8 @@ Details: [docs/architecture.md](docs/architecture.md) · [docs/decision-context.
 > (not shipped in git — IDE-only artifact).
 
 ---
+
+
 
 ## Evidence-to-action workflow
 
@@ -309,8 +371,8 @@ Six principles (`evidence_to_action.v1`):
 
 Additional coordination principles:
 
-7. **Stakeholder assignment is not approval**
-8. **A valid maintenance window is not execution authorization**
+1. **Stakeholder assignment is not approval**
+2. **A valid maintenance window is not execution authorization**
 
 ```text
 Collect → Classify → Prove → Rate risk → Policy → Preview → Audit → Report → Replay
@@ -319,6 +381,8 @@ Collect → Classify → Prove → Rate risk → Policy → Preview → Audit �
 Spec: [docs/evidence_to_action_governance_model.md](docs/evidence_to_action_governance_model.md)
 
 ---
+
+
 
 ## Core commands
 
@@ -400,6 +464,8 @@ Docs: [docs/risk-model.md](docs/risk-model.md) · [docs/powerbi-schema.md](docs/
 
 ---
 
+
+
 ## Safety boundaries
 
 
@@ -418,6 +484,8 @@ See [docs/safety_model.md](docs/safety_model.md) · [SECURITY.md](SECURITY.md)
 
 ---
 
+
+
 ## Demo scenario
 
 **Symptom:** Browser `ERR_PROXY_CONNECTION_FAILED`; ping/DNS OK.  
@@ -435,19 +503,23 @@ python -m windows_network_toolkit diagnose --proof --fixture examples/evidence/D
 
 ---
 
+
+
 ## How to tell whether a localhost proxy is healthy
 
 **localhost** means *this computer* (`127.0.0.1` or `localhost`). A **port** is the service “door number” Windows uses in WinINET `ProxyServer` (for example `127.0.0.1:62285`).
 
 A process **listening** on that port is **not** enough for a healthy proxy:
 
-| Signal | Meaning |
-| ------ | ------- |
-| No listener / TCP connect fails | **Dead proxy** — browsers may show `ERR_PROXY_CONNECTION_FAILED` |
-| Listener exists, proxy probe fails | **Not a proxy** or **forwarding failed** — may be the wrong service on that port |
-| Proxy forwards HTTPS, direct also works | **Functional but auditable** — traffic routes through a local process |
-| Direct works, proxy fails | **High reliability risk** — WinINET points at a broken path |
+
+| Signal                                    | Meaning                                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------------------- |
+| No listener / TCP connect fails           | **Dead proxy** — browsers may show `ERR_PROXY_CONNECTION_FAILED`                      |
+| Listener exists, proxy probe fails        | **Not a proxy** or **forwarding failed** — may be the wrong service on that port      |
+| Proxy forwards HTTPS, direct also works   | **Functional but auditable** — traffic routes through a local process                 |
+| Direct works, proxy fails                 | **High reliability risk** — WinINET points at a broken path                           |
 | ProxyEnable flips `0 → 1 → 0 → 1` quickly | **Reverter suspected** — something may be restoring proxy settings (correlation only) |
+
 
 **Read-only checks** (no registry changes):
 
@@ -486,13 +558,15 @@ Listener and process names are **correlation only** unless registry writer evide
 
 **Local monitoring dashboard (read-only)**
 
-| Item | Detail |
-|------|--------|
-| Launch | `python -m windows_network_toolkit dashboard` → http://127.0.0.1:8765 |
-| Screens | Overview cards, Live Timeline (pause/resume/clear UI/filters), Process Snapshot, Incident Detail |
-| Procmon | `python -m windows_network_toolkit procmon-import .\capture.csv` |
-| Security | No disable-proxy / kill-process / registry-write buttons; remediation stays on gated CLIs |
-| Install | `pip install -e ".[dashboard]"` (nicegui, psutil, pywin32 on Windows) |
+
+| Item     | Detail                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Launch   | `python -m windows_network_toolkit dashboard` → [http://127.0.0.1:8765](http://127.0.0.1:8765)   |
+| Screens  | Overview cards, Live Timeline (pause/resume/clear UI/filters), Process Snapshot, Incident Detail |
+| Procmon  | `python -m windows_network_toolkit procmon-import .\capture.csv`                                 |
+| Security | No disable-proxy / kill-process / registry-write buttons; remediation stays on gated CLIs        |
+| Install  | `pip install -e ".[dashboard]"` (nicegui, psutil, pywin32 on Windows)                            |
+
 
 Troubleshooting: if bind fails, confirm nothing else uses port 8765; never use `--host 0.0.0.0` unless you intentionally accept exposure via `--allow-non-loopback-bind`.
 
@@ -504,11 +578,13 @@ Browsers route HTTP/HTTPS through **WinINET** (`HKCU\...\Internet Settings`). Wh
 
 **Stale WinINET proxy survives reboot** because HKCU registry values persist across sessions. A startup app may set proxy at logon; if its listener exits later, the registry can remain pointed at a dead port until something clears it.
 
-| Concept | What it means |
-| ------- | ------------- |
-| **Registry writer** | Process that modified `ProxyEnable` / `ProxyServer` (requires Sysmon/Procmon/EventLog — not inferred from listeners alone) |
-| **Listener process** | Process currently bound to `127.0.0.1:<port>` |
-| **Correlated process** | Name/PID matched by timing or port — **observation, not proof** of writer identity |
+
+| Concept                | What it means                                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Registry writer**    | Process that modified `ProxyEnable` / `ProxyServer` (requires Sysmon/Procmon/EventLog — not inferred from listeners alone) |
+| **Listener process**   | Process currently bound to `127.0.0.1:<port>`                                                                              |
+| **Correlated process** | Name/PID matched by timing or port — **observation, not proof** of writer identity                                         |
+
 
 **Warning:** This toolkit reports **suspected local proxy drift**. It does **not** prove malware, compromise, or intent.
 
@@ -589,6 +665,8 @@ Runbook: [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md) · Architect
 
 ---
 
+
+
 ## Evidence to analytics pipeline
 
 This toolkit is **not** malware detection, EDR/XDR, or autonomous remediation. It is an evidence-based endpoint reliability and technology risk analytics toolkit.
@@ -607,17 +685,21 @@ dashboard_dataset.json + CSV exports
 Power BI / governance dashboards / evidence-report --analytics
 ```
 
-| Stage | Module | Output |
-| ----- | ------ | ------ |
-| Normalize | `evidence_schema.py` | `EvidenceEvent` with tiers T0–T5 |
-| Classify | `incident_classifier.py` | `IncidentRecord` |
-| Control map | `control_tests.py` | Six endpoint controls |
-| Aggregate | `analytics.py` | Chart-ready counts |
-| Orchestrate | `analytics_pipeline.py` | JSON + CSV export |
+
+| Stage       | Module                   | Output                           |
+| ----------- | ------------------------ | -------------------------------- |
+| Normalize   | `evidence_schema.py`     | `EvidenceEvent` with tiers T0–T5 |
+| Classify    | `incident_classifier.py` | `IncidentRecord`                 |
+| Control map | `control_tests.py`       | Six endpoint controls            |
+| Aggregate   | `analytics.py`           | Chart-ready counts               |
+| Orchestrate | `analytics_pipeline.py`  | JSON + CSV export                |
+
 
 Legacy platform risk rollup (incidents.jsonl KPIs) remains available via `analytics-summary --legacy-platform --audit-dir <dir>`.
 
 ---
+
+
 
 ## Example outputs
 
@@ -640,6 +722,8 @@ Legacy platform risk rollup (incidents.jsonl KPIs) remains available via `analyt
 
 ---
 
+
+
 ## Audit trail design
 
 
@@ -654,6 +738,8 @@ Every decision output can include `governance` envelope + limitations. AI reason
 
 ---
 
+
+
 ## What AI assisted with
 
 Documented in [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md):
@@ -666,6 +752,8 @@ Documented in [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md):
 Implementation: `src/platform_core/ai_risk_analyst/` — rule-based analyst with guardrails; optional LLM provider when API key present.
 
 ---
+
+
 
 ## What AI does not decide
 
@@ -680,6 +768,8 @@ Final decisions require **evidence + policy + human review**.
 
 ---
 
+
+
 ## Business value
 
 - **Faster MTTR** with evidence-first diagnosis  
@@ -692,6 +782,8 @@ Framework mapping: [docs/framework_mapping.md](docs/framework_mapping.md) · Ris
 
 ---
 
+
+
 ## Interview talking points
 
 1. **“Why not just a PowerShell fix script?”** — Audit trail, proof tiers, policy gates, replay.
@@ -703,6 +795,8 @@ Framework mapping: [docs/framework_mapping.md](docs/framework_mapping.md) · Ris
 Extended materials: [PORTFOLIO.md](PORTFOLIO.md) · [docs/big4_interview_pitch.md](docs/big4_interview_pitch.md) · [docs/cyber_risk_consultant_demo.md](docs/cyber_risk_consultant_demo.md)
 
 ---
+
+
 
 ## Installation
 
@@ -717,6 +811,8 @@ pytest -q tests/test_portfolio_case_studies.py tests/test_portfolio_evidence_sui
 ```
 
 ---
+
+
 
 ## Project structure
 
@@ -736,7 +832,11 @@ scripts/                   PowerShell wrappers — see safety headers in each fi
 
 ---
 
+
+
 ## Development & CI/CD
+
+
 
 ### Install and run locally
 
@@ -767,63 +867,70 @@ Docker smoke: `docker compose config --quiet && docker build -t er-platform-api:
 
 ### Pull request checks
 
-Every PR to **`main`** runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+Every PR to `main` runs `[.github/workflows/ci.yml](.github/workflows/ci.yml)`:
 
-| Job | Checks |
-|-----|--------|
-| `lint` | Ruff + Bandit |
-| `typecheck` | Mypy (portfolio modules) |
-| `test` | Safety contracts, full pytest, Linux integration, fixture CLI smoke |
-| `test-windows` | Full pytest on Windows (zero skipped tests) |
-| `build-smoke` | Docker compose + image build |
-| `frontend-build` | Next.js production build |
 
-After merge: [`build.yml`](.github/workflows/build.yml) pushes an immutable GHCR image; [`deploy.yml`](.github/workflows/deploy.yml) deploys via SSH + Docker Compose when secrets are configured.
+| Job              | Checks                                                              |
+| ---------------- | ------------------------------------------------------------------- |
+| `lint`           | Ruff + Bandit                                                       |
+| `typecheck`      | Mypy (portfolio modules)                                            |
+| `test`           | Safety contracts, full pytest, Linux integration, fixture CLI smoke |
+| `test-windows`   | Full pytest on Windows (zero skipped tests)                         |
+| `build-smoke`    | Docker compose + image build                                        |
+| `frontend-build` | Next.js production build                                            |
+
+
+After merge: `[build.yml](.github/workflows/build.yml)` pushes an immutable GHCR image; `[deploy.yml](.github/workflows/deploy.yml)` deploys via SSH + Docker Compose when secrets are configured.
 
 Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch_protection.md](docs/ci_branch_protection.md)
 
 ---
 
+
+
 ## Documentation index
 
 
-| Doc                                                          | Purpose                 |
-| ------------------------------------------------------------ | ----------------------- |
-| [PORTFOLIO.md](PORTFOLIO.md)                                 | Interview pack          |
-| [docs/architecture-infographic.md](docs/architecture-infographic.md) | Mermaid evidence pipeline |
-| [docs/interview-demo-3min.md](docs/interview-demo-3min.md)   | FAANG / Big 4 / mixed demo |
-| [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md) | Dead proxy case study |
-| [docs/replay-demo.md](docs/replay-demo.md)                   | Deterministic replay walkthrough |
-| [docs/test-strategy.md](docs/test-strategy.md)               | Fixtures, safety contracts, tamper detection |
-| [docs/faang-platform-review.md](docs/faang-platform-review.md) | Platform / SRE reviewer pack |
-| [docs/google-l11-reference.md](docs/google-l11-reference.md) | Honest L11 reference vs L6–L7 implemented bar |
-| [docs/big4-interview-defense.md](docs/big4-interview-defense.md) | Technology risk / audit defense |
-| [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) | PL-300 skill mapping |
-| [docs/adr/ADR-portfolio-positioning.md](docs/adr/ADR-portfolio-positioning.md) | Evidence pipeline ADR |
-| [docs/architecture.md](docs/architecture.md)                 | Layered architecture    |
-| [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md) | AI usage & guardrails   |
-| [analytics/powerbi/README.md](analytics/powerbi/README.md)   | PL-300 / Power BI layer |
-| [docs/control-matrix.md](docs/control-matrix.md)             | Control mapping (CTRL-001–010) |
-| [docs/domain-model.md](docs/domain-model.md)                 | Core domain entities    |
-| [docs/anti-code-paste-defense.md](docs/anti-code-paste-defense.md) | Reviewer defense guide  |
-| [docs/demo-faang-big4-review.md](docs/demo-faang-big4-review.md) | FAANG + Big 4 demo paths |
-| [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md)     | Proof tiers T0–T5       |
-| [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)   | Full index              |
-| [docs/enterprise-hardening-roadmap.md](docs/enterprise-hardening-roadmap.md) | Phases 1–8 program status |
-| [docs/security-review.md](docs/security-review.md)           | Threat model + abuse cases |
-| [docs/rollback-strategy.md](docs/rollback-strategy.md)       | Preview-first rollback model |
-| [docs/agent-deployment.md](docs/agent-deployment.md)         | Read-only agent CLI |
-| [docs/riskclaw-runtime-foundation.md](docs/riskclaw-runtime-foundation.md) | RiskClaw contracts, skills, tools, and policy boundary |
-| [docs/observability.md](docs/observability.md)               | trace_id, audit_id, /metrics |
-| [docs/scale-testing.md](docs/scale-testing.md)               | Synthetic local scale limits |
-| [docs/cross-platform-support.md](docs/cross-platform-support.md) | Linux/macOS PARTIAL foundation |
-| [docs/packaging-installer.md](docs/packaging-installer.md)     | pipx/wheel/portable install plan |
-| [docs/startup-observability.md](docs/startup-observability.md) | v0.3.0 startup observability architecture |
-| [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md)   | Dead localhost proxy recovery runbook |
+| Doc                                                                                                | Purpose                                                |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| [PORTFOLIO.md](PORTFOLIO.md)                                                                       | Interview pack                                         |
+| [docs/architecture-infographic.md](docs/architecture-infographic.md)                               | Mermaid evidence pipeline                              |
+| [docs/infographics/wnrt-project-instructions.pdf](docs/infographics/wnrt-project-instructions.pdf) | Canva project-instructions one-pager                   |
+| [docs/interview-demo-3min.md](docs/interview-demo-3min.md)                                         | FAANG / Big 4 / mixed demo                             |
+| [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md)                   | Dead proxy case study                                  |
+| [docs/replay-demo.md](docs/replay-demo.md)                                                         | Deterministic replay walkthrough                       |
+| [docs/test-strategy.md](docs/test-strategy.md)                                                     | Fixtures, safety contracts, tamper detection           |
+| [docs/faang-platform-review.md](docs/faang-platform-review.md)                                     | Platform / SRE reviewer pack                           |
+| [docs/google-l11-reference.md](docs/google-l11-reference.md)                                       | Honest L11 reference vs L6–L7 implemented bar          |
+| [docs/big4-interview-defense.md](docs/big4-interview-defense.md)                                   | Technology risk / audit defense                        |
+| [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md)                                 | PL-300 skill mapping                                   |
+| [docs/adr/ADR-portfolio-positioning.md](docs/adr/ADR-portfolio-positioning.md)                     | Evidence pipeline ADR                                  |
+| [docs/architecture.md](docs/architecture.md)                                                       | Layered architecture                                   |
+| [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md)                                       | AI usage & guardrails                                  |
+| [analytics/powerbi/README.md](analytics/powerbi/README.md)                                         | PL-300 / Power BI layer                                |
+| [docs/control-matrix.md](docs/control-matrix.md)                                                   | Control mapping (CTRL-001–010)                         |
+| [docs/domain-model.md](docs/domain-model.md)                                                       | Core domain entities                                   |
+| [docs/anti-code-paste-defense.md](docs/anti-code-paste-defense.md)                                 | Reviewer defense guide                                 |
+| [docs/demo-faang-big4-review.md](docs/demo-faang-big4-review.md)                                   | FAANG + Big 4 demo paths                               |
+| [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md)                                           | Proof tiers T0–T5                                      |
+| [docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)                                         | Full index                                             |
+| [docs/enterprise-hardening-roadmap.md](docs/enterprise-hardening-roadmap.md)                       | Phases 1–8 program status                              |
+| [docs/security-review.md](docs/security-review.md)                                                 | Threat model + abuse cases                             |
+| [docs/rollback-strategy.md](docs/rollback-strategy.md)                                             | Preview-first rollback model                           |
+| [docs/agent-deployment.md](docs/agent-deployment.md)                                               | Read-only agent CLI                                    |
+| [docs/riskclaw-runtime-foundation.md](docs/riskclaw-runtime-foundation.md)                         | RiskClaw contracts, skills, tools, and policy boundary |
+| [docs/observability.md](docs/observability.md)                                                     | trace_id, audit_id, /metrics                           |
+| [docs/scale-testing.md](docs/scale-testing.md)                                                     | Synthetic local scale limits                           |
+| [docs/cross-platform-support.md](docs/cross-platform-support.md)                                   | Linux/macOS PARTIAL foundation                         |
+| [docs/packaging-installer.md](docs/packaging-installer.md)                                         | pipx/wheel/portable install plan                       |
+| [docs/startup-observability.md](docs/startup-observability.md)                                     | v0.3.0 startup observability architecture              |
+| [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md)                                         | Dead localhost proxy recovery runbook                  |
 
 
 ---
 
+
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
+AGPL3.0 — see [LICENSE](LICENSE).

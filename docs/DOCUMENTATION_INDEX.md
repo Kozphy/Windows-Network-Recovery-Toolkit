@@ -23,6 +23,7 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 | [docker-demo.md](docker-demo.md) | Reviewer Docker Demo (Option C) |
 | [../real_evidence/case-001-dead-proxy/](../real_evidence/case-001-dead-proxy/) | Sanitized evidence case pack |
 | [architecture-infographic.md](architecture-infographic.md) | Mermaid evidence pipeline |
+| [infographics/wnrt-project-instructions.pdf](infographics/wnrt-project-instructions.pdf) | Canva project-instructions one-pager |
 | [interview-demo-3min.md](interview-demo-3min.md) | FAANG / Big 4 / mixed panel demo paths |
 | [one-page-case-study-dead-proxy.md](one-page-case-study-dead-proxy.md) | Dead proxy case study |
 | [replay-demo.md](replay-demo.md) | Deterministic proxy replay |
