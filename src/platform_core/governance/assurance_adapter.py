@@ -203,6 +203,8 @@ def _remediation_verified(fixture: dict[str, Any], exceptions: list[ControlExcep
 def build_assurance_decision(
     fixture: dict[str, Any],
     rating: RiskRating,
+    *,
+    incident_id: str | None = None,
 ) -> tuple[AssuranceDecision, list[ControlException]]:
     """Derive a senior assurance conclusion from platform-native facts."""
     mature = run_mature_control_tests(fixture)
@@ -230,7 +232,12 @@ def build_assurance_decision(
         limitations.append("No mature control test was in scope for this incident fixture.")
 
     assurance_input = AssuranceInput(
-        incident_id=str(fixture.get("case_id") or fixture.get("incident_id") or "unassigned"),
+        incident_id=str(
+            incident_id
+            or fixture.get("case_id")
+            or fixture.get("incident_id")
+            or "unassigned"
+        ),
         inherent_risk=_risk_level(rating.inherent_level),
         residual_risk=_risk_level(rating.residual_level),
         evidence_sufficient=_evidence_sufficient(fixture),
