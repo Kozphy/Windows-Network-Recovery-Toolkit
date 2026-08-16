@@ -23,8 +23,10 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt
-      - run: pytest -q
-      - run: python evals/run_eval.py
+      - name: AI application tests
+        run: pytest -q tests
+      - name: Agent regression eval
+        run: python evals/run_eval.py
 
   frontend:
     runs-on: ubuntu-latest
