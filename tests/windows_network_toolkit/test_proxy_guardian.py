@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from windows_network_toolkit.proxy_guardian import run_proxy_guardian_once
+
+# Windows-only surfaces: simulate the platform guard so Linux CI keeps this coverage.
+pytestmark = pytest.mark.usefixtures("simulated_windows")
 
 
 def test_guardian_skips_when_no_dead_proxy() -> None:

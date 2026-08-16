@@ -28,6 +28,9 @@ from src.proxy_guard.repair_snapshots import (
 )
 from src.proxy_guard.verification import verify_proxy_disabled
 
+# Windows-only surfaces: simulate the platform guard so Linux CI keeps this coverage.
+pytestmark = pytest.mark.usefixtures("simulated_windows")
+
 
 def test_parse_proxy_server_ipv6_localhost_bracket() -> None:
     p = parse_proxy_server("[::1]:7890")
