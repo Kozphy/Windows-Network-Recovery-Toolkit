@@ -1,0 +1,40 @@
+name: AI quality gate
+
+on:
+  pull_request:
+    branches:
+      - Multi_Domain_Decision_Platform
+      - main
+      - master
+  push:
+    branches:
+      - Multi_Domain_Decision_Platform
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Unit-test evaluation contracts
+        run: pytest -q tests/test_ai_quality_evals.py
+
+      - name: Enforce AI quality thresholds
+        run: python -m src.platform_core.ai_risk_analyst.evals tests/fixtures/ai_risk_analyst/baseline.jsonl --min-f1 0.90 --min-schema-valid-rate 0.99 --max-unsafe-rate 0 --max-abstention-rate 0.25
