@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from src.platform_core.governance.assurance_adapter import build_assurance_decision
 from src.platform_core.governance.evidence_to_action import (
     attach_governance_envelope,
     resolve_execution_authority,
@@ -77,6 +78,8 @@ class RiskDecisionRecord(BaseModel):
     audit_id: str = Field(default_factory=lambda: f"audit-{uuid.uuid4().hex[:12]}")
     evidence_hash: str = ""
     governance: dict[str, Any] = Field(default_factory=dict)
+    assurance_decision: dict[str, Any] = Field(default_factory=dict)
+    exception_register: list[dict[str, Any]] = Field(default_factory=list)
 
 
 def build_risk_decision_record(
@@ -95,6 +98,7 @@ def build_risk_decision_record(
     tests = run_control_tests(fixture)
     findings = findings_from_fixture(fixture, tests)
     rating = rate_risk(findings, tests, fixture)
+    assurance, exceptions = build_assurance_decision(fixture, rating)
     impact_est = estimate_business_impact(classification=primary, fixture=fixture)
     impact_map = map_business_impact(primary)
 
@@ -184,6 +188,8 @@ def build_risk_decision_record(
         limitations=limitations,
         operator_id=operator_id,
         evidence_hash=evidence_hash,
+        assurance_decision=assurance.model_dump(mode="json"),
+        exception_register=[item.model_dump(mode="json") for item in exceptions],
     )
 
     envelope = attach_governance_envelope(
