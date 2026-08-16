@@ -3,10 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.platform_core.governance.assurance_integration import (
-    assess_fixture_assurance,
-    assurance_register,
-    build_assurance_input,
+from src.platform_core.governance.assurance_adapter import (
+    build_assurance_decision,
+    build_control_exceptions,
 )
 from src.platform_core.governance.risk_decision_record import build_risk_decision_record
 from src.platform_core.governance.senior_assurance import AssuranceConclusion
@@ -25,11 +24,9 @@ def _load() -> dict:
     return json.loads(CASE_1.read_text(encoding="utf-8"))
 
 
-def _assessment_parts(fixture: dict):
+def _rating(fixture: dict):
     tests = run_control_tests(fixture)
-    mature = run_mature_control_tests(fixture)
-    rating = rate_risk(findings_from_fixture(fixture, tests), tests, fixture)
-    return tests, mature, rating
+    return rate_risk(findings_from_fixture(fixture, tests), tests, fixture)
 
 
 def test_risk_decision_record_contains_assurance_artifacts() -> None:
@@ -50,24 +47,17 @@ def test_governance_assessment_exposes_assurance_through_decision_record() -> No
 
 def test_partial_mature_controls_become_reviewable_exceptions() -> None:
     fixture = _load()
-    register = assurance_register(fixture, mature_tests=run_mature_control_tests(fixture))
-    for item in register:
-        assert item["exception_id"].startswith("EXC-")
-        assert item["control_id"]
-        assert item["owner"]
+    exceptions = build_control_exceptions(fixture, run_mature_control_tests(fixture))
+    for item in exceptions:
+        assert item.exception_id.startswith("EXC-")
+        assert item.control_id
+        assert item.owner
 
 
 def test_evidence_override_can_force_insufficient_evidence() -> None:
     fixture = _load()
     fixture["assurance"] = {"evidence_sufficient": False}
-    tests, mature, rating = _assessment_parts(fixture)
-    decision = assess_fixture_assurance(
-        fixture,
-        rating=rating,
-        control_tests=tests,
-        mature_tests=mature,
-        incident_id="INC-EVIDENCE",
-    )
+    decision, _ = build_assurance_decision(fixture, _rating(fixture))
     assert decision.conclusion == AssuranceConclusion.INSUFFICIENT_EVIDENCE
     assert decision.closure_allowed is False
 
@@ -78,28 +68,13 @@ def test_high_residual_risk_requires_management_signoff() -> None:
         "human_review_completed": True,
         "remediation_verified": True,
     }
-    tests, mature, rating = _assessment_parts(fixture)
-    rating = rating.model_copy(update={"residual_level": "high", "control_effectiveness": 0.9})
-    normalized = build_assurance_input(
-        fixture,
-        rating=rating,
-        control_tests=tests,
-        mature_tests=mature,
-        incident_id="INC-HIGH-RISK",
-    )
-    assert normalized.residual_risk.value == "high"
-    decision = assess_fixture_assurance(
-        fixture,
-        rating=rating,
-        control_tests=tests,
-        mature_tests=mature,
-        incident_id="INC-HIGH-RISK",
-    )
+    rating = _rating(fixture).model_copy(update={"residual_level": "high", "control_effectiveness": 0.9})
+    decision, _ = build_assurance_decision(fixture, rating)
     assert decision.management_signoff_required is True
     assert decision.closure_allowed is False
 
 
-def test_closed_exception_without_validation_is_reopened_for_validation() -> None:
+def test_closed_exception_without_validation_is_pending_validation() -> None:
     fixture = _load()
     mature = run_mature_control_tests(fixture)
     candidates = [t for t in mature if t.test_result.value in {"FAIL", "PARTIAL"}]
@@ -115,9 +90,9 @@ def test_closed_exception_without_validation_is_reopened_for_validation() -> Non
             }
         ]
     }
-    register = assurance_register(fixture, mature_tests=mature)
-    item = next(entry for entry in register if entry["control_id"] == control_id)
-    assert item["status"] == "pending_validation"
+    exceptions = build_control_exceptions(fixture, mature)
+    item = next(entry for entry in exceptions if entry.control_id == control_id)
+    assert item.status.value == "pending_validation"
 
 
 def test_validated_closed_exception_can_be_closed() -> None:
@@ -136,7 +111,7 @@ def test_validated_closed_exception_can_be_closed() -> None:
             }
         ]
     }
-    register = assurance_register(fixture, mature_tests=mature)
-    item = next(entry for entry in register if entry["control_id"] == control_id)
-    assert item["status"] == "closed"
-    assert item["validation_evidence_ids"] == ["EV-VERIFY-001"]
+    exceptions = build_control_exceptions(fixture, mature)
+    item = next(entry for entry in exceptions if entry.control_id == control_id)
+    assert item.status.value == "closed"
+    assert item.validation_evidence_ids == ["EV-VERIFY-001"]
