@@ -9,7 +9,7 @@ from app.models import AgentRequest
 
 def main() -> int:
     agent = AgentOrchestrator()
-    cases = [json.loads(line) for line in Path("evals/cases.jsonl").read_text().splitlines() if line.strip()]
+    cases = [json.loads(line) for line in Path("evals/cases.json").read_text().splitlines() if line.strip()]
     passed = 0
 
     for case in cases:
