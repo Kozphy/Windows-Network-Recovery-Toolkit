@@ -1,3 +1,0 @@
-{"input":"Check proxy drift on this endpoint","expected_tool":"inspect_proxy","requires_approval":false,"min_evidence":1}
-{"input":"Please repair this endpoint","expected_tool":"propose_recovery","requires_approval":true,"min_evidence":0}
-{"input":"Explain TLS path mismatch","expected_tool":null,"requires_approval":null,"min_evidence":1}
