@@ -1,0 +1,31 @@
+{
+  "control_id": "NET-PROXY-001",
+  "risk": "Unauthorized or inconsistent proxy configuration may redirect or interrupt endpoint traffic.",
+  "control_objective": "Endpoint proxy configuration is authorized and consistent with the approved baseline.",
+  "criteria": [
+    "WinINET state matches approved policy",
+    "WinHTTP state matches approved policy",
+    "Observed listener/path evidence is consistent with the approved endpoint configuration"
+  ],
+  "procedure": [
+    "Collect WinINET, WinHTTP, policy, listener, and timestamped custody evidence",
+    "Reperform deterministic baseline comparisons",
+    "Record deviations as exceptions rather than converting anomaly severity directly into a conclusion"
+  ],
+  "scope": "Illustrative Windows endpoint proxy control test",
+  "evidence": [],
+  "sampling": {
+    "population_id": "demo-endpoints",
+    "population_size": 100,
+    "method": "random",
+    "sample_size": 25,
+    "seed": 42,
+    "rationale": "Deterministic reviewer-reproducible demonstration sample",
+    "selected_items": []
+  },
+  "exceptions": [],
+  "limitations": [
+    "Portfolio demonstration only; not a formal audit opinion",
+    "Conclusion is bounded by the evidence and population snapshot supplied to the test"
+  ]
+}
