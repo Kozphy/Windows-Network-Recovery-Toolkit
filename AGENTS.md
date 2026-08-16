@@ -65,3 +65,30 @@ pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
 ## Deeper reference
 
 Full CLI groups, confirmation tokens, and test conventions were consolidated into `.cursor/rules/project-instructions.mdc`. For operator runbooks: `docs/TROUBLESHOOTING_PROXY.md`, `docs/dead-proxy-guardian.md`, `docs/startup-observability.md`.
+
+## Cursor Cloud specific instructions
+
+The cloud VM is **Linux**, but this toolkit is Windows-focused. Deps are installed by the
+startup update script (`pip install --break-system-packages -e ".[dev]"`) into the **system**
+Python (no `.venv`; `python3-venv` is absent from the base image).
+
+- **Interpreter/tools:** use `python3` (there is no `python` alias). Console scripts
+  (`uvicorn`, `pytest`, `ruff`, `black`, `mypy`, `wnrt`) install to `~/.local/bin`, which is not
+  on `PATH` by default — call them as `python3 -m <tool>` or add `~/.local/bin` to `PATH`.
+  For `make` targets, pass `PYTHON=python3` (e.g. `make PYTHON=python3 test`).
+- **CLI:** set `PYTHONPATH` to the repo root, e.g.
+  `PYTHONPATH=$(pwd) python3 -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_PROXY_CONFIG.json`.
+- **Backend (FastAPI):** `PLATFORM_FIXTURE_MODE=1 python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000`.
+  Read-only routes work without auth in demo mode: `/health`, `/trisk/health`, `/incidents`,
+  `/risks`, `/controls`, `/reports/executive`, `/platform/*`, and Swagger at `/docs`.
+- **Frontend (Next.js):** `cd frontend && npm run dev` → http://localhost:3000. Copy
+  `frontend/.env.local.example` to `.env.local`; the `/platform` page reads live backend data
+  from `NEXT_PUBLIC_PLATFORM_API` (default `http://127.0.0.1:8000`), so start the backend first.
+  `npm install` may rewrite `frontend/package-lock.json` — discard that incidental churn.
+- **Tests:** `PYTHONPATH=$(pwd) python3 -m pytest -q` runs ~1701 tests. On Linux, ~20 fail
+  because they assert **Windows-only** behavior (registry/proxy commands print
+  "this command requires Windows" and exit `2`, and `proxy_guardian` short-circuits), plus a few
+  pre-existing repo issues (e.g. `/v1` route mount ordering, tracked-file email scan). These are
+  **not** environment/dependency problems — the CLI, backend, and frontend all run correctly.
+- **Gotcha:** some tests create a stray file literally named `NUL` (a Windows device path) in the
+  repo root on Linux. It is untracked/harmless — delete it with `rm -f NUL` if it appears.
