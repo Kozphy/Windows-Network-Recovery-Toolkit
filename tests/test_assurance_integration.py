@@ -12,7 +12,7 @@ from src.platform_core.governance.senior_assurance import AssuranceConclusion
 from src.platform_core.risk.control_test import run_control_tests
 from src.platform_core.risk.control_test_mature import run_mature_control_tests
 from src.platform_core.risk.finding import findings_from_fixture
-from src.platform_core.risk.governance_report import assess_risk
+from src.platform_core.risk.governance_report import assess_risk, build_governance_report
 from src.platform_core.risk.risk_rating import rate_risk
 
 
@@ -45,6 +45,14 @@ def test_governance_assessment_exposes_assurance_through_decision_record() -> No
     assert "closure_allowed" in record["assurance_decision"]
 
 
+def test_governance_report_json_preserves_assurance_artifacts() -> None:
+    report = build_governance_report(_load(), format="json")
+    assert isinstance(report, dict)
+    record = report["risk_decision_record"]
+    assert record["assurance_decision"]["schema_version"] == "senior_assurance_decision.v1"
+    assert isinstance(record["exception_register"], list)
+
+
 def test_partial_mature_controls_become_reviewable_exceptions() -> None:
     fixture = _load()
     exceptions = build_control_exceptions(fixture, run_mature_control_tests(fixture))
@@ -57,7 +65,12 @@ def test_partial_mature_controls_become_reviewable_exceptions() -> None:
 def test_evidence_override_can_force_insufficient_evidence() -> None:
     fixture = _load()
     fixture["assurance"] = {"evidence_sufficient": False}
-    decision, _ = build_assurance_decision(fixture, _rating(fixture))
+    decision, _ = build_assurance_decision(
+        fixture,
+        _rating(fixture),
+        incident_id="INC-EVIDENCE",
+    )
+    assert decision.incident_id == "INC-EVIDENCE"
     assert decision.conclusion == AssuranceConclusion.INSUFFICIENT_EVIDENCE
     assert decision.closure_allowed is False
 
@@ -69,7 +82,11 @@ def test_high_residual_risk_requires_management_signoff() -> None:
         "remediation_verified": True,
     }
     rating = _rating(fixture).model_copy(update={"residual_level": "high", "control_effectiveness": 0.9})
-    decision, _ = build_assurance_decision(fixture, rating)
+    decision, _ = build_assurance_decision(
+        fixture,
+        rating,
+        incident_id="INC-HIGH-RISK",
+    )
     assert decision.management_signoff_required is True
     assert decision.closure_allowed is False
 
