@@ -8,7 +8,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from src.platform_core.governance.assurance_adapter import build_assurance_decision
+from src.platform_core.governance.assurance_integration import (
+    assess_fixture_assurance,
+    assurance_register,
+)
 from src.platform_core.governance.evidence_to_action import (
     attach_governance_envelope,
     resolve_execution_authority,
@@ -17,6 +20,7 @@ from src.platform_core.governance.proof_tier import ProofTier, resolve_proof_tie
 from src.platform_core.risk.business_impact import estimate_business_impact
 from src.platform_core.risk.business_impact_mapping import map_business_impact
 from src.platform_core.risk.control_test import run_control_tests
+from src.platform_core.risk.control_test_mature import run_mature_control_tests
 from src.platform_core.risk.finding import findings_from_fixture
 from src.platform_core.risk.risk_rating import rate_risk
 from src.platform_core.serialization import content_hash
@@ -93,12 +97,23 @@ def build_risk_decision_record(
     primary = str(classification_block.get("primary_classification") or "").upper()
     secondary = list(classification_block.get("secondary_signals") or [])
     confidence = float(classification_block.get("confidence") or 0.5)
+    inc_id = incident_id or str(
+        fixture.get("case_id") or fixture.get("incident_id") or f"INC-{uuid.uuid4().hex[:8]}"
+    )
 
     proof = resolve_proof_tier(fixture)
     tests = run_control_tests(fixture)
+    mature_tests = run_mature_control_tests(fixture)
     findings = findings_from_fixture(fixture, tests)
     rating = rate_risk(findings, tests, fixture)
-    assurance, exceptions = build_assurance_decision(fixture, rating)
+    assurance = assess_fixture_assurance(
+        fixture,
+        rating=rating,
+        control_tests=tests,
+        mature_tests=mature_tests,
+        incident_id=inc_id,
+    )
+    exceptions = assurance_register(fixture, mature_tests=mature_tests)
     impact_est = estimate_business_impact(classification=primary, fixture=fixture)
     impact_map = map_business_impact(primary)
 
@@ -130,7 +145,6 @@ def build_risk_decision_record(
     limitations.extend(proof_block.get("limitations") or [])
     limitations = list(dict.fromkeys(limitations))
 
-    inc_id = incident_id or str(fixture.get("case_id") or fixture.get("incident_id") or f"INC-{uuid.uuid4().hex[:8]}")
     evidence_id = f"ev-{inc_id}"
     evidence_schema_version = _version_from_fixture(
         fixture, "evidence_schema", DEFAULT_EVIDENCE_SCHEMA_VERSION
@@ -189,7 +203,7 @@ def build_risk_decision_record(
         operator_id=operator_id,
         evidence_hash=evidence_hash,
         assurance_decision=assurance.model_dump(mode="json"),
-        exception_register=[item.model_dump(mode="json") for item in exceptions],
+        exception_register=exceptions,
     )
 
     envelope = attach_governance_envelope(
