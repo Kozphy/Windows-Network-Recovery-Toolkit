@@ -1,0 +1,4 @@
+{"scenario_id":"syn-0001","scenario_family":"dead-localhost-proxy","source_class":"synthetic","ground_truth_drift":true,"ground_truth_basis":"fixture construction","predictions":{"naive":true,"static":true,"context":true}}
+{"scenario_id":"syn-0002","scenario_family":"intentional-policy-transition","source_class":"synthetic","ground_truth_drift":false,"ground_truth_basis":"fixture construction","predictions":{"naive":true,"static":true,"context":false}}
+{"scenario_id":"syn-0003","scenario_family":"healthy-direct-path","source_class":"synthetic","ground_truth_drift":false,"ground_truth_basis":"fixture construction","predictions":{"naive":false,"static":false,"context":false}}
+{"scenario_id":"syn-0004","scenario_family":"cross-source-mismatch","source_class":"synthetic","ground_truth_drift":true,"ground_truth_basis":"fixture construction","predictions":{"naive":false,"static":true,"context":true}}
