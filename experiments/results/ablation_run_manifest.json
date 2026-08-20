@@ -1,0 +1,31 @@
+{
+  "benchmark_version": "synthetic-proxy-risk-v1",
+  "config_path": "experiments/configs/ablations-v1.json",
+  "config_sha256": "3948afabf841d4c50ab997ae9420e34dc857fc130c990b89801b8d374013140b",
+  "dataset": {
+    "case_count": 12,
+    "name": "synthetic-proxy-risk-benchmark",
+    "sha256": "bfc3e9e003f32e4b113cfc55e700c795dd7de60f54269e5b52b5caa09c7f18ea",
+    "version": "v1"
+  },
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_implementation": "CPython",
+    "python_version": "3.14.6"
+  },
+  "generated_at_utc": "2026-08-20T14:09:13Z",
+  "git_commit": "d77daa0da49c30f0ce9e4a6355a798fc69208215",
+  "limitations": [
+    "All cases are synthetic fixtures; results do not estimate production performance.",
+    "Runtime measurements are descriptive for this run and are not deterministic digests.",
+    "No benchmark adapter executes remediation or changes host network state."
+  ],
+  "prediction_count": 84,
+  "repetitions": 2,
+  "replay_mismatch_count": 0,
+  "run_id": "3a9f3c7b91472d8148db",
+  "run_kind": "ablation",
+  "schema_version": "research_run_manifest.v1",
+  "seed": 42,
+  "tracked_worktree_dirty": false
+}

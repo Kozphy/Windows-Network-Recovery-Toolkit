@@ -1,0 +1,31 @@
+{
+  "benchmark_version": "synthetic-proxy-risk-v1",
+  "config_path": "experiments/configs/benchmark-v1.json",
+  "config_sha256": "03289291838d2b99bb9aee0a5ff3c1c43c5462dc3f629dcd0612288cc36e446d",
+  "dataset": {
+    "case_count": 12,
+    "name": "synthetic-proxy-risk-benchmark",
+    "sha256": "bfc3e9e003f32e4b113cfc55e700c795dd7de60f54269e5b52b5caa09c7f18ea",
+    "version": "v1"
+  },
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_implementation": "CPython",
+    "python_version": "3.14.6"
+  },
+  "generated_at_utc": "2026-08-20T14:09:12Z",
+  "git_commit": "d77daa0da49c30f0ce9e4a6355a798fc69208215",
+  "limitations": [
+    "All cases are synthetic fixtures; results do not estimate production performance.",
+    "Runtime measurements are descriptive for this run and are not deterministic digests.",
+    "No benchmark adapter executes remediation or changes host network state."
+  ],
+  "prediction_count": 48,
+  "repetitions": 2,
+  "replay_mismatch_count": 0,
+  "run_id": "09dc0f62ca7343a5877e",
+  "run_kind": "benchmark",
+  "schema_version": "research_run_manifest.v1",
+  "seed": 42,
+  "tracked_worktree_dirty": false
+}
