@@ -33,6 +33,9 @@ jobs:
             research/reproducibility.md
             research/limitations.md
             research/research_discussion.md
+            research/experiment_runner.py
+            docs/distributed-evidence-platform.md
+            docs/slo-error-budget-framework.md
           )
           for f in "${required[@]}"; do
             test -s "$f" || { echo "Missing or empty research artifact: $f"; exit 1; }
@@ -48,6 +51,9 @@ jobs:
           grep -qi "baseline" research/experimental_protocol.md
           grep -qi "No autonomous remediation" research/limitations.md
           grep -qi "No guarantee" research/limitations.md
+          grep -qi "simulated.*not.*measured\|simulated scale.*not.*measured" research/experiment_runner.py
+          grep -qi "not.*production" docs/distributed-evidence-platform.md
+          grep -qi "not claims\|not.*claim" docs/slo-error-budget-framework.md
 
       - name: Verify research docs do not claim completed metrics
         shell: bash
@@ -63,8 +69,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Run core safety contracts
+      - name: Run research and core safety contracts
         run: |
           pytest -q \
+            tests/test_research_experiment_runner.py \
             tests/test_proxy_classifier_safety_contract.py \
             tests/test_policy_safety_contract.py
+
+      - name: Execute small end-to-end research smoke experiment
+        run: |
+          python -m research.experiment_runner \
+            --simulated-endpoints 25 \
+            --measurement-cap 5 \
+            --concurrency-tasks 10 \
+            --concurrency-workers 2 \
+            --seed 42 \
+            --out-dir .research-smoke
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('.research-smoke/result.json').read_text())
+          assert p['fleet']['simulated_endpoints'] == 25
+          assert p['fleet']['measured_endpoints'] <= 5
+          assert p['claim_boundary']['production_capacity_claimed'] is False
+          assert p['claim_boundary']['sla_claimed'] is False
+          assert len(p['reproducibility_digest']) == 64
+          PY
