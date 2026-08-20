@@ -2,6 +2,22 @@
 
 This repository is primarily an engineering and technology-risk platform. This document adds a research-style evaluation layer so that claims about the system can be tested rather than inferred from feature count.
 
+## Implementation status — synthetic benchmark v1
+
+The first minimal execution layer is now implemented under [`experiments/`](experiments/README.md):
+
+- 12 frozen, synthetic cases split across development, held-out, and adversarial directories;
+- executable B0 connectivity-only, B1 flat-rule, B2 single-signal, and B3 full-platform adapters;
+- repeated deterministic replay with per-prediction digests;
+- executable component ablations;
+- machine-derived CSV/JSON metrics and a generated Markdown report;
+- tests for dataset integrity, expected-label isolation, determinism, and safety boundaries.
+
+This implementation does **not** prove the hypotheses below. The dataset is small,
+repository-authored, and synthetic; the held-out directory is a workflow boundary rather than an
+independent external validation set. Generated failures are research evidence and must not be
+edited away.
+
 ## Research question
 
 **Can deterministic, evidence-tiered endpoint diagnosis improve classification quality, auditability, and decision reproducibility compared with simpler rule-based troubleshooting baselines?**

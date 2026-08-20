@@ -1,0 +1,25 @@
+{
+  "schema_version": "research_case.v1",
+  "case_id": "DEV-001",
+  "split": "development",
+  "synthetic": true,
+  "scenario": "WinINET points to a loopback port with no listener while the direct path works.",
+  "signals": {
+    "timestamp_utc": "2026-01-01T00:00:01Z",
+    "endpoint_id": "synthetic-dev-001",
+    "connectivity_ok": true,
+    "wininet_proxy_enabled": true,
+    "wininet_proxy_server": "127.0.0.1:59081",
+    "winhttp_direct_access": true,
+    "localhost_port": 59081,
+    "listener_found": false,
+    "direct_probe_ok": true,
+    "proxy_probe_ok": false,
+    "proxy_status": "DIRECT_ONLY_WORKS"
+  },
+  "expected": {
+    "classification": "DEAD_PROXY_CONFIG",
+    "minimum_proof_tier": "T2",
+    "policy_decision": "PREVIEW_ONLY"
+  }
+}

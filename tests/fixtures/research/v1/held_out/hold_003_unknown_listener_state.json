@@ -1,0 +1,25 @@
+{
+  "schema_version": "research_case.v1",
+  "case_id": "HOLD-003",
+  "split": "held_out",
+  "synthetic": true,
+  "scenario": "A loopback proxy is configured, but listener and path evidence are unavailable.",
+  "signals": {
+    "timestamp_utc": "2026-01-02T00:00:03Z",
+    "endpoint_id": "synthetic-hold-003",
+    "connectivity_ok": true,
+    "wininet_proxy_enabled": true,
+    "wininet_proxy_server": "127.0.0.1:8888",
+    "winhttp_direct_access": false,
+    "localhost_port": 8888,
+    "listener_found": null,
+    "direct_probe_ok": null,
+    "proxy_probe_ok": null,
+    "proxy_status": null
+  },
+  "expected": {
+    "classification": "UNKNOWN_LOCAL_PROXY",
+    "minimum_proof_tier": "T1",
+    "policy_decision": "REQUIRE_HUMAN_REVIEW"
+  }
+}
