@@ -46,6 +46,10 @@ pytest -q tests/test_policy_safety_contract.py
 make principles-test
 ```
 
+## Test configuration
+
+**pytest configuration:** Both `pytest.ini` and `pyproject.toml [tool.pytest.ini_options]` must be kept in sync. pytest prefers `pytest.ini`, but both must define identical `testpaths`, `markers`, `addopts`, and `norecursedirs` to ensure cross-platform test discovery (local, CI, and DevContainer). Key discovery: `testpaths = ["tests", "windows_network_toolkit/tests"]` (not just "tests").
+
 ## Python standards
 
 - Clear typing, small functions, explicit errors.
