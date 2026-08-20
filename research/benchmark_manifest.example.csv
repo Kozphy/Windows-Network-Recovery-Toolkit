@@ -1,0 +1,4 @@
+case_id,scenario_family,ground_truth,registry_state,wininet_state,winhttp_state,dns_result,tls_result,connectivity_result,temporal_state,expected_action,source_provenance
+EXAMPLE-001,normal,NORMAL,clean,clean,direct,pass,pass,pass,stable,NONE,synthetic-example
+EXAMPLE-002,dead_localhost_proxy,DEAD_PROXY_CONFIG,localhost_proxy,localhost_proxy,proxy,pass,fail,fail,persistent,REVIEW_REMEDIATION,synthetic-example
+EXAMPLE-003,transient_failure,TRANSIENT_NETWORK_FAILURE,clean,clean,direct,transient_fail,unknown,transient_fail,recovered,NONE,synthetic-example
