@@ -1,0 +1,28 @@
+name: Enterprise AI CI
+
+on:
+  push:
+    paths:
+      - 'enterprise_ai/**'
+      - '.github/workflows/enterprise-ai-ci.yml'
+  pull_request:
+    paths:
+      - 'enterprise_ai/**'
+      - '.github/workflows/enterprise-ai-ci.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: enterprise_ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e '.[dev]'
+      - run: ruff check src tests
+      - run: pyright src
+      - run: pytest -q
