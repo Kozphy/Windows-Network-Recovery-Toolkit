@@ -1,6 +1,30 @@
-# Technology Risk & Control Analytics Platform
+# Purple Team Security Validation Platform
 
-**In 30 seconds:** Windows endpoints often fail while still “online” — dead localhost proxies, WinINET/WinHTTP drift, TLS path mismatches. This repository **collects deterministic evidence**, **classifies incidents** with proof tiers (T0–T5), **runs control tests**, **gates remediation** (preview-only by default), and **exports audit-backed governance reports** and Power BI star-schema CSVs. It is an **evidence pipeline for technology risk** — not a repair bot or security product.
+*(also: Technology Risk & Control Analytics for Windows endpoints)*
+
+**In 30 seconds:** This repository validates whether Windows endpoint **controls actually work** through a closed loop:
+
+```text
+Simulate → Observe → Detect → Respond → Verify → Measure → Prove
+```
+
+It combines **safe, fixture-driven adversarial simulation** (local, deterministic, reversible, deny-by-default) with telemetry normalization, modular detection, policy-gated response, **independent post-condition verification**, measurable Precision/Recall/F1/FPR/MTTD, and **tamper-evident evidence bundles**.
+
+It is **not** antivirus, EDR, XDR, malware attribution, stealth tooling, or real-world offensive capability.
+
+**Blue Team core (preserved):** dead localhost proxies, WinINET/WinHTTP drift, TLS path mismatches → deterministic evidence, proof tiers (T0–T5), control tests, preview-only remediation, governance reports.
+
+**Purple Team entry points:**
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+python -m src.purple_team scenarios list
+python -m src.purple_team validate proxy-drift-001
+python -m src.purple_team benchmark --no-evidence --json
+python -m src.purple_team baselines
+```
+
+Docs: [docs/purple-team-gap-analysis.md](docs/purple-team-gap-analysis.md) · [docs/purple_team/architecture.md](docs/purple_team/architecture.md) · [docs/purple_team/safety-model.md](docs/purple_team/safety-model.md) · [docs/purple-team-upgrade-report.md](docs/purple-team-upgrade-report.md) · [research/questions.md](research/questions.md)
 
 
 | If you are…                         | Start here                                                                                                                                                                                           |

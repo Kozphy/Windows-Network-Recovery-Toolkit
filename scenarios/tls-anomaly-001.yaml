@@ -1,0 +1,33 @@
+id: tls-anomaly-001
+title: Synthetic TLS Path Metadata Anomaly
+category: tls_metadata
+risk_level: medium
+safe_for_local_execution: true
+description: >
+  Metadata-only TLS path anomaly detection using fixtures.
+  Does NOT implement certificate interception or MITM.
+preconditions:
+  - fixture_only
+  - synthetic_tls_metadata
+simulation:
+  action: inject_tls_path_metadata_anomaly
+  fixture_path: tests/fixtures/purple_team/tls_path_anomaly.json
+expected_telemetry:
+  - tls_path_metadata
+expected_detection: DET-TLS-001
+expected_response: investigate_tls_path_metadata
+expect_detection: true
+verification:
+  post_conditions:
+    - tls_path_expected
+  independent: true
+cleanup:
+  required: true
+  steps:
+    - restore expected TLS path metadata in fixture
+    - never perform interception
+mitre:
+  techniques: []
+  notes: Intentionally unmapped — avoiding forced ATT&CK theatre for metadata labs.
+limitations:
+  - No MITM, no certificate install, no traffic interception.

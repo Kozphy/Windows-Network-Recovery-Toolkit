@@ -4,14 +4,30 @@
 
 ## What this repository is
 
-A **local-first Windows endpoint reliability toolkit** with a growing **Decision Intelligence Platform**:
+A **local-first Windows endpoint reliability toolkit** evolving into a **Purple Team Security Validation Platform** (fixture-driven control effectiveness — not malware/EDR):
 
+- **Purple Team CLI:** `python -m src.purple_team` (scenarios, validate/dry-run, benchmark, baselines, evidence verify)
 - **Primary CLI:** JSON-first diagnostics and policy-gated remediation (`python -m windows_network_toolkit`)
 - **Extended Windows operator CLI:** `python -m src` (startup observability, proxy drift, network-state, platform handlers)
 - Append-only JSONL audit trails (`.audit/` + legacy `logs/`) and deterministic replay
 - FastAPI platform API (`backend/`) with optional PostgreSQL
 - Multi-domain adapters (Windows, Security, Cloud, Infrastructure, Market Events)
 - Research-only market catalyst monitoring (no trade execution)
+
+### Purple Team docs
+
+| Doc | Purpose |
+|-----|---------|
+| [purple-team-gap-analysis.md](purple-team-gap-analysis.md) | Phase 0 assessment |
+| [purple_team/architecture.md](purple_team/architecture.md) | Lifecycle architecture |
+| [purple_team/safety-model.md](purple_team/safety-model.md) | Deny-by-default gates |
+| [purple_team/threat-model.md](purple_team/threat-model.md) | Threats against the platform |
+| [purple_team/detection-engine.md](purple_team/detection-engine.md) | DET-* rules |
+| [purple_team/evaluation.md](purple_team/evaluation.md) | Benchmarks / metrics |
+| [purple_team/evidence-model.md](purple_team/evidence-model.md) | Tamper-evident bundles |
+| [purple_team/scenario-authoring.md](purple_team/scenario-authoring.md) | How to add scenarios |
+| [purple-team-upgrade-report.md](purple-team-upgrade-report.md) | Before → after upgrade report |
+| [../research/questions.md](../research/questions.md) | Research questions |
 
 ## Portfolio pack (recruiters, Big 4, FAANG, PL-300)
 

@@ -1,0 +1,27 @@
+id: stale-endpoint-001
+title: Stale Endpoint Configuration State
+category: endpoint_state
+risk_level: low
+safe_for_local_execution: true
+description: Fixture simulation distinguishing healthy vs stale endpoint state.
+preconditions:
+  - fixture_only
+  - mock_endpoint_inventory
+simulation:
+  action: inject_stale_endpoint_state
+  fixture_path: tests/fixtures/purple_team/stale_endpoint.json
+expected_telemetry:
+  - endpoint_state
+expected_detection: DET-ENDPOINT-001
+expected_response: refresh_endpoint_baseline
+expect_detection: true
+verification:
+  post_conditions:
+    - endpoint_state_healthy
+  independent: true
+cleanup:
+  required: true
+  steps:
+    - restore healthy endpoint state in fixture
+limitations:
+  - Mock inventory only — not a live CMDB integration.

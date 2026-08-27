@@ -1,0 +1,31 @@
+id: benign-admin-001
+title: Benign Authorized Administrative Proxy Change
+category: endpoint_configuration
+risk_level: low
+safe_for_local_execution: true
+description: >
+  Control scenario for false-positive measurement. Authorized enterprise-like
+  proxy change must NOT produce a high-severity detection.
+preconditions:
+  - fixture_only
+  - authorized_change_marker
+simulation:
+  action: apply_authorized_admin_proxy_change
+  fixture_path: tests/fixtures/purple_team/benign_admin_proxy.json
+expected_telemetry:
+  - proxy_configuration_change
+expected_detection: DET-BENIGN-001
+expected_response: observe
+expect_detection: false
+benign_control: true
+verification:
+  post_conditions:
+    - no_high_severity_alert
+  independent: true
+cleanup:
+  required: true
+  steps:
+    - leave authorized baseline intact in fixture
+false_positive_notes: Essential negative control for FPR.
+limitations:
+  - Authorized marker is fixture convention — not proof of real change management.

@@ -184,6 +184,12 @@ jobs:
             --output reports/classifier_benchmark.json \
             --format json
 
+      - name: Purple Team fixture benchmark (CI smoke)
+        run: |
+          pytest -q tests/purple_team
+          python -m src.purple_team benchmark --no-evidence --json --output reports/purple_benchmark.json
+          python -m src.purple_team baselines --output reports/purple_baselines.json
+
       - name: Upload eval artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -192,6 +198,8 @@ jobs:
           path: |
             reports/replay_benchmark.json
             reports/classifier_benchmark.json
+            reports/purple_benchmark.json
+            reports/purple_baselines.json
           retention-days: 14
 
   test-windows:

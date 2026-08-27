@@ -1,0 +1,19 @@
+{
+  "host": "fixture-host",
+  "pre_state": {"path_class": "expected", "interceptor": null},
+  "post_state": {"path_class": "unexpected", "interceptor": null},
+  "baseline_state": {"path_class": "expected", "interceptor": null},
+  "telemetry_events": [
+    {
+      "source": "tls_metadata",
+      "event_type": "tls_path_metadata",
+      "entity": "synthetic_tls_path",
+      "before": {"path_class": "expected"},
+      "after": {"path_class": "unexpected"},
+      "confidence": 0.91
+    }
+  ],
+  "limitations": [
+    "Synthetic metadata only — no certificate interception or MITM is implemented."
+  ]
+}
