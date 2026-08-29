@@ -1,0 +1,25 @@
+{
+  "schema_version": "research_case.v1",
+  "case_id": "DEV-002",
+  "split": "development",
+  "synthetic": true,
+  "scenario": "WinINET proxy is disabled and the direct HTTPS path succeeds.",
+  "signals": {
+    "timestamp_utc": "2026-01-01T00:00:02Z",
+    "endpoint_id": "synthetic-dev-002",
+    "connectivity_ok": true,
+    "wininet_proxy_enabled": false,
+    "wininet_proxy_server": "",
+    "winhttp_direct_access": true,
+    "localhost_port": null,
+    "listener_found": null,
+    "direct_probe_ok": true,
+    "proxy_probe_ok": null,
+    "proxy_status": null
+  },
+  "expected": {
+    "classification": "NO_PROXY_DIRECT_OK",
+    "minimum_proof_tier": "T3",
+    "policy_decision": "OBSERVE"
+  }
+}

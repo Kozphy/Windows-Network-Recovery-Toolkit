@@ -80,6 +80,7 @@ config/last_known_good_proxy.json
 !examples/**/*.jsonl
 !windows_network_toolkit/examples/*.jsonl
 !demo_data/**/*.jsonl
+!experiments/results/*.jsonl
 
 # Local IDE / plugin caches (do not commit)
 .understand-anything/

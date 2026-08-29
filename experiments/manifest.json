@@ -1,0 +1,57 @@
+{
+  "schema_version": "research_dataset_manifest.v1",
+  "name": "synthetic-proxy-risk-benchmark",
+  "version": "v1",
+  "case_count": 12,
+  "sha256": "bfc3e9e003f32e4b113cfc55e700c795dd7de60f54269e5b52b5caa09c7f18ea",
+  "files": [
+    {
+      "path": "development/dev_001_dead_localhost_proxy.json",
+      "sha256": "6d0aaa1c5c51c4f07a1331604dfdbfc0adc506ac99d2c3664df2db0c989e0a77"
+    },
+    {
+      "path": "development/dev_002_no_proxy_direct_ok.json",
+      "sha256": "203f0c2a5d32f3b1545accd9dedc4b70bf5b91574c26e448cd61ebba2529ef63"
+    },
+    {
+      "path": "development/dev_003_both_paths_work.json",
+      "sha256": "c9e0f45be5d60fb8de0e6a73542c04bc062f9d0e951196f4f94b2d64540d8745"
+    },
+    {
+      "path": "development/dev_004_both_paths_fail.json",
+      "sha256": "a4e0d169feeafe4a2d5c43fe8554d9de24cdb1bf0f8d6fb9d1a21e5a59bc3aeb"
+    },
+    {
+      "path": "held_out/hold_001_direct_only_works.json",
+      "sha256": "cf317e8a3ad2fc694ec8ddfb03088440787262ea70ceeee4d21a811c16f50529"
+    },
+    {
+      "path": "held_out/hold_002_proxy_only_works.json",
+      "sha256": "5fd2d263feb7fedbc9bebbe31ff6a17fe9b466f8b10f0f4ec785857a1b810afe"
+    },
+    {
+      "path": "held_out/hold_003_unknown_listener_state.json",
+      "sha256": "2269bca929d1c4bbd4b71a24185e3e03450c55af9bc414bbb30e1ccec5a75aa9"
+    },
+    {
+      "path": "held_out/hold_004_wininet_winhttp_mismatch.json",
+      "sha256": "70adab84aca77b8b444affcd6a4cd584b2f30442c7cd926efd38905419073353"
+    },
+    {
+      "path": "adversarial/adv_001_remote_corporate_proxy.json",
+      "sha256": "f87766257f4adfe43589786bdbe6a94d292828e0c64f1cadd047395242f7f49b"
+    },
+    {
+      "path": "adversarial/adv_002_active_without_path_proof.json",
+      "sha256": "fa1d89b13bd580b653bee1f639276fbebe39406b8aadcb905ffcbbd7dbe1cd6f"
+    },
+    {
+      "path": "adversarial/adv_003_disabled_and_direct_fails.json",
+      "sha256": "0bc2c116d644c717e3a52a1c62916c63066a260db2c700317c1465ee75606620"
+    },
+    {
+      "path": "adversarial/adv_004_reverter_suspected.json",
+      "sha256": "5493a4377a465bb77e7b62e6243bdb987fce6c9c3ff7b27419d5014a412bfd31"
+    }
+  ]
+}

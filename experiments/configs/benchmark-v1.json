@@ -1,0 +1,14 @@
+{
+  "schema_version": "research_benchmark_config.v1",
+  "benchmark_version": "synthetic-proxy-risk-v1",
+  "dataset_root": "tests/fixtures/research/v1",
+  "dataset_manifest": "experiments/manifest.json",
+  "splits": ["development", "held_out", "adversarial"],
+  "baselines": ["B0", "B1", "B2", "B3"],
+  "repetitions": 2,
+  "seed": 42,
+  "outputs": {
+    "predictions": "benchmark_predictions.jsonl",
+    "run_manifest": "benchmark_run_manifest.json"
+  }
+}

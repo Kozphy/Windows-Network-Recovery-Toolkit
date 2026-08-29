@@ -1,0 +1,25 @@
+{
+  "schema_version": "research_case.v1",
+  "case_id": "ADV-003",
+  "split": "adversarial",
+  "synthetic": true,
+  "scenario": "Proxy is disabled and the direct path fails, so clearing proxy settings cannot help.",
+  "signals": {
+    "timestamp_utc": "2026-01-03T00:00:03Z",
+    "endpoint_id": "synthetic-adv-003",
+    "connectivity_ok": false,
+    "wininet_proxy_enabled": false,
+    "wininet_proxy_server": "",
+    "winhttp_direct_access": true,
+    "localhost_port": null,
+    "listener_found": null,
+    "direct_probe_ok": false,
+    "proxy_probe_ok": null,
+    "proxy_status": null
+  },
+  "expected": {
+    "classification": "BOTH_DIRECT_AND_PROXY_FAIL",
+    "minimum_proof_tier": "T2",
+    "policy_decision": "REQUIRE_HUMAN_REVIEW"
+  }
+}

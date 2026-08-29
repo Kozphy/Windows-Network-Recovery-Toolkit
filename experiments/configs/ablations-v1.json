@@ -1,0 +1,50 @@
+{
+  "schema_version": "research_ablation_config.v1",
+  "benchmark_version": "synthetic-proxy-risk-v1",
+  "dataset_root": "tests/fixtures/research/v1",
+  "dataset_manifest": "experiments/manifest.json",
+  "splits": ["development", "held_out", "adversarial"],
+  "repetitions": 2,
+  "seed": 42,
+  "ablations": [
+    {
+      "name": "full",
+      "adapter": "B3",
+      "options": {}
+    },
+    {
+      "name": "A1_without_proof_tiers",
+      "adapter": "B3",
+      "options": {"remove_proof_tiers": true}
+    },
+    {
+      "name": "A2_without_listener_evidence",
+      "adapter": "B3",
+      "options": {"remove_listener_evidence": true}
+    },
+    {
+      "name": "A3_without_tls_path_evidence",
+      "adapter": "B3",
+      "options": {"remove_tls_path_evidence": true}
+    },
+    {
+      "name": "A4_without_limitations",
+      "adapter": "B3",
+      "options": {"remove_limitations": true}
+    },
+    {
+      "name": "A5_without_policy_gate",
+      "adapter": "B3",
+      "options": {"remove_policy_gate": true}
+    },
+    {
+      "name": "A7_without_cross_signal_aggregation",
+      "adapter": "B1",
+      "options": {}
+    }
+  ],
+  "outputs": {
+    "predictions": "ablation_predictions.jsonl",
+    "run_manifest": "ablation_run_manifest.json"
+  }
+}
