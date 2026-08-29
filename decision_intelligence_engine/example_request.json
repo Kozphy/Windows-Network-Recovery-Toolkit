@@ -1,4 +1,6 @@
 {
+  "requester": "platform-owner@example.com",
+  "domain": "technology-risk",
   "question": "Should we deploy remediation policy A or B?",
   "evidence": [
     {"statement": "Policy A passed controlled replay tests", "kind": "fact", "source": "CI replay suite", "confidence": 0.95},
