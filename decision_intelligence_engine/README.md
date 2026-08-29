@@ -1,42 +1,59 @@
 # Decision Intelligence / AI Governance Engine
 
-A production-shaped portfolio service for **evidence-backed decision support**. It separates facts, assumptions, and unknowns; scores options deterministically; penalizes risk and uncertainty; produces a recommendation; requires a **human approval/rejection step**; and records the workflow in a tamper-evident hash-chain audit log.
+A production-shaped service for **evidence-backed, human-governed decision support**. It separates facts, assumptions, and unknowns; scores options deterministically; penalizes risk and uncertainty; evaluates policy-as-code controls; requires an independent human approval/rejection step; persists the lifecycle; verifies outcomes; exposes Prometheus metrics; and records governance events in a tamper-evident hash-chain audit log.
 
-> AI can explain or enrich evidence later, but it does not authorize execution. Human approval is a hard boundary.
+> AI may explain or enrich evidence later, but it does not authorize execution. Human approval and separation of duties are hard boundaries.
 
-## Decision flow
+## v0.2 architecture
 
 ```text
-Evidence -> Assumptions/Unknowns -> Criteria -> Option Scoring
-         -> Risk + Uncertainty Penalties -> Recommendation
-         -> Human Approval/Reject -> Action Boundary -> Verification -> Audit Trail
+Evidence / provenance
+        ↓
+Facts · Assumptions · Unknowns
+        ↓
+Deterministic scoring
+        ↓
+Risk + uncertainty penalties
+        ↓
+Policy-as-code evaluation
+        ↓
+Recommendation + policy flags
+        ↓
+Independent human approval/rejection
+        ↓
+Approved action boundary
+        ↓
+Independent outcome verification
+        ↓
+SQL persistence + Prometheus metrics + hash-chain audit trail
 ```
 
-## Why this belongs in this repository
+## Governance controls
 
-The parent platform already demonstrates evidence collection, control testing, policy gates, remediation previews, and audit trails. This module generalizes that pattern into a reusable **multi-domain decision governance engine** suitable for technology risk, FinOps, compliance, operations, and AI-assisted workflows.
-
-## Governance properties
-
-- **Evidence provenance:** facts can include a source and confidence.
-- **Explicit uncertainty:** assumptions and unknowns are first-class data.
-- **Deterministic baseline:** recommendation scores are reproducible without an LLM.
-- **Risk-aware ranking:** risk and uncertainty lower the adjusted score.
-- **Human-in-the-loop:** recommendations can never directly approve themselves.
-- **Auditability:** recommendation and human-decision events are hash chained.
-- **Tamper detection:** the audit verifier detects changed or reordered rows.
-- **Honest confidence:** confidence is a heuristic based on evidence coverage and score margin, not a calibrated probability.
+- **Evidence provenance** — facts can carry source and confidence.
+- **Explicit uncertainty** — assumptions and unknowns are first-class data.
+- **Deterministic baseline** — recommendation scores are reproducible without an LLM.
+- **Policy-as-code** — low evidence coverage and high-risk recommendations can block approval.
+- **Separation of duties** — the requester cannot approve their own recommendation.
+- **Independent verification** — the outcome verifier must differ from both requester and approver.
+- **Durable persistence** — SQLite by default; PostgreSQL is supported through `DI_DATABASE_URL`.
+- **Observability** — Prometheus counters and confidence histograms are exposed at `/metrics`.
+- **Auditability** — recommendation, blocked approval, human decision, and outcome events are hash chained.
+- **Honest confidence** — confidence remains a heuristic, not a calibrated probability.
 
 ## API
 
 ```text
 GET  /health
+GET  /metrics
 POST /v1/decisions/analyze
+GET  /v1/decisions/{decision_id}
 POST /v1/decisions/{decision_id}/human-decision
+POST /v1/decisions/{decision_id}/outcome
 GET  /v1/audit/verify
 ```
 
-### Run
+## Run locally
 
 ```bash
 cd decision_intelligence_engine
@@ -49,7 +66,22 @@ uvicorn app.main:app --reload
 
 Open `http://127.0.0.1:8000/docs` for Swagger UI.
 
-### Analyze a decision
+Default persistence uses:
+
+```text
+sqlite:///data/decisions.db
+```
+
+For PostgreSQL:
+
+```bash
+pip install -e ".[postgres]"
+export DI_DATABASE_URL='postgresql+psycopg://user:password@localhost:5432/decision_intelligence'
+```
+
+## Example workflow
+
+Analyze:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/decisions/analyze \\
@@ -57,26 +89,53 @@ curl -X POST http://127.0.0.1:8000/v1/decisions/analyze \\
   --data @example_request.json
 ```
 
-The response has `status: pending_human_review` and `requires_human_approval: true`.
+The response always includes:
 
-### Record the human decision
+```json
+{
+  "requires_human_approval": true,
+  "status": "pending_human_review",
+  "policy_flags": []
+}
+```
+
+Approve or reject using an independent reviewer:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/decisions/<decision_id>/human-decision \\
   -H "Content-Type: application/json" \\
-  -d '{"approver":"reviewer@example","action":"approve","rationale":"Evidence is sufficient and rollback is available."}'
+  -d '{"approver":"risk-reviewer@example.com","action":"approve","rationale":"Evidence is sufficient and rollback is available."}'
+```
+
+Verify the realized outcome using a third person/service identity:
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/decisions/<decision_id>/outcome \\
+  -H "Content-Type: application/json" \\
+  -d '{"verifier":"control-testing@example.com","outcome":"successful","notes":"Target KPI improved after rollout.","realized_value":0.18}'
 ```
 
 ## Scoring model
-
-For each option:
 
 ```text
 utility = weighted mean of criterion scores
 adjusted = utility - risk_penalty*risk - uncertainty_penalty*uncertainty
 ```
 
-All criterion scores, risk, and uncertainty are normalized to `[0, 1]`. The highest adjusted score becomes the recommendation. This is intentionally simple and inspectable; domain-specific models can be plugged in later.
+All criterion scores, risk, and uncertainty are normalized to `[0, 1]`. The model is intentionally inspectable. The selected recommendation then passes through governance policy checks before a human can approve it.
+
+## Policy-as-code defaults
+
+Current default flags include:
+
+```text
+LOW_EVIDENCE_COVERAGE
+LOW_CONFIDENCE
+MATERIAL_UNKNOWNS
+HIGH_RISK_RECOMMENDATION
+```
+
+`LOW_EVIDENCE_COVERAGE` and `HIGH_RISK_RECOMMENDATION` block approval by default. Other flags remain review signals.
 
 ## Tests
 
@@ -84,18 +143,18 @@ All criterion scores, risk, and uncertainty are normalized to `[0, 1]`. The high
 pytest -q
 ```
 
-The initial tests verify that recommendations remain human-gated and that audit-chain tampering is detected.
+The suite covers the human-approval invariant, policy blocking, durable SQL persistence, and audit-chain tamper detection.
 
-## Next production upgrades
+## Next upgrades
 
-1. Persist decisions in PostgreSQL with immutable event IDs.
-2. Add RBAC and separation-of-duties for requester/reviewer/approver roles.
-3. Add policy-as-code gates for prohibited autonomous actions.
-4. Add an LLM explanation adapter that consumes only approved evidence and never changes approval state.
-5. Add calibrated confidence/evaluation datasets and benchmark decision quality.
-6. Add OpenTelemetry traces, Prometheus metrics, and governance dashboards.
-7. Add outcome verification so recommendations can be compared with realized results.
+1. Replace identity strings with OIDC/JWT authentication and explicit RBAC roles.
+2. Add Alembic migrations and PostgreSQL integration tests.
+3. Move governance thresholds to versioned external policy bundles.
+4. Add an LLM explanation adapter that cannot mutate recommendation or approval state.
+5. Add calibration datasets, Brier/ECE-style confidence evaluation, and decision-quality benchmarks.
+6. Add OpenTelemetry traces and Grafana governance dashboards.
+7. Add immutable event IDs and event-sourced replay for the full lifecycle.
 
 ## Non-claims
 
-This prototype is not a formal audit opinion, not a calibrated risk model, and not an autonomous decision-maker. It is a transparent decision-support and governance skeleton designed to make evidence, uncertainty, human accountability, and auditability explicit.
+This prototype is not a formal audit opinion, not a calibrated risk model, and not an autonomous decision-maker. It is a transparent governance skeleton designed to make evidence, uncertainty, accountability, policy enforcement, and post-decision verification explicit.
