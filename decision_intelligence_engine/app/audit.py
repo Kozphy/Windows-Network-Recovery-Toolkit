@@ -37,13 +37,24 @@ class HashChainAuditLog:
             handle.write(_canonical(final) + "\n")
         return final
 
-    def verify(self) -> tuple[bool, int]:
+    def records(self) -> list[dict[str, Any]]:
         if not self.path.exists():
-            return True, 0
+            return []
+        return [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def replay(self, decision_id: str) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
+        for record in self.records():
+            payload = record.get("payload", {})
+            if payload.get("decision_id") == decision_id:
+                events.append(record)
+        return events
+
+    def verify(self) -> tuple[bool, int]:
         previous = GENESIS
         count = 0
-        for line in self.path.read_text(encoding="utf-8").splitlines():
-            item = json.loads(line)
+        for original in self.records():
+            item = dict(original)
             claimed = item.pop("hash")
             if item["prev_hash"] != previous:
                 return False, count
