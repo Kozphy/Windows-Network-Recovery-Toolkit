@@ -21,6 +21,7 @@ from .models import (
 )
 from .policy import approval_allowed, load_policy
 from .store import DecisionStore
+from .telemetry import configure_telemetry
 
 app = FastAPI(
     title="Decision Intelligence / AI Governance Engine",
@@ -28,13 +29,14 @@ app = FastAPI(
     description=(
         "Evidence-backed decision support with signed-identity role boundaries, versioned policy-as-code, "
         "durable persistence, independent approval and verification, calibration evaluation, replayable events, "
-        "Prometheus metrics, and tamper-evident audit logging."
+        "Prometheus metrics, OpenTelemetry hooks, and tamper-evident audit logging."
     ),
 )
 
 AUDIT_PATH = Path(os.getenv("DI_AUDIT_PATH", "data/audit.jsonl"))
 audit = HashChainAuditLog(AUDIT_PATH)
 store = DecisionStore()
+tracer = configure_telemetry()
 
 
 @app.get("/health")
@@ -59,7 +61,12 @@ def analyze_decision(
     principal: Principal = Depends(require_role("requester")),
 ) -> Recommendation:
     request = request.model_copy(update={"requester": principal.subject})
-    recommendation = analyze(request)
+    with tracer.start_as_current_span("decision.analyze") as span:
+        span.set_attribute("decision.domain", request.domain)
+        span.set_attribute("decision.requester", principal.subject)
+        recommendation = analyze(request)
+        span.set_attribute("decision.id", recommendation.decision_id)
+        span.set_attribute("decision.confidence", recommendation.confidence)
     store.save_recommendation(recommendation)
     audit.append("recommendation_created", recommendation.model_dump(mode="json"))
     DECISIONS_ANALYZED.labels(domain=recommendation.domain).inc()
