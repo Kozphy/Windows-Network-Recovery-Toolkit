@@ -34,6 +34,8 @@ class Option(BaseModel):
 
 
 class DecisionRequest(BaseModel):
+    requester: str = Field(min_length=1)
+    domain: str = Field(default="general", min_length=1)
     question: str = Field(min_length=3)
     evidence: list[EvidenceItem] = Field(default_factory=list)
     criteria: list[Criterion] = Field(min_length=1)
@@ -70,6 +72,8 @@ class OptionAssessment(BaseModel):
 
 class Recommendation(BaseModel):
     decision_id: str
+    requester: str
+    domain: str
     question: str
     recommended_option: str
     confidence: float
@@ -77,6 +81,7 @@ class Recommendation(BaseModel):
     assessments: list[OptionAssessment]
     assumptions: list[str]
     unknowns: list[str]
+    policy_flags: list[str] = Field(default_factory=list)
     requires_human_approval: Literal[True] = True
     status: Literal["pending_human_review"] = "pending_human_review"
 
@@ -93,3 +98,19 @@ class HumanDecisionResult(BaseModel):
     approver: str
     rationale: str
     status: Literal["approved", "rejected"]
+
+
+class OutcomeVerification(BaseModel):
+    verifier: str = Field(min_length=1)
+    outcome: Literal["successful", "failed", "partial", "unknown"]
+    notes: str = Field(min_length=3)
+    realized_value: float | None = None
+
+
+class OutcomeResult(BaseModel):
+    decision_id: str
+    verifier: str
+    outcome: Literal["successful", "failed", "partial", "unknown"]
+    notes: str
+    realized_value: float | None = None
+    status: Literal["verified"] = "verified"
