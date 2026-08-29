@@ -1,0 +1,17 @@
+{
+  "question": "Should we deploy remediation policy A or B?",
+  "evidence": [
+    {"statement": "Policy A passed controlled replay tests", "kind": "fact", "source": "CI replay suite", "confidence": 0.95},
+    {"statement": "Production traffic will resemble the replay workload", "kind": "assumption", "confidence": 0.55},
+    {"statement": "Peak-hour behavior is not yet measured", "kind": "unknown", "confidence": 0.2}
+  ],
+  "criteria": [
+    {"name": "risk_reduction", "weight": 0.45},
+    {"name": "reversibility", "weight": 0.30},
+    {"name": "cost", "weight": 0.25}
+  ],
+  "options": [
+    {"name": "Policy A", "scores": {"risk_reduction": 0.9, "reversibility": 0.85, "cost": 0.65}, "risk": 0.2, "uncertainty": 0.25},
+    {"name": "Policy B", "scores": {"risk_reduction": 0.75, "reversibility": 0.95, "cost": 0.8}, "risk": 0.25, "uncertainty": 0.35}
+  ]
+}
