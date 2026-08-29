@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 from sqlalchemy import Column, DateTime, MetaData, String, Table, Text, create_engine, select
 from sqlalchemy.engine import Engine
@@ -28,6 +29,10 @@ decisions = Table(
 class DecisionStore:
     def __init__(self, database_url: str | None = None) -> None:
         url = database_url or os.getenv("DI_DATABASE_URL", "sqlite:///data/decisions.db")
+        if url.startswith("sqlite:///"):
+            db_path = Path(url.removeprefix("sqlite:///"))
+            if db_path.parent != Path("."):
+                db_path.parent.mkdir(parents=True, exist_ok=True)
         connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
         self.engine: Engine = create_engine(url, future=True, connect_args=connect_args)
         metadata.create_all(self.engine)
