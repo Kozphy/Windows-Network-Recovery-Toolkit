@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from .models import DecisionRequest, EvidenceKind, OptionAssessment, Recommendation
-from .policy import GovernancePolicy
+from .policy import GovernancePolicy, load_policy
 
 
 def _weighted_utility(request: DecisionRequest, scores: dict[str, float]) -> float:
@@ -57,5 +57,5 @@ def analyze(request: DecisionRequest, policy: GovernancePolicy | None = None) ->
         assumptions=[e.statement for e in request.evidence if e.kind is EvidenceKind.ASSUMPTION],
         unknowns=[e.statement for e in request.evidence if e.kind is EvidenceKind.UNKNOWN],
     )
-    recommendation.policy_flags = (policy or GovernancePolicy()).evaluate(recommendation)
+    recommendation.policy_flags = (policy or load_policy()).evaluate(recommendation)
     return recommendation
