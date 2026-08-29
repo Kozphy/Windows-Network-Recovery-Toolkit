@@ -7,7 +7,7 @@ from .models import Recommendation
 
 @dataclass(frozen=True)
 class GovernancePolicy:
-    min_evidence_coverage: float = 0.35
+    min_evidence_coverage: float = 0.25
     min_confidence: float = 0.20
     high_risk_threshold: float = 0.75
     max_unknowns_without_flag: int = 1
