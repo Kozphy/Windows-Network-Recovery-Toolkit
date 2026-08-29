@@ -2,12 +2,8 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from .models import (
-    DecisionRequest,
-    EvidenceKind,
-    OptionAssessment,
-    Recommendation,
-)
+from .models import DecisionRequest, EvidenceKind, OptionAssessment, Recommendation
+from .policy import GovernancePolicy
 
 
 def _weighted_utility(request: DecisionRequest, scores: dict[str, float]) -> float:
@@ -22,7 +18,7 @@ def _evidence_coverage(request: DecisionRequest) -> float:
     return sum(e.confidence for e in known) / len(request.evidence)
 
 
-def analyze(request: DecisionRequest) -> Recommendation:
+def analyze(request: DecisionRequest, policy: GovernancePolicy | None = None) -> Recommendation:
     coverage = _evidence_coverage(request)
     assessments: list[OptionAssessment] = []
 
@@ -49,16 +45,17 @@ def analyze(request: DecisionRequest) -> Recommendation:
     margin = max(0.0, best.adjusted_score - runner_up.adjusted_score)
     confidence = min(1.0, 0.5 * coverage + 0.5 * min(1.0, margin * 2.0))
 
-    assumptions = [e.statement for e in request.evidence if e.kind is EvidenceKind.ASSUMPTION]
-    unknowns = [e.statement for e in request.evidence if e.kind is EvidenceKind.UNKNOWN]
-
-    return Recommendation(
+    recommendation = Recommendation(
         decision_id=str(uuid4()),
+        requester=request.requester,
+        domain=request.domain,
         question=request.question,
         recommended_option=best.option,
         confidence=round(confidence, 4),
         evidence_coverage=round(coverage, 4),
         assessments=assessments,
-        assumptions=assumptions,
-        unknowns=unknowns,
+        assumptions=[e.statement for e in request.evidence if e.kind is EvidenceKind.ASSUMPTION],
+        unknowns=[e.statement for e in request.evidence if e.kind is EvidenceKind.UNKNOWN],
     )
+    recommendation.policy_flags = (policy or GovernancePolicy()).evaluate(recommendation)
+    return recommendation
