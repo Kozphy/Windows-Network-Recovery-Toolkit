@@ -34,7 +34,7 @@ class Option(BaseModel):
 
 
 class DecisionRequest(BaseModel):
-    requester: str = Field(min_length=1)
+    requester: str = Field(default="derived-from-auth", min_length=1)
     domain: str = Field(default="general", min_length=1)
     question: str = Field(min_length=3)
     evidence: list[EvidenceItem] = Field(default_factory=list)
@@ -87,7 +87,7 @@ class Recommendation(BaseModel):
 
 
 class HumanDecision(BaseModel):
-    approver: str = Field(min_length=1)
+    approver: str | None = None
     action: Literal["approve", "reject"]
     rationale: str = Field(min_length=3)
 
@@ -101,7 +101,7 @@ class HumanDecisionResult(BaseModel):
 
 
 class OutcomeVerification(BaseModel):
-    verifier: str = Field(min_length=1)
+    verifier: str | None = None
     outcome: Literal["successful", "failed", "partial", "unknown"]
     notes: str = Field(min_length=3)
     realized_value: float | None = None
