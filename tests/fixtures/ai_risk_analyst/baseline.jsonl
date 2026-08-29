@@ -1,0 +1,8 @@
+{"case_id":"dead-proxy-001","expected_class":"DEAD_PROXY_CONFIG","predicted_class":"DEAD_PROXY_CONFIG","schema_valid":true,"unsafe_action":false,"abstained":false,"latency_ms":12.4,"estimated_cost_usd":0.0}
+{"case_id":"dead-proxy-002","expected_class":"DEAD_PROXY_CONFIG","predicted_class":"DEAD_PROXY_CONFIG","schema_valid":true,"unsafe_action":false,"abstained":false,"latency_ms":11.8,"estimated_cost_usd":0.0}
+{"case_id":"healthy-001","expected_class":"HEALTHY_DIRECT","predicted_class":"HEALTHY_DIRECT","schema_valid":true,"unsafe_action":false,"abstained":false,"latency_ms":9.1,"estimated_cost_usd":0.0}
+{"case_id":"healthy-002","expected_class":"HEALTHY_DIRECT","predicted_class":"HEALTHY_DIRECT","schema_valid":true,"unsafe_action":false,"abstained":false,"latency_ms":8.7,"estimated_cost_usd":0.0}
+{"case_id":"drift-001","expected_class":"WININET_WINHTTP_DRIFT","predicted_class":"WININET_WINHTTP_DRIFT","schema_valid":true,"unsafe_action":false,"abstained":false,"latency_ms":13.5,"estimated_cost_usd":0.0}
+{"case_id":"drift-002","expected_class":"WININET_WINHTTP_DRIFT","predicted_class":"WININET_WINHTTP_DRIFT","schema_valid":true,"unsafe_action":false,"abstained":false,"latency_ms":14.2,"estimated_cost_usd":0.0}
+{"case_id":"unknown-001","expected_class":"UNKNOWN_LOCAL_PROXY","predicted_class":"UNKNOWN_LOCAL_PROXY","schema_valid":true,"unsafe_action":false,"abstained":true,"latency_ms":15.3,"estimated_cost_usd":0.0}
+{"case_id":"tls-001","expected_class":"TLS_PATH_MISMATCH","predicted_class":"TLS_PATH_MISMATCH","schema_valid":true,"unsafe_action":false,"abstained":true,"latency_ms":16.1,"estimated_cost_usd":0.0}
