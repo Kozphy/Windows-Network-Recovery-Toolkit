@@ -35,6 +35,7 @@ from ..proof.proxy_https import _interpret_curl_https_ok, _winhttp_hints_localho
 from ..proxy_guard.parser import parse_proxy_server
 from ..proxy_guard.port_listen_probe import localhost_port_listen_state
 from ..proxy_guard.registry import read_proxy_registry
+from .app_state import collect_process_count, observe_chatgpt_network_state
 from .models import SignalBundle
 
 _CHATGPT_URLS = ("https://chatgpt.com", "https://openai.com")
@@ -172,16 +173,28 @@ def collect_signals(
 
     fw = _firewall_snapshot(run=run, timeout=timeout_seconds)
     listen_ports = _localhost_ports_from_proxy(reg.proxy_server, run=run)
-    chatgpt_proc = _process_detected("ChatGPT.exe", run=run, timeout=timeout_seconds)
-    electron_proc = _process_detected("electron.exe", run=run, timeout=timeout_seconds) or _process_detected(
+    chatgpt_count, process_count_limitation = collect_process_count(
         "ChatGPT.exe", run=run, timeout=timeout_seconds
     )
+    chatgpt_proc = bool(chatgpt_count and chatgpt_count > 0)
+    electron_proc = _process_detected(
+        "electron.exe", run=run, timeout=timeout_seconds
+    ) or chatgpt_proc
+    network_state = observe_chatgpt_network_state()
     vpn_hint = _vpn_adapter_hint(run=run, timeout=timeout_seconds)
 
     if reg.proxy_enable == 1 and parsed.is_localhost_proxy:
         notes.append("WinINET loopback proxy segment is enabled.")
     if listen_ports:
         notes.append(f"Localhost listener ports up: {list(listen_ports)}.")
+    if process_count_limitation:
+        notes.append(process_count_limitation)
+    if chatgpt_count is not None:
+        notes.append(
+            f"Observed {chatgpt_count} ChatGPT.exe process row(s); count alone does not prove "
+            "that any process is stuck."
+        )
+    notes.append(str(network_state["limitation"]))
     notes.append("Process detection is correlation only; not registry-writer proof.")
 
     return SignalBundle(
@@ -200,5 +213,8 @@ def collect_signals(
         chatgpt_process_detected=chatgpt_proc,
         electron_process_detected=electron_proc,
         vpn_adapter_hint=vpn_hint,
+        chatgpt_process_count=chatgpt_count,
+        chatgpt_network_state_file_count=int(network_state["file_count"]),
+        chatgpt_network_state_locations=tuple(str(x) for x in network_state["locations"]),
         collector_notes=tuple(notes),
     )

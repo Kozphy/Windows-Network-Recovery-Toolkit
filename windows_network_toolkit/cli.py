@@ -528,8 +528,8 @@ def cmd_auto_fix_chatgpt(args: argparse.Namespace) -> int:
     """Run ChatGPT auto-fix pipeline (proxy, diagnose, LOW-risk remediations).
 
     Args:
-        args: Namespace with ``dry_run``, ``confirm``, ``url``, ``skip_proxy_auto_fix``,
-            ``skip_guardian_install``.
+        args: Namespace with ``dry_run``, app and proxy confirmation tokens, ``url``,
+            ``skip_proxy_auto_fix``, and ``skip_guardian_install``.
 
     Returns:
         0 when outcome healthy; 1 when degraded; 2 on unsupported platform.
@@ -546,6 +546,7 @@ def cmd_auto_fix_chatgpt(args: argparse.Namespace) -> int:
     payload = run_auto_fix_chatgpt(
         dry_run=dry_run,
         confirm=args.confirm or "",
+        proxy_confirm=getattr(args, "proxy_confirm", "") or "",
         skip_proxy_auto_fix=bool(getattr(args, "skip_proxy_auto_fix", False)),
         skip_guardian_install=bool(getattr(args, "skip_guardian_install", False)),
         chatgpt_url=args.url or "https://chatgpt.com",
@@ -2020,13 +2021,24 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         "--dry-run",
         nargs="?",
         const="true",
-        default="false",
-        help="Preview only. Pass true for dry-run: --dry-run true",
+        default="true",
+        help=(
+            "Preview only (default). Live apply requires --dry-run false and "
+            "--confirm APPLY_CHATGPT_LOW_RISK."
+        ),
     )
     af.add_argument(
         "--confirm",
         default="",
-        help="Typed confirmation for LOW-risk apply (default: APPLY_CHATGPT_LOW_RISK when live)",
+        help="Typed confirmation for LOW-risk apply: APPLY_CHATGPT_LOW_RISK",
+    )
+    af.add_argument(
+        "--proxy-confirm",
+        default="",
+        help=(
+            "Separate typed confirmation for dead-proxy guardian apply: "
+            "CLEAR_DEAD_LOCALHOST_PROXY"
+        ),
     )
     af.add_argument(
         "--url",

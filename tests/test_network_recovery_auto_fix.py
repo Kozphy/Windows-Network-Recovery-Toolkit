@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 from pathlib import Path
+from subprocess import CompletedProcess
 from unittest.mock import MagicMock
 
 import pytest
@@ -61,6 +63,26 @@ def test_select_low_risk_actions_for_dns_failure() -> None:
     assert "flush_dns" in selected
 
 
+def test_high_process_fanout_and_state_select_reversible_cold_restart() -> None:
+    signals = _degraded_signals(
+        chatgpt_process_count=99,
+        chatgpt_network_state_file_count=1,
+        chatgpt_network_state_locations=(
+            r"%APPDATA%\ChatGPT\Network\Network Persistent State",
+        ),
+    )
+    analysis = analyze_chatgpt_app_firewall(signals)
+    selected = select_low_risk_actions(signals, analysis["hypotheses"])  # type: ignore[arg-type]
+    cache = next(
+        h for h in analysis["hypotheses"] if h.hypothesis_id == "app_cache_or_session_issue"  # type: ignore[union-attr]
+    )
+
+    assert cache.confidence == "medium"
+    assert any("99" in row and "not proof" in row for row in cache.evidence_for)
+    assert "cold_restart_chatgpt_network_state" in selected
+    assert "restart_chatgpt_app" not in selected
+
+
 def test_select_low_risk_actions_skips_when_healthy() -> None:
     signals = _degraded_signals(chatgpt_https_ok=True, openai_https_ok=True)
     analysis = analyze_chatgpt_app_firewall(signals)
@@ -107,6 +129,211 @@ def test_execute_low_risk_live_with_confirm() -> None:
     )
     assert blob["executed"] == ["flush_dns"]
     run.assert_called_once()
+
+
+def test_auto_fix_default_is_preview_only() -> None:
+    assert inspect.signature(run_auto_fix_chatgpt).parameters["dry_run"].default is True
+
+
+def test_app_apply_does_not_auto_confirm_proxy_guardian(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    guardian_dry_runs: list[bool] = []
+    healthy = _degraded_signals(chatgpt_https_ok=True, openai_https_ok=True)
+    diagnosis = __import__(
+        "src.network_recovery.engine", fromlist=["run_scenario_diagnosis"]
+    ).run_scenario_diagnosis(
+        "chatgpt_app_firewall",
+        signals=healthy,
+        collect_live=False,
+        dry_run=False,
+    )
+    monkeypatch.setattr("src.network_recovery.auto_fix.platform.system", lambda: "Windows")
+    monkeypatch.setattr(
+        "src.network_recovery.auto_fix.run_proxy_guardian_once",
+        lambda *, dry_run: guardian_dry_runs.append(dry_run)
+        or {"action_taken": "preview_only" if dry_run else "remediated"},
+    )
+    monkeypatch.setattr(
+        "src.network_recovery.auto_fix.run_proxy_status",
+        lambda: {"classification": "NO_PROXY"},
+    )
+    monkeypatch.setattr(
+        "src.network_recovery.auto_fix.run_bad_gateway_diagnose",
+        lambda *_a, **_k: {"headline": "fixture"},
+    )
+    monkeypatch.setattr(
+        "src.network_recovery.auto_fix.run_scenario_diagnosis",
+        lambda *_a, **_k: diagnosis,
+    )
+
+    run_auto_fix_chatgpt(
+        dry_run=False,
+        confirm=CONFIRMATION_PHRASE,
+        proxy_confirm="",
+        repo_root=tmp_path,
+    )
+    run_auto_fix_chatgpt(
+        dry_run=False,
+        confirm=CONFIRMATION_PHRASE,
+        proxy_confirm="CLEAR_DEAD_LOCALHOST_PROXY",
+        repo_root=tmp_path,
+    )
+
+    assert guardian_dry_runs == [True, False]
+
+
+def test_cold_restart_live_requires_token_and_preserves_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    roaming = tmp_path / "Roaming"
+    local = tmp_path / "Local"
+    state = roaming / "ChatGPT" / "Network" / "Network Persistent State"
+    state.parent.mkdir(parents=True)
+    state.write_text("fixture", encoding="utf-8")
+    monkeypatch.setenv("APPDATA", str(roaming))
+    monkeypatch.setenv("LOCALAPPDATA", str(local))
+    run = MagicMock()
+
+    blob = execute_selected_low_risk_actions(
+        ["cold_restart_chatgpt_network_state"],
+        dry_run=False,
+        confirm="",
+        run=run,
+    )
+
+    assert blob["executed"] == []
+    assert state.read_text(encoding="utf-8") == "fixture"
+    run.assert_not_called()
+
+
+def test_cold_restart_dry_run_never_stops_process_or_moves_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    roaming = tmp_path / "Roaming"
+    state = roaming / "ChatGPT" / "Network" / "Network Persistent State"
+    state.parent.mkdir(parents=True)
+    state.write_text("fixture", encoding="utf-8")
+    monkeypatch.setenv("APPDATA", str(roaming))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
+    run = MagicMock()
+
+    blob = execute_selected_low_risk_actions(
+        ["cold_restart_chatgpt_network_state"],
+        dry_run=True,
+        confirm=CONFIRMATION_PHRASE,
+        run=run,
+    )
+
+    assert blob["results"][0]["executed"] is False
+    assert blob["results"][0]["planned_quarantine_count"] == 1
+    assert state.read_text(encoding="utf-8") == "fixture"
+    run.assert_not_called()
+
+
+def test_cold_restart_leaves_state_unchanged_when_exit_cannot_be_verified(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    roaming = tmp_path / "Roaming"
+    state = roaming / "ChatGPT" / "Network" / "Network Persistent State"
+    state.parent.mkdir(parents=True)
+    state.write_text("fixture", encoding="utf-8")
+    monkeypatch.setenv("APPDATA", str(roaming))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
+
+    def _run(argv: list[str], **_kwargs: object) -> CompletedProcess[str]:
+        if argv[0].lower() == "tasklist":
+            return CompletedProcess(argv, 1, "", "tasklist unavailable")
+        return CompletedProcess(argv, 0, "", "")
+
+    blob = execute_selected_low_risk_actions(
+        ["cold_restart_chatgpt_network_state"],
+        dry_run=False,
+        confirm=CONFIRMATION_PHRASE,
+        run=_run,
+    )
+
+    assert blob["executed"] == []
+    assert blob["results"][0]["ok"] is False
+    assert blob["results"][0]["quarantine"] == []
+    assert state.read_text(encoding="utf-8") == "fixture"
+
+
+def test_confirmed_cold_restart_quarantines_only_network_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    roaming = tmp_path / "Roaming"
+    local = tmp_path / "Local"
+    state = roaming / "ChatGPT" / "Network" / "Network Persistent State"
+    state.parent.mkdir(parents=True)
+    state.write_text("fixture", encoding="utf-8")
+    exe = local / "Programs" / "ChatGPT" / "ChatGPT.exe"
+    exe.parent.mkdir(parents=True)
+    exe.write_bytes(b"fixture executable")
+    session = roaming / "ChatGPT" / "Cookies"
+    session.write_text("must remain", encoding="utf-8")
+    monkeypatch.setenv("APPDATA", str(roaming))
+    monkeypatch.setenv("LOCALAPPDATA", str(local))
+
+    def _run(argv: list[str], **_kwargs: object) -> CompletedProcess[str]:
+        if argv[0].lower() == "tasklist":
+            return CompletedProcess(argv, 0, "INFO: No tasks are running which match the specified criteria.", "")
+        return CompletedProcess(argv, 0, "", "")
+
+    blob = execute_selected_low_risk_actions(
+        ["cold_restart_chatgpt_network_state"],
+        dry_run=False,
+        confirm=CONFIRMATION_PHRASE,
+        run=_run,
+    )
+
+    assert blob["executed"] == ["cold_restart_chatgpt_network_state"]
+    result = blob["results"][0]
+    assert result["ok"] is True
+    assert result["remaining_process_count"] == 0
+    assert result["quarantine"][0]["status"] == "quarantined"
+    assert not state.exists()
+    assert list(state.parent.glob("Network Persistent State.wnrt-backup-*"))
+    assert session.read_text(encoding="utf-8") == "must remain"
+
+
+def test_confirmed_cold_restart_uses_bounded_force_fallback_for_remaining_chatgpt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    roaming = tmp_path / "Roaming"
+    local = tmp_path / "Local"
+    state = roaming / "ChatGPT" / "Network" / "Network Persistent State"
+    state.parent.mkdir(parents=True)
+    state.write_text("fixture", encoding="utf-8")
+    exe = local / "Programs" / "ChatGPT" / "ChatGPT.exe"
+    exe.parent.mkdir(parents=True)
+    exe.write_bytes(b"fixture executable")
+    monkeypatch.setenv("APPDATA", str(roaming))
+    monkeypatch.setenv("LOCALAPPDATA", str(local))
+    tasklist_calls = 0
+    powershell_commands: list[str] = []
+
+    def _run(argv: list[str], **_kwargs: object) -> CompletedProcess[str]:
+        nonlocal tasklist_calls
+        if argv[0].lower() == "tasklist":
+            tasklist_calls += 1
+            stdout = '"ChatGPT.exe","42","Console","1","10,000 K"' if tasklist_calls == 1 else ""
+            return CompletedProcess(argv, 0, stdout, "")
+        if argv[0].lower() == "powershell":
+            powershell_commands.append(argv[-1])
+        return CompletedProcess(argv, 0, "", "")
+
+    blob = execute_selected_low_risk_actions(
+        ["cold_restart_chatgpt_network_state"],
+        dry_run=False,
+        confirm=CONFIRMATION_PHRASE,
+        run=_run,
+    )
+
+    assert blob["executed"] == ["cold_restart_chatgpt_network_state"]
+    assert tasklist_calls == 2
+    assert any("-Force" in command for command in powershell_commands)
+    assert blob["results"][0]["force_stop"]["returncode"] == 0
 
 
 @pytest.mark.skipif(__import__("platform").system() != "Windows", reason="Windows-only orchestrator")

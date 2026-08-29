@@ -21,6 +21,7 @@ Audit Notes:
 
 from __future__ import annotations
 
+from ..app_state import PROCESS_FANOUT_REVIEW_THRESHOLD
 from ..models import (
     CASE_CHATGPT_APP_FIREWALL_FILTERING_INTERACTION,
     DESKTOP_APP_PATH_DEGRADED_EVENT,
@@ -88,15 +89,40 @@ def _rank_hypotheses(
     )
 
     cache_for: list[str] = []
+    cache_against: list[str] = []
     if signals.chatgpt_process_detected and signals.chatgpt_https_ok is False:
         cache_for.append("App running but HTTPS probe to ChatGPT endpoints failed — may be session/cache.")
+    high_fanout = (
+        signals.chatgpt_process_count is not None
+        and signals.chatgpt_process_count >= PROCESS_FANOUT_REVIEW_THRESHOLD
+    )
+    state_observed = bool(signals.chatgpt_network_state_file_count)
+    if high_fanout:
+        cache_for.append(
+            f"Observed {signals.chatgpt_process_count} ChatGPT.exe process rows while the app path "
+            "was degraded; this is a review threshold, not proof the processes are hung."
+        )
+    elif signals.chatgpt_process_count is not None:
+        cache_against.append(
+            f"Observed process count ({signals.chatgpt_process_count}) is below the "
+            f"{PROCESS_FANOUT_REVIEW_THRESHOLD}-process review threshold."
+        )
+    if state_observed:
+        cache_for.append(
+            "A bounded Chromium Network Persistent State artifact was observed; its presence is "
+            "normal and does not prove corruption."
+        )
     rows.append(
         RankedHypothesis(
             hypothesis_id="app_cache_or_session_issue",
-            confidence="low",
+            confidence="medium" if high_fanout and state_observed else "low",
             evidence_for=tuple(cache_for),
-            evidence_against=(),
-            limitations=("Restart is a low-risk test, not confirmation of cache root cause.",),
+            evidence_against=tuple(cache_against),
+            limitations=(
+                "Process fan-out does not prove processes are stuck or identify a cause.",
+                "Network-state file presence does not prove cached QUIC or Happy Eyeballs corruption.",
+                "Cold restart and quarantine are recovery tests, not confirmation of cache root cause.",
+            ),
         )
     )
 

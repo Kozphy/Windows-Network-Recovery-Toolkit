@@ -49,7 +49,7 @@ _MEDIUM: tuple[tuple[str, str, str | None], ...] = (
 )
 
 # LOW — ALLOW with operator confirmation when not dry-run
-_LOW: tuple[tuple[str, str, str | None], ...] = (
+_LOW: tuple[tuple[str, str, str, str | None], ...] = (
     ("flush_dns", "Flush DNS cache", "Low risk: ipconfig /flushdns (preview by default).", r"scripts\reset_dns.bat"),
     (
         "reset_winhttp_proxy",
@@ -61,6 +61,13 @@ _LOW: tuple[tuple[str, str, str | None], ...] = (
         "restart_chatgpt_app",
         "Restart ChatGPT desktop app",
         "Low risk: close and relaunch ChatGPT.exe — does not kill arbitrary processes.",
+        None,
+    ),
+    (
+        "cold_restart_chatgpt_network_state",
+        "Cold-restart ChatGPT and quarantine Chromium network state",
+        "Confirmation-gated: stop ChatGPT.exe, rename only Network Persistent State to a "
+        "reversible backup, then relaunch. Cookies, sessions, history, and extensions are untouched.",
         None,
     ),
 )

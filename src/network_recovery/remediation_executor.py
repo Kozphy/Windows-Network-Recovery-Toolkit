@@ -1,8 +1,8 @@
 """Execute allowlisted LOW-risk ChatGPT scenario remediations with typed confirmation.
 
 Module responsibility:
-    Gate and run LOW-risk actions (flush_dns, reset_winhttp_proxy, restart_chatgpt_app)
-    after evidence selection. Enforces same typed-confirmation posture as proxy-disable.
+    Gate and run LOW-risk actions (DNS/proxy reset, app restart, or bounded network-state
+    quarantine) after evidence selection. Enforces the typed-confirmation posture.
 
 System placement:
     Called by ``auto_fix.run_auto_fix_chatgpt`` and ``cli_handlers.cmd_remediate_scenario``.
@@ -34,11 +34,24 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from .app_state import (
+    collect_process_count,
+    describe_network_state_location,
+    discover_chatgpt_network_state_files,
+    quarantine_network_state_files,
+)
 from .models import RankedHypothesis, RemediationActionPreview, SignalBundle
 
 CONFIRMATION_PHRASE = "APPLY_CHATGPT_LOW_RISK"
 
-_LOW_RISK_ACTION_IDS = frozenset({"flush_dns", "reset_winhttp_proxy", "restart_chatgpt_app"})
+_LOW_RISK_ACTION_IDS = frozenset(
+    {
+        "flush_dns",
+        "reset_winhttp_proxy",
+        "restart_chatgpt_app",
+        "cold_restart_chatgpt_network_state",
+    }
+)
 _BLOCKED_ACTION_IDS = frozenset(
     {
         "disable_firewall",
@@ -84,9 +97,13 @@ def select_low_risk_actions(
     ):
         selected.append("reset_winhttp_proxy")
 
-    if primary in {"app_cache_or_session_issue", "electron_network_stack_issue"} or (
+    restart_supported = primary in {"app_cache_or_session_issue", "electron_network_stack_issue"} or (
         signals.chatgpt_process_detected and signals.chatgpt_https_ok is False
-    ):
+    )
+    network_state_observed = bool(signals.chatgpt_network_state_file_count)
+    if restart_supported and network_state_observed and signals.chatgpt_https_ok is False:
+        selected.append("cold_restart_chatgpt_network_state")
+    elif restart_supported:
         selected.append("restart_chatgpt_app")
 
     if signals.chatgpt_https_ok is False and signals.browser_https_ok is True and "flush_dns" not in selected:
@@ -139,6 +156,16 @@ def _chatgpt_exe_candidates() -> list[Path]:
     ]
 
 
+def _start_chatgpt_argv(exe: Path) -> list[str]:
+    escaped = str(exe).replace("'", "''")
+    return [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        f"Start-Process -FilePath '{escaped}'",
+    ]
+
+
 def _execute_restart_chatgpt_app(
     *,
     dry_run: bool,
@@ -155,13 +182,119 @@ def _execute_restart_chatgpt_app(
     stop_result = _run_argv(stop_argv, dry_run=dry_run, run=run, timeout=timeout)
     start_result: dict[str, Any] | None = None
     if exe is not None:
-        start_result = _run_argv([str(exe)], dry_run=dry_run, run=run, timeout=timeout)
+        start_result = _run_argv(
+            _start_chatgpt_argv(exe), dry_run=dry_run, run=run, timeout=timeout
+        )
     return {
         "action_id": "restart_chatgpt_app",
         "stop": stop_result,
         "start": start_result,
         "chatgpt_exe": str(exe) if exe else None,
         "ok": stop_result.get("returncode") == 0 and (start_result is None or start_result.get("returncode") == 0),
+    }
+
+
+def _execute_cold_restart_chatgpt_network_state(
+    *,
+    dry_run: bool,
+    run: Callable[..., Any],
+    timeout: float,
+) -> dict[str, Any]:
+    """Stop ChatGPT, verify exit, quarantine exact network state, then relaunch."""
+    exe = next((p for p in _chatgpt_exe_candidates() if p.is_file()), None)
+    files = discover_chatgpt_network_state_files()
+    locations = [describe_network_state_location(path) for path in files]
+    stop_argv = [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "Stop-Process -Name ChatGPT -ErrorAction SilentlyContinue",
+    ]
+    if dry_run:
+        return {
+            "action_id": "cold_restart_chatgpt_network_state",
+            "executed": False,
+            "ok": True,
+            "process_stop_preview": stop_argv,
+            "network_state_locations": locations,
+            "planned_quarantine_count": len(files),
+            "chatgpt_exe": str(exe) if exe else None,
+            "limitations": [
+                "Process count does not prove any process is stuck.",
+                "Network-state presence does not prove QUIC or Happy Eyeballs corruption.",
+            ],
+        }
+
+    stop_result = _run_argv(stop_argv, dry_run=False, run=run, timeout=timeout)
+    remaining, count_limitation = collect_process_count("ChatGPT.exe", run=run, timeout=timeout)
+    force_result: dict[str, Any] | None = None
+    if stop_result.get("returncode") == 0 and remaining is not None and remaining > 0:
+        force_result = _run_argv(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Stop-Process -Name ChatGPT -Force -ErrorAction SilentlyContinue",
+            ],
+            dry_run=False,
+            run=run,
+            timeout=timeout,
+        )
+        remaining, count_limitation = collect_process_count(
+            "ChatGPT.exe", run=run, timeout=timeout
+        )
+
+    can_mutate_state = (
+        stop_result.get("returncode") == 0
+        and remaining == 0
+        and (force_result is None or force_result.get("returncode") == 0)
+    )
+    if not can_mutate_state:
+        return {
+            "action_id": "cold_restart_chatgpt_network_state",
+            "executed": True,
+            "ok": False,
+            "stop": stop_result,
+            "force_stop": force_result,
+            "remaining_process_count": remaining,
+            "network_state_locations": locations,
+            "quarantine": [],
+            "chatgpt_exe": str(exe) if exe else None,
+            "reason": (
+                count_limitation
+                or "ChatGPT process exit could not be verified; network state was left unchanged."
+            ),
+        }
+
+    quarantine = quarantine_network_state_files(files)
+    failed = [row for row in quarantine if row.get("status") in {"failed", "blocked"}]
+    start_result: dict[str, Any] | None = None
+    if exe is not None:
+        start_result = _run_argv(
+            _start_chatgpt_argv(exe), dry_run=False, run=run, timeout=timeout
+        )
+
+    start_ok = start_result is None or start_result.get("returncode") == 0
+    return {
+        "action_id": "cold_restart_chatgpt_network_state",
+        "executed": True,
+        "ok": not failed and start_ok,
+        "stop": stop_result,
+        "force_stop": force_result,
+        "remaining_process_count": remaining,
+        "network_state_locations": locations,
+        "quarantine": quarantine,
+        "chatgpt_exe": str(exe) if exe else None,
+        "start": start_result,
+        "manual_relaunch_required": exe is None,
+        "rollback": (
+            "Quit ChatGPT, remove the newly recreated Network Persistent State file, then rename "
+            "the .wnrt-backup-* file to Network Persistent State."
+        ),
+        "limitations": [
+            "A successful cold restart supports a cached-state hypothesis but does not prove root cause.",
+            "Microsoft Store installations may require manual relaunch when no executable path is found.",
+        ],
     }
 
 
@@ -190,6 +323,12 @@ def execute_low_risk_action(
             timeout=timeout,
         )
         return {"action_id": action_id, **result, "ok": result.get("returncode") == 0}
+    if action_id == "cold_restart_chatgpt_network_state":
+        return _execute_cold_restart_chatgpt_network_state(
+            dry_run=dry_run,
+            run=run_fn,
+            timeout=timeout,
+        )
     return _execute_restart_chatgpt_app(dry_run=dry_run, run=run_fn, timeout=timeout)
 
 

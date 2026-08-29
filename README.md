@@ -665,6 +665,12 @@ python -m src network-path-health --all-adapters --force --confirm PREFER_IPV4_O
 python -m src fix-browser-stall --json
 python -m src fix-browser-stall --confirm RESTART_BROWSER_DISABLE_QUIC --dry-run false --json
 
+# ChatGPT/Electron blank or endlessly loading (preview default)
+# Reports exact ChatGPT.exe count; count alone does not prove processes are stuck.
+python -m windows_network_toolkit auto-fix-chatgpt --dry-run true
+# Confirmed cold restart may quarantine only Network Persistent State to a reversible backup.
+python -m windows_network_toolkit auto-fix-chatgpt --skip-proxy-auto-fix --dry-run false --confirm APPLY_CHATGPT_LOW_RISK
+
 # Emergency HKCU fix (localhost ProxyServer only)
 python -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
 
