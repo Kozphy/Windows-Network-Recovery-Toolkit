@@ -3,11 +3,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from .audit import HashChainAuditLog
+from .auth import Principal, require_role
 from .engine import analyze
+from .evaluation import CalibrationReport, CalibrationRequest, evaluate_calibration
 from .metrics import DECISION_CONFIDENCE, DECISIONS_ANALYZED, HUMAN_DECISIONS, OUTCOMES_VERIFIED
 from .models import (
     DecisionRequest,
@@ -17,15 +19,16 @@ from .models import (
     OutcomeVerification,
     Recommendation,
 )
-from .policy import approval_allowed
+from .policy import approval_allowed, load_policy
 from .store import DecisionStore
 
 app = FastAPI(
     title="Decision Intelligence / AI Governance Engine",
-    version="0.2.0",
+    version="0.3.0",
     description=(
-        "Evidence-backed decision support with policy-as-code, durable persistence, "
-        "separation of duties, human approval, outcome verification, and tamper-evident audit logging."
+        "Evidence-backed decision support with signed-identity role boundaries, versioned policy-as-code, "
+        "durable persistence, independent approval and verification, calibration evaluation, replayable events, "
+        "Prometheus metrics, and tamper-evident audit logging."
     ),
 )
 
@@ -36,7 +39,13 @@ store = DecisionStore()
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "mode": "human-in-the-loop", "version": "0.2.0"}
+    return {
+        "status": "ok",
+        "mode": "human-in-the-loop",
+        "version": "0.3.0",
+        "policy_version": load_policy().version,
+        "auth_mode": os.getenv("DI_AUTH_MODE", "disabled"),
+    }
 
 
 @app.get("/metrics")
@@ -45,7 +54,11 @@ def metrics() -> Response:
 
 
 @app.post("/v1/decisions/analyze", response_model=Recommendation)
-def analyze_decision(request: DecisionRequest) -> Recommendation:
+def analyze_decision(
+    request: DecisionRequest,
+    principal: Principal = Depends(require_role("requester")),
+) -> Recommendation:
+    request = request.model_copy(update={"requester": principal.subject})
     recommendation = analyze(request)
     store.save_recommendation(recommendation)
     audit.append("recommendation_created", recommendation.model_dump(mode="json"))
@@ -55,7 +68,10 @@ def analyze_decision(request: DecisionRequest) -> Recommendation:
 
 
 @app.get("/v1/decisions/{decision_id}", response_model=Recommendation)
-def get_decision(decision_id: str) -> Recommendation:
+def get_decision(
+    decision_id: str,
+    _: Principal = Depends(require_role("auditor")),
+) -> Recommendation:
     recommendation = store.get_recommendation(decision_id)
     if recommendation is None:
         raise HTTPException(status_code=404, detail="decision not found")
@@ -63,16 +79,17 @@ def get_decision(decision_id: str) -> Recommendation:
 
 
 @app.post("/v1/decisions/{decision_id}/human-decision", response_model=HumanDecisionResult)
-def human_decision(decision_id: str, decision: HumanDecision) -> HumanDecisionResult:
+def human_decision(
+    decision_id: str,
+    decision: HumanDecision,
+    principal: Principal = Depends(require_role("approver")),
+) -> HumanDecisionResult:
     recommendation = store.get_recommendation(decision_id)
     if recommendation is None:
         raise HTTPException(status_code=404, detail="decision not found")
-
-    current_status = store.get_status(decision_id)
-    if current_status != "pending_human_review":
+    if store.get_status(decision_id) != "pending_human_review":
         raise HTTPException(status_code=409, detail="decision already finalized")
-
-    if decision.approver == recommendation.requester:
+    if principal.subject == recommendation.requester:
         raise HTTPException(status_code=403, detail="separation of duties: requester cannot approve own decision")
 
     if decision.action == "approve":
@@ -80,14 +97,14 @@ def human_decision(decision_id: str, decision: HumanDecision) -> HumanDecisionRe
         if not allowed:
             audit.append(
                 "approval_blocked_by_policy",
-                {"decision_id": decision_id, "approver": decision.approver, "reason": reason},
+                {"decision_id": decision_id, "approver": principal.subject, "reason": reason},
             )
             raise HTTPException(status_code=422, detail=reason)
 
     result = HumanDecisionResult(
         decision_id=decision_id,
         action=decision.action,
-        approver=decision.approver,
+        approver=principal.subject,
         rationale=decision.rationale,
         status="approved" if decision.action == "approve" else "rejected",
     )
@@ -98,27 +115,55 @@ def human_decision(decision_id: str, decision: HumanDecision) -> HumanDecisionRe
 
 
 @app.post("/v1/decisions/{decision_id}/outcome", response_model=OutcomeResult)
-def verify_outcome(decision_id: str, verification: OutcomeVerification) -> OutcomeResult:
+def verify_outcome(
+    decision_id: str,
+    verification: OutcomeVerification,
+    principal: Principal = Depends(require_role("verifier")),
+) -> OutcomeResult:
     recommendation = store.get_recommendation(decision_id)
     if recommendation is None:
         raise HTTPException(status_code=404, detail="decision not found")
-
     human_result = store.get_human_decision(decision_id)
     if human_result is None or human_result.status != "approved":
         raise HTTPException(status_code=409, detail="only approved decisions can have verified outcomes")
-    if verification.verifier in {recommendation.requester, human_result.approver}:
+    if principal.subject in {recommendation.requester, human_result.approver}:
         raise HTTPException(status_code=403, detail="outcome verifier must be independent of requester and approver")
     if store.get_outcome(decision_id) is not None:
         raise HTTPException(status_code=409, detail="outcome already verified")
 
-    result = OutcomeResult(decision_id=decision_id, **verification.model_dump())
+    payload = verification.model_copy(update={"verifier": principal.subject})
+    result = OutcomeResult(decision_id=decision_id, **payload.model_dump())
     store.save_outcome(result)
     audit.append("outcome_verified", result.model_dump(mode="json"))
     OUTCOMES_VERIFIED.labels(outcome=result.outcome).inc()
     return result
 
 
+@app.get("/v1/decisions/{decision_id}/replay")
+def replay_decision(
+    decision_id: str,
+    _: Principal = Depends(require_role("auditor")),
+) -> dict[str, object]:
+    if store.get_recommendation(decision_id) is None:
+        raise HTTPException(status_code=404, detail="decision not found")
+    valid, _ = audit.verify()
+    if not valid:
+        raise HTTPException(status_code=409, detail="audit chain verification failed")
+    events = audit.replay(decision_id)
+    return {"decision_id": decision_id, "events": events, "event_count": len(events)}
+
+
+@app.post("/v1/evaluation/calibration", response_model=CalibrationReport)
+def calibration(
+    request: CalibrationRequest,
+    _: Principal = Depends(require_role("auditor")),
+) -> CalibrationReport:
+    return evaluate_calibration(request)
+
+
 @app.get("/v1/audit/verify")
-def verify_audit() -> dict[str, object]:
+def verify_audit(
+    _: Principal = Depends(require_role("auditor")),
+) -> dict[str, object]:
     valid, records = audit.verify()
     return {"valid": valid, "records": records}
