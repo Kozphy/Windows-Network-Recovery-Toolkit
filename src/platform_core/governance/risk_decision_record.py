@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from src.platform_core.governance.assurance_adapter import build_assurance_decision
 from src.platform_core.governance.evidence_to_action import (
     attach_governance_envelope,
     resolve_execution_authority,
@@ -77,6 +78,8 @@ class RiskDecisionRecord(BaseModel):
     audit_id: str = Field(default_factory=lambda: f"audit-{uuid.uuid4().hex[:12]}")
     evidence_hash: str = ""
     governance: dict[str, Any] = Field(default_factory=dict)
+    assurance_decision: dict[str, Any] = Field(default_factory=dict)
+    exception_register: list[dict[str, Any]] = Field(default_factory=list)
 
 
 def build_risk_decision_record(
@@ -90,11 +93,19 @@ def build_risk_decision_record(
     primary = str(classification_block.get("primary_classification") or "").upper()
     secondary = list(classification_block.get("secondary_signals") or [])
     confidence = float(classification_block.get("confidence") or 0.5)
+    inc_id = incident_id or str(
+        fixture.get("case_id") or fixture.get("incident_id") or f"INC-{uuid.uuid4().hex[:8]}"
+    )
 
     proof = resolve_proof_tier(fixture)
     tests = run_control_tests(fixture)
     findings = findings_from_fixture(fixture, tests)
     rating = rate_risk(findings, tests, fixture)
+    assurance_fixture = dict(fixture)
+    assurance_fixture["incident_id"] = inc_id
+    if incident_id is not None:
+        assurance_fixture["case_id"] = inc_id
+    assurance, exceptions = build_assurance_decision(assurance_fixture, rating)
     impact_est = estimate_business_impact(classification=primary, fixture=fixture)
     impact_map = map_business_impact(primary)
 
@@ -126,7 +137,6 @@ def build_risk_decision_record(
     limitations.extend(proof_block.get("limitations") or [])
     limitations = list(dict.fromkeys(limitations))
 
-    inc_id = incident_id or str(fixture.get("case_id") or fixture.get("incident_id") or f"INC-{uuid.uuid4().hex[:8]}")
     evidence_id = f"ev-{inc_id}"
     evidence_schema_version = _version_from_fixture(
         fixture, "evidence_schema", DEFAULT_EVIDENCE_SCHEMA_VERSION
@@ -184,6 +194,8 @@ def build_risk_decision_record(
         limitations=limitations,
         operator_id=operator_id,
         evidence_hash=evidence_hash,
+        assurance_decision=assurance.model_dump(mode="json"),
+        exception_register=[item.model_dump(mode="json") for item in exceptions],
     )
 
     envelope = attach_governance_envelope(
