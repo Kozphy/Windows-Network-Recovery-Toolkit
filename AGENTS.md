@@ -23,6 +23,37 @@ Short rules for AI assistants (Cursor, Codex, Copilot, etc.). Persistent Cursor 
 | 9 | Do not commit `__pycache__/`, secrets, logs, or generated junk — commits only when user asks |
 | 10 | Summarize: changed files, tests run, risks, next step |
 
+## Roadmap-driven delivery
+
+When asked to continue or upgrade Decision Provenance work:
+
+1. Read [`docs/decision-provenance-roadmap.md`](docs/decision-provenance-roadmap.md).
+2. Check whether the prerequisite pull request is merged and whether required CI is passing.
+3. Select only the first eligible unchecked implementation item.
+4. Create or use one focused `agent/<short-description>` branch.
+5. Implement one bounded capability; do not bundle unrelated refactors or integrations.
+6. Preserve v2 compatibility unless an approved issue explicitly authorizes migration.
+7. Preserve preview-only remediation and typed human confirmation.
+8. Add deterministic unit, invariant, and compatibility tests for the new behavior.
+9. Run focused tests first, then the relevant repository gates.
+10. Open a **draft** pull request with problem, non-goals, evidence, risks, and limitations.
+11. Update a roadmap checkbox only after implementation and relevant tests pass.
+12. Never merge automatically; a human retains final merge authority.
+13. Stop rather than stack new work on a failing or unreviewed prerequisite PR.
+
+## Pull-request boundaries
+
+A focused implementation pull request should normally have:
+
+- one primary capability;
+- a small, coherent set of changed files;
+- explicit non-goals;
+- deterministic tests;
+- no weakening of safety controls;
+- an independently reversible diff.
+
+Workflow, dependency, permission, or secret-handling changes require explicit human review and must not be silently combined with feature work.
+
 ## Epistemic boundaries
 
 Observation ≠ proof · Correlation ≠ causation · Classification ≠ accusation · Policy allow ≠ safety guarantee.
@@ -44,6 +75,7 @@ python -m windows_network_toolkit audit verify .audit/canonical_custody.jsonl --
 pytest -q tests/test_policy_safety_contract.py
 pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
+pytest -q tests/decision_provenance
 ```
 
 ## Key paths
@@ -57,6 +89,7 @@ pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
 | `src/platform_core/audit/` | Hash-chained custody + tip anchor (`docs/audit-custody.md`) |
 | `telemetry/` | Registry-writer telemetry (fixture-first) |
 | `tests/fixtures/` | Deterministic test inputs |
+| `docs/decision-provenance-roadmap.md` | Ordered Decision Provenance delivery plan |
 | `docs/ONBOARDING.md` | Human onboarding |
 | `docs/startup-observability.md` | Startup observability architecture |
 | `docs/openclaw-coding-agent.md` | Policy-gated OpenClaw coding agent (draft PR only) |

@@ -1,0 +1,102 @@
+# Focused gate for Decision Provenance changes.
+# The repository-wide CI remains authoritative for full integration coverage.
+
+name: Decision Provenance CI
+
+on:
+  pull_request:
+    branches:
+      - Multi_Domain_Decision_Platform
+      - main
+      - master
+    paths:
+      - "src/platform_core/governance/**"
+      - "src/platform_core/reasoning/**"
+      - "src/platform_core/reliability/**"
+      - "tests/decision_provenance/**"
+      - "docs/decision-provenance-roadmap.md"
+      - "AGENTS.md"
+      - ".github/workflows/decision-provenance-ci.yml"
+  push:
+    branches:
+      - Multi_Domain_Decision_Platform
+      - main
+      - master
+    paths:
+      - "src/platform_core/governance/**"
+      - "src/platform_core/reasoning/**"
+      - "src/platform_core/reliability/**"
+      - "tests/decision_provenance/**"
+      - "docs/decision-provenance-roadmap.md"
+      - "AGENTS.md"
+      - ".github/workflows/decision-provenance-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: decision-provenance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONPATH: ${{ github.workspace }}
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  focused-tests:
+    name: focused-tests-${{ matrix.os }}-py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+        python-version:
+          - "3.11"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Decision Provenance tests
+        run: pytest -q tests/decision_provenance
+
+      - name: Type-check Decision Provenance kernel
+        run: >-
+          mypy
+          src/platform_core/governance
+          src/platform_core/reasoning
+          src/platform_core/reliability
+          --ignore-missing-imports
+
+      - name: Lint Decision Provenance scope
+        run: >-
+          ruff check
+          src/platform_core/governance
+          src/platform_core/reasoning
+          src/platform_core/reliability
+          tests/decision_provenance
+          --output-format=github
+
+      - name: Check formatting in Decision Provenance scope
+        run: >-
+          ruff format --check
+          src/platform_core/governance
+          src/platform_core/reasoning
+          src/platform_core/reliability
+          tests/decision_provenance
