@@ -44,6 +44,9 @@ browser = [
 mcp = [
     "mcp>=1.0",
 ]
+azure = [
+    "azure-monitor-opentelemetry>=1.8,<2",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
