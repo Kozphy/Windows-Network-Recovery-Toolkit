@@ -1,0 +1,16 @@
+{
+  "test_id": "deterministic-sha256-prefix",
+  "control_id": "CTRL-001",
+  "control_version": "1.0",
+  "incident_id": "incident-123",
+  "conclusion": "PARTIAL",
+  "tested_at_utc": "2026-07-30T00:00:00Z",
+  "evidence_refs": ["proxy-event-1"],
+  "satisfied_requirements": ["WinINET proxy configuration captured"],
+  "missing_requirements": ["Local listener state captured"],
+  "rationale": "Some evidence requirements were satisfied; missing evidence remains.",
+  "limitations": [
+    "A control test evaluates supplied evidence only; it is not a formal audit opinion.",
+    "PASS does not authorize remediation or prove endpoint safety outside test scope."
+  ]
+}
