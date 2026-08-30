@@ -16,6 +16,9 @@ from src.proxy_guard.stop_reverter import (
     run_stop_reverter_workflow,
 )
 
+# Windows-only surfaces: simulate the platform guard so Linux CI keeps this coverage.
+pytestmark = pytest.mark.usefixtures("simulated_windows")
+
 
 def test_stop_proxy_reverter_action_is_allowlisted_not_kill_process() -> None:
     action = get_remediation_action("stop_proxy_reverter")

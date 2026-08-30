@@ -63,9 +63,7 @@ class OperationalMetrics:
     verification_success: list[bool] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        mttd = (
-            sum(self.mttd_values) / len(self.mttd_values) if self.mttd_values else None
-        )
+        mttd = sum(self.mttd_values) / len(self.mttd_values) if self.mttd_values else None
         rem = (
             sum(1 for x in self.remediation_success if x) / len(self.remediation_success)
             if self.remediation_success

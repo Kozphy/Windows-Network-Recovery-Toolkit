@@ -17,7 +17,12 @@ def _probe(v4_ok: bool, v6_ok: bool) -> dict:
             "url": "https://www.youtube.com/generate_204",
             "v4": {"ok": v4_ok, "http_code": 204 if v4_ok else 0, "time_s": 0.1, "error": None},
             "v6": {"ok": v6_ok, "http_code": 204 if v6_ok else 0, "time_s": 0.05, "error": None},
-            "default": {"ok": v4_ok, "http_code": 204 if v4_ok else 0, "time_s": 0.1, "error": None},
+            "default": {
+                "ok": v4_ok,
+                "http_code": 204 if v4_ok else 0,
+                "time_s": 0.1,
+                "error": None,
+            },
         }
     }
 

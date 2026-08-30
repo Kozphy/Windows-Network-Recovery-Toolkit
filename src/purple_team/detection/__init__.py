@@ -77,9 +77,7 @@ def _winhttp_mismatch(
     )
 
 
-def _stale_endpoint(
-    scenario: ScenarioDefinition, events: list[TelemetryEvent]
-) -> DetectionResult:
+def _stale_endpoint(scenario: ScenarioDefinition, events: list[TelemetryEvent]) -> DetectionResult:
     hits = [
         e
         for e in events

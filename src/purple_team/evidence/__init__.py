@@ -33,18 +33,26 @@ def build_evidence_bundle(
         ("telemetry", [t.to_dict() for t in result.telemetry]),
         ("detections", [d.to_dict() for d in result.detections]),
         ("risk", result.risk.to_dict() if result.risk else {}),
-        ("response", {
-            "recommendation": result.recommendation.to_dict() if result.recommendation else None,
-            "remediation": result.remediation.to_dict() if result.remediation else None,
-        }),
+        (
+            "response",
+            {
+                "recommendation": result.recommendation.to_dict()
+                if result.recommendation
+                else None,
+                "remediation": result.remediation.to_dict() if result.remediation else None,
+            },
+        ),
         ("verification", result.verification.to_dict() if result.verification else {}),
-        ("metrics", {
-            "true_positive": result.true_positive,
-            "false_positive": result.false_positive,
-            "true_negative": result.true_negative,
-            "false_negative": result.false_negative,
-            "timing": result.timing.to_dict(),
-        }),
+        (
+            "metrics",
+            {
+                "true_positive": result.true_positive,
+                "false_positive": result.false_positive,
+                "true_negative": result.true_negative,
+                "false_negative": result.false_negative,
+                "timing": result.timing.to_dict(),
+            },
+        ),
     ]
     for name, payload in stages:
         entry = {

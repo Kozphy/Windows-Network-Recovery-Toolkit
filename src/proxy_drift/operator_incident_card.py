@@ -91,23 +91,17 @@ _PATH_DEGRADED = frozenset(
 )
 
 _NEXT_COMMAND: dict[str, str] = {
-    "LOCALHOST_REWRITER_SUSPECTED": (
-        "python -m src contain-localhost-rewriter --json"
-    ),
+    "LOCALHOST_REWRITER_SUSPECTED": ("python -m src contain-localhost-rewriter --json"),
     "DEAD_PROXY_CONFIG": "python -m src proxy-guardian --once --json",
     "STALE_LOCALHOST_PROXY": "python -m src proxy-guardian --once --json",
     "STALE_PROXY_AFTER_PROCESS_EXIT": "python -m src proxy-guardian --once --json",
-    "BROKEN_LOCALHOST_PROXY": (
-        "python -m src proxy-guardian --once --clear-broken --json"
-    ),
+    "BROKEN_LOCALHOST_PROXY": ("python -m src proxy-guardian --once --clear-broken --json"),
     "REVERTER_SUSPECTED": "python -m src contain-localhost-rewriter --json",
     "PROXY_FLAPPING": "python -m src contain-localhost-rewriter --json",
     "UNKNOWN_LOCAL_PROXY": "python -m src proxy-guardian --once --json",
     "PROXY_ENABLED_CHECK_GUARDIAN": "python -m src proxy-guardian --once --json",
     "IPV6_BROKEN_IPV4_OK": "python -m src network-path-health --json",
-    "IPV6_PARTIAL_MITIGATION": (
-        "python -m src network-path-health --all-adapters --force --json"
-    ),
+    "IPV6_PARTIAL_MITIGATION": ("python -m src network-path-health --all-adapters --force --json"),
     "HAPPY_EYEBALLS_STALL": "python -m src network-path-health --json",
     "BROWSER_QUIC_STALL": "python -m src fix-browser-stall --json",
     "IPV6_BROKEN_MITIGATED": "python -m src fix-browser-stall --json",
@@ -370,7 +364,9 @@ def load_operator_incident_fixture(path: Path) -> dict[str, Any]:
         proxy=data.get("proxy") if isinstance(data.get("proxy"), dict) else None,
         rewriter=data.get("rewriter") if isinstance(data.get("rewriter"), dict) else None,
         path_health=data.get("path_health") if isinstance(data.get("path_health"), dict) else None,
-        browser_stall=data.get("browser_stall") if isinstance(data.get("browser_stall"), dict) else None,
+        browser_stall=data.get("browser_stall")
+        if isinstance(data.get("browser_stall"), dict)
+        else None,
         timestamp_utc=str(data["timestamp_utc"]) if data.get("timestamp_utc") else None,
     )
 

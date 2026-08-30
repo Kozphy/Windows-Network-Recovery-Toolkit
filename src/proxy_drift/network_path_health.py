@@ -55,7 +55,16 @@ def _curl_code(
     run: Callable[..., Any],
     timeout: float = 10.0,
 ) -> dict[str, Any]:
-    cmd = ["curl.exe", "-s", "-o", "NUL", "-w", "%{http_code}|%{time_total}", "--connect-timeout", "8"]
+    cmd = [
+        "curl.exe",
+        "-s",
+        "-o",
+        "NUL",
+        "-w",
+        "%{http_code}|%{time_total}",
+        "--connect-timeout",
+        "8",
+    ]
     if ip_version == "4":
         cmd.append("-4")
     elif ip_version == "6":
@@ -251,7 +260,9 @@ def assess_network_path(
 
     if proxy_enable == 1:
         classification = "PROXY_ENABLED_CHECK_GUARDIAN"
-        rationale = "WinINET ProxyEnable=1 — dual-stack path secondary; run proxy-guardian / contain first."
+        rationale = (
+            "WinINET ProxyEnable=1 — dual-stack path secondary; run proxy-guardian / contain first."
+        )
         recommended = "python -m src proxy-guardian --once --hold-direct --json"
     elif not v4_ok and not default_ok:
         classification = "PATH_UNREACHABLE"
@@ -290,9 +301,7 @@ def assess_network_path(
         )
     elif broken_v6_healthy_v4:
         classification = "IPV6_BROKEN_IPV4_OK"
-        rationale = (
-            "IPv6 HTTPS probes fail (http_code 0) while IPv4 succeeds — common YouTube/Edge stall pattern."
-        )
+        rationale = "IPv6 HTTPS probes fail (http_code 0) while IPv4 succeeds — common YouTube/Edge stall pattern."
         recommended = (
             f"Preview/apply Prefer IPv4 (all adapters): python -m src network-path-health "
             f"--all-adapters --confirm {CONFIRM_PREFER_IPV4} --dry-run false --json"
@@ -395,7 +404,9 @@ Write-Output 'FLUSHED_DNS'
     if "FLUSHED_DNS" in out:
         details["steps"].append("Flushed DNS")
     if proc.returncode not in (0, None) and not details["steps"]:
-        details["errors"].append(f"powershell exit {proc.returncode}: {(proc.stderr or '').strip()}")
+        details["errors"].append(
+            f"powershell exit {proc.returncode}: {(proc.stderr or '').strip()}"
+        )
     return details
 
 
@@ -486,7 +497,9 @@ def run_network_path_health(
         result["action_taken"] = "failed"
         result["reason"] = "Prefer-IPv4 apply failed (elevation may be required)."
     else:
-        result["action_taken"] = "remediated" if not details.get("errors") else "remediated_with_errors"
+        result["action_taken"] = (
+            "remediated" if not details.get("errors") else "remediated_with_errors"
+        )
         result["reason"] = "Prefer IPv4 mitigation applied."
     append_jsonl(log_path, {"event": "network_path_health_apply", **result})
     return result

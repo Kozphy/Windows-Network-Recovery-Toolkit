@@ -88,7 +88,9 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     ablation = dict(ABLATION_PRESETS.get(args.ablation, {}))
     if args.ablation == "minus_proxy_rule":
         ablation = {"disable_rules": True}
-    evidence_dir = Path(args.evidence_dir) if args.evidence_dir else (repo_root() / "reports" / "purple_team")
+    evidence_dir = (
+        Path(args.evidence_dir) if args.evidence_dir else (repo_root() / "reports" / "purple_team")
+    )
     if args.no_evidence:
         evidence_dir = None
     report = run_benchmark(

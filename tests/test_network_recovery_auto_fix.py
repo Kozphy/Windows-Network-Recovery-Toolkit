@@ -67,14 +67,14 @@ def test_high_process_fanout_and_state_select_reversible_cold_restart() -> None:
     signals = _degraded_signals(
         chatgpt_process_count=99,
         chatgpt_network_state_file_count=1,
-        chatgpt_network_state_locations=(
-            r"%APPDATA%\ChatGPT\Network\Network Persistent State",
-        ),
+        chatgpt_network_state_locations=(r"%APPDATA%\ChatGPT\Network\Network Persistent State",),
     )
     analysis = analyze_chatgpt_app_firewall(signals)
     selected = select_low_risk_actions(signals, analysis["hypotheses"])  # type: ignore[arg-type]
     cache = next(
-        h for h in analysis["hypotheses"] if h.hypothesis_id == "app_cache_or_session_issue"  # type: ignore[union-attr]
+        h
+        for h in analysis["hypotheses"]
+        if h.hypothesis_id == "app_cache_or_session_issue"  # type: ignore[union-attr]
     )
 
     assert cache.confidence == "medium"
@@ -151,8 +151,10 @@ def test_app_apply_does_not_auto_confirm_proxy_guardian(
     monkeypatch.setattr("src.network_recovery.auto_fix.platform.system", lambda: "Windows")
     monkeypatch.setattr(
         "src.network_recovery.auto_fix.run_proxy_guardian_once",
-        lambda *, dry_run: guardian_dry_runs.append(dry_run)
-        or {"action_taken": "preview_only" if dry_run else "remediated"},
+        lambda *, dry_run: (
+            guardian_dry_runs.append(dry_run)
+            or {"action_taken": "preview_only" if dry_run else "remediated"}
+        ),
     )
     monkeypatch.setattr(
         "src.network_recovery.auto_fix.run_proxy_status",
@@ -277,7 +279,9 @@ def test_confirmed_cold_restart_quarantines_only_network_state(
 
     def _run(argv: list[str], **_kwargs: object) -> CompletedProcess[str]:
         if argv[0].lower() == "tasklist":
-            return CompletedProcess(argv, 0, "INFO: No tasks are running which match the specified criteria.", "")
+            return CompletedProcess(
+                argv, 0, "INFO: No tasks are running which match the specified criteria.", ""
+            )
         return CompletedProcess(argv, 0, "", "")
 
     blob = execute_selected_low_risk_actions(
@@ -336,8 +340,12 @@ def test_confirmed_cold_restart_uses_bounded_force_fallback_for_remaining_chatgp
     assert blob["results"][0]["force_stop"]["returncode"] == 0
 
 
-@pytest.mark.skipif(__import__("platform").system() != "Windows", reason="Windows-only orchestrator")
-def test_auto_fix_chatgpt_dry_run_writes_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.skipif(
+    __import__("platform").system() != "Windows", reason="Windows-only orchestrator"
+)
+def test_auto_fix_chatgpt_dry_run_writes_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(
         "src.network_recovery.auto_fix.run_proxy_guardian_once",
         lambda **_: {"action_taken": "none", "classification": "NO_PROXY"},

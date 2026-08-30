@@ -23,8 +23,8 @@ from typing import Any
 
 from .correlator import correlate_host_router
 from .importers import IMPORTERS
-from .normalizer import write_router_jsonl
 from .models import ROUTER_SCHEMA
+from .normalizer import write_router_jsonl
 
 
 def run_router_import(
@@ -63,7 +63,9 @@ def run_router_correlation(
     host_log: str,
     router_log: str,
 ) -> dict[str, Any]:
-    from windows_network_toolkit.diagnostics.lan_privacy.collectors import observations_from_watch_events
+    from windows_network_toolkit.diagnostics.lan_privacy.collectors import (
+        observations_from_watch_events,
+    )
     from windows_network_toolkit.diagnostics.lan_privacy.watch import load_watch_jsonl
 
     host_events = load_watch_jsonl(host_log)

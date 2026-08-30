@@ -278,14 +278,14 @@ def run_repair_preview(domain: str, browser: str = "auto") -> dict[str, Any]:
 
 
 def run_repair_apply(preview_id: str, confirm: str) -> dict[str, Any]:
-    """Explicit apply gate — currently always blocked unless token matches; no destructive ops yet."""
-    token = "BROWSER_SITE_REPAIR_APPLY"
-    if confirm != token:
+    """Explicit apply gate — currently always blocked unless confirmation phrase matches; no destructive ops yet."""
+    confirmation_phrase = "BROWSER_SITE_REPAIR_APPLY"
+    if confirm != confirmation_phrase:
         payload = {
             "decision": "BLOCK",
             "preview_id": preview_id,
             "reason": "confirm_token_mismatch",
-            "required": token,
+            "required": confirmation_phrase,
             "mutated": False,
         }
         append_audit_dict({"event": "browser_repair_apply_blocked", **payload}, log_name="browser-diff.jsonl")

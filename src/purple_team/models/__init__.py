@@ -254,7 +254,9 @@ class StageTiming:
             "classification_latency_s": self.latency(
                 "t0_simulation_start", "t4_classification_complete"
             ),
-            "remediation_latency_s": self.latency("t5_remediation_starts", "t6_remediation_completes"),
+            "remediation_latency_s": self.latency(
+                "t5_remediation_starts", "t6_remediation_completes"
+            ),
             "verification_latency_s": self.latency(
                 "t6_remediation_completes", "t7_verification_completes"
             ),

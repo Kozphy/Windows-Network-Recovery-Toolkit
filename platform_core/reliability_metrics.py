@@ -168,7 +168,11 @@ def compute_slo_metrics(*, data_root: Path | None = None) -> SloMetrics:
     )
     preview_count = sum(1 for _ in iter_jsonl(root / "remediation_previews.jsonl"))
 
-    mttd = round(sum(detect_deltas) / len(detect_deltas), 2) if detect_deltas else reliability.mean_time_to_detect_seconds
+    mttd = (
+        round(sum(detect_deltas) / len(detect_deltas), 2)
+        if detect_deltas
+        else reliability.mean_time_to_detect_seconds
+    )
     mtexplain = round(sum(explain_deltas) / len(explain_deltas), 2) if explain_deltas else None
     proof_unavail_rate = round(proof_unavailable / proof_total, 4) if proof_total else 0.0
     final_rate = round(final_causation / proof_total, 4) if proof_total else 0.0
@@ -191,9 +195,13 @@ def compute_slo_metrics(*, data_root: Path | None = None) -> SloMetrics:
         "No PagerDuty or hosted alerting in this prototype.",
     ]
     if reliability.false_clear_rate is None:
-        slo_limitations.append("false_clear_rate unmeasured — no proxy-healthy vs path-degraded events.")
+        slo_limitations.append(
+            "false_clear_rate unmeasured — no proxy-healthy vs path-degraded events."
+        )
     if reliability.time_to_direct_after_rewrite_seconds is None:
-        slo_limitations.append("time_to_direct_after_rewrite unmeasured — no rewrite_detected recoveries.")
+        slo_limitations.append(
+            "time_to_direct_after_rewrite unmeasured — no rewrite_detected recoveries."
+        )
 
     return SloMetrics(
         mean_time_to_detect_seconds=mttd,

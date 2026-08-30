@@ -20,7 +20,6 @@ from src.platform_core.risk.finding import findings_from_fixture
 from src.platform_core.risk.risk_rating import rate_risk
 from src.platform_core.serialization import content_hash
 
-
 DEFAULT_EVIDENCE_SCHEMA_VERSION = "evidence_bundle.v1"
 DEFAULT_CLASSIFIER_VERSION = "proxy_classifier.v1"
 DEFAULT_POLICY_VERSION = "technology_risk_policy.v1"
@@ -102,7 +101,10 @@ def build_risk_decision_record(
     proof_block = fixture.get("proof") or {}
     recommended = (
         policy.get("action")
-        or (classification_block.get("recommended_next_actions") or ["Continue read-only investigation"])[0]
+        or (
+            classification_block.get("recommended_next_actions")
+            or ["Continue read-only investigation"]
+        )[0]
     )
 
     execution_authority = resolve_execution_authority(
@@ -112,13 +114,18 @@ def build_risk_decision_record(
         executed=bool(policy.get("executed", False)),
     )
 
-    human_review = bool(policy.get("requires_confirmation", True)) or primary in {
-        "UNKNOWN_LOCAL_PROXY",
-        "SUSPICIOUS_PROXY",
-        "POSSIBLE_MITM_RISK",
-        "REVERTER_SUSPECTED",
-        "DEAD_PROXY_CONFIG",
-    } or proof.proof_tier in (ProofTier.T0_OBSERVATION_ONLY, ProofTier.T1_LOCAL_CONFIG_EVIDENCE)
+    human_review = (
+        bool(policy.get("requires_confirmation", True))
+        or primary
+        in {
+            "UNKNOWN_LOCAL_PROXY",
+            "SUSPICIOUS_PROXY",
+            "POSSIBLE_MITM_RISK",
+            "REVERTER_SUSPECTED",
+            "DEAD_PROXY_CONFIG",
+        }
+        or proof.proof_tier in (ProofTier.T0_OBSERVATION_ONLY, ProofTier.T1_LOCAL_CONFIG_EVIDENCE)
+    )
 
     limitations = list(classification_block.get("limitations") or [])
     limitations.extend(proof.limitations)
@@ -126,18 +133,16 @@ def build_risk_decision_record(
     limitations.extend(proof_block.get("limitations") or [])
     limitations = list(dict.fromkeys(limitations))
 
-    inc_id = incident_id or str(fixture.get("case_id") or fixture.get("incident_id") or f"INC-{uuid.uuid4().hex[:8]}")
+    inc_id = incident_id or str(
+        fixture.get("case_id") or fixture.get("incident_id") or f"INC-{uuid.uuid4().hex[:8]}"
+    )
     evidence_id = f"ev-{inc_id}"
     evidence_schema_version = _version_from_fixture(
         fixture, "evidence_schema", DEFAULT_EVIDENCE_SCHEMA_VERSION
     )
-    classifier_version = _version_from_fixture(
-        fixture, "classifier", DEFAULT_CLASSIFIER_VERSION
-    )
+    classifier_version = _version_from_fixture(fixture, "classifier", DEFAULT_CLASSIFIER_VERSION)
     policy_version = _version_from_fixture(fixture, "policy", DEFAULT_POLICY_VERSION)
-    control_set_version = _version_from_fixture(
-        fixture, "control_set", DEFAULT_CONTROL_SET_VERSION
-    )
+    control_set_version = _version_from_fixture(fixture, "control_set", DEFAULT_CONTROL_SET_VERSION)
 
     body = {
         "incident_id": inc_id,

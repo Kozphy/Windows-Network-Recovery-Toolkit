@@ -65,7 +65,15 @@ def _chrome_paths() -> list[str]:
 
 def _network_persistent_state() -> Path:
     local = os.environ.get("LOCALAPPDATA", "")
-    return Path(local) / "Microsoft" / "Edge" / "User Data" / "Default" / "Network" / "Network Persistent State"
+    return (
+        Path(local)
+        / "Microsoft"
+        / "Edge"
+        / "User Data"
+        / "Default"
+        / "Network"
+        / "Network Persistent State"
+    )
 
 
 def planned_browser_stall_steps(*, include_webview: bool = False) -> list[str]:
@@ -206,7 +214,9 @@ def run_browser_stall_fix(
         result["action_taken"] = "failed"
         result["reason"] = "Browser stall apply failed."
     else:
-        result["action_taken"] = "remediated" if not details.get("errors") else "remediated_with_errors"
+        result["action_taken"] = (
+            "remediated" if not details.get("errors") else "remediated_with_errors"
+        )
         result["reason"] = "Browser cold-started with QUIC disabled."
     append_jsonl(log_path, {"event": "browser_stall_apply", **result})
     return result

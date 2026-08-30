@@ -115,9 +115,7 @@ def verify(
         "remediation_command_success is insufficient without post-condition match.",
     ]
     if remediation and remediation.details.get("command_success") and not passed:
-        limitations.append(
-            "Command reported success but post-conditions failed — not recovered."
-        )
+        limitations.append("Command reported success but post-conditions failed — not recovered.")
     return VerificationResult(
         passed=passed,
         post_conditions=results,

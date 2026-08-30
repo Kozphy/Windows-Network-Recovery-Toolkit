@@ -49,7 +49,11 @@ def test_apply_with_token(tmp_path: Path) -> None:
     def _apply(*, run, include_webview, open_url):
         assert include_webview is False
         assert "youtube" in open_url
-        return {"steps": ["Stopped msedge.exe", "Launched msedge.exe"], "errors": [], "launched": "msedge"}
+        return {
+            "steps": ["Stopped msedge.exe", "Launched msedge.exe"],
+            "errors": [],
+            "launched": "msedge",
+        }
 
     out = run_browser_stall_fix(
         dry_run=False,

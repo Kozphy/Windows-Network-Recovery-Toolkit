@@ -50,5 +50,7 @@ def test_classifier_benchmark_cli_smoke() -> None:
 def test_classifier_thresholds_fail_on_high_bar() -> None:
     cases = load_benchmark_cases(SAMPLE, repo_root=ROOT)
     summary = run_classifier_benchmark(cases, repo_root=ROOT)
-    misses = classifier_threshold_failures(summary, min_primary_match_rate=1.01, max_unsafe_rate=0.0)
+    misses = classifier_threshold_failures(
+        summary, min_primary_match_rate=1.01, max_unsafe_rate=0.0
+    )
     assert misses

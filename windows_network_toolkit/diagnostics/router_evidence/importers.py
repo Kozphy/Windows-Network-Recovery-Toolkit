@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .models import ROUTER_SCHEMA, RouterEvent, RouterEventType
+from .models import RouterEvent, RouterEventType
 
 
 def _now() -> str:
@@ -40,7 +40,9 @@ def _normalize_header(h: str) -> str:
     return h.strip().lower().replace(" ", "_")
 
 
-def import_dns_log(path: Path, *, inject: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+def import_dns_log(
+    path: Path, *, inject: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     if inject is not None:
         return inject
     events: list[dict[str, Any]] = []
@@ -84,7 +86,9 @@ def import_dns_log(path: Path, *, inject: list[dict[str, Any]] | None = None) ->
     return events
 
 
-def import_firewall_log(path: Path, *, inject: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+def import_firewall_log(
+    path: Path, *, inject: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     if inject is not None:
         return inject
     events: list[dict[str, Any]] = []
@@ -110,7 +114,9 @@ def import_firewall_log(path: Path, *, inject: list[dict[str, Any]] | None = Non
     return events
 
 
-def import_dhcp_leases(path: Path, *, inject: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+def import_dhcp_leases(
+    path: Path, *, inject: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     if inject is not None:
         return inject
     events: list[dict[str, Any]] = []
@@ -140,7 +146,9 @@ def import_dhcp_leases(path: Path, *, inject: list[dict[str, Any]] | None = None
     return events
 
 
-def import_device_list(path: Path, *, inject: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+def import_device_list(
+    path: Path, *, inject: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     if inject is not None:
         return inject
     data = json.loads(path.read_text(encoding="utf-8"))

@@ -504,7 +504,7 @@ def _apply_live(
             details["errors"].append(f"Stop PID {pid}: {exc}")
 
     for path in detection.get("exclusion_paths") or []:
-        ps = f"Remove-MpPreference -ExclusionPath '{path.replace(chr(39), chr(39)*2)}' -ErrorAction Stop"
+        ps = f"Remove-MpPreference -ExclusionPath '{path.replace(chr(39), chr(39) * 2)}' -ErrorAction Stop"
         try:
             rem = run(
                 ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
@@ -521,7 +521,7 @@ def _apply_live(
             details["errors"].append(f"ExclusionPath {path}: {exc}")
 
     for name in detection.get("exclusion_processes") or []:
-        ps = f"Remove-MpPreference -ExclusionProcess '{name.replace(chr(39), chr(39)*2)}' -ErrorAction Stop"
+        ps = f"Remove-MpPreference -ExclusionProcess '{name.replace(chr(39), chr(39) * 2)}' -ErrorAction Stop"
         try:
             rem = run(
                 ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],

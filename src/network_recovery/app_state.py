@@ -123,9 +123,7 @@ def _bounded_state_candidates(root: Path) -> list[Path]:
     return candidates
 
 
-def discover_chatgpt_network_state_files(
-    *, env: Mapping[str, str] | None = None
-) -> list[Path]:
+def discover_chatgpt_network_state_files(*, env: Mapping[str, str] | None = None) -> list[Path]:
     """Locate exact network-state files under known ChatGPT roots only."""
     files: list[Path] = []
     seen: set[str] = set()
@@ -138,9 +136,7 @@ def discover_chatgpt_network_state_files(
     return files
 
 
-def describe_network_state_location(
-    path: Path, *, env: Mapping[str, str] | None = None
-) -> str:
+def describe_network_state_location(path: Path, *, env: Mapping[str, str] | None = None) -> str:
     """Return an audit label with profile roots replaced by environment tokens."""
     values = _environment(env)
     raw = str(path)
@@ -152,9 +148,7 @@ def describe_network_state_location(
     return path.name
 
 
-def observe_chatgpt_network_state(
-    *, env: Mapping[str, str] | None = None
-) -> dict[str, Any]:
+def observe_chatgpt_network_state(*, env: Mapping[str, str] | None = None) -> dict[str, Any]:
     """Return metadata-only evidence; never read network-state file contents."""
     files = discover_chatgpt_network_state_files(env=env)
     return {

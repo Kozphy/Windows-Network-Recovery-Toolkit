@@ -26,7 +26,7 @@ Harnesses: `classifier-benchmark`, `replay-benchmark`, `tests/evaluation/test_sc
 | EV-003 | Known dev proxy owns localhost port | `KNOWN_DEV_PROXY` | T2 | ALLOW | Dev heuristic match |
 | EV-004 | Unknown process owns proxy port | `UNKNOWN_LOCAL_PROXY` | T2 | REQUIRE_HUMAN_REVIEW | Low confidence OK |
 | EV-005 | Proxy re-enabled after disable | `REVERTER_SUSPECTED` | T2+ | REQUIRE_HUMAN_REVIEW | Timeline pattern |
-| EV-006 | Browser TLS fails, curl succeeds | TLS path / `POSSIBLE_MITM_RISK` | T3 | REQUIRE_HUMAN_REVIEW | No MITM_CONFIRMED language |
+| EV-006 | Browser TLS fails, curl succeeds | TLS path / `POSSIBLE_MITM_RISK` | T2 (capped) | REQUIRE_HUMAN_REVIEW | No MITM_CONFIRMED language; suspicious/MITM labels stay triage-only |
 | EV-007 | PAC file configured | `PAC_CONFIGURED` | T1 | ALLOW | PAC URL present |
 | EV-008 | Insufficient permissions | `ERROR_INSUFFICIENT_DATA` | T0 | BLOCK | Confidence ≤ 0.3 |
 | EV-009 | Healthy no proxy | `NO_PROXY` | T1 | ALLOW | ProxyEnable=0 |

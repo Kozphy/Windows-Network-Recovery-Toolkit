@@ -97,16 +97,21 @@ def select_low_risk_actions(
     ):
         selected.append("reset_winhttp_proxy")
 
-    restart_supported = primary in {"app_cache_or_session_issue", "electron_network_stack_issue"} or (
-        signals.chatgpt_process_detected and signals.chatgpt_https_ok is False
-    )
+    restart_supported = primary in {
+        "app_cache_or_session_issue",
+        "electron_network_stack_issue",
+    } or (signals.chatgpt_process_detected and signals.chatgpt_https_ok is False)
     network_state_observed = bool(signals.chatgpt_network_state_file_count)
     if restart_supported and network_state_observed and signals.chatgpt_https_ok is False:
         selected.append("cold_restart_chatgpt_network_state")
     elif restart_supported:
         selected.append("restart_chatgpt_app")
 
-    if signals.chatgpt_https_ok is False and signals.browser_https_ok is True and "flush_dns" not in selected:
+    if (
+        signals.chatgpt_https_ok is False
+        and signals.browser_https_ok is True
+        and "flush_dns" not in selected
+    ):
         if signals.dns_ok is not True:
             selected.append("flush_dns")
 
@@ -190,7 +195,8 @@ def _execute_restart_chatgpt_app(
         "stop": stop_result,
         "start": start_result,
         "chatgpt_exe": str(exe) if exe else None,
-        "ok": stop_result.get("returncode") == 0 and (start_result is None or start_result.get("returncode") == 0),
+        "ok": stop_result.get("returncode") == 0
+        and (start_result is None or start_result.get("returncode") == 0),
     }
 
 
@@ -240,9 +246,7 @@ def _execute_cold_restart_chatgpt_network_state(
             run=run,
             timeout=timeout,
         )
-        remaining, count_limitation = collect_process_count(
-            "ChatGPT.exe", run=run, timeout=timeout
-        )
+        remaining, count_limitation = collect_process_count("ChatGPT.exe", run=run, timeout=timeout)
 
     can_mutate_state = (
         stop_result.get("returncode") == 0
@@ -270,9 +274,7 @@ def _execute_cold_restart_chatgpt_network_state(
     failed = [row for row in quarantine if row.get("status") in {"failed", "blocked"}]
     start_result: dict[str, Any] | None = None
     if exe is not None:
-        start_result = _run_argv(
-            _start_chatgpt_argv(exe), dry_run=False, run=run, timeout=timeout
-        )
+        start_result = _run_argv(_start_chatgpt_argv(exe), dry_run=False, run=run, timeout=timeout)
 
     start_ok = start_result is None or start_result.get("returncode") == 0
     return {

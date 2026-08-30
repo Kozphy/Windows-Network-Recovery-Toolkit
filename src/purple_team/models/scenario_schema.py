@@ -82,9 +82,7 @@ def validate_raw_scenario(data: dict[str, Any]) -> ScenarioDefinition:
         raise ScenarioSchemaError("production targets are forbidden in purple scenarios")
 
     if not data["safe_for_local_execution"]:
-        raise ScenarioSchemaError(
-            "safe_for_local_execution must be true for loadable scenarios"
-        )
+        raise ScenarioSchemaError("safe_for_local_execution must be true for loadable scenarios")
 
     mitre_raw = data.get("mitre") or {}
     techniques = tuple(mitre_raw.get("techniques") or ())
@@ -115,9 +113,7 @@ def validate_raw_scenario(data: dict[str, Any]) -> ScenarioDefinition:
         cleanup=ScenarioCleanup(required=True, steps=tuple(str(x) for x in steps)),
         expect_detection=bool(data.get("expect_detection", True)),
         benign_control=bool(data.get("benign_control", False)),
-        authorized_execution_required=bool(
-            data.get("authorized_execution_required", True)
-        ),
+        authorized_execution_required=bool(data.get("authorized_execution_required", True)),
         allows_remote_target=False,
         allows_production_target=False,
         mitre=MitreMapping(

@@ -24,12 +24,15 @@ from pathlib import Path
 from typing import Any
 
 from .classifier import classify_lan_behavior
-from .collectors import collect_inventory, collect_mdns_summary, collect_ssdp_summary, observations_from_watch_events
+from .collectors import (
+    collect_inventory,
+    observations_from_watch_events,
+)
 from .executive_report import build_executive_report, write_executive_report
 from .privacy_risk_score import compute_privacy_risk_score
 from .report import build_lan_privacy_report, render_lan_privacy_markdown
 from .segmentation_advisor import advise_segmentation
-from .watch import load_watch_jsonl, run_lan_watch
+from .watch import load_watch_jsonl
 
 try:
     from windows_network_toolkit.diagnostics.router_evidence.correlator import correlate_host_router
@@ -70,7 +73,9 @@ def load_bundle(path: str | Path) -> dict[str, Any]:
     return data
 
 
-def _resolve_observations(bundle: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any], list[dict[str, Any]]]:
+def _resolve_observations(
+    bundle: dict[str, Any],
+) -> tuple[list[dict[str, Any]], dict[str, Any], list[dict[str, Any]]]:
     observations: list[dict[str, Any]] = list(bundle.get("observations") or [])
     inventory = bundle.get("inventory") or {}
     router_events: list[dict[str, Any]] = list(bundle.get("router_events") or [])
@@ -79,7 +84,10 @@ def _resolve_observations(bundle: dict[str, Any]) -> tuple[list[dict[str, Any]],
         events = load_watch_jsonl(bundle["host_log"])
         observations.extend(observations_from_watch_events(events))
         if not inventory.get("devices") and events:
-            inventory = {"devices": events[-1].get("devices") or [], "subnet": bundle.get("subnet", "")}
+            inventory = {
+                "devices": events[-1].get("devices") or [],
+                "subnet": bundle.get("subnet", ""),
+            }
 
     if bundle.get("router_log") and load_router_jsonl:
         router_events.extend(load_router_jsonl(bundle["router_log"]))

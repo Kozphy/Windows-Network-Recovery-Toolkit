@@ -23,7 +23,7 @@ from typing import Any
 
 from src.platform_core.governance.report_sections import NON_CLAIMS
 
-from .report import REQUIRED_SAFE_PHRASES, render_lan_privacy_markdown, validate_report_wording
+from .report import REQUIRED_SAFE_PHRASES, validate_report_wording
 
 
 def build_executive_report(
@@ -38,7 +38,9 @@ def build_executive_report(
     external_domains: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build executive report with all required sections."""
-    unknown = [d for d in (inventory.get("devices") or []) if "unknown_vendor" in (d.get("flags") or [])]
+    unknown = [
+        d for d in (inventory.get("devices") or []) if "unknown_vendor" in (d.get("flags") or [])
+    ]
     gaps = [c for c in control_results if c.get("test_result") in {"FAIL", "PARTIAL"}]
 
     from collections import Counter
@@ -50,7 +52,9 @@ def build_executive_report(
 
     domains = external_domains or []
     if not domains and correlation:
-        domains = list({e.get("domain") for e in correlation.get("matched_dns") or [] if e.get("domain")})
+        domains = list(
+            {e.get("domain") for e in correlation.get("matched_dns") or [] if e.get("domain")}
+        )
 
     return {
         "schema_version": "wnt.lan_executive.v1",
@@ -73,7 +77,9 @@ def build_executive_report(
             {"source": k, "event_count": v} for k, v in probe_counts.most_common(5)
         ],
         "unknown_devices": unknown,
-        "external_domains_observed": domains if domains else ["not available — import router DNS logs"],
+        "external_domains_observed": domains
+        if domains
+        else ["not available — import router DNS logs"],
         "control_gaps": gaps,
         "control_results": control_results,
         "segmentation_advice": segmentation_advice,
@@ -106,7 +112,9 @@ def _executive_steps(
         "Consider (preview only): Import router DNS/DHCP logs for stronger outbound visibility.",
     ]
     for g in gaps[:3]:
-        steps.append(f"Consider (preview only): Address {g.get('control_id')} — {g.get('recommendation', '')[:80]}")
+        steps.append(
+            f"Consider (preview only): Address {g.get('control_id')} — {g.get('recommendation', '')[:80]}"
+        )
     if risk_score.get("human_review_recommended"):
         steps.append("Consider (preview only): Human review recommended for elevated privacy risk.")
     return steps
@@ -145,7 +153,9 @@ def render_executive_markdown(report: dict[str, Any]) -> str:
         lines.append(f"- {dom}")
     lines.extend(["", "## Control gaps"])
     for g in report.get("control_gaps") or []:
-        lines.append(f"- **{g.get('control_id')}**: {g.get('test_result')} — {g.get('objective', '')[:60]}")
+        lines.append(
+            f"- **{g.get('control_id')}**: {g.get('test_result')} — {g.get('objective', '')[:60]}"
+        )
     if not report.get("control_gaps"):
         lines.append("- No FAIL/PARTIAL controls in this assessment")
     lines.extend(["", "## Recommended next steps (preview only)"])
@@ -158,7 +168,9 @@ def render_executive_markdown(report: dict[str, Any]) -> str:
     for p in report.get("what_tool_cannot_prove") or []:
         lines.append(f"- {p}")
     lines.append("")
-    lines.append("Observed local network discovery activity — requires additional evidence for attribution.")
+    lines.append(
+        "Observed local network discovery activity — requires additional evidence for attribution."
+    )
     lines.append("Cannot confirm data exfiltration from Windows host telemetry alone.")
     text = "\n".join(lines)
     for phrase in REQUIRED_SAFE_PHRASES:

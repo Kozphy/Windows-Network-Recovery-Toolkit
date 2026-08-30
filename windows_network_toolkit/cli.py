@@ -94,14 +94,16 @@ def cmd_replay(args: argparse.Namespace) -> int:
     if args.format == "json":
         print(json.dumps(payload, indent=2))
     else:
-        print(generate_report(
-            timeline=payload["timeline"],
-            decision=payload["decision"],
-            policy=payload["policy"],
-            remediation=payload["remediation"],
-            audit_rows=[payload.get("audit") or {}],
-            fmt="markdown",
-        ))
+        print(
+            generate_report(
+                timeline=payload["timeline"],
+                decision=payload["decision"],
+                policy=payload["policy"],
+                remediation=payload["remediation"],
+                audit_rows=[payload.get("audit") or {}],
+                fmt="markdown",
+            )
+        )
     if args.out:
         out = Path(args.out)
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -141,13 +143,18 @@ def cmd_replay_certify(args: argparse.Namespace) -> int:
 
     path = _resolve_fixture(args.fixture)
     cert = certify_case(jsonl_path=path)
-    print(json.dumps({
-        "certified": cert.certified,
-        "certification_hash": cert.certification_hash,
-        "tier": cert.tier,
-        "policy_outcome": cert.policy_outcome,
-        "errors": cert.errors,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "certified": cert.certified,
+                "certification_hash": cert.certification_hash,
+                "tier": cert.tier,
+                "policy_outcome": cert.policy_outcome,
+                "errors": cert.errors,
+            },
+            indent=2,
+        )
+    )
     return 0 if cert.certified else 1
 
 
@@ -293,7 +300,9 @@ def cmd_proxy_owner(args: argparse.Namespace) -> int:
 
     inject = None
     if args.fixture:
-        inject = _load_fixture_data(args.fixture).get("proxy_owner") or _load_fixture_data(args.fixture)
+        inject = _load_fixture_data(args.fixture).get("proxy_owner") or _load_fixture_data(
+            args.fixture
+        )
     payload = detect_proxy_owner(inject=inject)
     _emit_json(payload)
     return 0
@@ -336,7 +345,9 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         pol = fixture_data.get("policy_decision") or {}
         gate = normalize_policy_outcome(str(pol.get("outcome", "PREVIEW_ONLY")))
         out["policy_gate"] = gate.value
-        out["recommended_next_step"] = f"Policy gate: {gate.value}; preview remediation before apply"
+        out["recommended_next_step"] = (
+            f"Policy gate: {gate.value}; preview remediation before apply"
+        )
     if getattr(args, "principles", False):
         out = enrich_diagnose_payload(out, include_principles=True)
     out["proof_mode"] = "full"
@@ -421,7 +432,9 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     from windows_network_toolkit.dashboard import DashboardConfig, run_dashboard
 
     host = str(getattr(args, "dashboard_host", None) or "127.0.0.1")
-    if host in {"0.0.0.0", "::", "[::]"} and not bool(getattr(args, "allow_non_loopback_bind", False)):
+    if host in {"0.0.0.0", "::", "[::]"} and not bool(
+        getattr(args, "allow_non_loopback_bind", False)
+    ):
         print(
             "Refusing to bind on all interfaces. Use --host 127.0.0.1 "
             "or pass --allow-non-loopback-bind only if you accept the exposure risk.",
@@ -657,7 +670,9 @@ def cmd_proxy_replay(args: argparse.Namespace) -> int:
     )
     if args.format == "human":
         summary = payload.get("summary") or {}
-        print(f"Replay: {summary.get('input_event_count', 0)} input rows -> {summary.get('coalesced_event_count', 0)} classified events")
+        print(
+            f"Replay: {summary.get('input_event_count', 0)} input rows -> {summary.get('coalesced_event_count', 0)} classified events"
+        )
         for ev in payload.get("events") or []:
             print(json.dumps(ev, indent=2))
             print()
@@ -868,9 +883,15 @@ def cmd_evidence_report(args: argparse.Namespace) -> int:
         )
 
         report = export_executive_evidence_report(
-            risk_register_path=Path(args.risk_register) if getattr(args, "risk_register", None) else None,
-            cloud_fixture_path=Path(args.cloud_fixture) if getattr(args, "cloud_fixture", None) else None,
-            finops_fixture_path=Path(args.finops_fixture) if getattr(args, "finops_fixture", None) else None,
+            risk_register_path=Path(args.risk_register)
+            if getattr(args, "risk_register", None)
+            else None,
+            cloud_fixture_path=Path(args.cloud_fixture)
+            if getattr(args, "cloud_fixture", None)
+            else None,
+            finops_fixture_path=Path(args.finops_fixture)
+            if getattr(args, "finops_fixture", None)
+            else None,
             audit_dir=Path(args.audit_dir) if getattr(args, "audit_dir", None) else None,
             out_path=Path(args.out) if args.out else None,
             fmt=args.format if args.format in ("json", "markdown") else "markdown",
@@ -1067,13 +1088,15 @@ def cmd_control_test(args: argparse.Namespace) -> int:
     fixture = load_fixture(_resolve_fixture(args.fixture))
     tests = run_control_tests(fixture)
     mature = run_mature_control_tests(fixture)
-    _emit_json({
-        "schema_version": "technology_risk_decision.v1",
-        "command": "control-test",
-        "case_id": fixture.get("case_id"),
-        "control_tests": [t.model_dump() for t in tests],
-        "mature_control_tests": [t.model_dump() for t in mature],
-    })
+    _emit_json(
+        {
+            "schema_version": "technology_risk_decision.v1",
+            "command": "control-test",
+            "case_id": fixture.get("case_id"),
+            "control_tests": [t.model_dump() for t in tests],
+            "mature_control_tests": [t.model_dump() for t in mature],
+        }
+    )
     return 0
 
 
@@ -1085,7 +1108,9 @@ def cmd_governance_report(args: argparse.Namespace) -> int:
         audit_dir = Path(args.audit_dir)
         result = build_audit_governance_report(
             audit_dir,
-            risk_register_path=Path(args.risk_register) if getattr(args, "risk_register", None) else None,
+            risk_register_path=Path(args.risk_register)
+            if getattr(args, "risk_register", None)
+            else None,
             format=args.format,
         )
         if args.format in ("markdown", "html"):
@@ -1106,7 +1131,9 @@ def cmd_governance_report(args: argparse.Namespace) -> int:
             fixture["timezone"] = args.timezone
         if getattr(args, "audit_dir_kpi", None):
             fixture["audit_dir"] = args.audit_dir_kpi
-    result = build_governance_report(fixture, format=args.format if args.format != "html" else "markdown")
+    result = build_governance_report(
+        fixture, format=args.format if args.format != "html" else "markdown"
+    )
     if args.format == "markdown":
         print(result)
     elif args.format == "html":
@@ -1259,9 +1286,15 @@ def cmd_powerbi_export(args: argparse.Namespace) -> int:
         audit_dir,
         out_dir,
         include_seed=not getattr(args, "no_seed", False),
-        risk_register_path=Path(args.risk_register) if getattr(args, "risk_register", None) else None,
-        cloud_fixture_path=Path(args.cloud_fixture) if getattr(args, "cloud_fixture", None) else None,
-        finops_fixture_path=Path(args.finops_fixture) if getattr(args, "finops_fixture", None) else None,
+        risk_register_path=Path(args.risk_register)
+        if getattr(args, "risk_register", None)
+        else None,
+        cloud_fixture_path=Path(args.cloud_fixture)
+        if getattr(args, "cloud_fixture", None)
+        else None,
+        finops_fixture_path=Path(args.finops_fixture)
+        if getattr(args, "finops_fixture", None)
+        else None,
     )
     _emit_json(payload)
     return 0
@@ -1356,7 +1389,13 @@ def cmd_analytics_export(args: argparse.Namespace) -> int:
         out_dir,
         export_csv=args.format in ("csv", "both"),
     )
-    _emit_json({"schema_version": "endpoint_evidence_analytics.v1", "out_dir": str(out_dir.resolve()), "files": paths})
+    _emit_json(
+        {
+            "schema_version": "endpoint_evidence_analytics.v1",
+            "out_dir": str(out_dir.resolve()),
+            "files": paths,
+        }
+    )
     return 0
 
 
@@ -1369,14 +1408,16 @@ def cmd_demo(args: argparse.Namespace) -> int:
     print(f"Incident type: {payload['decision'].get('incident_type')}")
     print(f"Policy: {payload['policy'].get('outcome')}")
     print()
-    print(generate_report(
-        timeline=payload["timeline"],
-        decision=payload["decision"],
-        policy=payload["policy"],
-        remediation=payload["remediation"],
-        audit_rows=[payload.get("audit") or {}],
-        fmt="markdown",
-    ))
+    print(
+        generate_report(
+            timeline=payload["timeline"],
+            decision=payload["decision"],
+            policy=payload["policy"],
+            remediation=payload["remediation"],
+            audit_rows=[payload.get("audit") or {}],
+            fmt="markdown",
+        )
+    )
     print()
     print("Dashboard: http://127.0.0.1:8000/dashboard/  (run: make demo-api)")
     return 0
@@ -1629,9 +1670,7 @@ def cmd_lan_privacy_report(args: argparse.Namespace) -> int:
         bundle = {"host_log": args.watch_log}
     else:
         bundle = {"host_log": ".audit/lan-watch.jsonl"}
-    result = run_lan_privacy_report_pipeline(
-        bundle, fmt=args.format, out_dir=args.out_dir or ""
-    )
+    result = run_lan_privacy_report_pipeline(bundle, fmt=args.format, out_dir=args.out_dir or "")
     if args.format == "markdown":
         print(result.get("markdown", ""))
     elif args.format == "both":
@@ -1732,9 +1771,7 @@ def cmd_risk_executive_report(args: argparse.Namespace) -> int:
         print("risk-executive-report requires --fixture", file=sys.stderr)
         return 1
     bundle = load_bundle(_resolve_fixture(args.fixture))
-    result = run_executive_report_pipeline(
-        bundle, fmt=args.format, out_dir=args.out_dir or ""
-    )
+    result = run_executive_report_pipeline(bundle, fmt=args.format, out_dir=args.out_dir or "")
     if args.format == "markdown" and not args.out_dir:
         print(render_executive_markdown(result["report"]))
     elif not args.out_dir:
@@ -1847,7 +1884,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     Example:
         ``python -m windows_network_toolkit proxy-health --fixture tests/fixtures/proxy_health_dead.json --json``
     """
-    parser = argparse.ArgumentParser(prog=prog, description="Endpoint Reliability Decision Platform CLI")
+    parser = argparse.ArgumentParser(
+        prog=prog, description="Endpoint Reliability Decision Platform CLI"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     ver = sub.add_parser("version", help="Print installed package version (read-only)")
@@ -1857,8 +1896,12 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         "dashboard",
         help="Start read-only local monitoring dashboard (NiceGUI on 127.0.0.1:8765)",
     )
-    dash.add_argument("--host", dest="dashboard_host", default="127.0.0.1", help="Bind host (default 127.0.0.1)")
-    dash.add_argument("--port", dest="dashboard_port", type=int, default=8765, help="Bind port (default 8765)")
+    dash.add_argument(
+        "--host", dest="dashboard_host", default="127.0.0.1", help="Bind host (default 127.0.0.1)"
+    )
+    dash.add_argument(
+        "--port", dest="dashboard_port", type=int, default=8765, help="Bind port (default 8765)"
+    )
     dash.add_argument(
         "--interval",
         dest="watch_interval",
@@ -1937,8 +1980,12 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     lh.add_argument("--port", type=int, default=None, help="Port when --url is omitted")
     lh.add_argument("--path", default="", help="URL path when --url is omitted")
     lh.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON report")
-    lh.add_argument("--timeout", type=float, default=2.0, help="Per-probe timeout seconds (default 2)")
-    lh.add_argument("--include-process", action="store_true", help="Collect process evidence for listener PIDs")
+    lh.add_argument(
+        "--timeout", type=float, default=2.0, help="Per-probe timeout seconds (default 2)"
+    )
+    lh.add_argument(
+        "--include-process", action="store_true", help="Collect process evidence for listener PIDs"
+    )
     lh.add_argument("--include-http", action="store_true", help="HTTP probe after TCP success")
     lh.add_argument(
         "--include-proxy-comparison",
@@ -1951,7 +1998,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         help="Bounded related loopback listeners (no port scan)",
     )
     lh.add_argument("--evidence-out", default="", help="Write full JSON report to path")
-    lh.add_argument("--remediation-preview", action="store_true", help="Include PREVIEW/BLOCK remediation items")
+    lh.add_argument(
+        "--remediation-preview", action="store_true", help="Include PREVIEW/BLOCK remediation items"
+    )
     lh.add_argument("--verbose", action="store_true", help="Human summary plus full JSON")
     lh.add_argument(
         "--allow-non-loopback",
@@ -2036,8 +2085,7 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         "--proxy-confirm",
         default="",
         help=(
-            "Separate typed confirmation for dead-proxy guardian apply: "
-            "CLEAR_DEAD_LOCALHOST_PROXY"
+            "Separate typed confirmation for dead-proxy guardian apply: CLEAR_DEAD_LOCALHOST_PROXY"
         ),
     )
     af.add_argument(
@@ -2080,8 +2128,12 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         default="1000",
         help="Coalescing window in milliseconds (200-5000)",
     )
-    preplay.add_argument("--format", choices=("json", "human"), default="json", help="Output format")
-    preplay.add_argument("--json-also", action="store_true", help="With --format human, also emit JSON")
+    preplay.add_argument(
+        "--format", choices=("json", "human"), default="json", help="Output format"
+    )
+    preplay.add_argument(
+        "--json-also", action="store_true", help="With --format human, also emit JSON"
+    )
     preplay.set_defaults(func=cmd_proxy_replay)
 
     replay_demo = sub.add_parser(
@@ -2094,8 +2146,12 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         default="1000",
         help="Coalescing window in milliseconds (200-5000)",
     )
-    replay_demo.add_argument("--format", choices=("json", "human"), default="json", help="Output format")
-    replay_demo.add_argument("--json-also", action="store_true", help="With --format human, also emit JSON")
+    replay_demo.add_argument(
+        "--format", choices=("json", "human"), default="json", help="Output format"
+    )
+    replay_demo.add_argument(
+        "--json-also", action="store_true", help="With --format human, also emit JSON"
+    )
     replay_demo.set_defaults(func=cmd_proxy_replay)
 
     ph = sub.add_parser("proxy-health", help="Localhost proxy health check (read-only)")
@@ -2169,7 +2225,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     pwa.add_argument("--fixture", default="", help="Optional fixture JSON for replay")
     pwa.set_defaults(func=cmd_proxy_writer_attribution)
 
-    tls = sub.add_parser("tls-proof", help="TLS certificate contrast direct vs proxied path (read-only)")
+    tls = sub.add_parser(
+        "tls-proof", help="TLS certificate contrast direct vs proxied path (read-only)"
+    )
     tls.add_argument("--url", required=True, help="Target HTTPS URL")
     tls.add_argument("--fixture", default="", help="Optional fixture JSON for replay")
     tls.set_defaults(func=cmd_tls_proof)
@@ -2185,17 +2243,27 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     )
     er.add_argument("--executive", action="store_true", help="Executive portfolio evidence report")
     er.add_argument("--risk-register", default="", help="Risk register JSON for executive report")
-    er.add_argument("--cloud-fixture", default="", help="Cloud governance fixture for executive report")
+    er.add_argument(
+        "--cloud-fixture", default="", help="Cloud governance fixture for executive report"
+    )
     er.add_argument("--finops-fixture", default="", help="FinOps fixture for executive report")
     er.add_argument("--audit-dir", default="", help="Optional audit dir for executive KPI rollup")
-    er.add_argument("--latest", action="store_true", help="Latest proxy path diagnosis report (markdown)")
-    er.add_argument("--analytics", action="store_true", help="Endpoint evidence analytics report (markdown)")
+    er.add_argument(
+        "--latest", action="store_true", help="Latest proxy path diagnosis report (markdown)"
+    )
+    er.add_argument(
+        "--analytics", action="store_true", help="Endpoint evidence analytics report (markdown)"
+    )
     er.add_argument("--url", default="", help="Target URL for network proof (legacy merged report)")
     er.add_argument("--fixture", default="", help="Optional fixture JSON for replay")
     er.add_argument("--format", choices=["json", "jsonl", "markdown", "html"], default="markdown")
     er.add_argument("--out", default="", help="Optional output file path")
-    er.add_argument("--no-direct-probe", action="store_true", help="With --latest: skip direct HTTPS probes")
-    er.add_argument("--no-proxy-probe", action="store_true", help="With --latest: skip proxy forwarding probes")
+    er.add_argument(
+        "--no-direct-probe", action="store_true", help="With --latest: skip direct HTTPS probes"
+    )
+    er.add_argument(
+        "--no-proxy-probe", action="store_true", help="With --latest: skip proxy forwarding probes"
+    )
     er.set_defaults(func=cmd_evidence_report)
 
     pp = sub.add_parser("proxy-proof", help="Direct vs proxied path proof (read-only)")
@@ -2237,7 +2305,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     ct.add_argument("--fixture", required=True, help="Case study fixture JSON path or name")
     ct.set_defaults(func=cmd_control_test)
 
-    gr = sub.add_parser("governance-report", help="Governance / management report (fixture or audit-dir)")
+    gr = sub.add_parser(
+        "governance-report", help="Governance / management report (fixture or audit-dir)"
+    )
     gr.add_argument("--fixture", default="", help="Case study fixture JSON path or name")
     gr.add_argument("--audit-dir", default="", help="Audit JSONL directory for audit-backed report")
     gr.add_argument("--risk-register", default="", help="Optional risk register JSON path")
@@ -2256,7 +2326,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     gr.add_argument("--format", choices=["json", "markdown", "html"], default="json")
     gr.set_defaults(func=cmd_governance_report)
 
-    sr = sub.add_parser("stakeholder-resolve", help="Resolve stakeholder roles for a case (roles/config only)")
+    sr = sub.add_parser(
+        "stakeholder-resolve", help="Resolve stakeholder roles for a case (roles/config only)"
+    )
     sr.add_argument("--case-id", required=True, help="Case / incident id")
     sr.add_argument("--classification", default="", help="Primary classification label")
     sr.add_argument("--policy-outcome", default="", help="Policy outcome string")
@@ -2266,7 +2338,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
 
     te = sub.add_parser("timing-evaluate", help="Evaluate timing/SLA/window for a case (read-only)")
     te.add_argument("--case-id", required=True, help="Case / incident id")
-    te.add_argument("--detected-at", default="", dest="detected_at", help="ISO8601 detection time (UTC)")
+    te.add_argument(
+        "--detected-at", default="", dest="detected_at", help="ISO8601 detection time (UTC)"
+    )
     te.add_argument("--timezone", default="", help="IANA timezone (default UTC)")
     te.add_argument("--classification", default="", help="Optional classification for urgency")
     te.add_argument("--maintenance-window-required", action="store_true")
@@ -2279,7 +2353,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     de.set_defaults(func=cmd_decision_explain)
 
     rks = sub.add_parser("risk-kpi-summary", help="Risk KPI rollup from audit JSONL (read-only)")
-    rks.add_argument("--audit-dir", default="tests/fixtures/risk_analytics/audit_sample", help="Audit directory")
+    rks.add_argument(
+        "--audit-dir", default="tests/fixtures/risk_analytics/audit_sample", help="Audit directory"
+    )
     rks.add_argument("--format", choices=["json", "markdown"], default="json")
     rks.set_defaults(func=cmd_risk_kpi_summary)
 
@@ -2321,14 +2397,24 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     fo_export.add_argument("--format", choices=["json", "csv", "both"], default="json")
     fo_export.set_defaults(func=cmd_finops_export)
 
-    ans = sub.add_parser("analytics-summary", help="Endpoint evidence analytics summary (read-only)")
+    ans = sub.add_parser(
+        "analytics-summary", help="Endpoint evidence analytics summary (read-only)"
+    )
     ans.add_argument("--input", default="", help="Audit JSONL file or directory (default: .audit)")
     ans.add_argument("--fixture", default="", help="Optional fixture JSON for deterministic replay")
-    ans.add_argument("--audit-dir", default=".audit", help="Legacy platform audit dir (with --legacy-platform)")
-    ans.add_argument("--legacy-platform", action="store_true", help="Use legacy platform_core risk analytics summarizer")
+    ans.add_argument(
+        "--audit-dir", default=".audit", help="Legacy platform audit dir (with --legacy-platform)"
+    )
+    ans.add_argument(
+        "--legacy-platform",
+        action="store_true",
+        help="Use legacy platform_core risk analytics summarizer",
+    )
     ans.add_argument("--format", choices=["json", "markdown", "human"], default="human")
     ans.add_argument("--json", action="store_true", help="Emit JSON (same as --format json)")
-    ans.add_argument("--bucket", choices=["day", "hour"], default="day", help="Timeline bucket granularity")
+    ans.add_argument(
+        "--bucket", choices=["day", "hour"], default="day", help="Timeline bucket granularity"
+    )
     ans.add_argument("--limit-processes", default="10", help="Top listener process limit")
     ans.set_defaults(func=cmd_analytics_summary)
 
@@ -2336,7 +2422,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     aex.add_argument("--input", default="", help="Audit JSONL file or directory")
     aex.add_argument("--fixture", default="", help="Optional fixture JSON")
     aex.add_argument("--out", default="reports/analytics", help="Output directory")
-    aex.add_argument("--format", choices=["json", "csv", "both"], default="both", help="Export format")
+    aex.add_argument(
+        "--format", choices=["json", "csv", "both"], default="both", help="Export format"
+    )
     aex.add_argument("--bucket", choices=["day", "hour"], default="day")
     aex.add_argument("--limit-processes", default="10")
     aex.set_defaults(func=cmd_analytics_export)
@@ -2425,9 +2513,13 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     fb.add_argument("--out", default="", help="Output markdown path when --format markdown")
     fb.set_defaults(func=cmd_fleet_benchmark)
 
-    be = sub.add_parser("browser-evidence", help="Playwright browser evidence package (screenshot + HAR)")
+    be = sub.add_parser(
+        "browser-evidence", help="Playwright browser evidence package (screenshot + HAR)"
+    )
     be.add_argument("--url", default="", help="URL to capture")
-    be.add_argument("--fixture", default="", help="Load fixture package JSON instead of live browser")
+    be.add_argument(
+        "--fixture", default="", help="Load fixture package JSON instead of live browser"
+    )
     be.add_argument("--out", default="browser_evidence_out", help="Output directory for captures")
     be.add_argument("--headed", action="store_true", help="Run browser headed (not headless)")
     be.add_argument("--format", choices=["json", "package"], default="json")
@@ -2439,14 +2531,18 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     )
     bd.add_argument("url", nargs="?", default="", help="Target URL (e.g. https://www.104.com.tw/)")
     bd.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
-    bd.add_argument("--proof", action="store_true", help="Emphasize proof ladder / request stronger evidence")
+    bd.add_argument(
+        "--proof", action="store_true", help="Emphasize proof ladder / request stronger evidence"
+    )
     bd.add_argument("--fixture", default="", help="Fixture JSON for offline replay")
     bd.add_argument("--import-normal-har", default="", help="HAR from normal browser profile")
     bd.add_argument("--import-private-har", default="", help="HAR from InPrivate/Incognito")
     bd.add_argument("--format", choices=["json", "text"], default="json")
     bd.set_defaults(func=cmd_browser_diff)
 
-    bp = sub.add_parser("browser-profile", help="Inspect/repair-preview Chromium profiles (metadata only)")
+    bp = sub.add_parser(
+        "browser-profile", help="Inspect/repair-preview Chromium profiles (metadata only)"
+    )
     bp_sub = bp.add_subparsers(dest="browser_profile_cmd", required=True)
     bp_ins = bp_sub.add_parser("inspect", help="List profiles / installation / policies")
     bp_ins.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
@@ -2459,7 +2555,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     bp_rp.add_argument("domain", help="Domain e.g. 104.com.tw")
     bp_rp.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
     bp_rp.set_defaults(func=cmd_browser_profile)
-    bp_ra = bp_sub.add_parser("repair-apply", help="Gated apply (requires --confirm; may be unimplemented)")
+    bp_ra = bp_sub.add_parser(
+        "repair-apply", help="Gated apply (requires --confirm; may be unimplemented)"
+    )
     bp_ra.add_argument("preview_id", help="Preview id from repair-preview")
     bp_ra.add_argument("--confirm", default="", help="BROWSER_SITE_REPAIR_APPLY")
     bp_ra.set_defaults(func=cmd_browser_profile)
@@ -2480,7 +2578,9 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     rb.add_argument("--min-deterministic-rate", type=float, default=0.0)
     rb.set_defaults(func=cmd_replay_benchmark)
 
-    ae = sub.add_parser("ai-eval", help="Fixture-based AI evals feedback loop (no live model calls)")
+    ae = sub.add_parser(
+        "ai-eval", help="Fixture-based AI evals feedback loop (no live model calls)"
+    )
     ae.add_argument("--cases", default="examples/ai_evals/support_bot_cases.json")
     ae.add_argument("--format", choices=["json", "markdown"], default="markdown")
     ae.set_defaults(func=cmd_ai_eval)
