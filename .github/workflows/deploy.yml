@@ -7,11 +7,7 @@ on:
   workflow_run:
     workflows: ["Build"]
     types: [completed]
-    branches:
-      - Multi_Domain_Decision_Platform
-      - main
-      - master
-      - amd_version
+    branches: [Multi_Domain_Decision_Platform, main, master, amd_version]
   workflow_dispatch:
     inputs:
       image_tag:

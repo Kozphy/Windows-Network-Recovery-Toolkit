@@ -658,12 +658,12 @@ def build_star_schema_tables(
             mapped = "PASS"
         else:
             mapped = "FAIL"
-        observed = _parse_ts(ct["observed_at"])
+        control_observed = _parse_ts(ct["observed_at"])
         fact_controls.append(
             {
                 "control_test_id": ct["control_test_id"],
                 "incident_id": ct["incident_id"],
-                "date_key": _date_key(observed) or 20260601,
+                "date_key": _date_key(control_observed) or 20260601,
                 "control_name": ct["control_name"],
                 "control_domain": _control_domain(ct["control_name"]),
                 "result": mapped,

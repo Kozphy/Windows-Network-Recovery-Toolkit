@@ -24,6 +24,9 @@ from src.proxy_drift.startup_inventory import collect_startup_inventory
 from src.proxy_drift.startup_observability_report import summarize_boot_trace
 from src.proxy_guard.parser import parse_proxy_server
 
+# Windows-only surfaces: simulate the platform guard so Linux CI keeps this coverage.
+pytestmark = pytest.mark.usefixtures("simulated_windows")
+
 
 def test_parse_proxy_server_localhost_port() -> None:
     parsed = parse_proxy_server("127.0.0.1:60505")

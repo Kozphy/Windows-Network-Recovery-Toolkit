@@ -90,11 +90,21 @@ _MAPPING: dict[str, dict[str, str]] = {
 def map_business_impact(classification: str) -> BusinessImpactMapping:
     """Translate technical classification into business-facing impact language."""
     key = (classification or "").upper()
-    data = _MAPPING.get(key, {
-        "user_impact": "Endpoint reliability incident requires structured evidence review",
-        "operational_risk": "Impact depends on classification proof tier and control posture",
-        "security_risk": "Avoid compromise language without proof tier T3+ and independent validation",
-        "audit_risk": "Ensure decision record and audit chain before remediation",
-        "suggested_forum": "Technology risk review",
-    })
-    return BusinessImpactMapping(classification=key or "UNCLASSIFIED", **data)
+    data = _MAPPING.get(
+        key,
+        {
+            "user_impact": "Endpoint reliability incident requires structured evidence review",
+            "operational_risk": "Impact depends on classification proof tier and control posture",
+            "security_risk": "Avoid compromise language without proof tier T3+ and independent validation",
+            "audit_risk": "Ensure decision record and audit chain before remediation",
+            "suggested_forum": "Technology risk review",
+        },
+    )
+    return BusinessImpactMapping(
+        classification=key or "UNCLASSIFIED",
+        user_impact=data["user_impact"],
+        operational_risk=data["operational_risk"],
+        security_risk=data["security_risk"],
+        audit_risk=data["audit_risk"],
+        suggested_forum=data["suggested_forum"],
+    )

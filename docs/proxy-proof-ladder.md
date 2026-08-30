@@ -1,245 +1,215 @@
-# Proxy Proof Ladder — T0 through T5
+# Proxy Proof Ladder — T0 through T7
 
-**Status:** Normative claim-strength ladder for WinINET proxy investigations  
-**Modules:** `evidence_schema.EvidenceTier`, `proxy_state_machine.build_proxy_evidence_event`, `proof.py`  
-**Principle:** Each rung adds **evidence type**, not automatic **authorization to accuse or remediate**.
+**Status:** Normative claim-strength and assurance ladder for WinINET proxy investigations  
+**Modules:** `evidence_schema.EvidenceTier`, `src/platform_core/governance/proof_tier.py`, `proxy_state_machine.build_proxy_evidence_event`, `proof.py`  
+**Principle:** Each rung adds evidence or verification strength. **Proof tier never grants execution authority.**
 
 ---
 
 ## Ladder overview
 
 ```text
-T5 GOVERNANCE_PROOF     Human-confirmed apply logged in audit
-T4 WRITER_PROOF         Registry writer telemetry (Sysmon E13, Procmon)
-T3 PATH_EVIDENCE        Direct vs proxy HTTPS/TCP probes
-T2 RUNTIME_EVIDENCE     Listener/process on configured port
-T1 STATE_EVIDENCE       WinINET/WinHTTP registry configuration read
-T0 OBSERVATION          Unstructured note or uncorroborated log line
+T7 INDEPENDENT_VERIFICATION  Separate verifier validates bundle + hash chain + deterministic replay
+T6 CONTROLLED_VALIDATION     Controlled change → failure → rollback → recovery is repeatable
+T5 GOVERNANCE_PROOF          Human-confirmed action + verified audit chain
+T4 WRITER / OPERATOR PROOF   Writer telemetry or explicitly recorded operator confirmation
+T3 PATH / BEHAVIOR EVIDENCE  Direct vs proxy probes and reproducible behavior
+T2 RUNTIME_CORROBORATION     Listener/process/co-temporal runtime evidence
+T1 STATE EVIDENCE            WinINET/WinHTTP configuration read
+T0 OBSERVATION               Unstructured note or uncorroborated signal
 ```
 
-**Rule:** Never skip rungs in audit narrative. Never describe T2 as T4.
+**Rules:**
+
+1. Never skip rungs in an audit narrative.
+2. Never describe correlation as causation.
+3. T6 supports only the bounded mechanism actually tested.
+4. T7 means independently verifiable evidence, **not certainty**.
+5. `proof_tier != execution_authority`; policy and human approval remain separate.
 
 ---
 
 ## T0 — Observation
 
-### Definition
-
 A fact recorded without structured normalization or corroboration.
 
-### Examples
-
-- Operator note: "Browser broken after VPN disconnect"
-- Raw proxy-watch log line without state diff
-- Screenshot of registry editor
-
-### What it proves
-
-That someone observed or recorded something.
-
-### What it does NOT prove
-
-Configuration truth, path behavior, writer identity, or remediation safety.
-
-### Module behavior
-
-Below T1 — not emitted by standard normalizers unless explicitly tagged.
-
----
+**Examples:** operator note, raw log line, screenshot.  
+**Proves:** something was observed or recorded.  
+**Does not prove:** configuration truth, path behavior, writer identity, causation, or remediation safety.
 
 ## T1 — State evidence
 
-### Definition
+Structured WinINET/WinHTTP configuration at a point in time.
 
-Structured read of WinINET/WinHTTP configuration at a point in time.
+**Example:** `ProxyEnable=1`, `ProxyServer=127.0.0.1:59081`.  
+**Allowed:** "WinINET points to localhost port 59081."  
+**Blocked:** "Dead proxy confirmed" without path evidence.
 
-### Examples
+## T2 — Runtime corroboration
 
-- `proxy-status` → `ProxyEnable=1`, `ProxyServer=127.0.0.1:59081`
-- `proxy_change` event: `ProxyServer 127.0.0.1:59081 → (none)`
-- Transition: `PROXY_SERVER_REMOVED` with empty after_server
+Runtime evidence such as listener state, process/port correlation, or stack contrast.
 
-### Case study: dead proxy (config only)
+**Allowed:** "Process X is correlated with the configured localhost port."  
+**Blocked:** "Process X wrote the registry" without writer telemetry.
 
-**Observation:** WinINET enabled toward `127.0.0.1:59081`.  
-**Tier:** T1 — config read only.  
-**Allowed language:** "WinINET points to localhost port 59081."  
-**Blocked language:** "Dead proxy confirmed" (needs T3 path evidence).
+## T3 — Path / behavioral evidence
 
-### Module mapping
+Structured direct-vs-proxy connectivity contrast or reproducible behavior.
 
-- `normalize_proxy_state` → `T1_STATE_EVIDENCE`
-- `normalize_proxy_change_event` → `T1_STATE_EVIDENCE`
-- Default transition proof tier (no listener) → T1
+**Example:** direct HTTPS succeeds while proxy path fails.  
+**Supports:** a bounded network-impact hypothesis.  
+**Blocked:** malware, intent, or universal-causation claims.
 
----
+## T4 — Writer / operator proof
 
-## T2 — Runtime evidence
+Strong attribution or explicitly recorded operator action. Depending on the evidence surface this may include Sysmon Event ID 13 / Procmon registry-write evidence or an operator-confirmed action recorded by the governance resolver.
 
-### Definition
-
-Runtime corroboration: process listening, port bind, or co-temporal signals.
-
-### Examples
-
-- `proxy-owner`: `node.exe` listening on 59081
-- Transition with `LISTENER_PRESENT` secondary signal
-- `tcp_listening=true` on configured port
-
-### Case study: dev tooling (Cursor / Node)
-
-**Observation:** WinINET → `127.0.0.1:9222`; listener `cursor.exe` or `node.exe`.  
-**Tier:** T2 — correlation.  
-**Allowed language:** "Process cursor.exe correlated with configured localhost port."  
-**Blocked language:** "Cursor wrote registry" (needs T4).
-
-**Trusted dev tools note:** `TRUSTED_DEV_TOOLS` in state machine lowers risk band for known tooling — still correlation, not writer proof.
-
-### Case study: listener missing
-
-**Observation:** Proxy enabled toward 59081; no listener.  
-**Tier:** T2 signal `LISTENER_MISSING`.  
-**Supports:** Dead proxy hypothesis when combined with T3.
-
-### Module mapping
-
-- `normalize_listener_state` → T2 (T4 if `writer_proof` or Sysmon E13)
-- Transition with listener → proof_tier T2 for localhost enable/reverter classes
-
----
-
-## T3 — Path evidence
-
-### Definition
-
-Structured network path contrast — direct vs proxied connectivity.
-
-### Examples
-
-- `proxy-health`: `direct_probe_ok=true`, `proxy_probe_ok=false`, `proxy_status=DEAD_LOCALHOST_PROXY`
-- `DIRECT_VS_PROXY_PATH_COMPARISON` control FAIL
-- `diagnose --proof` with supported dead-proxy hypothesis
-
-### Case study: dead WinINET proxy (full triage)
-
-**T1:** ProxyEnable=1, ProxyServer=127.0.0.1:59081  
-**T2:** No listener on 59081  
-**T3:** Direct HTTPS OK; proxy path fails  
-**Classification:** `DEAD_PROXY_CONFIG`  
-**Allowed language:** "Evidence consistent with dead localhost proxy blocking browser traffic."  
-**Blocked language:** "Malware disabled the listener."
-
-### Case study: WinINET / WinHTTP mismatch
-
-**T1:** WinINET proxied; WinHTTP direct access flag set  
-**T3:** Browser path differs from system stack expectations  
-**Classification:** `WININET_WINHTTP_MISMATCH`  
-**Control:** CTRL-002 FAIL
-
-### Module mapping
-
-- `normalize_probe_result` → `T3_PATH_EVIDENCE`
-- Proof engine attempts: `direct_connectivity_check`, `proxied_connectivity_check`
-
----
-
-## T4 — Writer proof
-
-### Definition
-
-Telemetry identifying **who wrote** proxy registry keys — not merely who listens.
-
-### Examples
-
-- Sysmon Event ID 13 with process image and target object
-- Procmon registry write stack
-- Security Event 4657 (when configured)
-
-### Case study: unknown local proxy escalation
-
-**T2:** Unknown process on localhost port  
-**T4:** Sysmon E13 shows `malware.exe` wrote `ProxyServer`  
-**Allowed language:** "Registry writer attributed to process X via Sysmon E13."  
-**Blocked language:** "Proved attacker intent" or "Proved malware" (intent ≠ writer proof).
-
-### Without T4
-
-Owner control returns **PARTIAL** — `WRITER_LIMITATION` applies.
-
-### Module mapping
-
-- `normalize_listener_state` with `writer_proof=true` → T4
-- `build_attribution` with `writer_kind` in sysmon/procmon/eventlog
-
----
+**Important:** writer identity proves who wrote a value; it does not prove malicious intent.
 
 ## T5 — Governance proof
 
+Human-confirmed action with verified audit-chain evidence.
+
+**Required by the governance resolver:** operator confirmation plus verified audit chain/replay certification.  
+**Allowed:** "Operator confirmed the policy action and the audit chain verifies."  
+**Blocked:** "The action is therefore safe in every environment" or a formal audit opinion.
+
+---
+
+## T6 — Controlled validation
+
 ### Definition
 
-Human operator confirmed remediation (or explicit policy action) recorded in hash-chained audit.
+A controlled, isolated or fixture-based experiment validates the bounded failure mechanism:
 
-### Examples
+```text
+baseline
+  ↓
+controlled change
+  ↓
+failure reproduced
+  ↓
+rollback
+  ↓
+recovery verified
+  ↓
+repeat experiment
+```
 
-- Operator typed `DISABLE_WININET_PROXY` and apply logged
-- Audit row: `execution_authority: human_confirmed`
-- Policy decision `confirmed: true` in Power BI fact table
+### Resolver requirements
 
-### Case study: remediation after review
+All must be true:
 
-**T3:** Dead proxy confirmed  
-**Policy:** PREVIEW_ONLY → human review → typed confirmation  
-**T5:** Apply logged with rollback snapshot reference  
-**Allowed language:** "Operator confirmed proxy disable per policy."  
-**Blocked language:** "Automated remediation succeeded."
+- `isolated_or_fixture_based`
+- `change_applied`
+- `failure_reproduced`
+- `rollback_applied`
+- `recovery_verified`
+- `repeatable`
+- T5 governance proof is already satisfied
 
-### Module mapping
+### What T6 means
 
-- `fact_policy_decisions.confirmed=true`
-- Platform tier `T4_OPERATOR_CONFIRMED` in governance report
+T6 supports the statement that **under the tested conditions**, the controlled change is a reproducible causal mechanism for the observed failure and rollback restores the tested behavior.
 
----
+### What T6 does NOT mean
 
-## Reverter pattern (cross-tier)
-
-### Case study: reverter suspected
-
-**T1:** Repeated enable/disable of localhost proxy in watch timeline  
-**T2:** Listener may appear intermittently  
-**Pattern:** `detect_reverter_loop_pattern` → `REVERTER_SUSPECTED_LOCALHOST_PROXY_LOOP`  
-**Tier label:** T2 for pattern; **not T4** without registry writer trace  
-**Control:** CTRL-007 FAIL  
-**Recommendation:** Collect Sysmon E13; do not auto-kill process
-
----
-
-## Ladder misuse (audit findings)
-
-| Misuse | Correction |
-|--------|------------|
-| "T2 proves malware" | T2 proves correlation — full stop |
-| "Proof supported → safe to disable" | Proof supports hypothesis — policy gate still required |
-| "No T4 needed for production fix" | T4 needed for **attribution**, not always for reliability fix |
-| Collapsing T1+T3 into "final causation" | Use bounded language until T4/T5 where applicable |
+- The same mechanism explains every similar incident.
+- Intent is known.
+- Malware or compromise is proven.
+- Execution is automatically authorized.
 
 ---
 
-## Quick reference table
+## T7 — Independent verification
 
-| Tier | Question answered | Typical command |
-|------|-------------------|-----------------|
-| T0 | What was noted? | Manual notes |
-| T1 | What is configured? | `proxy-status` |
-| T2 | What is running on the port? | `proxy-owner` |
-| T3 | Does traffic work direct vs proxy? | `proxy-health`, `diagnose --proof` |
-| T4 | Who wrote registry? | Sysmon / Procmon integration |
-| T5 | Who authorized apply? | Audit JSONL + typed confirmation |
+### Definition
+
+A separate verifier can validate evidence integrity and reproduce the decision from the evidence bundle without trusting the original conclusion.
+
+```text
+Evidence bundle
+   ↓
+independent verifier
+   ↓
+schema / bundle verification
+   ↓
+hash-chain verification
+   ↓
+deterministic replay
+   ↓
+classification reproduced
+```
+
+### Resolver requirements
+
+All must be true:
+
+- T6 controlled validation is already satisfied
+- `independent_verifier`
+- `evidence_bundle_verified`
+- `hash_chain_verified`
+- `deterministic_replay_verified`
+- `classification_reproduced`
+
+### What T7 means
+
+The evidence package and decision are independently reproducible at the highest assurance tier currently modeled by the portfolio.
+
+### What T7 does NOT mean
+
+- 100% certainty
+- formal audit attestation
+- malware/compromise verdict
+- malicious intent
+- automatic remediation authority
 
 ---
+
+## Safety invariant — proof is not permission
+
+Even T7 can produce:
+
+```text
+proof_tier: T7_INDEPENDENT_VERIFICATION
+policy: PREVIEW_ONLY
+human_approval: REQUIRED
+execution_authority: BLOCKED
+```
+
+This is intentional. Evidence strength, policy permission, coordination status, and execution authority are separate dimensions.
+
+---
+
+## Suspicious / MITM classifications
+
+`POSSIBLE_MITM_RISK` and `SUSPICIOUS_PROXY` remain deliberately capped at runtime corroboration in the governance resolver. Adding T6/T7 metadata must **not** turn a triage label into a confirmed interception or compromise verdict.
+
+---
+
+## Quick reference
+
+| Tier | Question answered |
+|---|---|
+| T0 | What was noted? |
+| T1 | What is configured? |
+| T2 | What runtime evidence corroborates it? |
+| T3 | Can the behavior/path impact be reproduced? |
+| T4 | Who wrote/confirmed the relevant action? |
+| T5 | Is the human-governed action backed by verified audit evidence? |
+| T6 | Does a controlled change/failure/rollback experiment reproduce the bounded mechanism? |
+| T7 | Can a separate verifier validate integrity and reproduce the decision? |
+
+---
+
+## Portfolio positioning
+
+The upgrade changes the model from an evidence-maturity ladder into an **evidence-assurance ladder**. T6/T7 should only be claimed when the required fixture/test evidence exists; documentation alone must never upgrade a case.
 
 ## Related documents
 
 - [audit-evidence-model.md](audit-evidence-model.md)
 - [proof-vs-observation.md](proof-vs-observation.md)
-- [portfolio-case-study-1-dead-wininet-proxy.md](portfolio-case-study-1-dead-wininet-proxy.md)
-- [portfolio-case-study-3-reverter-suspected.md](portfolio-case-study-3-reverter-suspected.md)
+- [replay-demo.md](replay-demo.md)
+- [test-strategy.md](test-strategy.md)
+- [evidence_to_action_governance_model.md](evidence_to_action_governance_model.md)

@@ -23,6 +23,9 @@ from src.telemetry.sysmon_reader import (
     query_sysmon_events,
 )
 
+# Windows-only surfaces: simulate the platform guard so Linux CI keeps this coverage.
+pytestmark = pytest.mark.usefixtures("simulated_windows")
+
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "sysmon"
 
 

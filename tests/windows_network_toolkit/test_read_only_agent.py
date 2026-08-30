@@ -87,13 +87,8 @@ def test_get_spool_status_after_collect(tmp_path: Path) -> None:
 def test_agent_does_not_call_remediation_modules(tmp_path: Path) -> None:
     """Agent path must not import or invoke remediation execute modules."""
     spool = tmp_path / "safe.jsonl"
-    patches = {
-        name: patch.dict(sys.modules, {name: MagicMock()})
-        for name in FORBIDDEN_REMEDIATION_MODULES
-    }
-    for ctx in patches.values():
-        ctx.start()
-    try:
+    stubs = {name: MagicMock() for name in FORBIDDEN_REMEDIATION_MODULES}
+    with patch.dict(sys.modules, stubs):
         with patch("subprocess.run") as subprocess_run:
             with patch("subprocess.Popen") as subprocess_popen:
                 collect_once(spool_path=spool, fixture_path=FIXTURE_BUNDLE, endpoint_id="ep-safe")
@@ -103,9 +98,6 @@ def test_agent_does_not_call_remediation_modules(tmp_path: Path) -> None:
             mod = sys.modules.get(name)
             if mod is not None and hasattr(mod, "apply_remediation"):
                 mod.apply_remediation.assert_not_called()
-    finally:
-        for ctx in patches.values():
-            ctx.stop()
 
 
 def test_collect_once_live_windows_uses_evidence_collection(

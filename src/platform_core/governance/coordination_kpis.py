@@ -12,7 +12,7 @@ def compute_coordination_kpis(audit_dir: Path) -> dict[str, Any]:
 
     Metrics are counts and mean durations where timestamps exist — not statistical probabilities.
     """
-    kpi = {
+    kpi: dict[str, Any] = {
         "schema_version": "coordination_kpis.v1",
         "unassigned_owner_cases": 0,
         "cases_awaiting_approval": 0,
