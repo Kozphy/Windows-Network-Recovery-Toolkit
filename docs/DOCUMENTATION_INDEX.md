@@ -27,6 +27,7 @@ A **local-first Windows endpoint reliability toolkit** evolving into a **Purple 
 | [purple_team/evidence-model.md](purple_team/evidence-model.md) | Tamper-evident bundles |
 | [purple_team/scenario-authoring.md](purple_team/scenario-authoring.md) | How to add scenarios |
 | [purple-team-upgrade-report.md](purple-team-upgrade-report.md) | Before → after upgrade report |
+| [open-source-checklist.md](open-source-checklist.md) | Secrets, git hygiene, pre-commit gitleaks, public release |
 | [../research/questions.md](../research/questions.md) | Research questions |
 
 ## Portfolio pack (recruiters, Big 4, FAANG, PL-300)
