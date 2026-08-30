@@ -35,9 +35,7 @@ ALLOWED_JSONL_PREFIXES = (
 )
 
 # Committed synthetic portfolio samples (see reports/.gitignore !sample_*.md).
-ALLOWED_RUNTIME_ARTIFACT_PREFIXES = (
-    "reports/sample_",
-)
+ALLOWED_RUNTIME_ARTIFACT_PREFIXES = ("reports/sample_",)
 
 ALLOWED_EMAIL_DOMAINS = frozenset(
     {
@@ -55,14 +53,17 @@ EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PRIVATE_IP = re.compile(
     r"\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b"
 )
+ASSIGNMENT_SECRET = re.compile(
+    r"\b(?:api[_-]?key|secret|token|password)\s*=\s*['\"]([^'\"]{8,})['\"]",
+    re.IGNORECASE,
+)
 TOKEN_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"),
     re.compile(r"\bghp_[A-Za-z0-9]{36,}\b"),
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
-    re.compile(
-        r"\b(?:api[_-]?key|secret|token|password)\s*=\s*['\"][^'\"]{8,}['\"]", re.IGNORECASE
-    ),
+    ASSIGNMENT_SECRET,
 )
+POLICY_CONFIRM_VALUE = re.compile(r"^[A-Z][A-Z0-9_]+$")
 
 HIGH_RISK_RUNTIME_DIRS = (
     "logs",
@@ -84,6 +85,11 @@ HIGH_RISK_CATEGORIES = frozenset(
 )
 
 
+def _is_policy_confirm_value(value: str) -> bool:
+    """Typed operator/policy confirmation tokens (e.g. DISABLE_WININET_PROXY)."""
+    return bool(POLICY_CONFIRM_VALUE.match(value))
+
+
 def has_high_risk(findings: dict[str, list[str]]) -> bool:
     return any(findings.get(key) for key in HIGH_RISK_CATEGORIES)
 
@@ -103,7 +109,10 @@ def _is_allowed_runtime_artifact(rel: str) -> bool:
     normalized = rel.replace("\\", "/")
     if normalized.endswith(".gitignore") or normalized.endswith(".gitkeep"):
         return True
-    return any(normalized.startswith(prefix.replace("\\", "/")) for prefix in ALLOWED_RUNTIME_ARTIFACT_PREFIXES)
+    return any(
+        normalized.startswith(prefix.replace("\\", "/"))
+        for prefix in ALLOWED_RUNTIME_ARTIFACT_PREFIXES
+    )
 
 
 def _should_skip_dir(name: str) -> bool:
@@ -125,9 +134,7 @@ def git_tracked_files(root: Path) -> set[str]:
         return set()
     if proc.returncode != 0:
         return set()
-    return {
-        line.strip().replace("\\", "/") for line in proc.stdout.splitlines() if line.strip()
-    }
+    return {line.strip().replace("\\", "/") for line in proc.stdout.splitlines() if line.strip()}
 
 
 def scan_repo(
@@ -208,10 +215,20 @@ def scan_repo(
                 findings["private_ip_addresses"].append(f"{rel}: {ip}")
 
         for pattern in TOKEN_PATTERNS:
-            if pattern.search(text):
-                if "tests" in parts or ".example" in name:
+            if pattern is ASSIGNMENT_SECRET:
+                flagged = False
+                for match in ASSIGNMENT_SECRET.finditer(text):
+                    if _is_policy_confirm_value(match.group(1)):
+                        continue
+                    flagged = True
+                    break
+                if not flagged:
                     continue
-                findings["likely_secrets"].append(f"{rel}: pattern {pattern.pattern[:40]}")
+            elif not pattern.search(text):
+                continue
+            if "tests" in parts or ".example" in name:
+                continue
+            findings["likely_secrets"].append(f"{rel}: pattern {pattern.pattern[:40]}")
 
     for key in findings:
         findings[key] = sorted(set(findings[key]))
