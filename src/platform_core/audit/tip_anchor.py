@@ -112,7 +112,7 @@ def verify_audit_with_tip(
     tip_match: bool | None
     count_match: bool | None
     tip_msg: str
-    if not tip_present:
+    if tip is None:
         tip_match = None
         count_match = None
         tip_msg = "tip_anchor_missing"

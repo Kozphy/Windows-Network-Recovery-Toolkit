@@ -1,0 +1,88 @@
+name: AI Evaluation
+
+on:
+  pull_request:
+    branches:
+      - Multi_Domain_Decision_Platform
+      - main
+      - master
+    paths:
+      - "src/platform_core/ai_evals/**"
+      - "tests/ai_evals/**"
+      - "examples/ai_evals/**"
+      - ".github/workflows/ai-eval.yml"
+  push:
+    branches:
+      - Multi_Domain_Decision_Platform
+      - main
+      - master
+    paths:
+      - "src/platform_core/ai_evals/**"
+      - "tests/ai_evals/**"
+      - "examples/ai_evals/**"
+      - ".github/workflows/ai-eval.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ai-eval-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: ${{ github.workspace }}
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  deterministic-evals:
+    name: deterministic AI evals
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run AI evaluation contracts
+        run: |
+          mkdir -p reports
+          pytest -q tests/ai_evals \
+            --junitxml=reports/ai-eval-junit.xml
+
+      - name: Run policy safety regression
+        run: |
+          pytest -q \
+            tests/test_policy_v2_regression.py \
+            tests/policy/test_safety_boundaries.py
+
+      - name: Validate evaluation fixture is tracked
+        run: |
+          test -f examples/ai_evals/support_bot_cases.json
+          git ls-files --error-unmatch examples/ai_evals/support_bot_cases.json
+
+      - name: Evaluation summary
+        if: always()
+        run: |
+          echo "### AI Evaluation" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Suite: deterministic graders, policy gates, failure taxonomy, CLI/report contracts" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Execution authority: none" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Model training or promotion: not performed" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-evaluation-${{ github.sha }}
+          path: reports/ai-eval-junit.xml
+          if-no-files-found: error
+          retention-days: 30
