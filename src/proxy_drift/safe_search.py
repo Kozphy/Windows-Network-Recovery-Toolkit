@@ -13,16 +13,20 @@ from typing import Any
 _DEFAULT_MAX_SECONDS = 20.0
 _DEFAULT_MAX_FILES = 3000
 
-_EXCLUDE_DIR_NAMES = frozenset(
+_ALWAYS_EXCLUDE_DIR_NAMES = frozenset(
     {
         "node_modules",
         ".git",
         ".cache",
-        "Docker",
-        "Temp",
-        "Packages",
-        "Edge",
-        "Chrome",
+        "docker",
+    }
+)
+_PROFILE_EXCLUDE_DIR_NAMES = frozenset(
+    {
+        "temp",
+        "packages",
+        "edge",
+        "chrome",
     }
 )
 _EXCLUDE_DIR_FRAGMENTS = (
@@ -38,12 +42,16 @@ def _now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _should_exclude_dir(path: Path, *, profile_scan: bool = False) -> bool:
-    parts = {p.lower() for p in path.parts}
-    if parts & {n.lower() for n in _EXCLUDE_DIR_NAMES}:
+def _should_exclude_dir(path: Path, *, profile_scan: bool = False, is_scan_root: bool = False) -> bool:
+    parts = {segment.lower() for segment in str(path).replace("\\", "/").split("/")}
+    if parts & _ALWAYS_EXCLUDE_DIR_NAMES:
         return True
     if not profile_scan:
         return False
+    if is_scan_root:
+        return False
+    if path.name.lower() in _PROFILE_EXCLUDE_DIR_NAMES:
+        return True
     norm = str(path).replace("/", "\\")
     return any(frag.replace("/", "\\") in norm for frag in _EXCLUDE_DIR_FRAGMENTS)
 
@@ -96,6 +104,7 @@ def _targeted_roots(target: str, repo_root: Path | None) -> list[Path]:
 def _iter_files(roots: list[Path]) -> Iterator[Path]:
     for root in roots:
         profile_scan = _is_profile_scan_root(root)
+        resolved_root = root.resolve()
         if root.is_file():
             yield root
             continue
@@ -103,12 +112,13 @@ def _iter_files(roots: list[Path]) -> Iterator[Path]:
             continue
         for dirpath, dirnames, filenames in os.walk(root, topdown=True):
             current = Path(dirpath)
+            is_scan_root = current.resolve() == resolved_root
             dirnames[:] = [
                 d
                 for d in dirnames
                 if not _should_exclude_dir(current / d, profile_scan=profile_scan)
             ]
-            if _should_exclude_dir(current, profile_scan=profile_scan):
+            if _should_exclude_dir(current, profile_scan=profile_scan, is_scan_root=is_scan_root):
                 dirnames.clear()
                 continue
             for name in filenames:
@@ -133,10 +143,13 @@ def safe_search(
     q = (query or "").lower()
 
     for path in _iter_files(roots):
-        scanned += 1
-        if scanned > max_files or time.monotonic() >= deadline:
+        if time.monotonic() >= deadline:
             timed_out = True
             break
+        if scanned >= max_files:
+            timed_out = True
+            break
+        scanned += 1
         name = path.name
         if q and q not in name.lower() and q not in str(path).lower():
             continue

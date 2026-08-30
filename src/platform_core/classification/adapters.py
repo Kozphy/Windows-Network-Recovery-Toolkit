@@ -14,6 +14,7 @@ _ANALYTICS_TO_PRIMARY: dict[str, PrimaryClassification] = {
     "PROXY_FORWARDING_FAILED": PrimaryClassification.DEAD_PROXY_CONFIG,
     "LISTENER_NOT_PROXY": PrimaryClassification.UNKNOWN_LOCAL_PROXY,
     "STALE_PROXY_AFTER_PROCESS_EXIT": PrimaryClassification.DEAD_PROXY_CONFIG,
+    "BROKEN_LOCALHOST_PROXY": PrimaryClassification.DEAD_PROXY_CONFIG,
     "INSUFFICIENT_DATA": PrimaryClassification.ERROR_INSUFFICIENT_DATA,
     "KNOWN_CURSOR_PROXY": PrimaryClassification.KNOWN_DEV_PROXY,
     "KNOWN_VSCODE_EXTENSION": PrimaryClassification.KNOWN_DEV_PROXY,

@@ -11,7 +11,7 @@
 
 **One-line summary:** An evidence-backed platform that turns Windows endpoint reliability signals into explainable classifications, control test results, policy-gated remediation previews, hash-chained audit trails, and committee-ready analytics.
 
-**Portfolio:** [PORTFOLIO.md](PORTFOLIO.md) · **Architecture (Mermaid):** [docs/architecture-infographic.md](docs/architecture-infographic.md) · **Case study:** [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md) · **Onboarding:** [docs/ONBOARDING.md](docs/ONBOARDING.md)
+**Portfolio:** [PORTFOLIO.md](PORTFOLIO.md) · **Architecture:** [Architecture overview](#architecture-overview) · [docs/architecture-infographic.md](docs/architecture-infographic.md) · **Case study:** [docs/one-page-case-study-dead-proxy.md](docs/one-page-case-study-dead-proxy.md) · **Onboarding:** [docs/ONBOARDING.md](docs/ONBOARDING.md)
 
 ---
 
@@ -204,25 +204,93 @@ See also: [analytics/powerbi/README.md](analytics/powerbi/README.md) (earlier po
 
 ## Architecture overview
 
+Evidence pipeline for Windows endpoint reliability / technology risk — **not** antivirus, EDR, XDR, malware attribution, or autonomous remediation.
+
+### System context
+
+```mermaid
+flowchart TB
+  subgraph Sources["Evidence sources"]
+    EP[Windows endpoint<br/>WinINET / WinHTTP · listeners · TLS]
+    FX[tests/fixtures/<br/>preferred deterministic inputs]
+  end
+
+  subgraph CLIs["Operator surfaces"]
+    CLI["Primary CLI<br/>python -m windows_network_toolkit"]
+    SRC["Operator CLI<br/>python -m src · guardian · boot trace"]
+  end
+
+  CORE["platform_core<br/>src/ + platform_core/ · policy · audit"]
+  API["FastAPI backend/<br/>/trisk/* · /platform/*"]
+  AUD["Audit and export<br/>.audit/ · platform_data/ · Power BI"]
+
+  OC[["OpenClaw side lane<br/>policy-gated · draft PR only"]]
+
+  EP --> CLI
+  EP --> SRC
+  FX --> CLI
+  FX --> SRC
+  CLI --> CORE
+  SRC --> CORE
+  CORE --> API
+  CORE --> AUD
+  API --> AUD
+  OC -.->|not on remediation path| CLI
+```
+
+### Governance pipeline
+
+Stages stay separated. Dry-run / preview-only is the default; humans authorize risky execution.
+
 ```text
-Evidence collection → Classification → Proof / control tests → Policy gates
-  → Remediation preview → Audit trail → Governance reporting → Replay verification
+Observation → Hypothesis → Proof → Policy → Stakeholder → Timing
+  → Preview → Approval → Execution → Audit → Replay
 ```
 
 ```mermaid
 flowchart LR
-  E[Evidence] --> C[Classify]
-  C --> P[Proof]
-  P --> R[Risk rate]
-  R --> Pol[Policy]
-  Pol --> Prev[Preview]
-  Prev --> Aud[Audit]
-  Aud --> Rep[Report]
+  O[Observation] --> H[Hypothesis]
+  H --> Pf[Proof]
+  Pf --> Pol[Policy]
+  Pol --> St[Stakeholder]
+  St --> Tm[Timing]
+  Tm --> Prev[Preview]
+  Prev --> Ap[Approval]
+  Ap --> Ex[Execution]
+  Ex --> Aud[Audit]
+  Aud --> Rp[Replay]
 ```
 
+Stakeholder and Timing do **not** alter technical facts. They determine whether, by whom, and when an evidence-backed action may proceed. Policy permission remains separate from coordination status (for example `PREVIEW_ONLY` + `NEEDS_APPROVAL`).
 
+### Key packages
 
-Details: [docs/architecture.md](docs/architecture.md) · [docs/architecture-infographic.md](docs/architecture-infographic.md)
+| Path | Role |
+|------|------|
+| `windows_network_toolkit/` | Primary CLI + diagnostics |
+| `src/proxy_drift/` | Startup observability, boot trace, dead-proxy guardian |
+| `src/platform_core/` | Policy, governance envelope, hash-chained audit |
+| `backend/` | FastAPI — `/trisk/*`, `/platform/*` (optional Postgres) |
+| `telemetry/` | Registry-writer telemetry (fixture-first) |
+| `tests/fixtures/` | Deterministic evidence inputs |
+| `skills/wnrt-coder/` + `.openclaw/` | Optional controlled coding agent (draft PR only) |
+
+### Safety / remediation lane
+
+| Posture | Behavior |
+|---------|----------|
+| **Read-only first** | `proxy-status`, `diagnose`, `agent once` |
+| **Gated** | Dry-run default; typed confirmation (e.g. `DISABLE_WININET_PROXY`) |
+| **Blocked by default** | Process kill, firewall reset, adapter disable |
+| **CI contracts** | `test_policy_safety_contract`, classifier safety contracts |
+
+Default branch: `Multi_Domain_Decision_Platform` (CI also covers `main` / `master`).
+
+Details: [docs/architecture.md](docs/architecture.md) · [docs/decision-context.md](docs/decision-context.md) · [docs/architecture-infographic.md](docs/architecture-infographic.md) · [docs/openclaw-coding-agent.md](docs/openclaw-coding-agent.md)
+
+> **Cursor Canvas (local IDE):** contributors using Cursor can open the interactive architecture view at  
+> `%USERPROFILE%\.cursor\projects\c-Users-Zixsa-Kozphy-Windows-Network-Recovery-Toolkit\canvases\wnrt-architecture.canvas.tsx`  
+> (not shipped in git — IDE-only artifact).
 
 ---
 
@@ -234,8 +302,13 @@ Six principles (`evidence_to_action.v1`):
 2. **Correlation is not causation**
 3. **Confidence is not certainty** (ordinal, not probability)
 4. **Classification is not accusation**
-5. **Policy permission is not safety guarantee**
+5. **Policy permission is not a safety guarantee**
 6. **Recommendation is not execution authority**
+
+Additional coordination principles:
+
+7. **Stakeholder assignment is not approval**
+8. **A valid maintenance window is not execution authorization**
 
 ```text
 Collect → Classify → Prove → Rate risk → Policy → Preview → Audit → Report → Replay
@@ -266,6 +339,12 @@ python -m windows_network_toolkit analytics-export --fixture tests/fixtures/anal
 python -m windows_network_toolkit evidence-report --analytics --fixture tests/fixtures/analytics_pipeline_fixture.json
 python -m windows_network_toolkit diagnose --proof --fixture examples/evidence/DEAD_PROXY_CONFIG.json
 
+# Local monitoring dashboard (read-only; requires optional dashboard extras)
+pip install -e ".[dashboard]"
+python -m windows_network_toolkit dashboard
+# Opens http://127.0.0.1:8765 — Overview, Live Timeline, Process Snapshot, Incident Detail
+python -m windows_network_toolkit procmon-import .\capture.csv
+
 # Risk & governance
 python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
 python -m windows_network_toolkit control-test --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
@@ -288,6 +367,21 @@ make proxy-intermittent
 ```
 
 Legacy / extended CLI: `python -m src` · Full reference: [docs/cli_reference.md](docs/cli_reference.md)
+
+For startup-time proxy drift on Windows, the recommended operator flow is:
+
+```powershell
+.\ensure-proxy.cmd
+# LinkedIn / flaky local Node proxy → force direct:
+.\ensure-proxy.cmd prefer-direct
+
+python -m src install-startup-observability
+python -m src install-startup-observability --dry-run false --confirm INSTALL_STARTUP_OBSERVABILITY
+python -m src collect-evidence-bundle
+python -m src startup-observability-report --json
+```
+
+That path keeps `python -m src` as the single startup-observability CLI, prefers per-user Scheduled Tasks, and automatically falls back to Startup hooks if Task Scheduler is denied. `start-api.ps1` also runs `ensure-proxy-health` before the API starts.
 
 ### FastAPI — Technology Risk Analytics (read-only)
 
@@ -360,6 +454,10 @@ A process **listening** on that port is **not** enough for a healthy proxy:
 python -m windows_network_toolkit proxy-health
 python -m windows_network_toolkit proxy-health --host 127.0.0.1 --port 62285 --json
 
+# Localhost web-app refused-to-connect (e.g. popup on http://localhost:61161/…)
+python -m windows_network_toolkit localhost-diagnose --url "http://localhost:61161/ChtPopupForm" --json --remediation-preview
+python -m windows_network_toolkit localhost-watch --url "http://localhost:61161/ChtPopupForm" --interval 2 --duration 60
+
 # Watch for drift; human summary on localhost transitions
 python -m windows_network_toolkit proxy-watch --interval 5 --format human --coalesce-ms 1000
 
@@ -367,7 +465,7 @@ python -m windows_network_toolkit proxy-watch --interval 5 --format human --coal
 python -m windows_network_toolkit proxy-replay --input tests/fixtures/proxy_loop.jsonl
 ```
 
-Classifications use full before/after state (not single-field diffs). See [docs/proxy-state-transitions.md](docs/proxy-state-transitions.md).
+Classifications use full before/after state (not single-field diffs). See [docs/proxy-state-transitions.md](docs/proxy-state-transitions.md). Localhost app diagnose: [docs/localhost-diagnose.md](docs/localhost-diagnose.md).
 
 ```powershell
 # Latest proxy-path evidence report (markdown)
@@ -377,11 +475,24 @@ python -m windows_network_toolkit evidence-report --latest --fixture tests/fixtu
 **Troubleshooting patterns**
 
 - **Dead localhost proxy:** `proxy_status` = `DEAD_LOCALHOST_PROXY` or `DIRECT_ONLY_WORKS`; policy suggests preview disable, not auto-fix.
+- **Active-but-broken localhost proxy:** listener present but path probe fails while direct works → drift `BROKEN_LOCALHOST_PROXY`; clear with `--prefer-direct --confirm PREFER_DIRECT_WININET` (or confirm alone on auto-fix/ensure).
 - **Active local proxy:** `HEALTHY_LOCALHOST_PROXY` / `BOTH_DIRECT_AND_PROXY_WORK`; review whether `node.exe` or dev tooling is expected.
 - **Reverter suspected:** `proxy-watch` reports `REVERTER_SUSPECTED`; registry writer proof still requires Sysmon/Procmon/EventLog.
 - **WinINET vs WinHTTP mismatch:** compare `proxy-status` WinINET block with WinHTTP direct-access flag.
 
 Listener and process names are **correlation only** unless registry writer evidence exists. See [docs/case-study-1-proxy-drift.md](docs/case-study-1-proxy-drift.md).
+
+**Local monitoring dashboard (read-only)**
+
+| Item | Detail |
+|------|--------|
+| Launch | `python -m windows_network_toolkit dashboard` → http://127.0.0.1:8765 |
+| Screens | Overview cards, Live Timeline (pause/resume/clear UI/filters), Process Snapshot, Incident Detail |
+| Procmon | `python -m windows_network_toolkit procmon-import .\capture.csv` |
+| Security | No disable-proxy / kill-process / registry-write buttons; remediation stays on gated CLIs |
+| Install | `pip install -e ".[dashboard]"` (nicegui, psutil, pywin32 on Windows) |
+
+Troubleshooting: if bind fails, confirm nothing else uses port 8765; never use `--host 0.0.0.0` unless you intentionally accept exposure via `--allow-non-loopback-bind`.
 
 ### Why `ERR_PROXY_CONNECTION_FAILED` happens (and ping still works)
 
@@ -407,6 +518,17 @@ $env:PYTHONPATH = (Get-Location).Path
 # One-shot auto-fix + install 60s background guardian (recommended after ERR_PROXY)
 .\scripts\auto-fix-proxy.ps1
 python -m src auto-fix-proxy
+# Active-but-broken (listener up, proxy path fail, direct ok) or force direct:
+.\scripts\auto-fix-proxy.ps1 -PreferDirect
+python -m src auto-fix-proxy --prefer-direct --confirm PREFER_DIRECT_WININET --json
+# LinkedIn timeout — prefer-direct + Cursor no-proxy + guardian (Python optional)
+.\fix-linkedin-proxy.cmd
+.\enable-proxy-autofix.cmd
+.\fix-dns.cmd
+.\scripts\emergency-clear-wininet-proxy.ps1 -Force
+.\scripts\fix-wininet-proxy.cmd /Y
+# DNS_PROBE_FINISHED_BAD_CONFIG triage (read-only)
+python -m src dns-health --json
 
 # Startup inventory (no full profile recursion)
 python -m src startup-inventory
@@ -418,6 +540,8 @@ python -m src proxy-boot-trace --duration 180 --interval 2
 # Dead localhost guardian (dry-run by default)
 python -m src proxy-guardian --once
 python -m src proxy-guardian --loop --interval 60 --confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false
+# Also clear active-but-broken + hold-direct (LinkedIn recurrence)
+python -m src proxy-guardian --once --clear-broken --hold-direct --confirm CLEAR_DEAD_LOCALHOST_PROXY --confirm-broken PREFER_DIRECT_WININET --dry-run false
 
 # Emergency HKCU fix (localhost ProxyServer only)
 python -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
@@ -428,9 +552,18 @@ python -m src install-guardian-task --confirm INSTALL_GUARDIAN_TASK --dry-run fa
 
 # Timeout-safe search (startup target, no profile walk)
 python -m src safe-search --query WNRT-DeadProxyGuardian --target startup
+
+# v0.3.0 startup observability (recommended)
+python -m src install-startup-observability
+python -m src install-startup-observability --dry-run false --confirm INSTALL_STARTUP_OBSERVABILITY
+python -m src collect-evidence-bundle
+python -m src startup-observability-report --json
+python -m src uninstall-startup-observability --dry-run false --confirm UNINSTALL_STARTUP_OBSERVABILITY
 ```
 
 Audit logs: `logs/startup_inventory.jsonl`, `logs/proxy_boot_trace.jsonl`, `logs/proxy_guardian.jsonl`. Emergency CMD wrapper: `scripts/fix-wininet-proxy.cmd`.
+
+Runbook: [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md) · Architecture: [docs/startup-observability.md](docs/startup-observability.md).
 
 ---
 
@@ -660,6 +793,8 @@ Full guide: [docs/ci-cd.md](docs/ci-cd.md) · branch protection: [docs/ci_branch
 | [docs/scale-testing.md](docs/scale-testing.md)               | Synthetic local scale limits |
 | [docs/cross-platform-support.md](docs/cross-platform-support.md) | Linux/macOS PARTIAL foundation |
 | [docs/packaging-installer.md](docs/packaging-installer.md)     | pipx/wheel/portable install plan |
+| [docs/startup-observability.md](docs/startup-observability.md) | v0.3.0 startup observability architecture |
+| [docs/dead-proxy-guardian.md](docs/dead-proxy-guardian.md)   | Dead localhost proxy recovery runbook |
 
 
 ---

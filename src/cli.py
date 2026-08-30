@@ -56,6 +56,7 @@ from edge_device.cli_handlers import cmd_edge_diagnose, cmd_edge_replay
 
 from .command_handlers import (
     cmd_diagnose_live,
+    cmd_procmon_filter_set,
     cmd_proxy_attribution,
     cmd_proxy_causation,
     cmd_proxy_classify,
@@ -130,13 +131,21 @@ from .production_handlers import (
 from .proof.proxy_https import run_localhost_proxy_https_proof
 from .proxy_drift.handlers import (
     cmd_auto_fix_proxy,
+    cmd_collect_evidence_bundle,
+    cmd_dns_health,
+    cmd_ensure_proxy_health,
+    cmd_install_boot_trace_task,
     cmd_install_guardian_task,
+    cmd_install_startup_observability,
     cmd_proxy_boot_trace,
     cmd_proxy_fix,
     cmd_proxy_guardian_drift,
     cmd_safe_search,
     cmd_startup_inventory,
+    cmd_startup_observability_report,
+    cmd_uninstall_boot_trace_task,
     cmd_uninstall_guardian_task,
+    cmd_uninstall_startup_observability,
 )
 from .proxy_guard.linux_proxy_commands import cmd_proxy_linux_snapshot
 from .recommendations.engine import RecommendationBundle, build_recommendations
@@ -1309,6 +1318,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_pxw.add_argument("--interval", type=float, default=5.0, help="Seconds between polls (default 5).")
     p_pxw.add_argument("--once", action="store_true", help="Poll twice (detect first change if any) then exit.")
     p_pxw.add_argument(
+        "--soak-minutes",
+        type=float,
+        default=0.0,
+        dest="soak_minutes",
+        help="Short soak: poll for N minutes then exit with watch_soak_result (0=unbounded). Use 2 for rewrite checks.",
+    )
+    p_pxw.add_argument(
+        "--exit-on-rewrite",
+        dest="exit_on_rewrite",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="During soak, exit early when ProxyEnable flips 0→1 (default: true). Use --no-exit-on-rewrite to run full window.",
+    )
+    p_pxw.add_argument(
         "--evidence-csv",
         type=str,
         default=None,
@@ -1323,6 +1346,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="On drift, run final causation collector (best-effort; does not require Sysmon).",
     )
     p_pxw.set_defaults(func=cmd_proxy_watch)
+
+    p_pmf = sub.add_parser(
+        "procmon-filter-set",
+        help="Print or export Procmon Include filters for WinINET proxy RegSetValue writer capture.",
+    )
+    p_pmf.add_argument("--json", dest="emit_json", action="store_true", help="Emit machine-readable filter set JSON.")
+    p_pmf.add_argument(
+        "--export",
+        dest="procmon_filter_export",
+        metavar="PATH",
+        default=None,
+        help="Write filter set JSON to PATH (creates parents).",
+    )
+    p_pmf.set_defaults(func=cmd_procmon_filter_set)
 
     p_pxw = sub.add_parser(
         "proxy-watch-report",
@@ -1865,6 +1902,107 @@ def build_parser() -> argparse.ArgumentParser:
     p_pbt.add_argument("--json", dest="emit_json", action="store_true")
     p_pbt.set_defaults(func=cmd_proxy_boot_trace)
 
+    p_ibtt = sub.add_parser(
+        "install-boot-trace-task",
+        help="Preview/install WNRT-ProxyBootTrace logon scheduled task.",
+    )
+    p_ibtt.add_argument("--duration", type=int, default=180, dest="boot_trace_duration")
+    p_ibtt.add_argument("--interval", type=int, default=2, dest="boot_trace_interval")
+    p_ibtt.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm INSTALL_BOOT_TRACE_TASK.",
+    )
+    p_ibtt.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live install requires INSTALL_BOOT_TRACE_TASK.",
+    )
+    p_ibtt.add_argument("--json", dest="emit_json", action="store_true")
+    p_ibtt.set_defaults(func=cmd_install_boot_trace_task)
+
+    p_ubtt = sub.add_parser(
+        "uninstall-boot-trace-task",
+        help="Preview/uninstall WNRT-ProxyBootTrace logon scheduled task.",
+    )
+    p_ubtt.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm UNINSTALL_BOOT_TRACE_TASK.",
+    )
+    p_ubtt.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live uninstall requires UNINSTALL_BOOT_TRACE_TASK.",
+    )
+    p_ubtt.add_argument("--json", dest="emit_json", action="store_true")
+    p_ubtt.set_defaults(func=cmd_uninstall_boot_trace_task)
+
+    p_iso = sub.add_parser(
+        "install-startup-observability",
+        help="Preview/install guardian + boot trace startup observability.",
+    )
+    p_iso.add_argument("--guardian-interval", type=int, default=15, dest="guardian_interval")
+    p_iso.add_argument("--duration", type=int, default=180, dest="boot_trace_duration")
+    p_iso.add_argument("--interval", type=int, default=2, dest="boot_trace_interval")
+    p_iso.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm INSTALL_STARTUP_OBSERVABILITY.",
+    )
+    p_iso.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live install requires INSTALL_STARTUP_OBSERVABILITY.",
+    )
+    p_iso.add_argument("--json", dest="emit_json", action="store_true")
+    p_iso.set_defaults(func=cmd_install_startup_observability)
+
+    p_uso = sub.add_parser(
+        "uninstall-startup-observability",
+        help="Preview/uninstall guardian + boot trace startup observability.",
+    )
+    p_uso.add_argument(
+        "--dry-run",
+        nargs="?",
+        const="true",
+        default="true",
+        type=_parse_bool_arg,
+        dest="dry_run",
+        help="Preview only by default. Use --dry-run false with --confirm UNINSTALL_STARTUP_OBSERVABILITY.",
+    )
+    p_uso.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        dest="confirm_phrase",
+        metavar="PHRASE",
+        help="Live uninstall requires UNINSTALL_STARTUP_OBSERVABILITY.",
+    )
+    p_uso.add_argument("--json", dest="emit_json", action="store_true")
+    p_uso.set_defaults(func=cmd_uninstall_startup_observability)
+
     p_pgd = sub.add_parser(
         "proxy-guardian",
         help="Dead localhost WinINET proxy guardian (dry-run by default; distinct from proxy-guard).",
@@ -1892,7 +2030,30 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         dest="confirm_phrase",
         metavar="PHRASE",
-        help="Live clear requires CLEAR_DEAD_LOCALHOST_PROXY.",
+        help="Live dead-proxy clear requires CLEAR_DEAD_LOCALHOST_PROXY.",
+    )
+    p_pgd.add_argument(
+        "--clear-broken",
+        action="store_true",
+        dest="clear_broken",
+        help="Also detect active-but-broken (listener up, path fail, direct ok).",
+    )
+    p_pgd.add_argument(
+        "--confirm-broken",
+        type=str,
+        default="",
+        dest="confirm_broken",
+        metavar="PHRASE",
+        help="Live broken/hold-direct clear requires PREFER_DIRECT_WININET.",
+    )
+    p_pgd.add_argument(
+        "--hold-direct",
+        action="store_true",
+        dest="hold_direct",
+        help=(
+            "Clear ANY enabled localhost WinINET proxy (including healthy tunnels) "
+            "using --confirm-broken PREFER_DIRECT_WININET. For LinkedIn-style rewrite recurrence."
+        ),
     )
     p_pgd.add_argument("--json", dest="emit_json", action="store_true")
     p_pgd.set_defaults(func=cmd_proxy_guardian_drift, once=True)
@@ -1989,6 +2150,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_ss.add_argument("--json", dest="emit_json", action="store_true")
     p_ss.set_defaults(func=cmd_safe_search)
 
+    p_ceb = sub.add_parser(
+        "collect-evidence-bundle",
+        help="Collect a read-only proxy/network evidence bundle under reports/.",
+    )
+    p_ceb.add_argument("--out-dir", dest="bundle_dir", default=None)
+    p_ceb.add_argument("--duration", type=int, default=30, dest="boot_trace_duration")
+    p_ceb.add_argument("--interval", type=int, default=2, dest="boot_trace_interval")
+    p_ceb.add_argument("--json", dest="emit_json", action="store_true")
+    p_ceb.set_defaults(func=cmd_collect_evidence_bundle)
+
+    p_sor = sub.add_parser(
+        "startup-observability-report",
+        help="Summarize boot trace JSONL into an operator-readable report.",
+    )
+    p_sor.add_argument("--trace-path", dest="trace_path", default="")
+    p_sor.add_argument("--json", dest="emit_json", action="store_true")
+    p_sor.set_defaults(func=cmd_startup_observability_report)
+
     p_afp = sub.add_parser(
         "auto-fix-proxy",
         help="One-shot dead localhost proxy fix + 60s background guardian install.",
@@ -2009,14 +2188,81 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip configure-cursor-no-proxy.ps1 step.",
     )
     p_afp.add_argument(
+        "--prefer-direct",
+        action="store_true",
+        help="Also clear an active localhost WinINET proxy (requires --confirm PREFER_DIRECT_WININET).",
+    )
+    p_afp.add_argument(
+        "--confirm",
+        dest="confirm_phrase",
+        default="",
+        help="PREFER_DIRECT_WININET when using --prefer-direct.",
+    )
+    p_afp.add_argument(
         "--guardian-interval",
         type=int,
-        default=60,
+        default=15,
         dest="guardian_interval",
-        help="Background guardian check interval in seconds (default 60).",
+        help="Background guardian check interval in seconds (default 15, hold-direct loop).",
     )
     p_afp.add_argument("--json", dest="emit_json", action="store_true")
     p_afp.set_defaults(func=cmd_auto_fix_proxy, dry_run=False)
+
+    p_eph = sub.add_parser(
+        "ensure-proxy-health",
+        help=(
+            "Session ensure: clear dead localhost WinINET, install startup observability, "
+            "optional --prefer-direct for LinkedIn/browser reliability."
+        ),
+    )
+    p_eph.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview only — no registry mutation or install.",
+    )
+    p_eph.add_argument(
+        "--prefer-direct",
+        action="store_true",
+        help="Also clear an active localhost WinINET proxy (requires --confirm PREFER_DIRECT_WININET).",
+    )
+    p_eph.add_argument(
+        "--confirm",
+        dest="confirm_phrase",
+        default="",
+        help="PREFER_DIRECT_WININET when using --prefer-direct.",
+    )
+    p_eph.add_argument(
+        "--skip-observability-install",
+        action="store_true",
+        help="Skip installing guardian + boot trace if missing.",
+    )
+    p_eph.add_argument(
+        "--skip-cursor-fix",
+        action="store_true",
+        help="Skip configure-cursor-no-proxy.ps1 step.",
+    )
+    p_eph.add_argument(
+        "--guardian-interval",
+        type=int,
+        default=15,
+        dest="guardian_interval",
+        help="Guardian check interval in seconds (default 15).",
+    )
+    p_eph.add_argument("--json", dest="emit_json", action="store_true")
+    p_eph.set_defaults(func=cmd_ensure_proxy_health, dry_run=False)
+
+    p_dns = sub.add_parser(
+        "dns-health",
+        help="Read-only Wi-Fi DNS heuristic for DNS_PROBE_FINISHED_BAD_CONFIG triage.",
+    )
+    p_dns.add_argument(
+        "--interface",
+        default="Wi-Fi",
+        dest="interface_alias",
+        help="Adapter alias to inspect (default Wi-Fi).",
+    )
+    p_dns.add_argument("--json", dest="emit_json", action="store_true")
+    p_dns.set_defaults(func=cmd_dns_health)
 
     p_proxy = sub.add_parser("proxy", help="Grouped proxy commands.")
     p_proxy_sub = p_proxy.add_subparsers(dest="proxy_cmd", required=True)

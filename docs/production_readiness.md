@@ -18,7 +18,7 @@
 Hardening before enterprise rollout:
 
 1. Enable RBAC on API writes (not WNT CLI alone)
-2. Configure `WNT_AUDIT_DIR` to tamper-evident storage
+2. Configure `WNT_AUDIT_DIR` to tamper-evident storage (canonical file: `canonical_custody.jsonl` + sibling tip `canonical_custody.tip.json`; see [audit-custody.md](audit-custody.md))
 3. Require Sysmon E13 for writer causation claims
 4. Sign packages / service-wrap agent (roadmap)
 

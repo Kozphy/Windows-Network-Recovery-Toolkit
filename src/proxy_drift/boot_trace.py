@@ -59,11 +59,10 @@ def _snapshot(run: Callable[..., Any]) -> dict[str, Any]:
             listener = {
                 "pid": actor.pid,
                 "process_name": actor.process_name,
-                "exe_path": actor.executable_path,
+                "exe_path": actor.image_path,
                 "command_line": actor.command_line,
                 "parent_pid": actor.parent_pid,
                 "parent_process_name": actor.parent_process_name,
-                "parent_command_line": actor.parent_command_line,
             }
     classification = classify_proxy_drift(
         proxy_enable=reg.proxy_enable,

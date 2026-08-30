@@ -1,0 +1,82 @@
+{
+  "filter_set_id": "wininet_proxy_regsetvalue_v1",
+  "version": 1,
+  "purpose": "Capture successful RegSetValue events on WinINET proxy keys for writer-proof import via proxy-attribution --procmon.",
+  "registry_root": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+  "proxy_values": [
+    "ProxyEnable",
+    "ProxyServer",
+    "AutoConfigURL",
+    "ProxyOverride",
+    "AutoDetect"
+  ],
+  "procmon_ui": {
+    "drop_filtered_events": true,
+    "capture_note": "Run Procmon elevated. Enable Drop Filtered Events after adding Include rules so only matching rows remain.",
+    "export": "File → Save → CSV (or Events displayed using current filter). Include recommended columns."
+  },
+  "recommended_csv_columns": [
+    "Time of Day",
+    "Process Name",
+    "PID",
+    "Operation",
+    "Path",
+    "Result",
+    "Detail"
+  ],
+  "rules": [
+    {
+      "column": "Operation",
+      "relation": "is",
+      "value": "RegSetValue",
+      "action": "Include",
+      "rationale": "Registry value writes only (drops reads/enumerates)."
+    },
+    {
+      "column": "Path",
+      "relation": "contains",
+      "value": "Internet Settings\\ProxyEnable",
+      "action": "Include",
+      "rationale": "WinINET ProxyEnable under Internet Settings."
+    },
+    {
+      "column": "Path",
+      "relation": "contains",
+      "value": "Internet Settings\\ProxyServer",
+      "action": "Include",
+      "rationale": "WinINET ProxyServer under Internet Settings."
+    },
+    {
+      "column": "Path",
+      "relation": "contains",
+      "value": "Internet Settings\\AutoConfigURL",
+      "action": "Include",
+      "rationale": "WinINET AutoConfigURL under Internet Settings."
+    },
+    {
+      "column": "Path",
+      "relation": "contains",
+      "value": "Internet Settings\\ProxyOverride",
+      "action": "Include",
+      "rationale": "WinINET ProxyOverride under Internet Settings."
+    },
+    {
+      "column": "Path",
+      "relation": "contains",
+      "value": "Internet Settings\\AutoDetect",
+      "action": "Include",
+      "rationale": "WinINET AutoDetect under Internet Settings."
+    }
+  ],
+  "import_commands": [
+    "python -m src proxy-attribution --procmon path\\to\\export.csv --json",
+    "python -m src proxy-watch --interval 3 --soak-minutes 2 --evidence-csv path\\to\\export.csv",
+    "python -m src proxy registry-writer-proof --json --procmon-csv path\\to\\export.csv"
+  ],
+  "limitations": [
+    "Procmon must be running before the rewrite; missed windows yield empty CSV.",
+    "RegSetValue rows are strong local evidence, not intent or malware attribution.",
+    "Listener correlation (netstat) is not registry-writer proof.",
+    "Session-0 writers may appear with limited path/cmdline in other tools; Procmon still shows Image/PID when captured."
+  ]
+}

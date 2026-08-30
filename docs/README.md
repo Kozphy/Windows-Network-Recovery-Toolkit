@@ -11,6 +11,7 @@
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `scripts/`                                  | Beginner-facing `.bat/.ps1` wrappers; safety headers describe privilege + dry-run cues.                 |
 | `src/`                                      | `python -m src` — collectors, heuristic + policy pipelines, Proof Engine adapters, argparse + handlers. |
+| `src/proxy_drift/`                          | Startup observability, boot trace, dead-proxy guardian, evidence bundle (`install-startup-observability`). |
 | `failure_system/`                           | Failure Knowledge System — FailureBlocks + read-only probes (distinct CLI entry).                       |
 | `platform_core/` + `backend/` + `frontend/` | Optional localhost platform prototype (policy, JSONL, FastAPI `/platform`, Next.js).                    |
 | `endpoint_agent/`                           | Optional observe-only cycles with optional ingest; no bundled cloud.                                    |

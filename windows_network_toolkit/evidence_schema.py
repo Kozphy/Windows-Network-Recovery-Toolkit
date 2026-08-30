@@ -5,8 +5,8 @@ Module responsibility:
     analytics shape while preserving ``raw_snapshot`` for replay.
 
 System placement:
-    Upstream of ``incident_classifier`` and ``analytics_pipeline``. Tiers T0–T5 label claim
-    strength — they do not upgrade proof automatically.
+    Upstream of ``incident_classifier`` and ``analytics_pipeline``. Tiers T0–T7 label claim
+    strength — they do not upgrade proof automatically and never grant execution authority.
 
 Key invariants:
     * ``event_id`` is deterministic from timestamp, type, and stable fields.
@@ -35,6 +35,8 @@ class EvidenceTier(StrEnum):
     T3_PATH_EVIDENCE = "T3_PATH_EVIDENCE"
     T4_WRITER_PROOF = "T4_WRITER_PROOF"
     T5_GOVERNANCE_PROOF = "T5_GOVERNANCE_PROOF"
+    T6_CONTROLLED_VALIDATION = "T6_CONTROLLED_VALIDATION"
+    T7_INDEPENDENT_VERIFICATION = "T7_INDEPENDENT_VERIFICATION"
 
 
 STANDARD_LIMITATIONS = [
@@ -42,6 +44,7 @@ STANDARD_LIMITATIONS = [
     "Registry writer attribution requires Sysmon, Procmon, ETW, or EventLog evidence.",
     "Successful proxy probe does not prove the proxy is safe or intended.",
     "Risk classification is a triage signal, not a malware verdict.",
+    "Evidence tier does not grant execution authority; policy and human approval remain separate.",
 ]
 
 
@@ -49,17 +52,10 @@ STANDARD_LIMITATIONS = [
 class EvidenceEvent:
     """Normalized evidence row for analytics pipeline and export.
 
-    Attributes:
-        event_id: Deterministic hash id (see ``make_event_id``).
-        timestamp_utc: Observation time in UTC ISO-8601.
-        endpoint_id: Host identifier; defaults via ``default_endpoint_id`` in normalizers.
-        evidence_type: proxy_state, listener_state, probe_result, proxy_change, etc.
-        source_command: CLI command that produced the observation.
-        raw_snapshot: Unmodified source dict for replay.
-        normalized_fields: Fields used by classifier and charts.
-        evidence_tier: T0–T5 claim strength label.
-        evidence_summary: One-line human summary.
-        limitations: Per-event governance caveats.
+    T0–T5 cover observation through governance evidence. T6 represents
+    controlled validation and T7 independent verification. Normalizers below
+    remain conservative and emit only tiers directly supported by their input;
+    T6/T7 are awarded by the governance proof resolver from complete bundles.
     """
 
     event_id: str
@@ -140,9 +136,7 @@ def normalize_listener_state(raw: dict[str, Any], *, source_command: str = "prox
     tier = EvidenceTier.T2_RUNTIME_EVIDENCE.value
     if raw.get("writer_proof") or raw.get("sysmon_event_id") == 13:
         tier = EvidenceTier.T4_WRITER_PROOF.value
-    summary = (
-        f"listener_found={normalized['listener_found']} port={port} process={proc.get('name') or 'unknown'}"
-    )
+    summary = f"listener_found={normalized['listener_found']} port={port} process={proc.get('name') or 'unknown'}"
     return EvidenceEvent(
         event_id=make_event_id(ts, "listener_state", stable),
         timestamp_utc=ts,
@@ -217,9 +211,7 @@ def normalize_proxy_change_event(raw: dict[str, Any], *, source_command: str = "
         raw_snapshot=dict(raw),
         normalized_fields=normalized,
         evidence_tier=EvidenceTier.T1_STATE_EVIDENCE.value,
-        evidence_summary=(
-            f"ProxyServer {normalized['old_proxy_server']} -> {normalized['new_proxy_server']}"
-        ),
+        evidence_summary=f"ProxyServer {normalized['old_proxy_server']} -> {normalized['new_proxy_server']}",
         limitations=list(STANDARD_LIMITATIONS),
     )
 

@@ -269,7 +269,7 @@ pytest -q tests/platform_core/governance/test_audit_tamper_detection.py
 ## 15. Gaps and future work
 
 - Formal penetration test (out of repo scope)  
-- WORM / external hash anchor for audit chain  
+- WORM / external hash tip for audit chain — **partial**: local tip anchor (`.audit/*.tip.json`); relocate/sign for stronger custody (see [audit-custody.md](audit-custody.md))  
 - Production IdP integration for API  
 - Signed release artifacts and SBOM  
 - Agent-side double-confirmation for fleet deploy  

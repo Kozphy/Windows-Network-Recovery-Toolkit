@@ -28,6 +28,8 @@ ALLOWED_JSONL_PREFIXES = (
     "tests\\fixtures\\",
     "examples/",
     "examples\\",
+    "windows_network_toolkit/examples/",
+    "windows_network_toolkit\\examples\\",
     "demo_data/",
     "demo_data\\",
 )

@@ -22,6 +22,10 @@ AUDIT_ACTIONS: tuple[AuditActionType, ...] = (
     "rollback_completed",
     "outcome_recorded",
     "replay_certified",
+    "stakeholder_resolved",
+    "timing_evaluated",
+    "coordination_status_set",
+    "decision_context_built",
 )
 
 

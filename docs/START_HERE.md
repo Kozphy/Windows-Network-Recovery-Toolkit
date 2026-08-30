@@ -63,6 +63,8 @@ make demo                              # Golden fixture replay + report
 python -m toolkit replay proxy_drift_incident.jsonl
 python -m windows_network_toolkit bad-gateway-diagnose --url https://example.com
 python -m toolkit audit verify logs/canonical_decision_audit.jsonl
+pip install -e ".[dashboard]"          # optional local monitoring UI
+python -m windows_network_toolkit dashboard   # http://127.0.0.1:8765 (read-only)
 pytest -q
 ```
 
@@ -74,5 +76,6 @@ pytest -q
 4. [architecture/canonical_decision_pipeline.md](architecture/canonical_decision_pipeline.md)
 5. [safety_doctrine.md](safety_doctrine.md)
 6. [bad_gateway_diagnostic.md](bad_gateway_diagnostic.md)
+7. [monitoring-dashboard.md](monitoring-dashboard.md) — local read-only NiceGUI evidence UI
 
 Extended demos: [demo-commands-reference.md](demo-commands-reference.md) · Incidents: [incident-walkthrough-dead-proxy.md](incident-walkthrough-dead-proxy.md)

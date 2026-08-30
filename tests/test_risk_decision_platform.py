@@ -35,15 +35,39 @@ def test_risk_decision_record_json_serializable() -> None:
     fixture = _load(CASE_1)
     record = build_risk_decision_record(fixture, operator_id="analyst-1")
     payload = record.model_dump(mode="json")
-    assert payload["schema_version"] == "risk_decision_record.v1"
+    assert payload["schema_version"] == "risk_decision_record.v2"
     assert payload["incident_id"]
     assert payload["classification"] == "DEAD_PROXY_CONFIG"
     assert payload["proof_tier"] in ProofTier.__members__.values()
     assert payload["evidence_hash"]
+    assert payload["decision_key"]
+    assert payload["classifier_version"]
+    assert payload["policy_version"]
     assert payload["human_review_required"] is True
     assert "malware" not in " ".join(payload["limitations"]).lower() or "does not" in " ".join(payload["limitations"]).lower()
     roundtrip = RiskDecisionRecord.model_validate(payload)
     assert roundtrip.incident_id == record.incident_id
+
+
+def test_decision_key_is_deterministic_and_version_sensitive() -> None:
+    fixture = _load(CASE_1)
+    fixture["versions"] = {
+        "evidence_schema": "evidence_bundle.v3",
+        "classifier": "proxy_classifier.2026-07",
+        "policy": "technology_risk_policy.2026-07",
+        "control_set": "endpoint_controls.v2",
+    }
+
+    first = build_risk_decision_record(fixture, incident_id="INC-DETERMINISTIC")
+    second = build_risk_decision_record(fixture, incident_id="INC-DETERMINISTIC")
+    assert first.evidence_hash == second.evidence_hash
+    assert first.decision_key == second.decision_key
+
+    changed = dict(fixture)
+    changed["versions"] = dict(fixture["versions"], policy="technology_risk_policy.2026-08")
+    third = build_risk_decision_record(changed, incident_id="INC-DETERMINISTIC")
+    assert third.evidence_hash != first.evidence_hash
+    assert third.decision_key != first.decision_key
 
 
 def test_dead_proxy_proof_tier_capped_without_runtime() -> None:

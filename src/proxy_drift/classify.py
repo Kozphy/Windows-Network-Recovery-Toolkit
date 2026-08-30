@@ -36,8 +36,14 @@ def classify_proxy_drift(
     listener_exited: bool = False,
     process_name: str | None = None,
     command_line: str | None = None,
+    proxy_probe_ok: bool | None = None,
+    direct_probe_ok: bool | None = None,
 ) -> dict[str, Any]:
-    """Return classification label and governance-safe rationale."""
+    """Return classification label and governance-safe rationale.
+
+    Optional ``proxy_probe_ok`` / ``direct_probe_ok`` refine listener-up cases:
+    listener present + proxy path fail + direct HTTPS ok → ``BROKEN_LOCALHOST_PROXY``.
+    """
     parsed = parse_proxy_server(proxy_server)
     enabled = int(proxy_enable or 0) == 1
     dev_hint, vpn_hint = _name_hints(process_name, command_line)
@@ -51,6 +57,18 @@ def classify_proxy_drift(
     elif enabled and not parsed.is_localhost_proxy and parsed.raw:
         label = "INSUFFICIENT_EVIDENCE"
         rationale = "Non-localhost proxy configured; corporate proxy policy may apply — do not auto-clear."
+    elif (
+        enabled
+        and parsed.is_localhost_proxy
+        and listener_found is True
+        and proxy_probe_ok is False
+        and direct_probe_ok is True
+    ):
+        label = "BROKEN_LOCALHOST_PROXY"
+        rationale = (
+            "Localhost listener is present but the proxy path failed while direct HTTPS works "
+            "(active-but-broken — prefer-direct clear is appropriate)."
+        )
     elif enabled and parsed.is_localhost_proxy and listener_found is True:
         if vpn_hint:
             label = "KNOWN_VPN_PROXY"
@@ -59,6 +77,8 @@ def classify_proxy_drift(
         else:
             label = "LOCAL_PROXY_ACTIVE"
         rationale = "Localhost proxy enabled with an active listener on the configured port."
+        if proxy_probe_ok is False and direct_probe_ok is False:
+            rationale += " Proxy and direct HTTPS probes both failed — path triage inconclusive."
     elif enabled and parsed.is_localhost_proxy and listener_found is False:
         if listener_exited:
             label = "STALE_PROXY_AFTER_PROCESS_EXIT"

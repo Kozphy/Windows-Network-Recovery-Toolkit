@@ -35,7 +35,15 @@ Preserve `limitations[]`. Blocked actions live in `windows_network_toolkit/safet
 $env:PYTHONPATH = (Get-Location).Path
 python -m windows_network_toolkit proxy-status --fixture dead_proxy_60505.json
 python -m windows_network_toolkit proxy-disable --dry-run true
+python -m src install-startup-observability --json
+python -m src collect-evidence-bundle
+python -m src ensure-proxy-health
+python -m src procmon-filter-set
+python -m src proxy-watch --interval 3 --soak-minutes 2 --exit-on-rewrite
+python -m windows_network_toolkit audit verify .audit/canonical_custody.jsonl --check-tip
 pytest -q tests/test_policy_safety_contract.py
+pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
+pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
 ```
 
 ## Key paths
@@ -43,14 +51,20 @@ pytest -q tests/test_policy_safety_contract.py
 | Path | Role |
 |------|------|
 | `windows_network_toolkit/` | Primary CLI and diagnostics |
+| `src/proxy_drift/` | Startup observability, boot trace, guardian, evidence bundle |
+| `src/cli.py` | Extended operator CLI (`python -m src`) |
 | `src/platform_core/` | Policy, governance envelope, audit |
+| `src/platform_core/audit/` | Hash-chained custody + tip anchor (`docs/audit-custody.md`) |
 | `telemetry/` | Registry-writer telemetry (fixture-first) |
 | `tests/fixtures/` | Deterministic test inputs |
 | `docs/ONBOARDING.md` | Human onboarding |
+| `docs/startup-observability.md` | Startup observability architecture |
+| `docs/openclaw-coding-agent.md` | Policy-gated OpenClaw coding agent (draft PR only) |
+| `skills/wnrt-coder/` | OpenClaw skill for controlled coding automation |
 
 ## Deeper reference
 
-Full CLI groups, confirmation tokens, and test conventions were consolidated into `.cursor/rules/project-instructions.mdc`. For operator runbooks: `docs/TROUBLESHOOTING_PROXY.md`, `docs/dead-proxy-guardian.md`.
+Full CLI groups, confirmation tokens, and test conventions were consolidated into `.cursor/rules/project-instructions.mdc`. For operator runbooks: `docs/TROUBLESHOOTING_PROXY.md`, `docs/dead-proxy-guardian.md`, `docs/startup-observability.md`.
 
 ## Cursor Cloud specific instructions
 
@@ -64,4 +78,4 @@ The startup update script provisions a `.venv` (editable `pip install -e ".[dev]
   - API: `PLATFORM_FIXTURE_MODE=1 .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000` (health: `/health`, `/platform/health`, `/trisk/health`). RBAC via `X-Api-Token: dev-trisk-token` + `X-Api-Role` (or `X-Operator-Role`).
   - Frontend dashboard: `npm --prefix frontend run dev` (port 3000). Needs `frontend/.env.local` with `NEXT_PUBLIC_PLATFORM_API=http://127.0.0.1:8000` (git-ignored; not created by the update script — copy `frontend/.env.local.example`). The `/platform` page works without Supabase; Supabase vars only power the separate SaaS auth demo.
 - **Tests:** `.venv/bin/python -m pytest -q` runs the full suite. Known caveat: ~21 Windows-gated proxy tests (e.g. `tests/test_proxy_endpoint_reliability.py`, `tests/windows_network_toolkit/test_proxy_guardian.py`) pass individually but fail in the full run on Linux due to pre-existing `platform.system` mock/ordering leakage — not an environment problem. The authoritative Linux gate is the ordered safety-contract sequence in `.github/workflows/ci.yml` (`test` job) plus `tests/integration_linux`, which pass.
-- **Lint:** `.venv/bin/ruff check .` currently reports pre-existing import-order (`I001`) findings on this branch; CI additionally runs `ruff format --check .`.
+- **Lint:** `.venv/bin/ruff check .` currently reports pre-existing import-order (`I001`) findings on this branch; CI reports Ruff lint and format results as an advisory legacy baseline.

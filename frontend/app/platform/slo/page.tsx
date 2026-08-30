@@ -37,18 +37,20 @@ export default function PlatformSloPage() {
       {!slo ? <p>Loading…</p> : (
         <table style={{ borderCollapse: "collapse", fontSize: "0.9rem" }}>
           <tbody>
-            {[
-              ["Mean time to detect (s)", slo.mean_time_to_detect_seconds],
-              ["Mean time to explain (s)", slo.mean_time_to_explain_seconds],
-              ["Proxy drift incidents", slo.proxy_drift_incidents_total],
-              ["Blocked high-risk actions", slo.blocked_high_risk_action_count],
-              ["Remediation previews", slo.remediation_preview_count],
-              ["Proof unavailable rate", slo.proof_unavailable_rate],
-              ["Final causation rate", slo.final_causation_rate],
-              ["Browser path success", rel.browser_path_success_rate],
-              ["Remediation stickiness", rel.remediation_stickiness_rate],
-            ].map(([label, val]) => (
-              <tr key={String(label)}>
+            {(
+              [
+                ["Mean time to detect (s)", slo.mean_time_to_detect_seconds],
+                ["Mean time to explain (s)", slo.mean_time_to_explain_seconds],
+                ["Proxy drift incidents", slo.proxy_drift_incidents_total],
+                ["Blocked high-risk actions", slo.blocked_high_risk_action_count],
+                ["Remediation previews", slo.remediation_preview_count],
+                ["Proof unavailable rate", slo.proof_unavailable_rate],
+                ["Final causation rate", slo.final_causation_rate],
+                ["Browser path success", rel.browser_path_success_rate],
+                ["Remediation stickiness", rel.remediation_stickiness_rate],
+              ] as [string, unknown][]
+            ).map(([label, val]) => (
+              <tr key={label}>
                 <td style={{ padding: "6px 12px 6px 0", fontWeight: 600 }}>{label}</td>
                 <td>{String(val ?? "—")}</td>
               </tr>

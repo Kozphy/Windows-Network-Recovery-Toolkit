@@ -7,7 +7,7 @@
 A **local-first Windows endpoint reliability toolkit** with a growing **Decision Intelligence Platform**:
 
 - **Primary CLI:** JSON-first diagnostics and policy-gated remediation (`python -m windows_network_toolkit`)
-- **Legacy shim:** `python -m src` (deprecated for proxy commands)
+- **Extended Windows operator CLI:** `python -m src` (startup observability, proxy drift, network-state, platform handlers)
 - Append-only JSONL audit trails (`.audit/` + legacy `logs/`) and deterministic replay
 - FastAPI platform API (`backend/`) with optional PostgreSQL
 - Multi-domain adapters (Windows, Security, Cloud, Infrastructure, Market Events)
@@ -94,6 +94,47 @@ python -m src proxy-causation --fixture tests/fixtures/proxy_causation/scenario1
 
 Modules: `src/proxy_guard/registry_writer_proof.py`, `final_causation.py`, `port_owner.py`, `process_tree.py`, `proxy_path_proof.py`
 
+### 1b. Localhost web-app refuse-to-connect
+
+```text
+localhost-diagnose → TCP/listener/process/HTTP/proxy evidence → classification + T0–T5 → PREVIEW remediation
+```
+
+```powershell
+python -m windows_network_toolkit localhost-diagnose --url "http://localhost:61161/ChtPopupForm" --json --remediation-preview
+```
+
+Docs: [localhost-diagnose.md](localhost-diagnose.md)
+
+### 1c. Browser profile differential (normal vs InPrivate)
+
+```text
+raw OS/protocol probe → HAR / controlled probe / profile metadata → classify → repair-preview (PREVIEW default)
+```
+
+```powershell
+python -m windows_network_toolkit browser-diff https://www.104.com.tw/ --fixture tests/fixtures/browser_profile/104_profile_fail.json --format text
+python -m windows_network_toolkit browser-diff https://example.com/ --browser edge --import-normal-har normal.har --import-private-har private.har --proof
+python -m windows_network_toolkit browser-profile repair-preview 104.com.tw --browser edge
+```
+
+Docs: [browser-profile-differential.md](browser-profile-differential.md) · [har-redaction.md](har-redaction.md) · [browser-repair-safety.md](browser-repair-safety.md) · [browser-evidence-model.md](browser-evidence-model.md)
+
+### 1d. Decision context (stakeholder + timing)
+
+```text
+Proof/policy (unchanged) → stakeholder resolve → timing evaluate → coordination status → preview
+```
+
+```powershell
+python -m windows_network_toolkit diagnose --proof --decision-context --fixture tests/fixtures/enert/dead_proxy_59081.json
+python -m windows_network_toolkit stakeholder-resolve --case-id CASE --classification DEAD_PROXY_CONFIG
+python -m windows_network_toolkit timing-evaluate --case-id CASE --timezone Asia/Taipei
+python -m windows_network_toolkit decision-explain --case-id CASE --format text
+```
+
+Docs: [decision-context.md](decision-context.md)
+
 ### 2. Multi-domain decision platform (fixture-based)
 
 ```text
@@ -166,7 +207,24 @@ python -m windows_network_toolkit ai-eval --format json
 
 Modules: `src/platform_core/ai_evals/` · Doc: [ai-evals-feedback-loop.md](ai-evals-feedback-loop.md) · Tests: `tests/ai_evals/`
 
-### 2. Shared decision engine
+### 7. Startup observability & proxy drift (Windows)
+
+```text
+install-startup-observability → guardian + boot trace (task or Startup hook fallback) → JSONL logs → collect-evidence-bundle → startup-observability-report
+```
+
+Commands:
+
+```powershell
+python -m src install-startup-observability
+python -m src collect-evidence-bundle
+python -m src startup-observability-report --json
+python -m src proxy-boot-trace --duration 180 --interval 2
+```
+
+Modules: `src/proxy_drift/` · Docs: [startup-observability.md](startup-observability.md), [dead-proxy-guardian.md](dead-proxy-guardian.md) · Tests: `tests/test_proxy_drift_toolkit.py`
+
+### 8. Shared decision engine
 
 ```text
 EvidenceItem[] + CandidateDecision[] → score → rank → content_digest
@@ -174,7 +232,7 @@ EvidenceItem[] + CandidateDecision[] → score → rank → content_digest
 
 Entry: `src/decision_engine/decision_engine.py` · Tests: `tests/decision_engine/`
 
-### 3. Multi-domain platform
+### 9. Multi-domain platform
 
 ```text
 AdapterContext → collect_observations → derive_evidence → run_shared_reasoning → DomainPipelineResult
@@ -182,7 +240,7 @@ AdapterContext → collect_observations → derive_evidence → run_shared_reaso
 
 Entry: `platform_core/decision_platform/` · Diagram: `docs/decision_platform_architecture.md` · Tests: `tests/decision_platform/`
 
-### 4. Decision Intelligence API
+### 10. Decision Intelligence API
 
 ```text
 POST /decision-intelligence/{events|evidence|decisions|outcomes} → store (JSONL or PostgreSQL)
@@ -191,7 +249,7 @@ GET /decision-intelligence/metrics · POST /decision-intelligence/replay
 
 Entry: `backend/decision_intelligence/routes.py` · Schema: `platform_core/db/decision_intelligence_schema.sql`
 
-### 5. Outcome learning
+### 11. Outcome learning
 
 ```text
 DecisionOutcome → evaluate → LearningMetrics → replay digest
@@ -213,7 +271,8 @@ Entry: `platform_core/outcome_learning/` · Fixture: `fixtures/outcome_learning/
 
 | Path | Responsibility |
 |------|----------------|
-| `src/` | Windows CLI, collectors, market events CLI |
+| `src/` | Extended Windows CLI (`python -m src`), collectors, market events CLI |
+| `src/proxy_drift/` | Startup observability, boot trace, guardian, evidence bundle, safe search |
 | `src/network_recovery/` | ChatGPT app-path scenario diagnose, LOW-risk auto-fix orchestrator |
 | `windows_network_toolkit/diagnostics/lan_privacy/` | LAN inventory, watch, privacy report (read-only) |
 | `src/platform_core/ai_evals/` | Fixture-based AI eval harness (`ai-eval` CLI) |
@@ -232,7 +291,13 @@ $env:PYTHONPATH = (Get-Location).Path
 pytest -q
 ```
 
-Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test module name collisions.
+Pytest uses `--import-mode=importlib` and `--basetemp=.pytest_tmp` (see `pytest.ini`) to avoid duplicate test module name collisions and keep temp artifacts under the repo instead of system `%TEMP%`.
+
+Focused proxy drift tests:
+
+```powershell
+pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
+```
 
 ## Related docs
 
@@ -273,7 +338,14 @@ Pytest uses `--import-mode=importlib` (see `pytest.ini`) to avoid duplicate test
 | [packaging-installer.md](packaging-installer.md) | pipx/wheel/portable install plan |
 | [security-review.md](security-review.md) | Threat model + abuse-case pack |
 | [rollback-strategy.md](rollback-strategy.md) | Preview-first rollback six-part model |
-| `docs/dead-proxy-guardian.md` | Dead localhost WinINET proxy recovery |
+| [startup-observability.md](startup-observability.md) | v0.3.0 startup observability architecture and CLI |
+| [localhost-diagnose.md](localhost-diagnose.md) | Localhost ERR_CONNECTION_REFUSED evidence pipeline |
+| [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery runbook |
+| [openclaw-coding-agent.md](openclaw-coding-agent.md) | Policy-gated OpenClaw coding agent (draft PR only) |
+| [audit-custody.md](audit-custody.md) | Level 1 hash-chained custody + tip anchor verify |
+| [procmon_proxy_filter.md](procmon_proxy_filter.md) | Procmon RegSetValue filter set + CSV import |
+| [monitoring-dashboard.md](monitoring-dashboard.md) | Read-only NiceGUI local monitoring dashboard |
+| [cli_reference.md](cli_reference.md) | Full `python -m src` command inventory |
 
 ## Audit checklist
 

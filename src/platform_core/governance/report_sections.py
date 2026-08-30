@@ -36,6 +36,8 @@ GOVERNANCE_PRINCIPLES = [
     "Correlation is not causation.",
     "Confidence is not certainty.",
     "Classification is not accusation.",
-    "Policy permission is not safety guarantee.",
+    "Policy permission is not a safety guarantee.",
+    "Stakeholder assignment is not approval.",
+    "A valid maintenance window is not execution authorization.",
     "Recommendation is not execution authority.",
 ]

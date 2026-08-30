@@ -26,6 +26,7 @@ _LEGACY_MAP: dict[str, CanonicalPolicyGate] = {
     "BLOCK_RECOMMENDED": CanonicalPolicyGate.BLOCK,
     "BLOCK_UNSAFE_ACTION": CanonicalPolicyGate.BLOCK,
     "BLOCK_AUTOMATION": CanonicalPolicyGate.BLOCK,
+    "BLOCK_LOW_CONFIDENCE": CanonicalPolicyGate.BLOCK,
     "REQUIRE_TYPED_CONFIRMATION": CanonicalPolicyGate.REQUIRE_CONFIRMATION,
     "REQUIRE_CONFIRMATION": CanonicalPolicyGate.REQUIRE_CONFIRMATION,
     "REQUIRE_ADMIN": CanonicalPolicyGate.REQUIRE_ADMIN,

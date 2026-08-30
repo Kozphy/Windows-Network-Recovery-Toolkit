@@ -6,7 +6,10 @@ import subprocess
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
+
+from src.proxy_drift.startup_hook import remove_startup_hook, startup_hook_path, write_startup_hook
 
 TASK_NAME = "WNRT-DeadProxyGuardian"
 CONFIRM_INSTALL = "INSTALL_GUARDIAN_TASK"
@@ -21,13 +24,33 @@ def _python_exe() -> str:
     return sys.executable
 
 
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
 def build_guardian_task_command(*, interval: int = 60) -> str:
     """Return the command line the scheduled task should execute."""
     py = _python_exe()
+    runner = _repo_root() / "scripts" / "run_src.py"
     return (
-        f'"{py}" -m src proxy-guardian --loop --interval {interval} '
-        f"--confirm CLEAR_DEAD_LOCALHOST_PROXY --dry-run false"
+        f'"{py}" "{runner}" proxy-guardian --loop --interval {interval} '
+        f"--confirm CLEAR_DEAD_LOCALHOST_PROXY "
+        f"--clear-broken --hold-direct --confirm-broken PREFER_DIRECT_WININET --dry-run false"
     )
+
+
+def build_startup_hook_lines(*, interval: int = 60) -> list[str]:
+    repo_root = _repo_root()
+    loop_script = repo_root / "scripts" / "run-proxy-guardian-loop.ps1"
+    return [
+        "@echo off",
+        f'cd /d "{repo_root}"',
+        f"set PYTHONPATH={repo_root}",
+        (
+            "start /min powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden "
+            f'-File "{loop_script}" -IntervalSeconds {interval}'
+        ),
+    ]
 
 
 def build_schtasks_create_preview(*, interval: int = 60) -> tuple[str, ...]:
@@ -55,10 +78,17 @@ def preview_install_guardian_task(*, interval: int = 60) -> dict[str, Any]:
         "schema_version": "guardian_task.v1",
         "timestamp_utc": _now(),
         "task_name": TASK_NAME,
+        "requested_method": "scheduled_task",
+        "fallback_method": "startup_hook",
         "trigger": "ONLOGON",
         "command": build_guardian_task_command(interval=interval),
         "schtasks_argv": list(argv),
         "schtasks_command": subprocess.list2cmdline(list(argv)),
+        "startup_hook_path": str(startup_hook_path(TASK_NAME).resolve()),
+        "verify_commands": {
+            "scheduled_task": f"schtasks /Query /TN {TASK_NAME}",
+            "startup_hook": str(startup_hook_path(TASK_NAME).resolve()),
+        },
         "confirmation_required": CONFIRM_INSTALL,
         "limitations": [
             "Task creation mutates Windows scheduler — preview shown first.",
@@ -74,7 +104,7 @@ def install_guardian_task(
     dry_run: bool = True,
     run: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
-    """Create logon scheduled task when confirmed."""
+    """Create logon scheduled task when confirmed, falling back to Startup hook."""
     subprocess_run = run if run is not None else subprocess.run
     preview = preview_install_guardian_task(interval=interval)
     if dry_run:
@@ -90,8 +120,26 @@ def install_guardian_task(
     preview["returncode"] = proc.returncode
     preview["stdout"] = (proc.stdout or "").strip()
     preview["stderr"] = (proc.stderr or "").strip()
-    preview["action_taken"] = "installed" if proc.returncode == 0 else "failed"
-    preview["reason"] = "Scheduled task created." if proc.returncode == 0 else "schtasks failed."
+    if proc.returncode == 0:
+        preview["actual_method"] = "scheduled_task"
+        preview["fallback_used"] = False
+        preview["action_taken"] = "installed"
+        preview["reason"] = "Scheduled task created."
+        return preview
+    stderr_l = (proc.stderr or "").lower()
+    stdout_l = (proc.stdout or "").lower()
+    if "access is denied" in stderr_l or "access is denied" in stdout_l:
+        hook = write_startup_hook(name=TASK_NAME, lines=build_startup_hook_lines(interval=interval))
+        preview["actual_method"] = "startup_hook"
+        preview["fallback_used"] = True
+        preview["startup_hook_path"] = str(hook.resolve())
+        preview["action_taken"] = "installed"
+        preview["reason"] = "Scheduled task denied; Startup hook installed."
+        return preview
+    preview["actual_method"] = None
+    preview["fallback_used"] = False
+    preview["action_taken"] = "failed"
+    preview["reason"] = "schtasks failed."
     return preview
 
 
@@ -101,15 +149,17 @@ def uninstall_guardian_task(
     dry_run: bool = True,
     run: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
-    """Remove the guardian scheduled task when confirmed."""
+    """Remove the guardian scheduled task and Startup hook when confirmed."""
     subprocess_run = run if run is not None else subprocess.run
     argv = ("schtasks", "/Delete", "/TN", TASK_NAME, "/F")
     payload: dict[str, Any] = {
         "schema_version": "guardian_task.v1",
         "timestamp_utc": _now(),
         "task_name": TASK_NAME,
+        "requested_method": "all",
         "schtasks_argv": list(argv),
         "schtasks_command": subprocess.list2cmdline(list(argv)),
+        "startup_hook_path": str(startup_hook_path(TASK_NAME).resolve()),
         "confirmation_required": CONFIRM_UNINSTALL,
     }
     if dry_run:
@@ -121,9 +171,15 @@ def uninstall_guardian_task(
         payload["reason"] = f"Confirmation required: {CONFIRM_UNINSTALL}"
         return payload
     proc = subprocess_run(argv, capture_output=True, text=True, timeout=60, shell=False)
+    hook_removed = remove_startup_hook(TASK_NAME)
     payload["returncode"] = proc.returncode
     payload["stdout"] = (proc.stdout or "").strip()
     payload["stderr"] = (proc.stderr or "").strip()
-    payload["action_taken"] = "uninstalled" if proc.returncode == 0 else "failed"
-    payload["reason"] = "Scheduled task removed." if proc.returncode == 0 else "schtasks delete failed."
+    payload["startup_hook_removed"] = hook_removed
+    if proc.returncode == 0 or hook_removed or "cannot find the file specified" in (proc.stderr or "").lower():
+        payload["action_taken"] = "uninstalled"
+        payload["reason"] = "Startup observability artifacts removed."
+    else:
+        payload["action_taken"] = "failed"
+        payload["reason"] = "schtasks delete failed."
     return payload

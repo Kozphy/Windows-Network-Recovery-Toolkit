@@ -1,0 +1,9 @@
+{
+  "gitCommitHash": "0e0e1b0bc4448d47e71f175e7f781d185dbbdb2e",
+  "analyzedAt": "2026-07-23T14:40:12.181Z",
+  "mode": "structural-only",
+  "limitations": [
+    "Generated without LLM semantic analysis — summaries/tags are heuristic.",
+    "Re-run /understand in Cursor for full UA narrative quality."
+  ]
+}

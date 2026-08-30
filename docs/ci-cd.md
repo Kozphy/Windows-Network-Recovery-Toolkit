@@ -70,9 +70,11 @@ Direct pytest examples:
 
 ```powershell
 pytest -q tests/test_policy_safety_contract.py
-pytest -q tests/test_proxy_drift_toolkit.py
+pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 pytest -q --junitxml=reports/junit.xml
 ```
+
+`pytest.ini` sets `--import-mode=importlib` and `--basetemp=.pytest_tmp` so temp dirs stay under the repo (avoids Windows `%TEMP%` cleanup noise and duplicate module collisions).
 
 ---
 
@@ -80,7 +82,8 @@ pytest -q --junitxml=reports/junit.xml
 
 | Branch | Purpose |
 |--------|---------|
-| `main` / `master` | Protected default branch — merge via PR only |
+| `Multi_Domain_Decision_Platform` | Current default development branch — merge via PR only |
+| `main` / `master` | Protected alternate / legacy default branches — merge via PR only |
 | `feature/*`, `fix/*`, `chore/*` | Short-lived work branches |
 | `chore/setup-ci-cd` | Example CI setup branch |
 
@@ -97,7 +100,7 @@ Do **not** push secrets, `.env`, tokens, or local audit exports.
 
 ## Pull request workflow
 
-On every **pull request to `main` or `master`**, GitHub Actions runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+On every **pull request to `Multi_Domain_Decision_Platform`, `main`, or `master`**, GitHub Actions runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
 
 | Job | What it checks |
 |-----|----------------|

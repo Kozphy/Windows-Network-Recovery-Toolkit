@@ -7,13 +7,27 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .pytest-tmp/
+.pytest_tmp/
+.pytest_tmp_*/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.hypothesis/
+.dmypy.json
+dmypy.json
 .coverage
+.coverage.*
 coverage/
+coverage.xml
 htmlcov/
+.python-version.local
 
 # Virtual environments
 .venv/
 venv/
+ENV/
+env/
+.tools/
 
 # Node / frontend build
 node_modules/
@@ -21,6 +35,7 @@ node_modules/
 dist/
 build/
 .cache/
+*.tsbuildinfo
 
 # Environment secrets (keep examples)
 .env
@@ -34,6 +49,13 @@ build/
 *.tmp
 logs/
 !logs/.gitignore
+.audit/
+!.audit/.gitignore
+# OpenClaw coding-agent run audits (local only)
+.openclaw/runs/
+!.openclaw/openclaw.example.json5
+!.openclaw/task.example.json
+!.openclaw/README.md
 reports/
 !reports/.gitignore
 !reports/sample_*.md
@@ -59,15 +81,33 @@ config/last_known_good_proxy.json
 !windows_network_toolkit/examples/*.jsonl
 !demo_data/**/*.jsonl
 
+# Local IDE / plugin caches (do not commit)
+.understand-anything/
+.ua/intermediate/
+.ua/tmp/
+.ua/.trash-*/
+.cursor/plans/
+*.canvas.data.json
+
+# Local pytest / cleanup dumps
+*_cleanup_pytest.txt
+pre_cleanup_pytest.txt
+post_cleanup_pytest.txt
+
 # OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+*.swp
+*~
 
-# Large / binary artifacts
+# Large / binary / local DB artifacts
 *.sqlite
+*.sqlite3
 trisk_local.db
+mlflow.db
+*.db-journal
 schemathesis-junit.xml
 schemathesis-run.log
 *.zip

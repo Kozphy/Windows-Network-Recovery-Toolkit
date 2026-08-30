@@ -295,8 +295,10 @@ try:
     from backend.canonical_routes import router as canonical_router
 
     app.include_router(canonical_router)
-except ImportError:  # pragma: no cover
-    pass
+except ImportError as exc:  # pragma: no cover
+    import logging
+
+    logging.getLogger(__name__).warning("canonical_routes not mounted: %s", exc)
 
 try:
     from windows_network_toolkit.platform.api import router as erp_platform_router
@@ -335,8 +337,19 @@ try:
     from backend.decision_platform_routes import router as enterprise_router
 
     app.include_router(enterprise_router)
-except ImportError:  # pragma: no cover
-    pass
+except ImportError as exc:  # pragma: no cover
+    import logging
+
+    logging.getLogger(__name__).warning("enterprise routes not mounted: %s", exc)
+
+try:
+    from backend.decision_context_routes import router as decision_context_router
+
+    app.include_router(decision_context_router)
+except ImportError as exc:  # pragma: no cover
+    import logging
+
+    logging.getLogger(__name__).warning("decision_context routes not mounted: %s", exc)
 
 app.add_middleware(
     CORSMiddleware,

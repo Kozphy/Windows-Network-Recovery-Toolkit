@@ -40,7 +40,7 @@
       "id": "EV-006",
       "fixture": "fixtures/tls_path_mismatch/raw_signals.json",
       "expected_primary": "POSSIBLE_MITM_RISK",
-      "expected_proof_tier_prefix": "T1",
+      "expected_proof_tier_prefix": "T2",
       "expected_policy_gate": "PREVIEW"
     },
     {

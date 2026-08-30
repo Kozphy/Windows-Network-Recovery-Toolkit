@@ -184,6 +184,73 @@ def cmd_bad_gateway_diagnose(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_localhost_diagnose(args: argparse.Namespace) -> int:
+    """Diagnose localhost web-app failures (ERR_CONNECTION_REFUSED) — read-only."""
+
+    from windows_network_toolkit.diagnostics.localhost import (
+        render_localhost_diagnose,
+        run_localhost_diagnose,
+    )
+
+    inject = None
+    fixture = getattr(args, "fixture", "") or ""
+    if fixture:
+        inject = _load_fixture_data(fixture)
+
+    report = run_localhost_diagnose(
+        url=getattr(args, "url", None) or None,
+        host=getattr(args, "host", None) or None,
+        port=getattr(args, "port", None),
+        path=getattr(args, "path", None) or None,
+        timeout=float(getattr(args, "timeout", 2.0) or 2.0),
+        include_process=bool(getattr(args, "include_process", False)),
+        include_http=bool(getattr(args, "include_http", False)),
+        include_proxy_comparison=bool(getattr(args, "include_proxy_comparison", False)),
+        include_nearby_listeners=bool(getattr(args, "include_nearby_listeners", False)),
+        remediation_preview=bool(getattr(args, "remediation_preview", False)),
+        evidence_out=getattr(args, "evidence_out", None) or None,
+        allow_non_loopback=bool(getattr(args, "allow_non_loopback", False)),
+        inject=inject,
+        prior_listener_evidence=bool((inject or {}).get("prior_listener_evidence")),
+        verbose=bool(getattr(args, "verbose", False)),
+    )
+    as_json = bool(getattr(args, "json", False)) or bool(getattr(args, "emit_json", False))
+    sys.stdout.write(
+        render_localhost_diagnose(
+            report,
+            as_json=as_json,
+            verbose=bool(getattr(args, "verbose", False)),
+        )
+    )
+    if report.get("validation_error"):
+        return 2
+    return 0
+
+
+def cmd_localhost_watch(args: argparse.Namespace) -> int:
+    """Watch a localhost target for listener/TCP/HTTP transitions — read-only."""
+
+    from windows_network_toolkit.diagnostics.localhost import run_localhost_watch
+
+    try:
+        summary = run_localhost_watch(
+            url=getattr(args, "url", None) or None,
+            host=getattr(args, "host", None) or None,
+            port=getattr(args, "port", None),
+            path=getattr(args, "path", None) or None,
+            interval=float(getattr(args, "interval", 2.0) or 2.0),
+            duration=float(getattr(args, "duration", 60.0) or 60.0),
+            timeout=float(getattr(args, "timeout", 2.0) or 2.0),
+            include_http=bool(getattr(args, "include_http", False)),
+            jsonl_out=getattr(args, "jsonl_out", None) or None,
+        )
+    except ValueError as exc:
+        print(json.dumps({"error": str(exc)}, indent=2))
+        return 2
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    return 0
+
+
 def cmd_proxy_status(args: argparse.Namespace) -> int:
     """Emit read-only WinINET/WinHTTP proxy status JSON.
 
@@ -237,6 +304,7 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
 
     With ``--proof``, runs the full proof envelope (signals, attempts, conclusion).
     Without ``--proof``, emits read-only proxy status summary from fixture or live probes.
+    With ``--decision-context``, attaches stakeholder/timing/coordination without changing proof.
     """
     inject = None
     fixture_data: dict | None = None
@@ -272,6 +340,45 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     if getattr(args, "principles", False):
         out = enrich_diagnose_payload(out, include_principles=True)
     out["proof_mode"] = "full"
+
+    if getattr(args, "decision_context", False):
+        from platform_core.models import utc_now_iso
+        from src.platform_core.decision_context import (
+            build_decision_envelope,
+            format_decision_text,
+            save_decision_envelope,
+        )
+
+        classification = ""
+        if isinstance(out.get("classification"), dict):
+            classification = str(out["classification"].get("primary_classification") or "")
+        elif fixture_data and isinstance(fixture_data.get("classification"), dict):
+            classification = str(fixture_data["classification"].get("primary_classification") or "")
+        pol = (fixture_data or {}).get("policy_decision") or {}
+        case_id = str((fixture_data or {}).get("case_id") or out.get("incident_id") or "")
+        if not case_id:
+            from platform_core.models import utc_now_iso
+
+            case_id = f"diag-{utc_now_iso().replace(':', '').replace('+', 'p')}"
+        envelope = build_decision_envelope(
+            case_id=case_id,
+            decision_id=str(out.get("decision_id") or case_id),
+            classification=classification,
+            policy_decision=str(pol.get("outcome") or out.get("policy_gate") or "PREVIEW_ONLY"),
+            policy_allowed=bool(pol.get("allowed", False)),
+            policy_requires_approval=bool(pol.get("requires_confirmation", True)),
+            proof_result=out,
+            timezone_name=getattr(args, "timezone", None) or None,
+            write_audit=True,
+        )
+        save_decision_envelope(envelope)
+        out["decision_context"] = envelope.to_dict()
+        out["policy_decision"] = envelope.policy_decision
+        out["coordination_status"] = envelope.coordination_status.value
+        if getattr(args, "format", "json") == "text":
+            print(format_decision_text(envelope))
+            return 0
+
     _emit_json(out)
     return 0
 
@@ -289,6 +396,98 @@ def cmd_version(_args: argparse.Namespace) -> int:
             "requires_admin": False,
         }
     )
+    return 0
+
+
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """Start the read-only local NiceGUI monitoring dashboard.
+
+    Args:
+        args: Namespace with ``dashboard_host``, ``dashboard_port``, ``watch_interval``,
+            ``max_visible_events``, ``storage_path``, ``allow_non_loopback_bind``.
+
+    Returns:
+        ``0`` on clean exit; ``2`` on bind/config/missing-dependency errors.
+
+    Side effects:
+        Binds HTTP on host:port; starts proxy watcher; appends JSONL evidence events.
+        Does not remediate proxy/registry/process state.
+
+    Audit Notes:
+        Rejects ``0.0.0.0`` / ``::`` unless ``--allow-non-loopback-bind``. Review
+        ``.audit/dashboard-events.jsonl`` after a session.
+    """
+
+    from windows_network_toolkit.dashboard import DashboardConfig, run_dashboard
+
+    host = str(getattr(args, "dashboard_host", None) or "127.0.0.1")
+    if host in {"0.0.0.0", "::", "[::]"} and not bool(getattr(args, "allow_non_loopback_bind", False)):
+        print(
+            "Refusing to bind on all interfaces. Use --host 127.0.0.1 "
+            "or pass --allow-non-loopback-bind only if you accept the exposure risk.",
+            file=sys.stderr,
+        )
+        return 2
+    storage = getattr(args, "storage_path", "") or ""
+    try:
+        run_dashboard(
+            DashboardConfig(
+                host=host,
+                port=int(getattr(args, "dashboard_port", 8765) or 8765),
+                watch_interval=float(getattr(args, "watch_interval", 1.0) or 1.0),
+                max_visible_events=int(getattr(args, "max_visible_events", 200) or 200),
+                storage_path=Path(storage) if storage else None,
+            )
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    except SystemExit as exc:
+        print(str(exc), file=sys.stderr)
+        return int(exc.code) if isinstance(exc.code, int) else 2
+    return 0
+
+
+def cmd_procmon_import(args: argparse.Namespace) -> int:
+    """Import Procmon CSV registry writes into normalized evidence events.
+
+    Args:
+        args: Namespace with ``procmon_csv``, optional ``storage_path``, ``max_visible_events``.
+
+    Returns:
+        ``0`` with JSON summary on success; ``2`` when CSV is missing/invalid.
+
+    Side effects:
+        Appends imported events to ``EvidenceEventStore`` (JSONL). Does not write HKCU.
+        Does not launch Procmon.
+
+    Audit Notes:
+        Imported RegSetValue rows are process-level write observations — not intent proof.
+    """
+
+    from windows_network_toolkit.collectors.procmon_import import (
+        ProcmonImportError,
+        import_procmon_csv,
+        import_procmon_csv_summary,
+    )
+    from windows_network_toolkit.storage.event_store import EvidenceEventStore
+
+    csv_path = getattr(args, "procmon_csv", None)
+    try:
+        summary = import_procmon_csv_summary(str(csv_path))
+    except ProcmonImportError as exc:
+        print(json.dumps({"error": exc.to_dict()}, indent=2))
+        return 2
+
+    store = EvidenceEventStore(
+        max_visible=int(getattr(args, "max_visible_events", 200) or 200),
+        storage_path=Path(args.storage_path) if getattr(args, "storage_path", "") else None,
+        persist=True,
+    )
+    for ev in import_procmon_csv(str(csv_path)):
+        store.append(ev)
+
+    _emit_json(summary)
     return 0
 
 
@@ -811,23 +1010,37 @@ def cmd_audit_verify(args: argparse.Namespace) -> int:
     """Verify hash chain integrity of an audit JSONL file.
 
     Args:
-        args: ``audit_file`` path to JSONL records.
+        args: ``audit_file`` path to JSONL records; optional tip check flags.
 
     Returns:
-        0 when chain verifies; 1 when file missing or chain invalid.
+        0 when chain verifies (and tip when requested); 1 when file missing or invalid.
 
     Side effects:
         Read-only file read.
 
     Audit Notes:
         Chain integrity proves append-only consistency — not truth of observations.
+        Tip match proves consistency with a previously written tip file — not WORM.
     """
+    from src.platform_core.audit.tip_anchor import verify_audit_with_tip
     from src.platform_core.governance.chain_of_custody import verify_chain
 
     path = Path(args.audit_file)
     if not path.is_file():
         print(f"Audit file not found: {path}", file=sys.stderr)
         return 1
+
+    check_tip = bool(getattr(args, "check_tip", False) or getattr(args, "require_tip", False))
+    if check_tip:
+        tip = Path(args.tip_path) if getattr(args, "tip_path", "") else None
+        result = verify_audit_with_tip(
+            path,
+            tip_path=tip,
+            require_tip=bool(getattr(args, "require_tip", False)),
+        )
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("verified") else 1
+
     records: list[dict] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
@@ -885,6 +1098,13 @@ def cmd_governance_report(args: argparse.Namespace) -> int:
         return 2
 
     fixture = load_fixture(_resolve_fixture(args.fixture))
+    if getattr(args, "include_decision_context", False):
+        fixture = dict(fixture)
+        fixture["include_decision_context"] = True
+        if getattr(args, "timezone", None):
+            fixture["timezone"] = args.timezone
+        if getattr(args, "audit_dir_kpi", None):
+            fixture["audit_dir"] = args.audit_dir_kpi
     result = build_governance_report(fixture, format=args.format if args.format != "html" else "markdown")
     if args.format == "markdown":
         print(result)
@@ -894,6 +1114,79 @@ def cmd_governance_report(args: argparse.Namespace) -> int:
         print(_markdown_to_html(str(result)))
     else:
         _emit_json(result)
+    return 0
+
+
+def cmd_stakeholder_resolve(args: argparse.Namespace) -> int:
+    """Resolve stakeholder roles for a stored case (roles/config only)."""
+    from src.platform_core.decision_context import load_decision_envelope
+    from src.platform_core.stakeholder import resolve_stakeholders
+
+    case_id = str(args.case_id)
+    existing = load_decision_envelope(case_id)
+    classification = getattr(args, "classification", "") or ""
+    policy_outcome = getattr(args, "policy_outcome", "") or "PREVIEW_ONLY"
+    if existing and existing.stakeholder and not classification:
+        classification = existing.stakeholder.classification
+    if existing and not getattr(args, "policy_outcome", ""):
+        policy_outcome = existing.policy_decision
+    config = None
+    if getattr(args, "config", None):
+        config = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    ctx = resolve_stakeholders(
+        case_id=case_id,
+        classification=classification,
+        policy_outcome=policy_outcome,
+        policy_requires_approval=bool(getattr(args, "requires_approval", True)),
+        config=config,
+    )
+    _emit_json(ctx.to_dict())
+    return 0
+
+
+def cmd_timing_evaluate(args: argparse.Namespace) -> int:
+    """Evaluate timing/SLA/window for a case (does not authorize execution)."""
+    from platform_core.models import utc_now_iso
+    from src.platform_core.decision_context import load_decision_envelope
+    from src.platform_core.timing import evaluate_timing
+
+    case_id = str(args.case_id)
+    existing = load_decision_envelope(case_id)
+    detected = getattr(args, "detected_at", None) or (
+        existing.timing.detected_at_utc if existing and existing.timing else utc_now_iso()
+    )
+    classification = getattr(args, "classification", "") or (
+        existing.stakeholder.classification if existing and existing.stakeholder else ""
+    )
+    tm = evaluate_timing(
+        case_id=case_id,
+        detected_at_utc=str(detected),
+        timezone_name=getattr(args, "timezone", None) or None,
+        classification=classification,
+        policy_outcome=(existing.policy_decision if existing else "PREVIEW_ONLY"),
+        maintenance_window_required=bool(getattr(args, "maintenance_window_required", False)),
+        change_freeze_active=bool(getattr(args, "change_freeze", False)),
+    )
+    _emit_json(tm.to_dict())
+    return 0
+
+
+def cmd_decision_explain(args: argparse.Namespace) -> int:
+    """Explain a stored DecisionEnvelope without inventing stronger causation."""
+    from src.platform_core.decision_context import (
+        explain_decision_envelope,
+        format_decision_text,
+        load_decision_envelope,
+    )
+
+    env = load_decision_envelope(str(args.case_id))
+    if env is None:
+        print(f"No decision context for case-id={args.case_id}", file=sys.stderr)
+        return 2
+    if getattr(args, "format", "json") == "text":
+        print(format_decision_text(env))
+        return 0
+    _emit_json(explain_decision_envelope(env))
     return 0
 
 
@@ -1159,6 +1452,58 @@ def cmd_browser_evidence(args: argparse.Namespace) -> int:
     else:
         print(pkg.model_dump_json(indent=2))
     return 0
+
+
+def cmd_browser_diff(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from windows_network_toolkit.diagnostics.browser_profile import run_browser_diff
+
+    fixture = Path(args.fixture) if getattr(args, "fixture", "") else None
+    normal = Path(args.import_normal_har) if getattr(args, "import_normal_har", "") else None
+    private = Path(args.import_private_har) if getattr(args, "import_private_har", "") else None
+    if fixture is None and not args.url:
+        print("Provide URL or --fixture", file=sys.stderr)
+        return 2
+    result = run_browser_diff(
+        args.url or "https://example.invalid/",
+        browser=args.browser,
+        proof=bool(args.proof),
+        normal_har=normal,
+        private_har=private,
+        fixture=fixture if fixture and fixture.is_file() else None,
+    )
+    payload = result.to_dict()
+    if args.format == "text":
+        print(result.text_report)
+    else:
+        _emit_json(payload)
+    return 0
+
+
+def cmd_browser_profile(args: argparse.Namespace) -> int:
+    from windows_network_toolkit.diagnostics.browser_profile import (
+        run_browser_profile_inspect,
+        run_browser_site_state,
+        run_repair_apply,
+        run_repair_preview,
+    )
+
+    sub = args.browser_profile_cmd
+    if sub == "inspect":
+        _emit_json(run_browser_profile_inspect(browser=args.browser))
+        return 0
+    if sub == "site-state":
+        _emit_json(run_browser_site_state(args.domain, browser=args.browser))
+        return 0
+    if sub == "repair-preview":
+        _emit_json(run_repair_preview(args.domain, browser=args.browser))
+        return 0
+    if sub == "repair-apply":
+        _emit_json(run_repair_apply(args.preview_id, confirm=args.confirm or ""))
+        return 0
+    print("Unknown browser-profile subcommand", file=sys.stderr)
+    return 2
 
 
 def cmd_classifier_benchmark(args: argparse.Namespace) -> int:
@@ -1480,6 +1825,59 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     ver = sub.add_parser("version", help="Print installed package version (read-only)")
     ver.set_defaults(func=cmd_version)
 
+    dash = sub.add_parser(
+        "dashboard",
+        help="Start read-only local monitoring dashboard (NiceGUI on 127.0.0.1:8765)",
+    )
+    dash.add_argument("--host", dest="dashboard_host", default="127.0.0.1", help="Bind host (default 127.0.0.1)")
+    dash.add_argument("--port", dest="dashboard_port", type=int, default=8765, help="Bind port (default 8765)")
+    dash.add_argument(
+        "--interval",
+        dest="watch_interval",
+        type=float,
+        default=1.0,
+        help="Proxy watcher interval seconds (default 1.0)",
+    )
+    dash.add_argument(
+        "--max-visible-events",
+        dest="max_visible_events",
+        type=int,
+        default=200,
+        help="UI timeline ring-buffer size (default 200)",
+    )
+    dash.add_argument(
+        "--storage-path",
+        dest="storage_path",
+        default="",
+        help="Optional JSONL path for evidence events (default .audit/dashboard-events.jsonl)",
+    )
+    dash.add_argument(
+        "--allow-non-loopback-bind",
+        action="store_true",
+        help="Allow binding to non-loopback hosts (not recommended)",
+    )
+    dash.set_defaults(func=cmd_dashboard)
+
+    pmi = sub.add_parser(
+        "procmon-import",
+        help="Import Procmon CSV RegSetValue rows for WinINET proxy keys (read-only)",
+    )
+    pmi.add_argument("procmon_csv", help="Path to Procmon CSV export")
+    pmi.add_argument(
+        "--storage-path",
+        dest="storage_path",
+        default="",
+        help="Optional JSONL path for imported evidence events",
+    )
+    pmi.add_argument(
+        "--max-visible-events",
+        dest="max_visible_events",
+        type=int,
+        default=200,
+        help="In-memory ring size when persisting imports",
+    )
+    pmi.set_defaults(func=cmd_procmon_import)
+
     replay = sub.add_parser("replay", help="Replay a JSONL incident fixture")
     replay.add_argument("fixture", help="Path to JSONL fixture")
     replay.add_argument("--format", choices=["json", "markdown"], default="markdown")
@@ -1501,6 +1899,54 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     bg.add_argument("--json-only", action="store_true", help="Emit JSON only")
     bg.add_argument("--summary-only", action="store_true", help="Human summary without full JSON")
     bg.set_defaults(func=cmd_bad_gateway_diagnose)
+
+    lh = sub.add_parser(
+        "localhost-diagnose",
+        help="Diagnose localhost web-app failures (ERR_CONNECTION_REFUSED) — read-only",
+    )
+    lh.add_argument("--url", default="", help="Preferred form: http://localhost:PORT/path")
+    lh.add_argument("--host", default="", help="Loopback host when --url is omitted")
+    lh.add_argument("--port", type=int, default=None, help="Port when --url is omitted")
+    lh.add_argument("--path", default="", help="URL path when --url is omitted")
+    lh.add_argument("--json", dest="emit_json", action="store_true", help="Emit JSON report")
+    lh.add_argument("--timeout", type=float, default=2.0, help="Per-probe timeout seconds (default 2)")
+    lh.add_argument("--include-process", action="store_true", help="Collect process evidence for listener PIDs")
+    lh.add_argument("--include-http", action="store_true", help="HTTP probe after TCP success")
+    lh.add_argument(
+        "--include-proxy-comparison",
+        action="store_true",
+        help="Compare direct vs proxy-aware HTTP (implies HTTP probe when TCP connects)",
+    )
+    lh.add_argument(
+        "--include-nearby-listeners",
+        action="store_true",
+        help="Bounded related loopback listeners (no port scan)",
+    )
+    lh.add_argument("--evidence-out", default="", help="Write full JSON report to path")
+    lh.add_argument("--remediation-preview", action="store_true", help="Include PREVIEW/BLOCK remediation items")
+    lh.add_argument("--verbose", action="store_true", help="Human summary plus full JSON")
+    lh.add_argument(
+        "--allow-non-loopback",
+        action="store_true",
+        help="Override loopback-only guard (policy-sensitive; default rejects non-loopback)",
+    )
+    lh.add_argument("--fixture", default="", help="Optional inject fixture JSON")
+    lh.set_defaults(func=cmd_localhost_diagnose)
+
+    lhw = sub.add_parser(
+        "localhost-watch",
+        help="Watch localhost target for listener/TCP/HTTP transitions (read-only)",
+    )
+    lhw.add_argument("--url", default="", help="Preferred form: http://localhost:PORT/path")
+    lhw.add_argument("--host", default="", help="Loopback host when --url is omitted")
+    lhw.add_argument("--port", type=int, default=None, help="Port when --url is omitted")
+    lhw.add_argument("--path", default="", help="URL path when --url is omitted")
+    lhw.add_argument("--interval", type=float, default=2.0, help="Seconds between polls (min 1)")
+    lhw.add_argument("--duration", type=float, default=60.0, help="Watch window seconds")
+    lhw.add_argument("--timeout", type=float, default=2.0, help="Per-probe timeout")
+    lhw.add_argument("--include-http", action="store_true", help="Include HTTP health in snapshots")
+    lhw.add_argument("--jsonl-out", default="", help="Append transition events to JSONL path")
+    lhw.set_defaults(func=cmd_localhost_watch)
 
     ps = sub.add_parser("proxy-status", help="Read-only WinINET/WinHTTP proxy status")
     ps.add_argument("--fixture", default="", help="Optional fixture JSON")
@@ -1654,6 +2100,22 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
         action="store_true",
         help="Include principle compliance sections in output",
     )
+    diag.add_argument(
+        "--decision-context",
+        action="store_true",
+        help="Attach stakeholder/timing/coordination envelope (does not change proof)",
+    )
+    diag.add_argument(
+        "--timezone",
+        default="",
+        help="IANA timezone for timing evaluation (default UTC; e.g. Asia/Taipei)",
+    )
+    diag.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format when --decision-context is set (default json)",
+    )
     diag.add_argument("--url", default="", help="Optional URL for network probes")
     diag.add_argument("--fixture", default="", help="Optional fixture JSON")
     diag.set_defaults(func=cmd_diagnose)
@@ -1711,6 +2173,21 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     audit_sub = audit.add_subparsers(dest="audit_cmd", required=True)
     verify = audit_sub.add_parser("verify", help="Verify hash chain integrity")
     verify.add_argument("audit_file", help="Path to audit JSONL")
+    verify.add_argument(
+        "--check-tip",
+        action="store_true",
+        help="Also compare sibling tip anchor ({stem}.tip.json) to the chain tip",
+    )
+    verify.add_argument(
+        "--require-tip",
+        action="store_true",
+        help="Fail if tip anchor is missing (implies --check-tip)",
+    )
+    verify.add_argument(
+        "--tip-path",
+        default="",
+        help="Optional tip anchor path (default: sibling {stem}.tip.json)",
+    )
     verify.set_defaults(func=cmd_audit_verify)
 
     ra = sub.add_parser("risk-assess", help="Technology risk assessment from case fixture (JSON)")
@@ -1725,8 +2202,42 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     gr.add_argument("--fixture", default="", help="Case study fixture JSON path or name")
     gr.add_argument("--audit-dir", default="", help="Audit JSONL directory for audit-backed report")
     gr.add_argument("--risk-register", default="", help="Optional risk register JSON path")
+    gr.add_argument(
+        "--include-decision-context",
+        action="store_true",
+        help="Enrich fixture report with stakeholder/timing/coordination sections",
+    )
+    gr.add_argument("--timezone", default="", help="IANA timezone when including decision context")
+    gr.add_argument(
+        "--audit-dir-kpi",
+        default="",
+        dest="audit_dir_kpi",
+        help="Optional audit dir for coordination KPI rollup",
+    )
     gr.add_argument("--format", choices=["json", "markdown", "html"], default="json")
     gr.set_defaults(func=cmd_governance_report)
+
+    sr = sub.add_parser("stakeholder-resolve", help="Resolve stakeholder roles for a case (roles/config only)")
+    sr.add_argument("--case-id", required=True, help="Case / incident id")
+    sr.add_argument("--classification", default="", help="Primary classification label")
+    sr.add_argument("--policy-outcome", default="", help="Policy outcome string")
+    sr.add_argument("--config", default="", help="Optional stakeholder config JSON path")
+    sr.add_argument("--requires-approval", action="store_true", default=True)
+    sr.set_defaults(func=cmd_stakeholder_resolve)
+
+    te = sub.add_parser("timing-evaluate", help="Evaluate timing/SLA/window for a case (read-only)")
+    te.add_argument("--case-id", required=True, help="Case / incident id")
+    te.add_argument("--detected-at", default="", dest="detected_at", help="ISO8601 detection time (UTC)")
+    te.add_argument("--timezone", default="", help="IANA timezone (default UTC)")
+    te.add_argument("--classification", default="", help="Optional classification for urgency")
+    te.add_argument("--maintenance-window-required", action="store_true")
+    te.add_argument("--change-freeze", action="store_true")
+    te.set_defaults(func=cmd_timing_evaluate)
+
+    de = sub.add_parser("decision-explain", help="Explain stored decision-context envelope")
+    de.add_argument("--case-id", required=True, help="Case / incident id")
+    de.add_argument("--format", choices=["json", "text"], default="json")
+    de.set_defaults(func=cmd_decision_explain)
 
     rks = sub.add_parser("risk-kpi-summary", help="Risk KPI rollup from audit JSONL (read-only)")
     rks.add_argument("--audit-dir", default="tests/fixtures/risk_analytics/audit_sample", help="Audit directory")
@@ -1882,6 +2393,37 @@ def main(argv: list[str] | None = None, *, prog: str = "toolkit") -> int:
     be.add_argument("--headed", action="store_true", help="Run browser headed (not headless)")
     be.add_argument("--format", choices=["json", "package"], default="json")
     be.set_defaults(func=cmd_browser_evidence)
+
+    bd = sub.add_parser(
+        "browser-diff",
+        help="Normal vs InPrivate browser-profile differential (privacy-preserving, read-only)",
+    )
+    bd.add_argument("url", nargs="?", default="", help="Target URL (e.g. https://www.104.com.tw/)")
+    bd.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
+    bd.add_argument("--proof", action="store_true", help="Emphasize proof ladder / request stronger evidence")
+    bd.add_argument("--fixture", default="", help="Fixture JSON for offline replay")
+    bd.add_argument("--import-normal-har", default="", help="HAR from normal browser profile")
+    bd.add_argument("--import-private-har", default="", help="HAR from InPrivate/Incognito")
+    bd.add_argument("--format", choices=["json", "text"], default="json")
+    bd.set_defaults(func=cmd_browser_diff)
+
+    bp = sub.add_parser("browser-profile", help="Inspect/repair-preview Chromium profiles (metadata only)")
+    bp_sub = bp.add_subparsers(dest="browser_profile_cmd", required=True)
+    bp_ins = bp_sub.add_parser("inspect", help="List profiles / installation / policies")
+    bp_ins.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
+    bp_ins.set_defaults(func=cmd_browser_profile)
+    bp_ss = bp_sub.add_parser("site-state", help="Cookie count/meta + storage flags for a domain")
+    bp_ss.add_argument("domain", help="Domain e.g. 104.com.tw")
+    bp_ss.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
+    bp_ss.set_defaults(func=cmd_browser_profile)
+    bp_rp = bp_sub.add_parser("repair-preview", help="Preview site-scoped cleanup (never applies)")
+    bp_rp.add_argument("domain", help="Domain e.g. 104.com.tw")
+    bp_rp.add_argument("--browser", default="auto", choices=["edge", "chrome", "auto"])
+    bp_rp.set_defaults(func=cmd_browser_profile)
+    bp_ra = bp_sub.add_parser("repair-apply", help="Gated apply (requires --confirm; may be unimplemented)")
+    bp_ra.add_argument("preview_id", help="Preview id from repair-preview")
+    bp_ra.add_argument("--confirm", default="", help="BROWSER_SITE_REPAIR_APPLY")
+    bp_ra.set_defaults(func=cmd_browser_profile)
 
     cb = sub.add_parser("classifier-benchmark", help="Offline classifier evaluation harness")
     cb.add_argument("--cases", default="examples/evaluation/classifier_benchmark_sample.json")
