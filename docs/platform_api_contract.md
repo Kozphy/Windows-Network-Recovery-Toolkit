@@ -15,12 +15,12 @@
 ## Demo RBAC headers (portfolio)
 
 | Header | Example | Notes |
-|--------|---------|-------|
+| -------- | --------- | ------- |
 | `X-Operator-Id` | `local-dev-1` | Logged to audit rows as `actor`. |
 | `X-Operator-Role` | `viewer` / `operator` / `admin` / `security` / `security_auditor` | **`security` aliases** **`security_auditor`**. Default when omitted: **`operator`**. |
 
 | Role | Permissions |
-|------|-------------|
+| ------ | ------------- |
 | `viewer` | `GET` **health, endpoints, failure-events, incidents, normalized events, metrics** |
 | `operator` | Viewer + agent **ingestion** (`heartbeat`, snapshots, failure-events) + **`POST remediation/preview`** + **`POST remediation/execute` with `dry_run:true`** + **`GET /platform/attribution/*`** |
 | `admin` | Operator + **`GET` audit** + live **`dry_run:false` execute** (policy + registry gated) |
@@ -246,7 +246,7 @@ Request bodies are identical — prefer **`/ingest/*`** naming in new agents/por
 **Response fields (superset)**
 
 | Field | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `endpoint_count` | Distinct endpoint ids in `endpoints.jsonl` |
 | `open_failure_events` | `status == open` |
 | `events_by_category` / `events_by_severity` | Histograms |

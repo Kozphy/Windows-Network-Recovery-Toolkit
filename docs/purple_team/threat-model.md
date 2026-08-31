@@ -1,7 +1,7 @@
 # Purple Team Threat Model (of the platform itself)
 
 | Threat | Control | Residual risk |
-|---|---|---|
+| --- | --- | --- |
 | Malicious scenario definition | Schema rejects missing cleanup/remote/prod; review scenarios in VCS | Malicious but schema-valid fixtures |
 | Privilege abuse | Dry-run default; typed auth; no CI live mutation | Local operator with admin rights |
 | Evidence tampering | Chained hashes + bundle hash | Whole-file deletion; tip not WORM |

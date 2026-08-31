@@ -9,7 +9,7 @@
 ## What the agent does
 
 | Capability | Supported |
-|------------|-----------|
+| ------------ | ----------- |
 | Collect normalized endpoint evidence | Yes (via `src/platform_core/evidence_collection/`) |
 | Append local JSONL spool | Yes (`.audit/agent-spool.jsonl` default) |
 | Report health / spool status | Yes |
@@ -90,7 +90,7 @@ Each line is one append-only JSON object:
 ## Environment variables
 
 | Variable | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | `WNRT_AGENT_SPOOL` | Default spool file path |
 | `ENDPOINT_AGENT_API` | Not used by WNRT `agent` CLI — use `agent health --api` instead |
 
@@ -111,11 +111,11 @@ Legacy `python -m endpoint_agent` remains available; it is a **separate** stack 
 ## Module map
 
 | Path | Role |
-|------|------|
+| ------ | ------ |
 | `windows_network_toolkit/agent/read_only.py` | Collection orchestration, health |
 | `windows_network_toolkit/agent/spool.py` | JSONL spool read/write/status |
 | `src/platform_core/evidence_collection/` | OS abstraction (Phase 1) |
-| `windows_network_toolkit/cli.py` | `agent once|run|health|spool-status` |
+| `windows_network_toolkit/cli.py` | `agent once | run | health | spool-status` |
 
 ---
 

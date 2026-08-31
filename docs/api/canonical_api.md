@@ -3,7 +3,7 @@
 Single decision pipeline entry. See `backend/canonical_routes.py`.
 
 | Route | Method |
-|-------|--------|
+| ------- | -------- |
 | `/v1/health` | GET |
 | `/v1/version` | GET |
 | `/v1/events` | POST |

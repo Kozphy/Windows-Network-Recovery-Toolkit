@@ -25,7 +25,7 @@ Allowed language: "ordinal confidence 0.92 for classification ranking", "higher 
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Remove confidence numeric | Loses useful triage sort |
 | Train ML classifier with probabilities | No labeled enterprise dataset in scope |
 | Rename to `score` only | Breaking change; semantics doc preferred |

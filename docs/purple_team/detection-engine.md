@@ -3,7 +3,7 @@
 Modular rules in `src/purple_team/detection/`:
 
 | Rule | Intent |
-|---|---|
+| --- | --- |
 | DET-PROXY-001 | Unauthorized proxy enable |
 | DET-PROXY-002 | WinHTTP/WinINET mismatch |
 | DET-ENDPOINT-001 | Stale/missing/inconsistent endpoint |

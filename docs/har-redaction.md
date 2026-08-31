@@ -5,7 +5,7 @@ Before comparison or logging, HARs are deep-copied and secrets are removed.
 ## Always redacted
 
 | Field | Treatment |
-|-------|-----------|
+| ------- | ----------- |
 | `Cookie` header value | `[REDACTED]` (presence retained) |
 | `Set-Cookie` value | `[REDACTED]` (count retained) |
 | `Authorization` / `Proxy-Authorization` | `[REDACTED]` |

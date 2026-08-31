@@ -5,7 +5,7 @@ Exported by `powerbi-export` from Technology Risk & Control Analytics Platform a
 ## Tables
 
 | File | Role |
-|------|------|
+| ------ | ------ |
 | fact_incidents.csv | Incident grain — risk level, proof tier keys, execution authority |
 | fact_control_tests.csv | Control test results per incident |
 | fact_policy_decisions.csv | Policy gate outcomes — preview, block, human confirmation |

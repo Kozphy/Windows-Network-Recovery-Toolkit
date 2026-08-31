@@ -15,7 +15,7 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 ## What this solves
 
 | Layer | Script | Role |
-|-------|--------|------|
+| ------- | -------- | ------ |
 | **0. One-shot auto** | `scripts/auto-fix-proxy.ps1` or `python -m src auto-fix-proxy` | Cursor fix + live guardian + fallback proxy-fix + 60s background guardian |
 | **0b. ChatGPT auto** | `scripts/auto-fix-chatgpt.ps1` | Proxy auto-fix + bad-gateway diagnose + ChatGPT scenario + LOW-risk remediations — see [chatgpt-auto-fix.md](chatgpt-auto-fix.md) |
 | **1. Root cause** | `scripts/configure-cursor-no-proxy.ps1` | Stops Cursor from managing system proxy (`http.proxySupport: off`) |
@@ -29,7 +29,7 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 `proxy-guardian` remediates:
 
 | Case | Condition | Confirm token |
-|------|-----------|---------------|
+| ------ | ----------- | --------------- |
 | **Dead** | enabled localhost proxy, **no listener** | `CLEAR_DEAD_LOCALHOST_PROXY` |
 | **Active-but-broken** (opt-in `--clear-broken`) | listener up, proxy path probe failed | `PREFER_DIRECT_WININET` |
 | **Hold-direct** (opt-in `--hold-direct`) | **any** enabled localhost WinINET (incl. healthy tunnels) | `PREFER_DIRECT_WININET` |
@@ -53,7 +53,7 @@ Listener process name/cmdline is recorded in the audit as **correlation only** (
 When a process is listening on the configured localhost port but **HTTPS via the proxy fails** while **direct HTTPS works**, drift classification is **`BROKEN_LOCALHOST_PROXY`** (legacy: `DEAD_PROXY_CONFIG` for analytics).
 
 | Surface | Behavior |
-|---------|----------|
+| --------- | ---------- |
 | `auto-fix-proxy` / `ensure-proxy-health` | Detects via proxy-vs-direct path probe; clears with confirm `PREFER_DIRECT_WININET` (same token as prefer-direct). Without confirm → `needs_prefer_direct_confirm` / `localhost_proxy_broken`. |
 | `proxy-guardian --clear-broken` | Broken/unusable path clear in the loop. |
 | `proxy-guardian --hold-direct` | Clears **any** enabled localhost WinINET (recurrence / prefer-direct policy). |
@@ -93,7 +93,7 @@ python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --
 ```
 
 | Step | Behavior |
-|------|----------|
+| ------ | ---------- |
 | Detect | Heuristic match on remote-iex tasks, Defender exclusion tasks, `system32\<non-OS>\node.exe` / `VersionUpdater*` |
 | Preview | Default — planned task delete / process stop / exclusion remove / quarantine |
 | Apply | Requires confirm `CONTAIN_LOCALHOST_REWRITER` (or `/APPLY` on the `.cmd`) |
@@ -116,15 +116,15 @@ python -m src network-path-health --json
 ```
 
 | Case | Meaning | Action |
-|------|---------|--------|
+| ------ | --------- | -------- |
 | `IPV6_BROKEN_IPV4_OK` | IPv4 OK, IPv6 fail | Prefer-IPv4 on **all Up adapters** + prefix policy (`PREFER_IPV4_OVER_IPV6`) |
 | `IPV6_PARTIAL_MITIGATION` | Wi-Fi IPv6 off, other adapters still v6 | Re-apply `--all-adapters --force` |
 | `HAPPY_EYEBALLS_STALL` | `curl -4` OK but default dual-stack hangs | All-adapter Prefer-IPv4 + browser cold-start |
 | `IPV6_BROKEN_MITIGATED` | Path OK; browser may still spin | `fix-browser-stall.cmd /APPLY` (`RESTART_BROWSER_DISABLE_QUIC`) |
 | `PROXY_ENABLED_CHECK_GUARDIAN` | ProxyEnable=1 | Use guardian / contain first |
 
-Confirm tokens: `PREFER_IPV4_OVER_IPV6`, `RESTART_BROWSER_DISABLE_QUIC`.  
-Audit: `logs/network_path_health.jsonl`, `logs/browser_stall.jsonl`.  
+Confirm tokens: `PREFER_IPV4_OVER_IPV6`, `RESTART_BROWSER_DISABLE_QUIC`.
+Audit: `logs/network_path_health.jsonl`, `logs/browser_stall.jsonl`.
 Does **not** weaken `KILL_PROXY_PROCESS` — browser restart is a separate operator-gated action.
 
 ### ChatGPT auto-fix safety (layer 0b)
@@ -132,7 +132,7 @@ Does **not** weaken `KILL_PROXY_PROCESS` — browser restart is a separate opera
 [auto-fix-chatgpt.ps1](chatgpt-auto-fix.md) chains layer 0 with ChatGPT scenario diagnosis and **LOW-risk only** remediations:
 
 | Boundary | Enforcement |
-|----------|-------------|
+| ---------- | ------------- |
 | Proxy HKCU mutation | Step 1 uses `DISABLE_WININET_PROXY` via `proxy-guardian` — same dead-proxy rules as layer 0 |
 | ChatGPT LOW-risk apply | Step 4 requires `APPLY_CHATGPT_LOW_RISK` for live `flush_dns`, `reset_winhttp_proxy`, `restart_chatgpt_app` |
 | MEDIUM/BLOCK tier | Firewall reset, disable firewall, process kill — **never** auto-executed |

@@ -126,7 +126,7 @@ For a simple line chart by month, use `dim_date[month_name]` on the axis and `[T
 ## Formatting tips
 
 | Measure | Suggested format |
-|---------|------------------|
+| --------- | ------------------ |
 | Control Failure Rate, T0 to T4 Proof Coverage | Percentage |
 | Average Confidence Score | Decimal number (2 places) |
 | Count measures | Whole number |

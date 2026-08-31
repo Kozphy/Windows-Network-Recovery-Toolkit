@@ -15,7 +15,7 @@ Proxy settings flip repeatedly — user or process may be fighting automation.
 ## Known / Not proven
 
 | Known | Not proven |
-|-------|------------|
+| ------- | ------------ |
 | Configuration instability over time | Malicious reverter vs legitimate sync tool |
 | Flapping loop in fixture replay | Identity of writer process without Sysmon E13 |
 

@@ -9,7 +9,7 @@ Use this checklist before making the repository public, promoting a release, or 
 ## 1. Secrets and credentials
 
 | Check | Command / action | Expected |
-|-------|------------------|----------|
+| ------- | ------------------ | ---------- |
 | No tracked `.env` with real keys | `git ls-files \| findstr /i "\.env$"` | Only `*.example` files (if any) |
 | No tracked bytecode junk | `git ls-files \| findstr /i "__pycache__ \.pyc$"` | Empty |
 | Pre-commit secret scan installed | `pre-commit install` | Hook registered |
@@ -25,7 +25,7 @@ Use this checklist before making the repository public, promoting a release, or 
 ## 2. Git hygiene
 
 | Check | Action |
-|-------|--------|
+| ------- | -------- |
 | `.gitignore` covers runtime artifacts | `__pycache__/`, `.audit/`, `reports/`, `logs/`, `platform_data/`, `*.jsonl` (except fixtures) |
 | Remove accidentally tracked `.pyc` | `git rm --cached -r path/to/__pycache__` then commit |
 | No local DB or logs in index | `git ls-files \| findstr /i "\.db$ \.log$ \.jsonl$"` — only allowed fixture paths |
@@ -49,7 +49,7 @@ See: [safety_model.md](safety_model.md), [purple_team/safety-model.md](purple_te
 ## 4. Tests and CI
 
 | Check | Command |
-|-------|---------|
+| ------- | --------- |
 | Safety contracts | `pytest -q tests/test_policy_safety_contract.py` |
 | Secret leakage (API) | `pytest -q tests/security/test_no_secret_leakage.py` |
 | Purple fixture smoke | `pytest -q tests/purple_team` |
@@ -62,7 +62,7 @@ Privileged host-changing scenarios must **not** run in generic CI — fixtures/m
 ## 5. Documentation for external readers
 
 | Doc | Purpose |
-|-----|---------|
+| ----- | --------- |
 | [README.md](../README.md) | Positioning, non-claims, quick start |
 | [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) | Full map |
 | [purple-team-upgrade-report.md](purple-team-upgrade-report.md) | Purple platform story |

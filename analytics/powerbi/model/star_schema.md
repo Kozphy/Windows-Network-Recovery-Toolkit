@@ -13,7 +13,7 @@ The semantic model follows a **star schema** optimized for technology risk commi
 ### fact_incidents
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | incident_id | string (PK) | Unique incident identifier |
 | endpoint_id | string (FK → dim_endpoint) | Affected endpoint |
 | observed_at | datetime | First classified observation timestamp |
@@ -40,7 +40,7 @@ The semantic model follows a **star schema** optimized for technology risk commi
 ### fact_control_tests
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | control_test_id | string (PK) | Unique test execution row |
 | incident_id | string (FK → fact_incidents) | Parent incident |
 | endpoint_id | string (FK → dim_endpoint) | Endpoint under test |
@@ -59,7 +59,7 @@ The semantic model follows a **star schema** optimized for technology risk commi
 ### fact_audit_events
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | audit_event_id | string (PK) | Unique audit row |
 | incident_id | string (FK → fact_incidents) | Parent incident |
 | event_type | string | observation, remediation_preview, blocked, etc. |
@@ -76,7 +76,7 @@ The semantic model follows a **star schema** optimized for technology risk commi
 ### fact_remediation_previews
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | preview_id | string (PK) | Unique preview row |
 | incident_id | string (FK → fact_incidents) | Parent incident |
 | remediation_preview_generated | boolean | Always true in this fact |
@@ -92,7 +92,7 @@ The semantic model follows a **star schema** optimized for technology risk commi
 ### fact_risk_decisions
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | risk_decision_id | string (PK) | Decision record identifier |
 | incident_id | string (FK → fact_incidents) | Parent incident |
 | proof_tier | string (FK → dim_proof_tier) | Evidence tier at decision |
@@ -122,7 +122,7 @@ Used for time intelligence: incident volume trends, control pass rate by month, 
 ### dim_endpoint
 
 | Column | Description |
-|--------|-------------|
+| -------- | ------------- |
 | endpoint_id (PK) | Synthetic or hostname identifier |
 | endpoint_name | Display name |
 | business_unit | e.g. Finance, Dev, Security |
@@ -135,7 +135,7 @@ Used for time intelligence: incident volume trends, control pass rate by month, 
 ### dim_classification
 
 | Column | Description |
-|--------|-------------|
+| -------- | ------------- |
 | classification (PK) | DEAD_PROXY_CONFIG, WININET_WINHTTP_MISMATCH, … |
 | classification_group | Proxy / TLS / Data quality |
 | default_risk_rating | Default ordinal risk |
@@ -147,7 +147,7 @@ Used for time intelligence: incident volume trends, control pass rate by month, 
 ### dim_proof_tier
 
 | Column | Description |
-|--------|-------------|
+| -------- | ------------- |
 | proof_tier (PK) | T0_OBSERVATION_ONLY … T4_OPERATOR_CONFIRMED |
 | tier_order | 0–4 for sorting |
 | tier_label | Business-friendly label |
@@ -158,7 +158,7 @@ Used for time intelligence: incident volume trends, control pass rate by month, 
 ### dim_policy
 
 | Column | Description |
-|--------|-------------|
+| -------- | ------------- |
 | policy_decision (PK) | ALLOW / PREVIEW_ONLY / BLOCK / HUMAN_REVIEW |
 | allows_execution | False for PREVIEW_ONLY and BLOCK |
 | requires_confirmation | True for HUMAN_REVIEW paths |
@@ -168,7 +168,7 @@ Used for time intelligence: incident volume trends, control pass rate by month, 
 ### dim_control
 
 | Column | Description |
-|--------|-------------|
+| -------- | ------------- |
 | control_id (PK) | CTRL-EPR-001 … |
 | control_name | Display name |
 | control_objective | ITGC-style objective text |
@@ -179,7 +179,7 @@ Used for time intelligence: incident volume trends, control pass rate by month, 
 ### dim_stakeholder
 
 | Column | Description |
-|--------|-------------|
+| -------- | ------------- |
 | stakeholder_id (PK) | IT_SUPPORT, TECH_RISK, CYBER_TRIAGE, AUDIT |
 | forum_name | Committee or function |
 | suggested_forum_mapping | From business impact mapping |
@@ -215,7 +215,7 @@ dim_proof_tier[proof_tier] 1──* fact_risk_decisions[proof_tier]
 
 ## Business rules encoded in the model
 
-1. **High risk** ≠ confirmed compromise — maps to triage severity only  
-2. **T3+** = behavioral reproduction tier or higher — still not malware proof  
-3. **Preview-only rate** should trend high — indicates safe governance defaults  
-4. **Human review pending** = `human_review_required = TRUE` and incident open  
+1. **High risk** ≠ confirmed compromise — maps to triage severity only
+2. **T3+** = behavioral reproduction tier or higher — still not malware proof
+3. **Preview-only rate** should trend high — indicates safe governance defaults
+4. **Human review pending** = `human_review_required = TRUE` and incident open

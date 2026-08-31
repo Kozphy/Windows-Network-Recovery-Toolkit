@@ -33,8 +33,8 @@ Policy Engine (dry-run default)
 Remediation Preview → Audit JSONL → Replay → API / Dashboard
 ```
 
-**Canonical core:** `src/platform_core/`  
-**CLI:** `python -m windows_network_toolkit` (JSON-first, fixture-safe CI)  
+**Canonical core:** `src/platform_core/`
+**CLI:** `python -m windows_network_toolkit` (JSON-first, fixture-safe CI)
 **Principles:** Observation ≠ Proof · Correlation ≠ Causation · Confidence ≠ Certainty
 
 ---
@@ -44,7 +44,7 @@ Remediation Preview → Audit JSONL → Replay → API / Dashboard
 Walk the consulting frame:
 
 | Step | Golden case (59081) |
-|------|---------------------|
+| ------ | --------------------- |
 | Business objective | Reliable browser access |
 | Asset | WinINET proxy configuration |
 | Threat | Dead localhost proxy |

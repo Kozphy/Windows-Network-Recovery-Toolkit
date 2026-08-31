@@ -18,7 +18,7 @@ Event → Evidence → Hypothesis → Decision → Policy → Outcome → Audit 
 `src/platform_core/` is the **single decision engine** for endpoint reliability.
 
 | Stage | Module |
-|-------|--------|
+| ------- | -------- |
 | Event | `src/platform_core/contracts.py` (`NormalizedEvent`) |
 | Evidence | `src/platform_core/evidence/` |
 | Hypothesis | `src/platform_core/hypothesis/` |

@@ -3,7 +3,7 @@
 Maps CTRL-001–010 from [control-matrix.md](../control-matrix.md) to pytest anchors.
 
 | Control | Test anchor | Fixture examples |
-|---------|-------------|------------------|
+| --------- | ------------- | ------------------ |
 | CTRL-001 | `tests/platform_core/classification/test_classification_matrix.py` | `fixtures/dead_proxy_config/` |
 | CTRL-002 | `tests/test_proxy_state_transitions.py` | `fixtures/wininet_winhttp_mismatch/` |
 | CTRL-003 | `tests/windows_network_toolkit/test_proxy_health.py` | `dead_proxy_59081.json` |

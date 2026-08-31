@@ -7,7 +7,7 @@
 ## Gate Definitions
 
 | Gate | Execute | Preview | When |
-|------|---------|---------|------|
+| ------ | --------- | --------- | ------ |
 | **ALLOW** | No | No | Healthy baseline, known dev/security proxy |
 | **PREVIEW** | No | Yes | Default for partial evidence; dry-run remediation |
 | **BLOCK** | No | No | Destructive actions, low confidence, unsafe tokens |
@@ -22,7 +22,7 @@ Legacy aliases normalized via `src/platform_core/policy/outcome_normalizer.py`: 
 ## Classification → Gate (summary)
 
 | Classification | Typical gate |
-|----------------|--------------|
+| ---------------- | -------------- |
 | `NO_PROXY`, `KNOWN_DEV_PROXY`, `KNOWN_SECURITY_TOOL` | ALLOW |
 | `DEAD_PROXY_CONFIG`, `WININET_WINHTTP_MISMATCH` | PREVIEW |
 | `LOCAL_PROXY_ACTIVE` | PREVIEW or ALLOW |
@@ -45,7 +45,7 @@ Legacy aliases normalized via `src/platform_core/policy/outcome_normalizer.py`: 
 ## Why Remediation Is Separated from Diagnosis
 
 | Concern | Diagnosis path | Remediation path |
-|---------|----------------|------------------|
+| --------- | ---------------- | ------------------ |
 | Data collection | Read-only collectors | Allowlisted mutations only |
 | Output | Classification + limitations | Dry-run plan + confirmation |
 | Authority | Any operator | Typed confirm + policy pass |

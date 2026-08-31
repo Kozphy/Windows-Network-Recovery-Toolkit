@@ -5,7 +5,7 @@ REM WNRT Emergency WinINET Proxy Reset (HKCU)
 REM Purpose:     Immediate browser/LinkedIn relief (ERR_PROXY / timeout)
 REM Privileges:  Current user (HKCU Internet Settings)
 REM Side effects: ProxyEnable=0; clears ProxyServer
-REM Safety:      Prefer python -m src proxy-fix; falls back to PowerShell
+REM Safety:      Prefer scripts\run_src.py proxy-fix; falls back to PowerShell
 REM Examples:
 REM   scripts\fix-wininet-proxy.cmd
 REM   scripts\fix-wininet-proxy.cmd /Y
@@ -41,7 +41,7 @@ echo.
 
 if not defined FORCE (
   echo          For ongoing protection after relief:
-  echo            python -m src proxy-guardian --once --clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false
+  echo            .\scripts\run_src.py proxy-guardian --once --clear-broken --confirm-broken PREFER_DIRECT_WININET --dry-run false
   echo            scripts\fix-linkedin-proxy.ps1
   echo.
   echo Press Ctrl+C to cancel, or
@@ -50,8 +50,8 @@ if not defined FORCE (
 
 set "RC=1"
 if defined PYTHON (
-  echo Using Python proxy-fix...
-  "%PYTHON%" -m src proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
+  echo Using repo-safe Python launcher...
+  "%PYTHON%" "%~dp0run_src.py" proxy-fix --confirm DISABLE_WININET_PROXY --dry-run false
   set "RC=%ERRORLEVEL%"
 ) else (
   echo Python not found — using PowerShell emergency clear...
@@ -60,7 +60,7 @@ if defined PYTHON (
 
 if %RC% neq 0 (
   echo.
-  echo Falling back to scripts\emergency-clear-wininet-proxy.ps1 ...
+  echo Python proxy-fix failed or was blocked. Falling back to scripts\emergency-clear-wininet-proxy.ps1 ...
   powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0emergency-clear-wininet-proxy.ps1" -Force
   set "RC=%ERRORLEVEL%"
 )

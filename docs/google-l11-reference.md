@@ -11,7 +11,7 @@ See also: [faang-platform-review.md](faang-platform-review.md) · [production-re
 ## Level map (behaviors vs claims)
 
 | Google-style level | Behaviors this repo can demonstrate | What we must not claim |
-|--------------------|-------------------------------------|------------------------|
+| -------------------- | ------------------------------------- | ------------------------ |
 | L5 Senior | Fixture-first tests, JSON CLI, dry-run defaults, `limitations[]` | Production-certified product |
 | **L6 Staff (implemented bar)** | Unified operator incident card, SLO/SLI definitions, CI-gated replay + classifier eval, policy-gated remediation, hash-chained audit | Fleet SLOs, 99.9% availability, PagerDuty |
 | **L7 Senior Staff (implemented bar)** | ADRs that bind CLI / `.cmd` / classifier; Prefer-IPv4 blast radius; no silent process kill; multi-surface compose without false-clear | Org-wide platform mandate; 100k-endpoint Kafka |

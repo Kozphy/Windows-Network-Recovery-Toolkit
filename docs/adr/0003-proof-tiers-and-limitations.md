@@ -23,7 +23,7 @@ Tiers **never auto-upgrade** when data passes through scoring or BI export.
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Single boolean `proven` flag | Hides nuance; fails Big 4 evidence quality questions |
 | Probability per tier | Implies calibrated Bayesian model we do not have |
 | Omit limitations in JSON | Invites misleading executive summaries |

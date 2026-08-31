@@ -16,7 +16,7 @@ This module is a **portfolio-grade evaluation harness** — not a formal model s
 ## Pipeline mapping
 
 | Endpoint reliability platform | AI evals feedback loop |
-|------------------------------|------------------------|
+| ------------------------------ | ------------------------ |
 | Observation (signals) | Prompt / task input |
 | Hypothesis | Expected facts / answer |
 | Proof | Citation & fact checks |
@@ -34,7 +34,7 @@ Prompt / Task Input → Model Output (fixture) → Expected Evidence
 ## Architecture
 
 | File | Role |
-|------|------|
+| ------ | ------ |
 | [`src/platform_core/ai_evals/schemas.py`](../src/platform_core/ai_evals/schemas.py) | Pydantic models: `EvalCase`, `EvalResult`, `EvalReport` |
 | [`src/platform_core/ai_evals/failure_taxonomy.py`](../src/platform_core/ai_evals/failure_taxonomy.py) | `FailureLabel`, `EvalPolicyGate`, baseline limitations |
 | [`src/platform_core/ai_evals/evaluator.py`](../src/platform_core/ai_evals/evaluator.py) | Deterministic checks (no external API) |
@@ -44,7 +44,7 @@ Prompt / Task Input → Model Output (fixture) → Expected Evidence
 ## Failure taxonomy
 
 | Label | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `CORRECT` | Output aligns with expected facts and format |
 | `HALLUCINATION_RISK` | Elevated risk — claim not grounded in context |
 | `RETRIEVAL_MISS` | Required fact missing from output |
@@ -60,7 +60,7 @@ Language is **risk / limitation** based — we do not claim the model is “lyin
 ## Policy gates
 
 | Gate | Typical trigger |
-|------|-----------------|
+| ------ | ----------------- |
 | `ALLOW` | `CORRECT` with sufficient evidence markers |
 | `PREVIEW` | Format or cost/latency issues |
 | `REQUIRE_HUMAN_REVIEW` | Retrieval miss, refusal, unsupported claim (medium severity) |
@@ -74,7 +74,7 @@ Language is **risk / limitation** based — we do not claim the model is “lyin
 Primary entry point: `python -m windows_network_toolkit ai-eval`
 
 | Flag | Default | Purpose |
-|------|---------|---------|
+| ------ | --------- | --------- |
 | `--cases` | `examples/ai_evals/support_bot_cases.json` | JSON file of eval cases (each embeds `model_output`; no live API) |
 | `--format` | `markdown` | `markdown` (human report) or `json` (structured `EvalReport`) |
 
@@ -138,12 +138,12 @@ This module does **not**:
 
 Epistemic principles (same as endpoint platform):
 
-1. Observation is not proof  
-2. Correlation is not causation  
-3. Confidence is not certainty (ordinal only)  
-4. Classification is not accusation  
-5. Policy permission is not a safety guarantee  
-6. Recommendation is not execution authority  
+1. Observation is not proof
+2. Correlation is not causation
+3. Confidence is not certainty (ordinal only)
+4. Classification is not accusation
+5. Policy permission is not a safety guarantee
+6. Recommendation is not execution authority
 
 ## Relation to AI risk analyst
 

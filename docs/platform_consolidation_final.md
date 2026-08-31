@@ -3,7 +3,7 @@
 ## 1. Files created
 
 | Path | Role |
-|------|------|
+| ------ | ------ |
 | `src/platform/models.py` | Canonical models |
 | `src/platform/pipeline.py` | Public pipeline entry |
 | `src/platform/replay.py` | Unified replay + `run_pipeline` |
@@ -23,7 +23,7 @@
 ## 2. Files deprecated (shims, not deleted)
 
 | Path | Shim target |
-|------|-------------|
+| ------ | ------------- |
 | `src/core/event.py`, `evidence.py`, `decision.py`, … | `src.platform.*` |
 | `src/domains/*` | `src.platform.domains.*` |
 | `platform_core/decision_platform/` | Docstring deprecation; use `src.platform` |
@@ -67,7 +67,7 @@ Parallel stacks:
 ## 5. Migration risks
 
 | Risk | Mitigation |
-|------|------------|
+| ------ | ------------ |
 | Duplicate `/platform/events` semantics | MDP API at `/platform/decision/events` |
 | Audit path change | `logs/platform_decision_audit.jsonl` (old `multi_domain_audit` via shim) |
 | Import paths | `src/core/*` re-exports with `DeprecationWarning` |

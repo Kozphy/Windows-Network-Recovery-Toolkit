@@ -1,7 +1,7 @@
 # Anti–Code-Paste Defense Guide
 
-**Audience:** Portfolio reviewers, Big 4 interviewers, FAANG platform engineering hiring managers, internal audit  
-**Purpose:** Demonstrate **ownership** of design decisions — not repository familiarity alone  
+**Audience:** Portfolio reviewers, Big 4 interviewers, FAANG platform engineering hiring managers, internal audit
+**Purpose:** Demonstrate **ownership** of design decisions — not repository familiarity alone
 **Rule:** If you cannot answer the reviewer questions below without opening the repo, you do not yet own the narrative.
 
 ---
@@ -19,7 +19,7 @@ This is an **interview and audit defense pack** for the Windows Network Recovery
 ## Ownership signals (what reviewers look for)
 
 | Signal | Evidence in this project |
-|--------|--------------------------|
+| -------- | -------------------------- |
 | **Epistemic discipline** | T0–T5 tiers, `STANDARD_LIMITATIONS`, `unsafe_inferences_blocked` |
 | **Safety by default** | `--dry-run`, `SAFE_REMEDIATION_POLICY`, no auto kill |
 | **Full-state reasoning** | `proxy_state_machine.classify_transition` — not single-field diffs |
@@ -54,7 +54,7 @@ Observation (CLI JSON)
 ## Common reviewer traps
 
 | Trap | Correct response |
-|------|------------------|
+| ------ | ------------------ |
 | "This is antivirus" | Security-adjacent **technology risk** infrastructure — triage and governance, not threat blocking |
 | "95% confidence = 95% chance of malware" | **Ordinal** ranking (`ordinal_not_probability`) — not calibrated probability |
 | "Listener proves who changed registry" | **Correlation only** until Sysmon E13 / Procmon writer proof (T4) |

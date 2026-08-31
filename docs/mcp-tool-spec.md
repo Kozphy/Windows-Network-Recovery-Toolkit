@@ -11,7 +11,7 @@ Read-only Model Context Protocol tools for technology risk evidence.
 ## Tools
 
 | Tool | Parameters | Returns | Backing |
-|------|------------|---------|---------|
+| ------ | ------------ | --------- | --------- |
 | `get_proxy_status` | `fixture_path?` | Proxy state dict | Fixture or shape from proxy-status |
 | `get_tls_status` | `host`, `port?` | TLS path summary | `src/platform_core/tls/engine.py` |
 | `get_risk_report` | `limit?` | Risk items list | Incident projector / DB |

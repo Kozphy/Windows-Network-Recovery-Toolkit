@@ -1,18 +1,18 @@
 # Purple Team Gap Analysis
 
-**Status:** Phase 0 assessment  
-**Date:** 2026-08-24  
+**Status:** Phase 0 assessment
+**Date:** 2026-08-24
 **Scope:** Upgrade path from Blue Team diagnostic/recovery toolkit → Purple Team security *control validation* platform.
 
 ## Positioning (non-claims)
 
-This repository is **not** antivirus, EDR, XDR, malware attribution, or autonomous offensive tooling.  
+This repository is **not** antivirus, EDR, XDR, malware attribution, or autonomous offensive tooling.
 Purple Team work here means: **safe, deterministic, reversible, fixture-driven experiments that measure whether defensive *controls* (observation → detection → gated response → verification) actually work.**
 
 ## Before (Blue Team strengths)
 
 | Capability | Location | Reuse |
-|---|---|---|
+| --- | --- | --- |
 | Fixture-first proxy/incident classification | `windows_network_toolkit/incident_classifier.py`, `analytics_pipeline.py` | Detection baseline |
 | Policy-gated remediation + dry-run | `proxy_remediation.py`, `safety.py`, confirmation tokens | Response / approval |
 | Operator incident compose | `src/proxy_drift/operator_incident_card.py` | Classification UX |
@@ -24,7 +24,7 @@ Purple Team work here means: **safe, deterministic, reversible, fixture-driven e
 ## Gaps vs Purple Team lifecycle
 
 | Stage | Status | Gap |
-|---|---|---|
+| --- | --- | --- |
 | Scenario definition | Missing | Typed schema with safety + rollback required fields |
 | Safety / authorization gate | Partial | Remediation gates exist; no scenario-execution gate |
 | Controlled adversarial simulation | Partial | Fixtures/fleet sim; no purple scenario runner |
@@ -52,14 +52,14 @@ Purple Team work here means: **safe, deterministic, reversible, fixture-driven e
 
 ## Migration plan (phases)
 
-0. Gap analysis (this doc)  
-1. Scenario schema + safety gate + state machine  
-2. Telemetry + detection rules + pos/neg tests  
-3. Recommendation / approval / verification / rollback  
-4. Benchmark + baselines + failure taxonomy  
-5. Research docs + ablation + error analysis  
-6. Evidence bundles + reports  
-7. CLI, CI smoke, README, upgrade report  
+0. Gap analysis (this doc)
+1. Scenario schema + safety gate + state machine
+2. Telemetry + detection rules + pos/neg tests
+3. Recommendation / approval / verification / rollback
+4. Benchmark + baselines + failure taxonomy
+5. Research docs + ablation + error analysis
+6. Evidence bundles + reports
+7. CLI, CI smoke, README, upgrade report
 
 ## Acceptance bar
 

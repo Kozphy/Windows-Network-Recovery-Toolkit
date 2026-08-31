@@ -34,7 +34,7 @@ $env:START_API = "1"
 ## Dashboard routes
 
 | Page | Path |
-|------|------|
+| ------ | ------ |
 | Incidents | `/platform/incidents` |
 | Incident detail | `/platform/incidents/[id]` |
 | Evidence | `/platform/evidence` |

@@ -1,7 +1,7 @@
 # Enterprise Technology Risk Decision Platform — Principal Blueprint
 
-**Audience:** Senior Staff / Principal Engineer, Big 4 Technology Risk, Internal Audit, GRC  
-**Status:** Target architecture — builds on existing portfolio prototype (not greenfield)  
+**Audience:** Senior Staff / Principal Engineer, Big 4 Technology Risk, Internal Audit, GRC
+**Status:** Target architecture — builds on existing portfolio prototype (not greenfield)
 **Positioning:** Decision infrastructure with auditability, explainability, and human gates — **not** EDR, SOC automation, chatbot, RAG, or autonomous remediation.
 
 **Baseline assets:** [SYSTEM_DESIGN.md](../SYSTEM_DESIGN.md) · [enterprise-decision-platform-architecture.md](enterprise-decision-platform-architecture.md) · [control-matrix.md](control-matrix.md) · [framework_mapping.md](framework_mapping.md)
@@ -13,7 +13,7 @@
 The Windows Network Recovery Toolkit is **already** a production-shaped technology risk prototype. This blueprint **consolidates and elevates** it into a single enterprise platform:
 
 | Pillar | Current state | Target state |
-|--------|---------------|--------------|
+| -------- | --------------- | -------------- |
 | Multi-endpoint | Fleet envelope + `trisk_endpoints` | Unified fleet ingest → Postgres evidence plane |
 | API | 4 route tiers (`/platform`, `/trisk`, `/v1`, `/v1/enterprise`) | One governed API surface + legacy shims |
 | Persistence | Dual JSONL + Postgres; 3 event systems | Postgres canonical + WORM audit archive |
@@ -115,7 +115,7 @@ flowchart LR
   API --> PROM --> GRAF
 ```
 
-**Existing:** `docker-compose.yml` (Postgres, Redis, API, worker, Prometheus, Grafana) — [deployment-topology.md](deployment-topology.md)  
+**Existing:** `docker-compose.yml` (Postgres, Redis, API, worker, Prometheus, Grafana) — [deployment-topology.md](deployment-topology.md)
 **Gap:** K8s manifests, Entra ID, WORM bucket, Power BI workspace automation
 
 ---
@@ -175,7 +175,7 @@ erDiagram
 **Code mapping:**
 
 | Domain entity | Implementation today |
-|---------------|---------------------|
+| --------------- | --------------------- |
 | Tenant | `trisk_tenants`, `TenantRecord` |
 | Endpoint | `trisk_endpoints`, fleet `FleetEventEnvelope` |
 | Observation | `trisk_observations` |
@@ -361,7 +361,7 @@ CREATE POLICY tenant_isolation ON trisk_evidence_events
 ### 5.1 API tiers (consolidation strategy)
 
 | Tier | Path | Auth | Fate |
-|------|------|------|------|
+| ------ | ------ | ------ | ------ |
 | **Canonical** | `/api/v1/*` | OAuth2 + tenant | Target surface (alias existing `/v1`) |
 | **Enterprise** | `/api/v1/enterprise/*` | OAuth2 + RBAC | Decision services |
 | **Fleet** | `/api/v1/fleet/*` | mTLS agent cert | Multi-endpoint ingest |
@@ -373,7 +373,7 @@ CREATE POLICY tenant_isolation ON trisk_evidence_events
 #### Evidence & normalization
 
 | Method | Path | Status | Description |
-|--------|------|--------|-------------|
+| -------- | ------ | -------- | ------------- |
 | POST | `/v1/evidence` | ✅ | Ingest evidence → async classify |
 | POST | `/v1/enterprise/observations` | ✅ | Record raw observation |
 | POST | `/v1/enterprise/evidence` | ✅ | Tenant-scoped evidence |
@@ -382,7 +382,7 @@ CREATE POLICY tenant_isolation ON trisk_evidence_events
 #### Risk & classification
 
 | Method | Path | Status | Description |
-|--------|------|--------|-------------|
+| -------- | ------ | -------- | ------------- |
 | GET | `/v1/incidents` | ✅ | Paginated incidents |
 | POST | `/v1/enterprise/classify` | ✅ | Deterministic pipeline |
 | POST | `/v1/enterprise/pipeline/run` | ✅ | Full decision loop |
@@ -391,7 +391,7 @@ CREATE POLICY tenant_isolation ON trisk_evidence_events
 #### Policy & controls
 
 | Method | Path | Status | Description |
-|--------|------|--------|-------------|
+| -------- | ------ | -------- | ------------- |
 | POST | `/v1/enterprise/policy/evaluate` | ✅ | YAML + canonical policy |
 | POST | `/v1/enterprise/policy/packs` | ✅ | Register tenant policy |
 | GET | `/v1/controls` | ✅ | Control test results |
@@ -399,7 +399,7 @@ CREATE POLICY tenant_isolation ON trisk_evidence_events
 #### Governance & human approval
 
 | Method | Path | Status | Description |
-|--------|------|--------|-------------|
+| -------- | ------ | -------- | ------------- |
 | POST | `/v1/incidents/{id}/review` | ✅ | Review action |
 | POST | `/v1/enterprise/reviews/{id}/approve` | ✅ | Human approval gate |
 | GET | `/v1/enterprise/reviews/pending` | ✅ | Review queue |
@@ -407,7 +407,7 @@ CREATE POLICY tenant_isolation ON trisk_evidence_events
 #### Audit & replay
 
 | Method | Path | Status | Description |
-|--------|------|--------|-------------|
+| -------- | ------ | -------- | ------------- |
 | GET | `/v1/events` | ✅ | Domain event log |
 | GET | `/v1/audit/verify` | ✅ | Hash chain verify |
 | GET | `/v1/enterprise/audit/logs` | ✅ | Tenant audit logs |
@@ -416,19 +416,19 @@ CREATE POLICY tenant_isolation ON trisk_evidence_events
 #### AI explanation (copilot — not chatbot)
 
 | Method | Path | Status | Description |
-|--------|------|--------|-------------|
+| -------- | ------ | -------- | ------------- |
 | POST | `/v1/explain/decision/{id}` | 🔲 | Guardrailed narrative |
 | GET | `/v1/explain/decision/{id}` | 🔲 | Stored explanation artifact |
 
 #### Reporting & analytics
 
 | Method | Path | Status | Description |
-|--------|------|--------|-------------|
+| -------- | ------ | -------- | ------------- |
 | GET | `/v1/reports/executive` | ✅ | Executive KPIs |
 | GET | `/v1/enterprise/reports/governance` | ✅ | Committee report |
 | GET | `/v1/analytics/powerbi/export` | 🔲 | Star schema job |
 
-**Auth headers (interim):** `X-Api-Token`, `X-Api-Role`, `X-Api-Tenant`  
+**Auth headers (interim):** `X-Api-Token`, `X-Api-Role`, `X-Api-Tenant`
 **Auth target:** Entra ID JWT with `tenant_id`, `roles[]` claims
 
 ---
@@ -460,7 +460,7 @@ stateDiagram-v2
 ### 6.2 Event catalog (canonical)
 
 | Event | Producer | Consumer |
-|-------|----------|----------|
+| ------- | ---------- | ---------- |
 | `ObservationRecorded` | Evidence Service | Timeline, replay |
 | `EvidenceCollected` | Ingest API | Worker, MCP |
 | `IncidentDetected` | Classifier Worker | Risk engine |
@@ -475,7 +475,7 @@ stateDiagram-v2
 | `GovernanceReportGenerated` | Reporting Service | Committee export |
 | `ReplayCertified` | Replay Engine | Audit attestation |
 
-**Store:** `trisk_domain_events` (Postgres) + optional Kafka for fleet scale  
+**Store:** `trisk_domain_events` (Postgres) + optional Kafka for fleet scale
 **Replay:** `src/platform_core/events/replay.py` + fixture certification digest
 
 ---
@@ -499,14 +499,14 @@ flowchart LR
 ### 7.2 Scoring inputs (deterministic)
 
 | Input | Source | Weight role |
-|-------|--------|-------------|
+| ------- | -------- | ------------- |
 | Proof tier T0–T4 | `proof_tier.py` | Caps claim strength |
 | Classification severity | `incident_classifier` | Base ordinal |
 | Control aggregate | `control_tests.py` | PASS reduces; FAIL increases |
 | Policy outcome | Policy engine | Blocks HIGH without approval |
 | Confidence | Classifier output | Ordinal label only — not probability |
 
-**Implementation:** `windows_network_toolkit/risk_scoring_engine.py` (pipeline) + `src/platform_core/risk/risk_rating.py` (fixture)  
+**Implementation:** `windows_network_toolkit/risk_scoring_engine.py` (pipeline) + `src/platform_core/risk/risk_rating.py` (fixture)
 **Target:** Unify behind `RiskScoringService` with `scoring_policy_version` on incidents
 
 ### 7.3 Output contract
@@ -544,7 +544,7 @@ flowchart TB
 ```
 
 | Stage | Module | Invariant |
-|-------|--------|-----------|
+| ------- | -------- | ----------- |
 | Validate | `evidence_schema.py` | Reject malformed; quarantine |
 | Normalize | `analytics_pipeline._normalize` | Canonical field names |
 | Tier | T0–T5 ladder | Observation ≠ proof |
@@ -560,7 +560,7 @@ flowchart TB
 ### 9.1 Structure
 
 | Layer | Controls | Engine |
-|-------|----------|--------|
+| ------- | ---------- | -------- |
 | Endpoint (WNT) | CTRL-001–006 proxy controls | `control_tests.py` |
 | Mature governance | CTRL-EPR-001–010 | `control_test_mature.py` |
 | Matrix reference | CTRL-001–010 business | `docs/control-matrix.md` |
@@ -571,7 +571,7 @@ flowchart TB
 Incident classified → map incident_class → control_ids → run tests → store trisk_control_tests → export to Power BI fact_control_tests
 ```
 
-**Outcomes:** `PASS` | `FAIL` | `PARTIAL` | `NOT_TESTED` | `INSUFFICIENT_EVIDENCE`  
+**Outcomes:** `PASS` | `FAIL` | `PARTIAL` | `NOT_TESTED` | `INSUFFICIENT_EVIDENCE`
 **Rule:** Control PASS ≠ production safety guarantee
 
 ---
@@ -592,8 +592,8 @@ flowchart TB
   A --> RPT[Governance_Report_if_period_close]
 ```
 
-**Accusatory-adjacent classes:** `UNKNOWN_LOCAL_PROXY`, `SUSPICIOUS_PROXY`, `POSSIBLE_MITM_RISK`, `REVERTER_SUSPECTED`  
-**AI actors blocked** from `approve_remediation_preview` — `human_review.py`  
+**Accusatory-adjacent classes:** `UNKNOWN_LOCAL_PROXY`, `SUSPICIOUS_PROXY`, `POSSIBLE_MITM_RISK`, `REVERTER_SUSPECTED`
+**AI actors blocked** from `approve_remediation_preview` — `human_review.py`
 **Execution authority:** `preview_only` → `requires_approval` → `blocked` (never `autonomous`)
 
 ---
@@ -615,7 +615,7 @@ flowchart LR
 ### Principles
 
 | Rule | Enforcement |
-|------|-------------|
+| ------ | ------------- |
 | AI does not execute | No tool-calling to remediation endpoints |
 | AI does not confirm malware/MITM | `explanation_guardrails.py` regex blocks |
 | AI does not approve | RBAC + `HumanReviewDecision` actor checks |
@@ -631,14 +631,14 @@ flowchart LR
 ## 12. Audit trail & replay
 
 | Layer | Mechanism | Path |
-|-------|-----------|------|
+| ------- | ----------- | ------ |
 | Operational timeline | Domain events | `trisk_domain_events` |
 | Tamper evidence | Hash chain | `trisk_audit_logs`, `chain_of_custody.py` |
 | Governance records | Audit JSONL mirror | `PLATFORM_DATA_DIR/audit.jsonl` |
 | Long-term | WORM object store | Target: S3 Object Lock / Azure Immutable |
 | Replay | Deterministic digest | `events/replay.py`, `outcome_learning` |
 
-**Verify:** `GET /v1/audit/verify` + `GET /v1/enterprise/audit/verify`  
+**Verify:** `GET /v1/audit/verify` + `GET /v1/enterprise/audit/verify`
 **Replay certify:** Re-run pipeline on frozen fixture → compare `content_digest`
 
 ---
@@ -650,7 +650,7 @@ flowchart LR
 ### Fact tables
 
 | Table | Grain | Key measures |
-|-------|-------|--------------|
+| ------- | ------- | -------------- |
 | `fact_incidents` | One row per incident | risk_level, confidence_score |
 | `fact_control_tests` | One row per control test | result, limitation_count |
 | `fact_policy_decisions` | One row per policy decision | execution_authority |
@@ -661,14 +661,14 @@ flowchart LR
 ### Dimension tables
 
 | Table | Role |
-|-------|------|
+| ------- | ------ |
 | `dim_date` | Time intelligence |
 | `dim_classification` | Incident taxonomy + accusation flag |
 | `dim_proof_tier` | T0–T4 maturity order |
 | `dim_stakeholder` | Business owner mapping |
 | `dim_tenant` | **NEW** — multi-tenant RLS |
 
-**CLI:** `python -m windows_network_toolkit powerbi-export`  
+**CLI:** `python -m windows_network_toolkit powerbi-export`
 **Target:** Scheduled Fabric refresh + tenant RLS roles in Power BI Service
 
 ---
@@ -680,7 +680,7 @@ flowchart LR
 ### 14.1 SOC 2 Trust Services Criteria (illustrative)
 
 | TSC | Platform control | Evidence artifact | CTRL ID |
-|-----|------------------|-------------------|---------|
+| ----- | ------------------ | ------------------- | --------- |
 | CC6.1 Logical access | RBAC on `/v1` | RBAC tests, audit logs | CTRL-009 |
 | CC7.2 Detection | Proxy drift detection | `proxy-status`, incidents | CTRL-001 |
 | CC8.1 Change management | Policy-gated preview | dry-run audit entries | CTRL-009 |
@@ -690,7 +690,7 @@ flowchart LR
 ### 14.2 ISO 27001 Annex A (selected)
 
 | Control | Platform mapping | Test |
-|---------|------------------|------|
+| --------- | ------------------ | ------ |
 | A.8 Asset management | Endpoint + proxy config as asset | `risk-assess` |
 | A.12.4 Logging | Domain events + audit chain | `GET /v1/events` |
 | A.16 Incident management | Evidence-backed triage | `diagnose --proof` |
@@ -709,7 +709,7 @@ See [framework_mapping.md](framework_mapping.md) — Govern, Identify, Protect, 
 ### 15.1 Information architecture
 
 | View | Data source | Status |
-|------|-------------|--------|
+| ------ | ------------- | -------- |
 | Risk overview | `/v1/incidents`, `/v1/risks` | ✅ `frontend/app/platform/risk-overview` |
 | Evidence timeline | `/v1/events` | ✅ `evidence-timeline` |
 | Audit viewer | `/v1/audit/verify` | ✅ `audit-viewer` |
@@ -740,7 +740,7 @@ flowchart TB
 ```
 
 | Isolation layer | Today | Target |
-|-----------------|-------|--------|
+| ----------------- | ------- | -------- |
 | API header | `X-Api-Tenant` | JWT claim |
 | Application filter | `assert_tenant_access` | Keep + RLS |
 | Data partition | Shared `PLATFORM_DATA_DIR` | Per-tenant prefix |
@@ -754,7 +754,7 @@ flowchart TB
 ### 17.1 Environment tiers
 
 | Env | Stack | Purpose |
-|-----|-------|---------|
+| ----- | ------- | --------- |
 | Local | `docker-compose.yml` | Developer + pytest |
 | Demo | `docker-compose.demo.yml` | Reviewer walkthrough |
 | Staging | `docker-compose.prod.yml` + GHCR SHA | Pre-prod validation |
@@ -763,7 +763,7 @@ flowchart TB
 ### 17.2 Service topology (Compose — exists)
 
 | Service | Image | Port |
-|---------|-------|------|
+| --------- | ------- | ------ |
 | postgres | postgres:16 | 5432 |
 | redis | redis:7 | 6379 |
 | api | GHCR toolkit API | 8000 |
@@ -801,7 +801,7 @@ flowchart TB
 ### Phase 1 — Consolidation (Q1)
 
 | Work item | Outcome |
-|-----------|---------|
+| ----------- | --------- |
 | Unify risk scorers | Single `RiskScoringService` + policy version |
 | Postgres as SSOT | Retire JSONL dual-write for human review |
 | Tenant RLS | `app.tenant_id` on all queries |
@@ -812,7 +812,7 @@ flowchart TB
 ### Phase 2 — Multi-endpoint scale (Q2)
 
 | Work item | Outcome |
-|-----------|---------|
+| ----------- | --------- |
 | Signed fleet agent | mTLS + Authenticode MSI |
 | Kafka/Redpanda adapter | Fleet ingest at 100k endpoints (design exists) |
 | Browser evidence in ingest | Playwright packages → `/v1/evidence` |
@@ -822,7 +822,7 @@ flowchart TB
 ### Phase 3 — GRC integration (Q3)
 
 | Work item | Outcome |
-|-----------|---------|
+| ----------- | --------- |
 | Compliance evidence packs | NIST/ISO/SOC2 automated bundles |
 | ServiceNow/Jira webhooks | Human review ticketing |
 | AI explanation API | `trisk_ai_explanations` + UI panel |
@@ -832,7 +832,7 @@ flowchart TB
 ### Phase 4 — Enterprise certification path (Q4+)
 
 | Work item | Outcome |
-|-----------|---------|
+| ----------- | --------- |
 | SOC 2 Type II readiness | Control evidence automation |
 | Cross-region DR | Postgres replica + failover |
 | Scoring drift monitoring | Classifier version A/B |
@@ -850,7 +850,7 @@ flowchart TB
 ## 20. Related documents
 
 | Document | Topic |
-|----------|-------|
+| ---------- | ------- |
 | [enterprise-decision-platform-architecture.md](enterprise-decision-platform-architecture.md) | Service layer detail |
 | [enterprise-migration-plan.md](enterprise-migration-plan.md) | Migration phases |
 | [state-machine.md](state-machine.md) | Incident state machine |

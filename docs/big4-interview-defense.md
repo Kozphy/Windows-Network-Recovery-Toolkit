@@ -13,7 +13,7 @@ Answers for reviewers who ask **“Is this security software?”** or **“Can t
 ## Evaluation harness (offline)
 
 | Harness | Command | Governance value |
-|---------|---------|------------------|
+| --------- | --------- | ------------------ |
 | Classifier benchmark | `classifier-benchmark --cases examples/evaluation/classifier_benchmark_sample.json` | Measures label accuracy + forbidden phrase rate |
 | Replay benchmark | `replay-benchmark --cases tests/fixtures/evaluation/replay_cases.jsonl` | Proves deterministic pipeline for audit reproduction |
 
@@ -38,26 +38,26 @@ Persistent queue in `human_review.jsonl` — AI cannot approve remediation or ov
 
 ## Why this is not antivirus
 
-- No signature engine, no quarantine, no threat hunting  
-- Classifications are **reliability triage** (`DEAD_PROXY_CONFIG`, not `MALWARE_DETECTED`)  
-- `unsafe_inferences_blocked[]` explicitly blocks malware accusations without writer proof  
-- Scope disclaimer on every governance report  
+- No signature engine, no quarantine, no threat hunting
+- Classifications are **reliability triage** (`DEAD_PROXY_CONFIG`, not `MALWARE_DETECTED`)
+- `unsafe_inferences_blocked[]` explicitly blocks malware accusations without writer proof
+- Scope disclaimer on every governance report
 
 ---
 
 ## Why this is not autonomous remediation
 
-- `proxy-disable` defaults to **dry-run**  
-- Live apply requires typed token `DISABLE_WININET_PROXY`  
-- Process kill, firewall reset, adapter disable are **blocked** in policy registry  
-- AI assists explanation — **does not authorize** execution (`docs/adr/0006-ai-assisted-not-ai-authorized.md`)  
+- `proxy-disable` defaults to **dry-run**
+- Live apply requires typed token `DISABLE_WININET_PROXY`
+- Process kill, firewall reset, adapter disable are **blocked** in policy registry
+- AI assists explanation — **does not authorize** execution (`docs/adr/0006-ai-assisted-not-ai-authorized.md`)
 
 ---
 
 ## How proof tiers avoid overclaiming
 
 | Tier | What you may say |
-|------|------------------|
+| ------ | ------------------ |
 | T0–T1 | Observed configuration |
 | T2 | Path/listener probe result |
 | T3–T4 | Repeated pattern / timeline |
@@ -69,10 +69,10 @@ No tier alone supports a **malware verdict**. See [proxy-proof-ladder.md](proxy-
 
 ## How control tests map to risk decisions
 
-1. **Detective controls** (CTRL-001–008) produce PASS/FAIL/PARTIAL from fixtures  
-2. **Preventive controls** (CTRL-009) verify policy gates in CI  
-3. **ITGC-style** (CTRL-010) verify hash chain integrity  
-4. Failed health control → elevated **residual risk** in `risk-assess` — not automatic remediation  
+1. **Detective controls** (CTRL-001–008) produce PASS/FAIL/PARTIAL from fixtures
+2. **Preventive controls** (CTRL-009) verify policy gates in CI
+3. **ITGC-style** (CTRL-010) verify hash chain integrity
+4. Failed health control → elevated **residual risk** in `risk-assess` — not automatic remediation
 
 Matrix: [control-matrix.md](control-matrix.md)
 
@@ -80,9 +80,9 @@ Matrix: [control-matrix.md](control-matrix.md)
 
 ## How Power BI supports risk committee reporting
 
-- Star schema: `fact_incidents`, `fact_control_tests`, `dim_classification`, `dim_proof_tier`  
-- KPIs: control pass rate, high-risk count, preview-only remediation ratio  
-- **Honest limit:** portfolio semantic export — not deployed Power BI tenant  
+- Star schema: `fact_incidents`, `fact_control_tests`, `dim_classification`, `dim_proof_tier`
+- KPIs: control pass rate, high-risk count, preview-only remediation ratio
+- **Honest limit:** portfolio semantic export — not deployed Power BI tenant
 
 See [powerbi-interview-story.md](powerbi-interview-story.md).
 
@@ -91,7 +91,7 @@ See [powerbi-interview-story.md](powerbi-interview-story.md).
 ## Reviewer questions — quick answers
 
 | Question | Answer |
-|----------|--------|
+| ---------- | -------- |
 | Is this a formal audit opinion? | **No** — management information with limitations |
 | Does listener prove registry writer? | **No** — correlation only; Sysmon E13 for writer proof |
 | Can AI disable proxy? | **No** — policy + human confirmation only |

@@ -9,7 +9,7 @@
 ## Platform support levels
 
 | OS | Level | Collector | Live remediation |
-|----|-------|-----------|------------------|
+| ---- | ------- | ----------- | ------------------ |
 | Windows | `FULL` | `windows_network_diagnostics_v1` | Policy-gated (existing toolkit) |
 | Linux | `PARTIAL` | `linux_network_diagnostics_v1` | **Not supported** |
 | macOS | `PARTIAL` | `darwin_network_diagnostics_v1` | **Not supported** |
@@ -43,7 +43,7 @@ Delegates to `platform_core/network_diagnostics/windows.py`:
 Delegates to `platform_core/network_diagnostics/linux.py`:
 
 | Signal class | Source |
-|--------------|--------|
+| -------------- | -------- |
 | Environment proxy | `http_proxy`, `HTTPS_PROXY`, etc. |
 | System proxy hints | `src/proxy_guard/linux_proxy_snapshot.py` (gsettings, `/etc/environment`, NetworkManager, apt when available) |
 | Listening ports | `ss -tln` or `netstat -an` summary |
@@ -56,7 +56,7 @@ Delegates to `platform_core/network_diagnostics/linux.py`:
 Delegates to `platform_core/network_diagnostics/darwin.py`:
 
 | Signal class | Source |
-|--------------|--------|
+| -------------- | -------- |
 | Environment proxy | Standard `*_proxy` env vars |
 | System proxy hints | `networksetup -getwebproxy` / `-getsecurewebproxy` when safely available |
 | Listening ports | Same POSIX listener summary as Linux |
@@ -111,7 +111,7 @@ platform_core/network_diagnostics/
 ## Fixtures and tests
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | `tests/fixtures/cross_platform/windows_evidence.json` | FULL Windows fixture |
 | `tests/fixtures/cross_platform/linux_evidence.json` | PARTIAL Linux fixture |
 | `tests/fixtures/cross_platform/darwin_evidence.json` | PARTIAL macOS fixture |
@@ -128,7 +128,7 @@ pytest -q tests/platform_core/evidence_collection/
 ## Explicit non-claims
 
 | Claim | Supported? |
-|-------|------------|
+| ------- | ------------ |
 | Windows proxy observation tier | **Yes** (`FULL`) |
 | Linux/macOS env + proxy hints + listener summary | **Yes** (`PARTIAL`) |
 | Linux/macOS WinINET/WinHTTP/registry parity | **No** |

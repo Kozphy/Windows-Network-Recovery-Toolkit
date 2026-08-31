@@ -49,7 +49,7 @@ This document describes an optional **fleet deployment**: lightweight Windows **
 **Trust boundaries**
 
 | Zone | Responsibility |
-|------|----------------|
+| ------ | ---------------- |
 | **Agent** | Enforce policy locally; never execute server-supplied shell; optional upload of **already structured** events. |
 | **Server** | Aggregate, search, alert; **distribute** policy documents (content-addressed); authenticate agents and users. |
 | **Dashboard** | Read-only command surface for events; policy edits via admin API with audit trail. |
@@ -88,7 +88,7 @@ Base URL: `https://control.example.internal/api/v1`. All bodies are `application
 ### 3.1 Authentication
 
 | Client | Header |
-|--------|--------|
+| -------- | -------- |
 | Agent | `Authorization: Bearer <agent_token>` or mTLS client cert + optional `X-Agent-Id` |
 | Dashboard / automation | `Authorization: Bearer <user_jwt>` |
 
@@ -245,7 +245,7 @@ List registered agents and last seen time.
 ### 3.5 Error model
 
 | Code | Meaning |
-|------|---------|
+| ------ | --------- |
 | `400` | Validation error |
 | `401` / `403` | Auth failure |
 | `409` | Duplicate event id (idempotent replay; treat as success for agent) |
@@ -317,7 +317,7 @@ Server policy doc ──► Agent verifies hash ──► Merge with local machi
 ## 5. Mapping to existing codebase concepts
 
 | Today (standalone) | Fleet role |
-|--------------------|------------|
+| -------------------- | ------------ |
 | `logs/proxy_guard_control.jsonl` | Source rows for `POST /events/batch` |
 | Structured stderr JSON (`proxy_guard.service`) | Optional duplicate channel to server as `type: ops_log` |
 | `shared/proxy_guard_policy.example.json` | Becomes a **bundle** served by `GET /policy/bundles/...` |

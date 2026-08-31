@@ -7,7 +7,7 @@ Decision-support estimates for risk triage — **not financial advice** and **no
 ## Outputs (ordinal)
 
 | Field | Range | Notes |
-|-------|-------|-------|
+| ------- | ------- | ------- |
 | `downtime_minutes` | 0+ | Estimate from classification defaults |
 | `affected_users` | 0+ | Override via fixture |
 | `estimated_cost_per_hour` | USD | Default 150; illustrative only |

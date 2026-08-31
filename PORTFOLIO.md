@@ -10,12 +10,12 @@ This project demonstrates how **endpoint reliability evidence** can be converted
 
 ## Target roles
 
-- Technology Risk Analyst  
-- Cyber Risk Consultant  
-- IT Audit / IT Risk Advisory  
-- AI Application Engineer (governance-first assistants)  
-- Data / Risk Analyst  
-- Platform / Endpoint Reliability Analyst  
+- Technology Risk Analyst
+- Cyber Risk Consultant
+- IT Audit / IT Risk Advisory
+- AI Application Engineer (governance-first assistants)
+- Data / Risk Analyst
+- Platform / Endpoint Reliability Analyst
 
 ---
 
@@ -23,10 +23,10 @@ This project demonstrates how **endpoint reliability evidence** can be converted
 
 Organizations lose time when endpoint network failures (proxy drift, WinINET/WinHTTP mismatch, dead localhost listeners) create **disagreement** between IT Support, Security, Compliance, and Audit:
 
-- Helpdesk resets settings without evidence  
-- Security suspects compromise without proof tier  
-- Audit cannot reconstruct decisions  
-- Risk committees lack KPIs from incident data  
+- Helpdesk resets settings without evidence
+- Security suspects compromise without proof tier
+- Audit cannot reconstruct decisions
+- Risk committees lack KPIs from incident data
 
 This platform standardizes **Evidence → Risk → Decision → Audit** with policy-gated remediation previews.
 
@@ -35,7 +35,7 @@ This platform standardizes **Evidence → Risk → Decision → Audit** with pol
 ### Production-shaped evaluation upgrades
 
 | Link | Topic |
-|------|-------|
+| ------ | ------- |
 | [docs/classifier-evaluation-report.md](docs/classifier-evaluation-report.md) | Offline classifier benchmark |
 | [docs/evidence-replay-benchmark.md](docs/evidence-replay-benchmark.md) | Deterministic pipeline replay |
 | [docs/human-review-workflow.md](docs/human-review-workflow.md) | Human review queue |
@@ -54,7 +54,7 @@ This platform standardizes **Evidence → Risk → Decision → Audit** with pol
 ## Technical stack
 
 | Layer | Technology |
-|-------|------------|
+| ------- | ------------ |
 | Core engine | Python 3.11+, Pydantic v2 |
 | CLI | `windows_network_toolkit`, `python -m src` |
 | API | FastAPI, OpenAPI |
@@ -67,11 +67,11 @@ This platform standardizes **Evidence → Risk → Decision → Audit** with pol
 
 ## Risk / governance relevance
 
-- Maps to **technology risk** and **IT general controls** framing (change management, logging, access)  
-- **Control tests** with PASS/FAIL/INSUFFICIENT_EVIDENCE  
-- **Risk ratings** with explicit limitations (not regulatory attestation)  
-- **Framework mapping** docs for NIST CSF / ISO 27001 language (see `docs/framework_mapping.md`)  
-- Six epistemic principles: observation ≠ proof, correlation ≠ causation, etc.  
+- Maps to **technology risk** and **IT general controls** framing (change management, logging, access)
+- **Control tests** with PASS/FAIL/INSUFFICIENT_EVIDENCE
+- **Risk ratings** with explicit limitations (not regulatory attestation)
+- **Framework mapping** docs for NIST CSF / ISO 27001 language (see `docs/framework_mapping.md`)
+- Six epistemic principles: observation ≠ proof, correlation ≠ causation, etc.
 
 ---
 
@@ -88,7 +88,7 @@ Not antivirus, EDR, autonomous remediation, malware verdicts, guaranteed MITM de
 ---
 
 | Theme | Demonstration in this repo |
-|-------|---------------------------|
+| ------- | --------------------------- |
 | Evidence-based diagnosis | `proxy-status`, `diagnose --proof`, proof tiers T0–T4 |
 | Control testing | `control-test` mature records per classification |
 | Policy-gated automation | Preview-only remediation, typed confirmation |
@@ -101,11 +101,11 @@ Not antivirus, EDR, autonomous remediation, malware verdicts, guaranteed MITM de
 
 ## What I personally learned
 
-- How to separate **triage classification** from **security verdicts**  
-- Designing **policy gates** that default to preview, not execution  
-- Building **audit trails** that survive interview scrutiny  
-- Using AI for **documentation and test ideas** while keeping decisions evidence-backed  
-- Portfolio storytelling for **risk consulting** vs **pure SRE** audiences  
+- How to separate **triage classification** from **security verdicts**
+- Designing **policy gates** that default to preview, not execution
+- Building **audit trails** that survive interview scrutiny
+- Using AI for **documentation and test ideas** while keeping decisions evidence-backed
+- Portfolio storytelling for **risk consulting** vs **pure SRE** audiences
 
 ---
 
@@ -117,18 +117,18 @@ Not antivirus, EDR, autonomous remediation, malware verdicts, guaranteed MITM de
 
 ## Resume bullet points
 
-- Built an evidence-to-action platform transforming endpoint proxy incidents into risk assessments, control tests, and hash-chained audit trails  
-- Implemented policy-gated remediation previews with six epistemic governance principles and ordinal confidence (not false precision)  
-- Delivered CLI + FastAPI surfaces for proxy classification, TLS proof, governance reports, and risk KPI analytics  
-- Established CI safety contracts: dry-run defaults, no silent destructive actions, deterministic fixture replay  
-- Authored portfolio documentation, demo scripts, and sample evidence packs for technology risk and cyber consulting interviews  
+- Built an evidence-to-action platform transforming endpoint proxy incidents into risk assessments, control tests, and hash-chained audit trails
+- Implemented policy-gated remediation previews with six epistemic governance principles and ordinal confidence (not false precision)
+- Delivered CLI + FastAPI surfaces for proxy classification, TLS proof, governance reports, and risk KPI analytics
+- Established CI safety contracts: dry-run defaults, no silent destructive actions, deterministic fixture replay
+- Authored portfolio documentation, demo scripts, and sample evidence packs for technology risk and cyber consulting interviews
 
 ---
 
 ## Power BI / PL-300 Portfolio Evidence
 
 | Topic | Artifact |
-|-------|----------|
+| ------- | ---------- |
 | **Dataset prepared** | Star schema CSVs via `powerbi-export` — [examples/powerbi/export/](examples/powerbi/export/) |
 | **Star schema designed** | `fact_incidents`, `fact_control_tests`, `fact_policy_decisions` + `dim_*` tables |
 | **DAX measures defined** | Total Incidents, Control Failure Rate, Security Accusation Count (expect 0), etc. — [dax/measures.md](examples/powerbi/dax/measures.md) |
@@ -163,7 +163,7 @@ Full walkthrough: [docs/demo-script.md](docs/demo-script.md)
 ## Key artifacts
 
 | Artifact | Path |
-|----------|------|
+| ---------- | ------ |
 | Architecture | [docs/architecture.md](docs/architecture.md) |
 | AI delivery notes | [docs/ai-assisted-delivery.md](docs/ai-assisted-delivery.md) |
 | Sample evidence | [examples/evidence/](examples/evidence/) |

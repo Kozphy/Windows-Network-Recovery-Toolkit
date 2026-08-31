@@ -11,7 +11,7 @@ See also: [control-matrix.md](control-matrix.md) · [evidence_to_action_governan
 ## NIST CSF 2.0
 
 | Function | Control objective | Evidence from this repo | Test procedure | Pass / Fail / Exception | Limitations | Owner | Audit artifact |
-|----------|-------------------|-------------------------|--------------|-------------------------|-------------|-------|----------------|
+| ---------- | ------------------- | ------------------------- | -------------- | ------------------------- | ------------- | ------- | ---------------- |
 | **Govern** | Risk decisions documented with limitations | `governance-report`, `risk-assess`, governance envelope | Run `governance-report --audit-dir` | Pass if limitations[] present | Not regulatory attestation | IT Governance | `reports/`, CLI JSON |
 | **Identify** | Asset and threat context for incidents | `risk-assess` asset/threat models | `risk-assess --fixture` | Pass if asset + threat populated | Fixture-scoped | IT Risk | case study JSON |
 | **Protect** | Remediation gated; no silent destructive action | `proxy-disable --dry-run`, policy engine | `test_policy_safety_contract.py` | Fail if execute without confirmation | partial — endpoint agent separate | Platform Engineering | audit JSONL |
@@ -24,7 +24,7 @@ See also: [control-matrix.md](control-matrix.md) · [evidence_to_action_governan
 ## ISO 27001-style (selected)
 
 | Theme | Control objective | Evidence | Test | Criteria | Limitations | Owner | Artifact |
-|-------|-------------------|----------|------|----------|-------------|-------|----------|
+| ------- | ------------------- | ---------- | ------ | ---------- | ------------- | ------- | ---------- |
 | A.8 Asset management | WinINET config as critical asset | `asset_for_fixture()` | risk-assess | Pass if asset typed | partial | IT Ops | risk-assess JSON |
 | A.12 Operations security | Change management for proxy | audit trail + preview | CT-AUDIT-001 | Pass if audit exists | partial | Internal Audit | audit JSONL |
 | A.16 Incident management | Evidence-backed triage | proof envelope | diagnose --proof | Pass if conclusion + limitations | Not malware verdict | Security | incident timeline |
@@ -35,7 +35,7 @@ See also: [control-matrix.md](control-matrix.md) · [evidence_to_action_governan
 ## MITRE ATT&CK (triage context only — not accusation)
 
 | Technique context | Platform signal | Classification | Limitation |
-|-------------------|-----------------|----------------|------------|
+| ------------------- | ----------------- | ---------------- | ------------ |
 | T1557 Adversary-in-the-Middle (context) | TLS path mismatch | `POSSIBLE_MITM_RISK` | **Not confirmed MITM** — triage only |
 | T1090 Proxy (context) | Unknown localhost listener | `UNKNOWN_LOCAL_PROXY` | **Not malware proof** |
 | T1112 Modify Registry (context) | Writer attribution tier | `CORRELATED` / `PROVEN_REGISTRY_WRITER` | Correlation ≠ causation without network proof |

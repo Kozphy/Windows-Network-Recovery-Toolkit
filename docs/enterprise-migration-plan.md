@@ -5,7 +5,7 @@
 Existing assets reused without rebuild:
 
 | Asset | Path | Role |
-|-------|------|------|
+| ------- | ------ | ------ |
 | Evidence ingest | `backend/v1_routes.py` | Legacy `/v1/evidence` |
 | Classifier worker | `backend/workers/classifier_worker.py` | Async RQ classification |
 | Policy engine | `src/platform_core/policy/engine.py` | Canonical gates |
@@ -31,7 +31,7 @@ Wire `POST /v1/enterprise/pipeline/run` as the canonical decision loop entry poi
 ## Phase 3 — Client migration
 
 | From | To | Notes |
-|------|-----|-------|
+| ------ | ----- | ------- |
 | `POST /v1/evidence` only | `POST /v1/enterprise/pipeline/run` | Full loop + audit |
 | `/trisk/*` fixture reads | `/v1/enterprise/reports/*` | Tenant-scoped |
 | JSONL human review only | `POST /v1/enterprise/reviews/{id}/approve` | DB + audit log |

@@ -20,7 +20,7 @@ Windows endpoints often fail while still appearing online (proxy errors, dead lo
 ## Stage Reference
 
 | Stage | Input | Output | Example | Risk if missing | Auditability |
-|-------|-------|--------|---------|-----------------|--------------|
+| ------- | ------- | -------- | --------- | ----------------- | -------------- |
 | **Signal** | OS/API reads | Raw observations | `ProxyEnable=1` | Unstructured anecdotes | No replay |
 | **Evidence** | Normalized signals | Structured JSON package | `portfolio_evidence.v1` | Conflated observation/proof | Schema versioning |
 | **Classification** | Evidence package | Primary label + secondary signals | `DEAD_PROXY_CONFIG` | Wrong triage path | Label + confidence logged |
@@ -35,7 +35,7 @@ Windows endpoints often fail while still appearing online (proxy errors, dead lo
 ## Evidence Levels (canonical)
 
 | Level | Meaning | May claim | Must not claim |
-|-------|---------|-----------|----------------|
+| ------- | --------- | ----------- | ---------------- |
 | `OBSERVED_ONLY` | Registry/proxy state read | Settings differ | Who wrote registry |
 | `CORRELATED` | Listener/PID alignment | Candidate process | Writer proof |
 | `PROVEN_REGISTRY_WRITER` | Sysmon E13 / Procmon | Writer for key | Autonomous containment |
@@ -52,7 +52,7 @@ Windows endpoints often fail while still appearing online (proxy errors, dead lo
 ## Module Map
 
 | Module | Role |
-|--------|------|
+| -------- | ------ |
 | `platform_core/evidence/tiers.py` | Tier enums + upgrade guards |
 | `platform_core/classification/engine.py` | Label assignment |
 | `platform_core/governance/proof_tier.py` | T0–T5 resolver |

@@ -33,7 +33,7 @@ Implementation: `src/platform_core/analytics/powerbi_export.py`
 ## 2. Classification → fact_incidents
 
 | Source field | CSV column |
-|--------------|------------|
+| -------------- | ------------ |
 | `classification.primary_classification` | `classification` |
 | `classification.secondary_signals[]` | `secondary_signals` (pipe-delimited) |
 | `classification.confidence` | `confidence_ordinal` (1–5 buckets) |
@@ -43,7 +43,7 @@ Implementation: `src/platform_core/analytics/powerbi_export.py`
 **Normalization rules:**
 
 | Raw policy outcome | CSV value |
-|--------------------|-----------|
+| -------------------- | ----------- |
 | PREVIEW_ONLY | PREVIEW_ONLY |
 | REQUIRE_TYPED_CONFIRMATION, REQUIRE_HUMAN_APPROVAL | HUMAN_REVIEW |
 | BLOCK, DENY, blocked | BLOCK |
@@ -55,13 +55,13 @@ Missing classification → `ERROR_INSUFFICIENT_DATA`
 
 ## 3. Control tests → fact_control_tests
 
-**Source A:** `control-test` CLI / `run_mature_control_tests()` output  
+**Source A:** `control-test` CLI / `run_mature_control_tests()` output
 **Source B:** Exporter derives rows from incident classification against CTRL-EPR-001…006 catalog
 
 Each incident generates six control test rows (one per catalog control). Result logic:
 
 | Condition | Result |
-|-----------|--------|
+| ----------- | -------- |
 | Matching classification | PASS or PARTIAL |
 | ERROR_INSUFFICIENT_DATA | NOT_TESTED |
 | No match | NOT_TESTED |
@@ -83,7 +83,7 @@ Each incident generates six control test rows (one per catalog control). Result 
 ## 5. Null handling
 
 | Situation | Treatment |
-|-----------|-----------|
+| ----------- | ----------- |
 | Missing timestamp | Export timestamp omitted or UTC now (audit rows only) |
 | Missing classification | `ERROR_INSUFFICIENT_DATA` |
 | Missing policy | `PREVIEW_ONLY` (safe default) |
@@ -104,7 +104,7 @@ Each incident generates six control test rows (one per catalog control). Result 
 ## 7. Proof-tier ordering
 
 | Tier | Sort order | Meaning |
-|------|------------|---------|
+| ------ | ------------ | --------- |
 | T0 | 0 | Observation only |
 | T1 | 1 | Local config evidence |
 | T2 | 2 | Runtime corroboration |
@@ -118,7 +118,7 @@ Use `dim_proof_tier.tier_order` for sorted visuals — **not** alphabetical sort
 ## 8. Risk-rating ordering
 
 | Rating | Sort order |
-|--------|------------|
+| -------- | ------------ |
 | LOW | 1 |
 | MEDIUM | 2 |
 | HIGH | 3 |

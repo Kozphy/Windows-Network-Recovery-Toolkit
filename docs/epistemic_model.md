@@ -24,7 +24,7 @@ An **inference** is a machine- or rule-derived hypothesis that explains or class
 ## Relationships (what does *not* follow)
 
 | If you have | You may **not** automatically claim |
-|-------------|-------------------------------------|
+| ------------- | ------------------------------------- |
 | Observations | Root cause, attacker identity, or safe to repair |
 | High-confidence inference | Certainty, or permission to execute destructive remediation |
 | Listener / process correlation | Registry writer identity (without appropriate write telemetry) |

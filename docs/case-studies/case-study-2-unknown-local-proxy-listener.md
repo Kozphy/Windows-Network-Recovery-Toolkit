@@ -14,7 +14,7 @@ Security and IT teams must triage localhost proxy listeners without falsely accu
 ## Evidence Collected
 
 | Signal | Value | Tier |
-|--------|-------|------|
+| -------- | ------- | ------ |
 | ProxyServer | 127.0.0.1:61526 | Observation |
 | Listener PID | 9999 | Observation |
 | Process | unknown_svc.exe | Correlation |
@@ -29,7 +29,7 @@ python -m windows_network_toolkit proxy-owner --fixture unknown_localhost_proxy.
 
 ## Classification
 
-**Primary:** `UNKNOWN_LOCAL_PROXY`  
+**Primary:** `UNKNOWN_LOCAL_PROXY`
 **Confidence:** ~0.35 (low — ordinal)
 
 ## Proof Level
@@ -39,19 +39,19 @@ python -m windows_network_toolkit proxy-owner --fixture unknown_localhost_proxy.
 ## Risk Assessment
 
 | Dimension | Rating |
-|-----------|--------|
+| ----------- | -------- |
 | Inherent risk | Medium–High (investigation required) |
 | Residual risk | High until writer attribution or software inventory |
 | Auto-remediation | Not appropriate |
 
 ## Policy Decision
 
-**Outcome:** `REQUIRE_TYPED_CONFIRMATION` for any allowlisted change.  
+**Outcome:** `REQUIRE_TYPED_CONFIRMATION` for any allowlisted change.
 **Blocked:** `KILL_PROXY_PROCESS`, firewall reset, adapter disable (by default).
 
 ## Remediation Preview
 
-Investigate first — software inventory, parent process tree, optional Sysmon E13.  
+Investigate first — software inventory, parent process tree, optional Sysmon E13.
 No silent process termination.
 
 ## Limitations

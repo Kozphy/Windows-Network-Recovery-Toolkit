@@ -3,7 +3,7 @@
 ## Workspace assumptions
 
 | Assumption | Portfolio default |
-|------------|-------------------|
+| ------------ | ------------------- |
 | Workspace type | Power BI Desktop `.pbix` locally (no published Service required) |
 | License | Power BI Desktop (free) for portfolio demonstration |
 | Gateway | Not required — CSV import mode |
@@ -16,7 +16,7 @@ For enterprise deployment, map to a **Fabric / Premium** workspace with separate
 ## Dataset refresh
 
 | Mode | Portfolio | Production recommendation |
-|------|-----------|---------------------------|
+| ------ | ----------- | --------------------------- |
 | Import | CSV from `analytics/powerbi/data` | Scheduled refresh from secure data lake |
 | DirectQuery | Not used | Optional for live audit warehouse |
 | Incremental refresh | N/A | Partition by `observed_at` month |
@@ -39,7 +39,7 @@ For enterprise deployment, map to a **Fabric / Premium** workspace with separate
 ### By classification sensitivity
 
 | Role | Filter |
-|------|--------|
+| ------ | -------- |
 | IT Support | All except POSSIBLE_MITM_RISK detail rows |
 | Technology Risk | Full access |
 | Audit (read-only) | All facts, no stakeholder PII |
@@ -67,7 +67,7 @@ For enterprise deployment, map to a **Fabric / Premium** workspace with separate
 ## Audit log immutability after CSV export
 
 | Property | JSONL source | CSV export |
-|----------|--------------|------------|
+| ---------- | -------------- | ------------ |
 | Append-only | Yes (design intent) | No — snapshot overwrite |
 | Hash chain | Verifiable | `hash_chain_valid` flag at export time only |
 | Tamper detection | `audit verify` | Re-export required |
@@ -79,7 +79,7 @@ For enterprise deployment, map to a **Fabric / Premium** workspace with separate
 ## AI-assisted explanation boundaries
 
 | Allowed in Power BI narrative | Forbidden |
-|------------------------------|-----------|
+| ------------------------------ | ----------- |
 | Summarize incident counts | Imply AI authorized remediation |
 | Explain proof-tier definitions | Malware or MITM confirmation rates |
 | Link to human-review queue | Control effectiveness attestation |

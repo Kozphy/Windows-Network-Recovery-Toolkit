@@ -8,7 +8,7 @@ ERR_CONNECTION_REFUSED
 localhost refused to connect
 ```
 
-This toolkit records **observation → hypothesis → proof tier → policy preview**.  
+This toolkit records **observation → hypothesis → proof tier → policy preview**.
 It does **not** restart apps, change firewall rules, or disable the proxy by default.
 
 ## What ERR_CONNECTION_REFUSED usually means
@@ -56,7 +56,7 @@ Is the target loopback?
 ## Classifications
 
 | Code | Typical meaning |
-|------|-----------------|
+| ------ | ----------------- |
 | `LOCALHOST_SERVICE_NOT_LISTENING` | Refused/no listener; no prior exit proof |
 | `LOCALHOST_LISTENER_ACTIVE` | TCP + listener present |
 | `LOCALHOST_IPV4_IPV6_BIND_MISMATCH` | One family connects; other refused |

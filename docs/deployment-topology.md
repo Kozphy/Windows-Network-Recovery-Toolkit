@@ -3,7 +3,7 @@
 ## Stacks
 
 | Stack | Compose file | Services | Use case |
-|-------|--------------|----------|----------|
+| ------- | -------------- | ---------- | ---------- |
 | Reviewer demo | `docker-compose.demo.yml` | API only (`DEMO_MODE`) | Hiring panels, read-only |
 | Production-shaped | `docker-compose.yml` | API, Postgres, Redis, worker, Prometheus, Grafana | Senior portfolio demo |
 | CD overlay | `docker-compose.prod.yml` | Pull immutable API image | Documented only — not required locally |
@@ -11,7 +11,7 @@
 ## Ports (production-shaped)
 
 | Service | Port | Health |
-|---------|------|--------|
+| --------- | ------ | -------- |
 | API | 8000 | `GET /trisk/health`, `GET /v1/evidence` (auth) |
 | Postgres | 5432 | `pg_isready` |
 | Redis | 6379 | `redis-cli ping` |
@@ -21,7 +21,7 @@
 ## Environment variables
 
 | Variable | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | `TRISK_DATABASE_URL` | SQLModel engine URL (defaults to Postgres in compose) |
 | `REDIS_URL` | RQ broker |
 | `QUEUE_BACKEND` | `rq` or `memory` (tests) |

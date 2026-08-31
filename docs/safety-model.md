@@ -7,7 +7,7 @@ Principles: no silent registry changes; no silent process killing; no silent fir
 ## Non-claims summary
 
 | We do **not** claim | What we **do** |
-|---------------------|----------------|
+| --------------------- | ---------------- |
 | Malware / compromise verdicts | Reliability labels + `limitations[]` |
 | Confirmed MITM or surveillance | Triage labels only; requires additional evidence |
 | Autonomous remediation | Dry-run default; typed confirmation for apply |
@@ -44,14 +44,14 @@ Related: [evidence-boundaries.md](evidence-boundaries.md) · [limitations.md](li
 ## Preview vs Execute
 
 | Mode | Registry write | Audit row |
-|------|----------------|-----------|
+| ------ | ---------------- | ----------- |
 | Preview (`dry_run=true`) | No | Preview requested |
 | Execute | Yes (allowlisted only) | Apply + rollback snapshot |
 
 ## Allowlisted Actions
 
 | action_id | Confirmation | Reversible |
-|-----------|--------------|------------|
+| ----------- | -------------- | ------------ |
 | `disable_wininet_proxy` | `DISABLE_WININET_PROXY` | Yes (LKG snapshot) |
 
 ## CI Enforcement

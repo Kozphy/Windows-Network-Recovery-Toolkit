@@ -11,7 +11,7 @@ Short rules for AI assistants (Cursor, Codex, Copilot, etc.). Persistent Cursor 
 ## Non-negotiable rules
 
 | # | Rule |
-|---|------|
+| --- | ------ |
 | 1 | Use evidence tiers, ordinal confidence, and audit-backed reasoning — no false certainty |
 | 2 | Remediation is policy-gated; **dry-run / preview by default** |
 | 3 | Never change risky Windows/network state without explicit user confirmation + typed token |
@@ -54,7 +54,7 @@ pytest -q tests/test_procmon_filter_and_watch_soak.py --basetemp=.pytest_tmp
 ## Key paths
 
 | Path | Role |
-|------|------|
+| ------ | ------ |
 | `windows_network_toolkit/` | Primary CLI and diagnostics |
 | `riskclaw/` | Product-agent contracts, SKILL.md loader, typed tools, policy adapter |
 | `src/proxy_drift/` | Startup observability, boot trace, guardian, operator incident card |

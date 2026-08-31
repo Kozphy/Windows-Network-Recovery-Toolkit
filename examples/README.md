@@ -7,7 +7,7 @@ This folder holds **safe, fictional** samples for documentation and portfolio re
 ## Files
 
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `sample_failure_block.json` | Synthetic FailureBlock-shaped record — no real hostnames, IPs, or corporate domains |
 | `proxy_reasoning_audit_record.json` | Fictional `proxy_reasoning_run` row (signals, policy, limitations) |
 | `proof_engine_localhost_proxy_confirmed_example.json` | Fictional proof contrast (demo port `127.0.0.1:54321`) |

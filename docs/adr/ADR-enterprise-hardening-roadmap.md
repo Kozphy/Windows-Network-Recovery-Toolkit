@@ -80,7 +80,7 @@ Adopt an **eight-phase hardening program** documented in [enterprise-hardening-r
 ## Alternatives considered
 
 | Alternative | Rejected because |
-|-------------|------------------|
+| ------------- | ------------------ |
 | Big-bang rewrite to microservices | Breaks CLI compatibility and safety CI |
 | Skip agent layer; API-only ingest | Does not demonstrate endpoint deployment story |
 | Full Linux WinINET emulation | False parity; misleading proof tiers |

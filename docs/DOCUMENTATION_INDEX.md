@@ -17,7 +17,7 @@ A **local-first Windows endpoint reliability toolkit** evolving into a **Purple 
 ### Purple Team docs
 
 | Doc | Purpose |
-|-----|---------|
+| ----- | --------- |
 | [purple-team-gap-analysis.md](purple-team-gap-analysis.md) | Phase 0 assessment |
 | [purple_team/architecture.md](purple_team/architecture.md) | Lifecycle architecture |
 | [purple_team/safety-model.md](purple_team/safety-model.md) | Deny-by-default gates |
@@ -32,9 +32,29 @@ A **local-first Windows endpoint reliability toolkit** evolving into a **Purple 
 
 ## Portfolio pack (recruiters, Big 4, FAANG, PL-300)
 
+### Enterprise case study pack (start here for hiring managers)
+
 | Doc | Purpose |
-|-----|---------|
-| **[README.md](../README.md)** | **30-second positioning + non-claims (start here)** |
+| ----- | --------- |
+| **[executive-summary.md](executive-summary.md)** | 1–2 page CIO/CISO/Risk summary |
+| **[case-study.md](case-study.md)** | Full hiring-manager case study |
+| **[portfolio-summary.md](portfolio-summary.md)** | GitHub / resume / LinkedIn / 60s interview |
+| **[business-case.md](business-case.md)** | Problem, target state, benefits (no fabricated ROI) |
+| **[stakeholder-map.md](stakeholder-map.md)** | Goals, decisions, evidence by role |
+| **[system-boundary.md](system-boundary.md)** | In scope / out of scope / automation vs approval |
+| **[decision-model.md](decision-model.md)** | Pipeline and decision points |
+| **[requirements.md](requirements.md)** | FR / NFR / GR with implementation status |
+| **[kpi-framework.md](kpi-framework.md)** | Operational, risk, engineering, governance KPIs |
+| **[risk-register.md](risk-register.md)** | Enterprise risk register (ordinal) |
+| **[failure-taxonomy.md](failure-taxonomy.md)** | F1–F9 fail-safe taxonomy |
+| **[tradeoffs.md](tradeoffs.md)** | Architecture trade-off judgments |
+| **[uat-plan.md](uat-plan.md)** | Given/When/Then acceptance scenarios |
+| **[auditability.md](auditability.md)** | Who/what/when/why audit framework |
+| **[adr/0001-system-boundary.md](adr/0001-system-boundary.md)** | ADR: system boundary |
+
+| Doc | Purpose |
+| ----- | --------- |
+| **[README.md](../README.md)** | **Enterprise README + quick commands (start here)** |
 | [production-readiness-gap.md](production-readiness-gap.md) | Honest 15-row production gap table |
 | [threat-model.md](threat-model.md) | 10 abuse scenarios + test mapping |
 | [docker-demo.md](docker-demo.md) | Reviewer Docker Demo (Option C) |
@@ -61,7 +81,7 @@ A **local-first Windows endpoint reliability toolkit** evolving into a **Purple 
 ## Portfolio pack (legacy index)
 
 | Doc | Purpose |
-|-----|---------|
+| ----- | --------- |
 | **[README_BIG4_PORTFOLIO.md](README_BIG4_PORTFOLIO.md)** | **Big 4 / Risk Advisory portfolio index** |
 | [big4_interview_positioning.md](big4_interview_positioning.md) | Core Big 4 framing and STAR story |
 | [technology_risk_control_matrix.md](technology_risk_control_matrix.md) | Control testing matrix |
@@ -280,7 +300,7 @@ Entry: `platform_core/outcome_learning/` · Fixture: `fixtures/outcome_learning/
 ## Safety boundaries (non-negotiable)
 
 | Boundary | Enforcement |
-|----------|-------------|
+| ---------- | ------------- |
 | No silent remediation | Policy gates + dry-run defaults on API previews |
 | Observation ≠ proof | Documented in adapters and market events module |
 | Research ≠ execution | Market module blocks trade execution paths |
@@ -290,7 +310,7 @@ Entry: `platform_core/outcome_learning/` · Fixture: `fixtures/outcome_learning/
 ## Module map
 
 | Path | Responsibility |
-|------|----------------|
+| ------ | ---------------- |
 | `src/` | Extended Windows CLI (`python -m src`), collectors, market events CLI |
 | `src/proxy_drift/` | Startup observability, boot trace, guardian, evidence bundle, safe search |
 | `src/network_recovery/` | ChatGPT app-path scenario diagnose, LOW-risk auto-fix orchestrator |
@@ -322,7 +342,7 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 ## Related docs
 
 | Doc | Topic |
-|-----|-------|
+| ----- | ------- |
 | `docs/case-studies/dead-localhost-proxy.md` | Golden 59081 dead proxy case |
 | `docs/classification-model.md` | 12 primary labels + secondary signals |
 | `docs/proof-vs-observation.md` | Proof envelope vs observation |

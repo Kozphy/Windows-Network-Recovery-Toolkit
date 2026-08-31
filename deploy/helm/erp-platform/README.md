@@ -20,7 +20,7 @@ Never set `image.tag=latest` in production CD.
 ## Values
 
 | Key | Purpose |
-|-----|---------|
+| ----- | --------- |
 | `image.repository` | GHCR image path (lowercase) |
 | `image.tag` | Full git SHA |
 | `ingress.enabled` | Expose API via ingress |

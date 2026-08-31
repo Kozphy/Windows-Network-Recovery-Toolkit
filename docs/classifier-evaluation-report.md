@@ -7,7 +7,7 @@ This is not AI benchmark research. It measures offline fixture replay of the inc
 ## Metrics
 
 | Metric | Meaning |
-|--------|---------|
+| -------- | --------- |
 | `total_cases` | Benchmark cases executed |
 | `exact_primary_classification_match_rate` | Predicted primary class equals expected |
 | `secondary_signal_match_rate` | Overlap of secondary signals |

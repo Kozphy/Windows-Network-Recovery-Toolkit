@@ -25,7 +25,7 @@ Any Domain Event
 ## Domains (fixture-based v1)
 
 | Domain | Examples |
-|--------|----------|
+| -------- | ---------- |
 | Windows | Proxy localhost, DNS failure, browser path |
 | Security | Encoded PowerShell, registry write, listener |
 | Cloud | Error rate, IAM change, failed deployment |

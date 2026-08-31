@@ -5,7 +5,7 @@ Deterministic outcome tracking — **not** autonomous AI.
 ## Classifications
 
 | Value | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `SUCCESSFUL_REMEDIATION` | Operator confirmed recovery |
 | `PARTIAL_RECOVERY` | Some paths restored |
 | `NO_IMPACT` | Blocked by policy or no action taken |

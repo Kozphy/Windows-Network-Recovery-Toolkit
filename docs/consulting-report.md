@@ -4,9 +4,9 @@
 
 **Related analytics:** `analytics-summary` CLI · [sql_analytics_queries.md](sql_analytics_queries.md) · Sample: [reports/sample_governance_report.md](../reports/sample_governance_report.md)
 
-**Prepared for:** IT Leadership / Risk Committee  
-**Subject:** WinINET proxy drift and localhost listener patterns on corporate endpoints  
-**Classification:** Internal — Operational Risk Assessment  
+**Prepared for:** IT Leadership / Risk Committee
+**Subject:** WinINET proxy drift and localhost listener patterns on corporate endpoints
+**Classification:** Internal — Operational Risk Assessment
 **Date:** June 2026
 
 ---
@@ -22,7 +22,7 @@ This assessment documents observed evidence, risk hypotheses, recommended contro
 ## Business Problem
 
 | Impact area | Description |
-|-------------|-------------|
+| ------------- | ------------- |
 | Productivity | Users unable to access SaaS, SSO, and internal web applications |
 | Support cost | L1/L2 tickets misrouted as "network down" |
 | Risk exposure | Manual registry fixes without audit trail or rollback |
@@ -38,7 +38,7 @@ Organizations need a **repeatable, evidence-based triage workflow** that separat
 Windows applications use two common HTTP stacks:
 
 | Stack | Typical consumers | Proxy source |
-|-------|-------------------|--------------|
+| ------- | ------------------- | -------------- |
 | **WinINET** | Browsers, many desktop apps | HKCU Internet Settings |
 | **WinHTTP** | Services, some CLI tools | `netsh winhttp` or direct |
 
@@ -51,7 +51,7 @@ A frequent failure mode: WinINET enables proxy `127.0.0.1:PORT` while WinHTTP re
 ### Representative observation set (golden case)
 
 | Signal | Value | Evidence tier |
-|--------|-------|---------------|
+| -------- | ------- | --------------- |
 | WinINET ProxyEnable | 1 | Observation |
 | WinINET ProxyServer | 127.0.0.1:59081 | Observation |
 | WinHTTP | Direct (no proxy) | Observation |
@@ -70,7 +70,7 @@ A frequent failure mode: WinINET enables proxy `127.0.0.1:PORT` while WinHTTP re
 ### Unknown listener pattern (secondary case)
 
 | Signal | Value |
-|--------|-------|
+| -------- | ------- |
 | ProxyServer | 127.0.0.1:61526 |
 | Listener | Present (PID 9999, `unknown_svc.exe`) |
 | Registry writer confirmed | No |
@@ -82,7 +82,7 @@ A frequent failure mode: WinINET enables proxy `127.0.0.1:PORT` while WinHTTP re
 ## Risk Assessment
 
 | Risk ID | Description | Likelihood | Impact | Inherent risk |
-|---------|-------------|------------|--------|---------------|
+| --------- | ------------- | ------------ | -------- | --------------- |
 | R1 | Stale WinINET proxy breaks business apps | Medium | Medium | **Medium** |
 | R2 | Unaudited registry remediation | Medium | High | **High** |
 | R3 | False threat escalation (listener ≠ writer) | Medium | Medium | **Medium** |
@@ -96,7 +96,7 @@ A frequent failure mode: WinINET enables proxy `127.0.0.1:PORT` while WinHTTP re
 ## Root Cause Hypotheses
 
 | Hypothesis | Status | Notes |
-|------------|--------|-------|
+| ------------ | -------- | ------- |
 | H1: Dead localhost proxy in WinINET | **Supported** by structured proof | Primary reliability driver in golden case |
 | H2: Network or DNS outage | **Weakened** | Ping/DNS/direct path succeed |
 | H3: MITM / TLS interception | **Unproven** in golden case | No TLS mismatch; no active listener |
@@ -108,7 +108,7 @@ A frequent failure mode: WinINET enables proxy `127.0.0.1:PORT` while WinHTTP re
 ## Recommended Controls
 
 | Control | Type | Description |
-|---------|------|-------------|
+| --------- | ------ | ------------- |
 | C1 | Detective | Standardize `proxy-status` and `proxy-watch` in L2 playbook |
 | C2 | Preventive | Dry-run default; typed confirmation for registry changes |
 | C3 | Corrective | Allowlisted remediation: WinINET disable only (HKCU) |
@@ -165,7 +165,7 @@ python -m windows_network_toolkit proxy-watch --duration 300 --interval 5
 ## Before / After Comparison
 
 | Dimension | Before (ad-hoc scripts) | After (toolkit workflow) |
-|-----------|-------------------------|--------------------------|
+| ----------- | ------------------------- | -------------------------- |
 | Evidence format | Ad-hoc screenshots | Structured JSON + reports |
 | Proof vs observation | Often conflated | Tiered evidence model |
 | Remediation | Immediate registry edits | Dry-run → confirm → audit |
@@ -179,7 +179,7 @@ python -m windows_network_toolkit proxy-watch --duration 300 --interval 5
 ## Business Impact
 
 | Metric | Expected improvement |
-|--------|---------------------|
+| -------- | --------------------- |
 | Time to consistent diagnosis | Reduced via shared classification |
 | Repeat incidents | Reduced via `proxy-watch` reverter detection |
 | Audit findings (untracked changes) | Reduced via confirmation + logging |

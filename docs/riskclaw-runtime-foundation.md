@@ -11,7 +11,7 @@ or a generic shell tool.
 ## Relationship to existing agent code
 
 | Path | Responsibility |
-|------|----------------|
+| ------ | ---------------- |
 | `src/platform_core/agents/` | Deterministic pipeline stage output contracts |
 | `src/platform_core/openclaw/` | Policy-gated coding automation and draft PR workflow |
 | `windows_network_toolkit/agent/` | Existing read-only endpoint collection cycle |

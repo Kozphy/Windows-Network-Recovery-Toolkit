@@ -9,7 +9,7 @@
 ## Deployment model
 
 | Mode | Surface | Notes |
-|------|---------|-------|
+| ------ | --------- | ------- |
 | Operator laptop | WNT JSON CLI | Default; dry-run on mutations |
 | CI / Linux | Fixture inject (`--fixture`) | No live registry/network |
 | Windows live | WNT CLI + optional `src` shim | Shim prints deprecation stderr |
@@ -27,7 +27,7 @@ Hardening before enterprise rollout:
 ## Safety model
 
 | Guarantee | Implementation |
-|-----------|----------------|
+| ----------- | ---------------- |
 | Diagnose before repair | Default dry-run / PREVIEW; see [ADR-001](adr/ADR-001-diagnose-before-remediate.md) |
 | No silent process kill | `process_kill_forbidden` registry tier; CLI requires Admin + typed confirm |
 | No silent firewall reset | `firewall_reset_manual_only`; API execute blocked |
@@ -44,7 +44,7 @@ WNT safety contracts enforce: dry-run default, `DISABLE_WININET_PROXY` token, no
 ## Supported OS assumptions
 
 | Surface | Assumption |
-|---------|------------|
+| --------- | ------------ |
 | Core CLI fixture diagnose | Cross-platform (Python 3.11+) |
 | Live Windows probes | Windows 10/11 with standard user; Admin for stop-listener/reverter paths |
 | Linux / Debian / Ubuntu / WSL | Observe-only via `platform_core/os_probe.py` — no live remediation |
@@ -101,7 +101,7 @@ WNT safety contracts enforce: dry-run default, `DISABLE_WININET_PROXY` token, no
 ## Telemetry requirements
 
 | Claim | Requires |
-|-------|----------|
+| ------- | ---------- |
 | Registry writer proof candidate | Sysmon 13/14, Security 4657, or Procmon CSV import |
 | ETW-backed paths | Optional `evidence/etw_*` adapters |
 | Default diagnose | Fixture or live probes only — no telemetry install |
@@ -121,7 +121,7 @@ WNT safety contracts enforce: dry-run default, `DISABLE_WININET_PROXY` token, no
 ## Test coverage map
 
 | Area | Tests |
-|------|-------|
+| ------ | ------- |
 | Classification matrix (12 primaries) | `tests/platform_core/classification/` |
 | WNT JSON CLI contract | `tests/windows_network_toolkit/test_cli_json_contract.py` |
 | WNT proof envelope | `tests/windows_network_toolkit/test_diagnose_proof.py` |
@@ -141,7 +141,7 @@ CI smoke: `python -m windows_network_toolkit proxy-status --fixture tests/fixtur
 ## Roadmap
 
 | Item | Status |
-|------|--------|
+| ------ | -------- |
 | 12-label classification + proof envelope | **Done** |
 | WNT JSON CLI + `.audit/` unification | **Done** |
 | Sysmon/Event Log writer causation | Planned |

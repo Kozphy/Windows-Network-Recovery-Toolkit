@@ -24,7 +24,7 @@ make demo-tier1
 ## Step-by-step commands
 
 | Step | Command | Expected signal |
-|------|---------|-----------------|
+| ------ | --------- | ----------------- |
 | 1. Diagnosis | `python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json` | Primary hypothesis + confidence; writes `reports/last_diagnosis.json` |
 | 2. Timeline replay | `python -m src proxy-timeline --fixture tests/fixtures/proxy_incidents/unknown_node_powershell_proxy.json --format markdown` | Markdown sections: `PROCESS_CREATED`, `REGISTRY_VALUE_SET`, `LOCALHOST_LISTENER_OBSERVED`, `PROXY_STATE_CHANGED` |
 | 3. Policy | `python -m src proxy-policy --fixture tests/fixtures/proxy_incidents/suspicious_powershell_temp_proxy.json --format json` | JSON `policy.decision` / `policy.severity` |
@@ -40,7 +40,7 @@ docker compose up --build
 ```
 
 | Endpoint | URL | Expected |
-|----------|-----|----------|
+| ---------- | ----- | ---------- |
 | Liveness | http://localhost:8000/platform/health | HTTP 200, JSON status |
 | Readiness | http://localhost:8000/platform/ready | HTTP 200 when startup checks pass |
 | Metrics | http://localhost:8000/metrics | Prometheus text exposition |
@@ -58,7 +58,7 @@ In-process contract tests (no Docker daemon): `pytest -q tests/test_platform_hea
 ## Safety boundaries (demo)
 
 | Action | Demo behavior |
-|--------|----------------|
+| -------- | ---------------- |
 | Registry mutation | **Not run** in tier-1 demo (fixtures only) |
 | Process kill | **Blocked** by policy catalog |
 | Firewall reset | **Blocked** by policy catalog |
@@ -68,7 +68,7 @@ In-process contract tests (no Docker daemon): `pytest -q tests/test_platform_hea
 ## Proof vs correlation (interview language)
 
 | Signal | Label | Meaning |
-|--------|-------|---------|
+| -------- | ------- | --------- |
 | Sysmon Event ID 13 | Optional telemetry | Can support `FINAL_CAUSATION` when present — not guaranteed on every host |
 | Listener on localhost port | `LOCALHOST_LISTENER_OBSERVED` / `LISTENER_OBSERVED` | **Correlation** — process owns port; does not prove registry write |
 | Registry polling diff | `CORRELATION_ONLY` | Observed state change between polls; writer unknown |

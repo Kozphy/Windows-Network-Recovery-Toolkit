@@ -5,7 +5,7 @@ Production-shaped **demo** stack for SRE reviewers — not a live SLO-attested s
 ## On-call scenarios
 
 | Alert (conceptual) | First action | Doc |
-|--------------------|--------------|-----|
+| -------------------- | -------------- | ----- |
 | API unhealthy | `curl /health`, check compose logs | [operational-runbook.md](operational-runbook.md) |
 | Worker backlog | `redis-cli LLEN rq:queue:trisk`, scale worker replicas | [queue-backend-choice.md](queue-backend-choice.md) |
 | Postgres full | Vacuum/retention; demo retention policy | [data-retention-policy.md](data-retention-policy.md) |

@@ -60,7 +60,7 @@ install-startup-observability
 ## CLI reference (`python -m src`)
 
 | Command | Role | Default | Live apply token |
-|---------|------|---------|------------------|
+| --------- | ------ | --------- | ------------------ |
 | `install-startup-observability` | Guardian + boot trace bundle | preview | `INSTALL_STARTUP_OBSERVABILITY` |
 | `uninstall-startup-observability` | Remove all artifacts | preview | `UNINSTALL_STARTUP_OBSERVABILITY` |
 | `install-boot-trace-task` | Boot trace only | preview | `INSTALL_BOOT_TRACE_TASK` |
@@ -79,7 +79,7 @@ Full flag reference: [cli_reference.md](cli_reference.md#startup-observability--
 ## Audit artifacts
 
 | Path | Content |
-|------|---------|
+| ------ | --------- |
 | `logs/proxy_boot_trace.jsonl` | Post-logon WinINET/WinHTTP/listener samples + delta events |
 | `logs/proxy_guardian.jsonl` | Guardian classification and action rows |
 | `logs/startup_inventory.jsonl` | Startup inventory runs |
@@ -90,7 +90,7 @@ Full flag reference: [cli_reference.md](cli_reference.md#startup-observability--
 Structured JSON payloads use explicit `schema_version` fields:
 
 | Schema | Module | Purpose |
-|--------|--------|---------|
+| -------- | -------- | --------- |
 | `startup_observability.v1` | `startup_observability.py` | Combined install preview/result |
 | `boot_trace_task.v1` | `boot_trace_task.py` | Boot trace task install/fallback |
 | `guardian_task.v1` | `guardian_task.py` | Guardian task install/fallback |
@@ -101,7 +101,7 @@ Structured JSON payloads use explicit `schema_version` fields:
 ### `startup-observability-report` fields
 
 | Field | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `samples` | Number of boot trace JSONL rows read |
 | `first_observed_proxy_enable` / `first_observed_proxy_server` | First sample WinINET state |
 | `final_proxy_enable` / `final_proxy_server` | Last sample WinINET state |
@@ -132,7 +132,7 @@ Caps: `--max-seconds` (default 20), `--max-files` (default 3000). Hitting a cap 
 ## Safety boundaries
 
 | Allowed | Blocked without confirmation |
-|---------|-------------------------------|
+| --------- | ------------------------------- |
 | Read registry, netstat, startup inventory | Registry mutation (except guardian dead-proxy clear with token) |
 | Boot trace sampling | Process kill, firewall reset |
 | Evidence bundle collection | Disabling active localhost dev proxies |
@@ -152,7 +152,7 @@ dir "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\WNRT-*.cmd"
 ## Module map
 
 | File | Role |
-|------|------|
+| ------ | ------ |
 | `src/proxy_drift/startup_observability.py` | Combined install/uninstall orchestration |
 | `src/proxy_drift/boot_trace_task.py` | Boot trace scheduled task + Startup fallback |
 | `src/proxy_drift/guardian_task.py` | Guardian scheduled task + Startup fallback |

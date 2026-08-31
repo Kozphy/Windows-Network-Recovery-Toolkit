@@ -5,7 +5,7 @@ Local-first FastAPI routes mounted from `backend/platform_routes.py`. Authentica
 **Headers**
 
 | Header | Purpose |
-|--------|---------|
+| -------- | --------- |
 | `X-Operator-Id` | Actor id in audit rows |
 | `X-Operator-Role` | `viewer` \| `operator` \| `admin` \| `security` |
 | `X-Request-Id` | Optional correlation (client-generated) |

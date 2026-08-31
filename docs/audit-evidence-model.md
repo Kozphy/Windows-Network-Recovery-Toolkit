@@ -1,7 +1,7 @@
 # Audit Evidence Model
 
-**Status:** Normative evidence tier and normalization reference  
-**Modules:** `windows_network_toolkit/evidence_schema.py`, `src/platform_core/governance/proof_tier.py`, `proxy_state_machine.py`  
+**Status:** Normative evidence tier and normalization reference
+**Modules:** `windows_network_toolkit/evidence_schema.py`, `src/platform_core/governance/proof_tier.py`, `proxy_state_machine.py`
 **Disclaimer:** Evidence tiers label **claim strength** — they do not auto-upgrade proof when exported to Power BI or governance reports.
 
 ---
@@ -24,7 +24,7 @@ Design goals:
 Defined in `EvidenceTier` enum (`evidence_schema.py`). Aligned with [proxy-proof-ladder.md](proxy-proof-ladder.md).
 
 | Tier | Enum value | Claim strength | Typical source |
-|------|------------|----------------|----------------|
+| ------ | ------------ | ---------------- | ---------------- |
 | **T0** | `T0_OBSERVATION` | Raw observation, no structural proof | Log line, uncorroborated note |
 | **T1** | `T1_STATE_EVIDENCE` | Configuration state read | `proxy-status`, `proxy_change` normalizer |
 | **T2** | `T2_RUNTIME_EVIDENCE` | Runtime listener/process correlation | `proxy-owner`, listener on port |
@@ -54,7 +54,7 @@ From `STANDARD_LIMITATIONS`:
 `powerbi_star_export.py` and `audit_report.py` use platform proof tiers:
 
 | Platform tier | Endpoint analytics tier | Description |
-|---------------|-------------------------|-------------|
+| --------------- | ------------------------- | ------------- |
 | `T0_OBSERVATION_ONLY` | T0 | Snapshot or symptom — not proof |
 | `T1_LOCAL_CONFIG_EVIDENCE` | T1 | Registry/proxy configuration |
 | `T2_RUNTIME_CORROBORATION` | T2 | Listener/path contrast |
@@ -68,7 +68,7 @@ From `STANDARD_LIMITATIONS`:
 ## Evidence types
 
 | `evidence_type` | Normalizer | Default tier | Key normalized fields |
-|-----------------|------------|--------------|------------------------|
+| ----------------- | ------------ | -------------- | ------------------------ |
 | `proxy_state` | `normalize_proxy_state` | T1 | `wininet_proxy_enabled`, `wininet_proxy_server`, `wininet_winhttp_mismatch` |
 | `listener_state` | `normalize_listener_state` | T2 (T4 if writer proof) | `listener_found`, `listener_pid`, `listener_name`, `listener_path` |
 | `probe_result` | `normalize_probe_result` | T3 | `direct_probe_ok`, `proxy_probe_ok`, `proxy_status`, `failure_reason` |
@@ -115,7 +115,7 @@ Duplicate `event_id` within a pipeline run are dropped — replays must use fres
 ## Evidence quality dimensions
 
 | Dimension | Question | Failure if ignored |
-|-----------|----------|-------------------|
+| ----------- | ---------- | ------------------- |
 | **Completeness** | Are state, listener, and probe events present? | NOT_TESTED controls, `ERROR_INSUFFICIENT_DATA` |
 | **Freshness** | Timestamps within incident window? | Stale classification |
 | **Tier honesty** | Is tier label consistent with sources? | Audit finding overturned in interview |
@@ -143,7 +143,7 @@ Duplicate `event_id` within a pipeline run are dropped — replays must use fres
 ### Recovery procedures
 
 | Gap | Recovery action |
-|-----|-----------------|
+| ----- | ----------------- |
 | Missing probes | Re-run `proxy-health` with network access |
 | Missing owner | Re-run `proxy-owner` elevated |
 | Missing writer proof | Enable Sysmon E13; collect Procmon registry trace |

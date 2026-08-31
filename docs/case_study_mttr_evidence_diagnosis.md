@@ -20,7 +20,7 @@ Correlate registry, process, network, browser, and proof signals into:
 ## Business KPIs
 
 | KPI | Target impact |
-|-----|----------------|
+| ----- | ---------------- |
 | MTTR reduction | Faster triage via timeline + ranked hypothesis |
 | False positive reduction | Evidence tiers block correlation-only remediation |
 | Auditability improvement | Append-only JSONL + replay |

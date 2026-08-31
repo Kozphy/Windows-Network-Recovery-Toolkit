@@ -1,130 +1,80 @@
-# Portfolio Summary — Technology Risk & Control Analytics Platform
+# Portfolio Summary
 
-Use this document for LinkedIn, resume, cover letters, and interview preparation.
+Use for GitHub, resume, LinkedIn, and interviews.
+**Full case study:** [case-study.md](case-study.md) · **Executive summary:** [executive-summary.md](executive-summary.md)
 
----
-
-## One-liner
-
-**Built a Technology Risk & Control Analytics Platform that transforms endpoint reliability incidents into evidence-backed risk assessments, control tests, remediation previews, audit trails, and governance reports.**
+> Independently developed enterprise-style reference implementation — not claimed as production deployment at a named institution.
 
 ---
 
-## Problem
+## Recommended positioning
 
-Corporate endpoints often fail in confusing ways: ping works, DNS works, but browsers break. Root causes frequently involve **WinINET proxy misconfiguration**, **dead localhost listeners**, or **unclassified local proxy processes** — not upstream network outages. Traditional fix scripts mutate registry state without evidence tiers, audit trails, or rollback — creating operational and compliance risk.
-
----
-
-## What I Built
-
-A Python 3.11+ **endpoint reliability decision platform** with:
-
-- JSON-first CLI (`python -m windows_network_toolkit`)
-- 12-primary proxy risk classifications
-- Evidence tier state machine (observation → correlation → proof)
-- Structured proof engine (listener check, WinINET/WinHTTP contrast, TLS path)
-- Policy engine blocking destructive actions by default
-- Dry-run remediation preview with typed confirmation tokens
-- Append-only audit JSONL with replay and hash-chain verification
-- **`analytics-summary`** — KPI rollup from audit JSONL (markdown or JSON)
-- FastAPI platform API and optional dashboard
-- 1000+ pytest cases including safety contract tests
-- GitHub Actions CI: lint, test, security scan (bandit, pip-audit, Trivy)
-
-**Golden demo case:** dead WinINET proxy `127.0.0.1:59081` — fixture-safe on any OS.
+**Portfolio title:** Technology Risk & Control Analytics Platform (Windows Endpoint Reliability & Control Validation)
+**Repository name:** Windows Network Recovery Toolkit (kept for continuity and SEO)
+**One sentence:** Converts Windows endpoint proxy/network telemetry into control evidence, policy-gated remediation decisions, and hash-chained audit records — with fixture-driven control validation.
 
 ---
 
-## Why It Matters
+## GitHub (100–150 words)
 
-| Stakeholder | Value |
-|-------------|-------|
-| IT support | Faster, consistent proxy triage |
-| Endpoint reliability engineers | Deterministic replay and metrics hooks |
-| Security analysts | Listener vs writer separation; no false certainty |
-| Risk consultants | Control matrix, governance reports, case studies |
-| Data / risk analysts | SQL warehouse schema, KPI queries, `analytics-summary` |
-| Platform/SRE candidates | CI contracts, observability, decision infrastructure |
+Enterprise Windows endpoints often drift from approved network baselines—dead localhost proxies, WinINET/WinHTTP mismatches—causing browser failures and weak audit trails when teams reset registry settings ad hoc. This platform collects structured evidence, classifies incidents with explicit limitations and proof tiers, runs deterministic control tests (CTRL-001–010), and gates remediation behind policy and typed confirmation (dry-run by default). Hash-chained JSONL custody supports tamper detection; a Purple Team module validates detection quality via fixture-driven simulate→detect→verify→measure loops. Built in Python with ~333 pytest files, CI safety contracts, and FastAPI read APIs. Not EDR/AV; not autonomous remediation; designed to support control evidence generation for IT Ops, Security, Risk, and Audit stakeholders.
 
 ---
 
-## Technical Skills Demonstrated
+## Resume (one entry, bullets)
 
-- Python platform design (collectors, facades, canonical core separation)
-- Windows endpoint internals (WinINET, WinHTTP, registry, netstat attribution)
-- Evidence modeling and epistemic guard patterns
-- Policy-as-code and remediation allowlists
-- FastAPI, Pydantic v2, Prometheus metrics
-- pytest contract testing and fixture-based cross-platform CI
-- Docker, GitHub Actions, security scanning
-- Append-only audit logs and deterministic replay
+**Technology Risk & Control Analytics Platform** — Python, Windows internals, FastAPI, GitHub Actions
+
+- Built evidence-to-decision pipeline for Windows proxy drift: collectors, ordinal classifiers with `limitations[]`, CTRL-001–010 control tests, and policy-gated remediation previews (dry-run default + confirmation tokens).
+- Implemented hash-chained audit custody with tip verification and governance envelope separating claim strength from execution authority.
+- Added fixture-driven Purple Team validation (scenarios, detection rules, benchmarks) with deny-by-default safety gate; CI enforces replay determinism and safety contracts.
 
 ---
 
-## Business Skills Demonstrated
+## LinkedIn (100–200 words)
 
-- IT risk framing with careful language (indicates / suggests / requires validation)
-- Operational playbook design for L1/L2/L3 handoffs
-- Case study documentation for workshops and interviews
-- Honest limitation disclosure in client-facing outputs
-- Big 4–style control mapping (identify, detect, respond, recover, govern)
+I designed and built a Technology Risk & Control Analytics Platform that addresses a common enterprise gap: endpoints look "online" while browsers fail due to proxy configuration drift—not datacenter outages.
 
----
+The system converts operational signals into auditable decisions. It collects WinINET/WinHTTP evidence, classifies reliability incidents without false malware verdicts, runs mapped control tests, and produces remediation previews before any registry change. Policy gates and typed confirmation tokens enforce human authorization; hash-chained JSONL records support custody verification.
 
-## Risk Thinking Demonstrated
+A Purple Team overlay measures control validation quality through deterministic scenarios (simulate, detect, respond, verify, benchmark)—safe for CI, not stealth tooling.
 
-| Principle | Implementation |
-|-----------|----------------|
-| Observation ≠ Proof | Evidence tier guards; proof envelope before remediation |
-| Correlation ≠ Causation | Listener match ≠ registry writer without Sysmon E13 |
-| Confidence ≠ Certainty | Ordinal 0–1 scores with `limitations[]` |
-| Policy Permission ≠ Safety Guarantee | Confirmation + rollback + audit still required |
+This is an independently developed reference implementation demonstrating enterprise architecture judgment: clear system boundaries, fail-safe failure handling, and testable governance—not buzzword automation. Stack: Python 3.11+, pytest safety contracts, FastAPI, Docker, GitHub Actions.
 
 ---
 
-## Interview Pitch
+## Interview — 60 seconds
 
-> "I built an endpoint reliability toolkit for Windows proxy failures — the case where ping works but browsers don't. It collects registry, listener, and path evidence, classifies risk across twelve categories, runs structured proof checks, and only then previews remediation behind policy gates. It never silently kills processes or resets firewall rules. Every output includes what we cannot prove. It's designed for IT support triage, security review, and audit replay — not as a replacement for EDR."
+**Problem:** Enterprise browsers break when WinINET proxy settings drift; teams fix symptoms without evidence or audit trails.
 
-**30-second version:**
-> "Evidence-first Windows proxy diagnostics with policy-gated fixes and audit replay."
+**Decision:** Separate observation from proof; never auto-apply registry changes.
 
----
+**System:** Evidence collectors → classification with limitations → control tests → policy-gated preview → optional confirmed apply → verification → hash-chained audit.
 
-## Resume Bullet Points
+**Control:** Blocked destructive actions; CI safety contracts; purple fixture benchmarks for detection quality.
 
-- Designed and implemented a **Python endpoint reliability platform** diagnosing WinINET proxy drift, localhost listener attribution, and TLS path anomalies with **12-label risk classification** and structured proof envelopes
-- Enforced **safety contracts** via pytest and CI: dry-run default, blocked destructive actions (process kill, firewall reset, adapter disable), typed confirmation for registry mutations
-- Built **append-only audit pipeline** (JSONL + hash-chain verification) enabling deterministic incident replay for SRE postmortems and IT risk review
-- Delivered **JSON-first CLI and FastAPI platform** with 1000+ tests, GitHub Actions (lint/test/security), and fixture-based demos runnable without Administrator privileges
-- Authored **case studies and consulting-style reports** separating observation, hypothesis, proof, and policy for Big 4 cyber risk and platform engineering audiences
+**Outcome:** Faster, defensible triage and committee-ready traceability—in design, not claimed as live ROI.
 
 ---
 
-## Quick Links
+## Capability status (quick reference)
 
-| Resource | Path |
-|----------|------|
-| README | [../README.md](../README.md) |
-| Big 4 portfolio | [README_BIG4_PORTFOLIO.md](README_BIG4_PORTFOLIO.md) |
-| Control matrix | [control-matrix.md](control-matrix.md) |
-| Case studies | [case-studies/case-study-1-dead-wininet-proxy.md](case-studies/case-study-1-dead-wininet-proxy.md) |
-| Analytics model | [analytics_data_model.md](analytics_data_model.md) |
-| SQL KPIs | [sql_analytics_queries.md](sql_analytics_queries.md) |
-| Demo script | [demo-video-script.md](demo-video-script.md) |
-| Sample reports | [../reports/sample_governance_report.md](../reports/sample_governance_report.md) |
+| Area | Status |
+|------|--------|
+| Proxy evidence + classification | Implemented |
+| Policy-gated remediation preview | Implemented |
+| Hash-chained audit | Implemented |
+| Purple Team validation | Prototype (fixture-first) |
+| Fleet signed agent | Planned / not supported |
+| Formal regulatory attestation | Not supported |
 
-## 5-minute demo commands
+---
 
-```powershell
-pip install -e ".[dev]"
-$env:PYTHONPATH = (Get-Location).Path
+## Links for reviewers
 
-python -m windows_network_toolkit proxy-status --fixture tests/fixtures/enert/dead_proxy_59081.json
-python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/enert/dead_proxy_59081.json
-python -m windows_network_toolkit risk-assess --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json
-python -m windows_network_toolkit governance-report --fixture tests/fixtures/case_studies/case_1_dead_wininet_proxy.json --format markdown
-python -m windows_network_toolkit analytics-summary --audit-dir tests/fixtures/analytics/audit_sample --format markdown
-python -m windows_network_toolkit proxy-disable --dry-run
-```
+| Audience | Document |
+|----------|----------|
+| Executive | [executive-summary.md](executive-summary.md) |
+| Risk / Audit | [control-matrix.md](control-matrix.md), [risk-register.md](risk-register.md) |
+| Engineering | [architecture.md](architecture.md), [decision-model.md](decision-model.md) |
+| Hiring manager | [case-study.md](case-study.md) |

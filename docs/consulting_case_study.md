@@ -17,7 +17,7 @@ Business Objective → Asset → Threat → Control → Testing → Finding → 
 ```
 
 | Stage | This case |
-|-------|-----------|
+| ------- | ----------- |
 | **Business Objective** | Maintain reliable and secure browser/network access |
 | **Asset** | Windows endpoint WinINET proxy configuration |
 | **Threat** | Dead localhost proxy (`127.0.0.1:59081`) breaks browser traffic |
@@ -83,7 +83,7 @@ Built a Python/FastAPI **Technology Risk & Control Analytics Platform**:
 ## Differentiation from a script
 
 | One-off script | This platform |
-|----------------|---------------|
+| ---------------- | --------------- |
 | Registry reset | Policy-gated preview + typed token |
 | "Fix it" mentality | Evidence → proof → risk → governance |
 | No audit trail | Hash-chained JSONL + replay |

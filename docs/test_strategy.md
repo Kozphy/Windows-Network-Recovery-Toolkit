@@ -17,7 +17,7 @@ Normalized platform fixtures live under `tests/fixtures/platform/`. Feature vect
 ## Safety Regression Matrix
 
 | Concern | How we regress it | Typical test anchor |
-|--------|-------------------|---------------------|
+| -------- | ------------------- | --------------------- |
 | No live repair during tests | No assertions spawn `scripts/*.bat`; API tests use dry-run routes or offline policy only | Repository-wide avoidance (see `tests/test_safety_regression.py`) |
 | High-risk / forbidden blocks | Firewall and arbitrary-command paths deny preview/execute appropriately | `test_firewall_manual_only_blocks_*`, `test_arbitrary_command_*` |
 | Default deny | Unknown actions yield `unknown_action`; viewer role blocks preview | `test_unknown_action_default_deny` |

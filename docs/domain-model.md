@@ -1,7 +1,7 @@
 # Domain Model — Windows Network Recovery Toolkit / Technology Risk Platform
 
-**Status:** Normative reference for engineers, auditors, and risk stakeholders  
-**Scope:** Core entities from `windows_network_toolkit/` and `src/platform_core/`  
+**Status:** Normative reference for engineers, auditors, and risk stakeholders
+**Scope:** Core entities from `windows_network_toolkit/` and `src/platform_core/`
 **Disclaimer:** Entity definitions describe what the platform **records and evaluates** — not regulatory attestation or malware verdicts.
 
 ---
@@ -32,7 +32,7 @@ Canonical normalized row for analytics, classification, and export. Preserves `r
 ### Input / output fields
 
 | Field | Direction | Description |
-|-------|-----------|-------------|
+| ------- | ----------- | ------------- |
 | `event_id` | Output | Deterministic SHA-256 hash (24 hex) from timestamp, type, stable fields |
 | `timestamp_utc` | Input/Output | ISO-8601 UTC observation time |
 | `endpoint_id` | Input/Output | Host identifier; defaults via `default_endpoint_id()` |
@@ -78,7 +78,7 @@ Comparable WinINET (and optional WinHTTP) configuration snapshot for transition 
 ### Input / output fields
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `proxy_enable` | WinINET ProxyEnable (bool) |
 | `proxy_server` | ProxyServer string or null |
 | `auto_config_url` | PAC URL or null |
@@ -120,7 +120,7 @@ Audit-grade before/after transition with classification, risk, attribution, and 
 ### Input / output fields
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `event_id` | Hash from timestamp + before + after states |
 | `before_state` / `after_state` | Normalized `ProxyWininetState` dicts |
 | `transition_class` | e.g. `LOCALHOST_PROXY_ENABLED`, `PROXY_SERVER_REMOVED`, `REVERTER_SUSPECTED_LOCALHOST_PROXY_LOOP` |
@@ -210,7 +210,7 @@ Ordinal `risk_score` (0–100) and `risk_level` (LOW/MEDIUM/HIGH) for governance
 ### Input / output fields
 
 | Input | Output |
-|-------|--------|
+| ------- | -------- |
 | `incident_class`, `proof_level`, `evidence_quality` | `risk_score`, `risk_level` |
 | `control_aggregate` (worst of PASS/FAIL/PARTIAL/NOT_TESTED) | `human_review_recommended` |
 | `business_impact` | `explanation[]`, `limitations[]` |
@@ -247,7 +247,7 @@ Evaluate whether endpoint proxy controls are met for the collected evidence — 
 ### Input / output fields
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `control_id` | Stable id (endpoint: `WININET_LOCALHOST_PROXY_HEALTH`; mature: `CTRL-EPR-001` …) |
 | `control_objective` | Human-readable control statement |
 | `test_result` | PASS / FAIL / PARTIAL / NOT_TESTED |
@@ -347,7 +347,7 @@ Append-only JSONL row with hash chain fields for tamper-evident decision replay.
 ### Input / output fields
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `timestamp`, `command`, `action` | What ran |
 | `incident_id` / `case_id` | Correlation |
 | `classification`, `proof_tier` | Decision context |
@@ -399,13 +399,13 @@ Schema: `audit_governance_report.v2`
 
 ## Power BI tables
 
-**Module:** `src/platform_core/analytics/powerbi_star_export.py`  
+**Module:** `src/platform_core/analytics/powerbi_star_export.py`
 **Export command:** `python -m windows_network_toolkit powerbi-export`
 
 ### Fact tables (grain)
 
 | Table | Grain | Primary key |
-|-------|-------|-------------|
+| ------- | ------- | ------------- |
 | `fact_incidents` | One row per incident | `incident_id` |
 | `fact_control_tests` | One row per incident × control test | `control_test_id` |
 | `fact_policy_decisions` | One row per incident policy decision | `decision_id` |
@@ -413,7 +413,7 @@ Schema: `audit_governance_report.v2`
 ### Dimension tables
 
 | Table | Primary key | Role |
-|-------|-------------|------|
+| ------- | ------------- | ------ |
 | `dim_classification` | `classification_key` | Incident class labels and default risk |
 | `dim_proof_tier` | `proof_tier_key` | T0–T4 maturity ordering |
 | `dim_stakeholder` | `stakeholder_key` | Forum / audience mapping |

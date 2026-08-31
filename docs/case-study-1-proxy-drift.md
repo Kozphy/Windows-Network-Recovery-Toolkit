@@ -19,7 +19,7 @@ An employee reported that Chrome and Edge could not load internal or external HT
 ## Initial Observation
 
 | Signal | Value | Tier |
-|--------|-------|------|
+| -------- | ------- | ------ |
 | WinINET `ProxyEnable` | `1` | Observation |
 | WinINET `ProxyServer` | `127.0.0.1:59081` | Observation |
 | WinHTTP direct access | `true` (no proxy) | Observation |
@@ -30,7 +30,7 @@ An employee reported that Chrome and Edge could not load internal or external HT
 ## Hypothesis
 
 | # | Hypothesis | Likelihood |
-|---|------------|------------|
+| --- | ------------ | ------------ |
 | H1 | Browser failure caused by dead WinINET localhost proxy | High |
 | H2 | DNS or upstream network outage | Low (contradicted by ping/DNS) |
 | H3 | Active MITM on the proxy path | Unsubstantiated (no listener, no TLS anomaly) |
@@ -71,7 +71,7 @@ HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings
 ### Proof envelope results
 
 | Proof attempt | Status | Meaning |
-|---------------|--------|---------|
+| --------------- | -------- | --------- |
 | `localhost_listener_check` | failed | No process listening on configured port |
 | `wininet_winhttp_comparison` | supported | Browser proxy path differs from WinHTTP direct path |
 
@@ -104,7 +104,7 @@ From `windows_network_toolkit/examples/proxy_drift_incident.jsonl`:
 ## Analysis
 
 | Hypothesis | Evidence for | Evidence against |
-|------------|--------------|------------------|
+| ------------ | -------------- | ------------------ |
 | H1 Dead proxy | No listener; WinINET/WinHTTP mismatch; direct path succeeds | — |
 | H2 Network outage | — | Ping/DNS OK; direct HTTPS path OK |
 | H3 MITM | — | No listener; no TLS cert mismatch in this case |
@@ -159,7 +159,7 @@ The toolkit **does not**:
 ## Lessons Learned
 
 | Principle | Application |
-|-----------|-------------|
+| ----------- | ------------- |
 | **Observation ≠ Proof** | Registry shows proxy enabled — that is observation. Structured contrast checks provide proof that the proxy path fails. |
 | **Correlation ≠ Causation** | A dead port correlates with browser failure; we did not assume a malicious writer without telemetry. |
 | **Confidence ≠ Certainty** | 0.92 confidence is ordinal scoring, not probability of compromise. |

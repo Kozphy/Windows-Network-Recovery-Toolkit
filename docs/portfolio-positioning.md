@@ -5,7 +5,7 @@ Audience-specific framing moved from the root README. Technical depth lives in l
 ## Who this is for
 
 | Audience | Why it matters |
-|----------|----------------|
+| ---------- | ---------------- |
 | **Big 4 / technology risk / IT audit** | Control testing, proof tiers, governance reports, CTRL-001–010 |
 | **Platform / SRE** | Deterministic classifiers, replay benchmarks, CI safety contracts |
 | **FinTech / operational risk** | Policy-gated remediation, audit trail, management reporting |
@@ -17,7 +17,7 @@ Audience-specific framing moved from the root README. Technical depth lives in l
 ## Start here by role
 
 | If you are… | Read first |
-|-------------|------------|
+| ------------- | ------------ |
 | Big 4 / audit | [big4-interview-defense.md](big4-interview-defense.md) · [control-matrix.md](control-matrix.md) · [../reports/sample_governance_report.md](../reports/sample_governance_report.md) |
 | Platform / SRE | [faang-platform-review.md](faang-platform-review.md) · [state-machine.md](state-machine.md) |
 | Power BI / analytics | [../analytics/powerbi/report_blueprint.md](../analytics/powerbi/report_blueprint.md) · [powerbi-interview-story.md](powerbi-interview-story.md) |

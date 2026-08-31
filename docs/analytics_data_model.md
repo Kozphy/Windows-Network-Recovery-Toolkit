@@ -4,7 +4,7 @@ SQL-ready dimensional model for **Data Analyst**, **Risk Data Analyst**, **Techn
 
 **Principles preserved in data design:** Observation ≠ Proof · Correlation ≠ Causation · Confidence ≠ Certainty · Policy Permission ≠ Safety Guarantee · Dry-run by default.
 
-**Executable DDL:** [`schemas/analytics_warehouse.sql`](../schemas/analytics_warehouse.sql)  
+**Executable DDL:** [`schemas/analytics_warehouse.sql`](../schemas/analytics_warehouse.sql)
 **CLI rollup:** `python -m windows_network_toolkit analytics-summary --audit-dir .audit`
 
 Core tables: `incidents`, `evidence_events`, `proof_results`, `policy_decisions`, `remediation_previews`, `audit_events`.
@@ -68,7 +68,7 @@ erDiagram
 **Grain:**
 
 | Table | One row per |
-|-------|-------------|
+| ------- | ------------- |
 | `endpoints` | Managed endpoint asset |
 | `incidents` | Technology risk incident (case) |
 | `evidence_events` | Observable signal or proof attempt |
@@ -198,7 +198,7 @@ CREATE TABLE audit_chain_checks (
 ### `endpoints`
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `endpoint_id` | Stable surrogate key (UUID or fleet asset id) |
 | `hostname` | Device hostname or synthetic fleet label |
 | `environment` | `production`, `staging`, `corp`, `remote` |
@@ -209,7 +209,7 @@ CREATE TABLE audit_chain_checks (
 ### `incidents`
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `incident_id` | Primary incident key; maps to `case_id` in case fixtures |
 | `endpoint_id` | FK to affected endpoint |
 | `created_at` | Incident opened / first observation time |
@@ -229,7 +229,7 @@ CREATE TABLE audit_chain_checks (
 ### `evidence_events`
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `event_id` | Unique event key |
 | `incident_id` | Parent incident |
 | `event_time` | When signal was collected |
@@ -242,7 +242,7 @@ CREATE TABLE audit_chain_checks (
 ### `control_tests`
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `test_id` | e.g. `CT_PROXY_DRIFT` from `control-test` CLI |
 | `control_name` | Detective/preventive control name |
 | `control_objective` | ITGC theme: drift detection, remediation governance, audit trail |
@@ -254,7 +254,7 @@ CREATE TABLE audit_chain_checks (
 ### `policy_decisions`
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `decision` | `PREVIEW_ONLY`, `ALLOW`, `BLOCK`, `REQUIRE_TYPED_CONFIRMATION` |
 | `reason` | Policy engine rationale |
 | `blocked_action` | e.g. `process_kill`, `firewall_reset`, `adapter_disable` |
@@ -264,7 +264,7 @@ CREATE TABLE audit_chain_checks (
 ### `remediation_previews`
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `proposed_action` | e.g. `DISABLE_WININET_PROXY` (allowlisted only) |
 | `dry_run` | **Default TRUE** — no silent registry mutation |
 | `typed_confirmation_required` | Operator must supply confirmation token |
@@ -274,7 +274,7 @@ CREATE TABLE audit_chain_checks (
 ### `audit_chain_checks`
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `audit_file` | Path to `.audit/*.jsonl` verified |
 | `hash_chain_valid` | Append-only chain integrity result |
 | `checked_at` | Verification timestamp |
@@ -288,21 +288,21 @@ Aligned with golden case `CASE_1_DEAD_WININET_PROXY` and fleet demo patterns.
 ### `endpoints`
 
 | endpoint_id | hostname | environment | owner_team | criticality | last_seen |
-|-------------|----------|-------------|------------|-------------|-----------|
+| ------------- | ---------- | ------------- | ------------ | ------------- | ----------- |
 | `ep-59081-001` | `LAPTOP-FIN-042` | production | Endpoint Engineering | high | 2026-06-11T04:31:31Z |
 | `ep-fleet-017` | `WS-TRADING-017` | production | Trading Technology | critical | 2026-06-10T18:00:00Z |
 
 ### `incidents`
 
 | incident_id | endpoint_id | classification | confidence_score | evidence_tier | business_impact | policy_decision | remediation_status | audit_chain_valid |
-|-------------|-------------|----------------|------------------|---------------|-----------------|-----------------|--------------------|-------------------|
+| ------------- | ------------- | ---------------- | ------------------ | --------------- | ----------------- | ----------------- | -------------------- | ------------------- |
 | `CASE_1_DEAD_WININET_PROXY` | `ep-59081-001` | `DEAD_PROXY_CONFIG` | 0.92 | proof | medium | `PREVIEW_ONLY` | preview_only | true |
 | `INC-UNKNOWN-PROXY-017` | `ep-fleet-017` | `UNKNOWN_LOCAL_PROXY` | 0.35 | observation | high | `REQUIRE_TYPED_CONFIRMATION` | open | null |
 
 ### `evidence_events`
 
 | event_id | incident_id | source | signal_type | observed_value | claim_strength |
-|----------|-------------|--------|-------------|----------------|----------------|
+| ---------- | ------------- | -------- | ------------- | ---------------- | ---------------- |
 | `ev-001` | `CASE_1_DEAD_WININET_PROXY` | wininet_registry | proxy_server | `127.0.0.1:59081` | observation |
 | `ev-002` | `CASE_1_DEAD_WININET_PROXY` | netstat | listener_found | `false` | observation |
 | `ev-003` | `CASE_1_DEAD_WININET_PROXY` | proof_engine | wininet_winhttp_comparison | supported | proof |
@@ -310,14 +310,14 @@ Aligned with golden case `CASE_1_DEAD_WININET_PROXY` and fleet demo patterns.
 ### `control_tests`
 
 | test_id | incident_id | control_name | pass_fail | evidence_available |
-|---------|-------------|--------------|-----------|-------------------|
+| --------- | ------------- | -------------- | ----------- | ------------------- |
 | `CT_PROXY_DRIFT` | `CASE_1_DEAD_WININET_PROXY` | Proxy drift detection | FAIL | true |
 | `CT_REMEDIATION_SAFETY` | `CASE_1_DEAD_WININET_PROXY` | Policy-gated remediation | PASS | true |
 
 ### `remediation_previews`
 
 | preview_id | incident_id | proposed_action | dry_run | executed |
-|------------|-------------|-----------------|---------|----------|
+| ------------ | ------------- | ----------------- | --------- | ---------- |
 | `rp-001` | `CASE_1_DEAD_WININET_PROXY` | `DISABLE_WININET_PROXY` | true | false |
 
 ---
@@ -325,7 +325,7 @@ Aligned with golden case `CASE_1_DEAD_WININET_PROXY` and fleet demo patterns.
 ## 6. ETL mapping (platform → warehouse)
 
 | Platform artifact | Target table | Notes |
-|-------------------|--------------|-------|
+| ------------------- | -------------- | ------- |
 | `proxy-status` JSON | `evidence_events`, `incidents` | Observation tier |
 | `diagnose --proof` | `evidence_events`, `incidents.evidence_tier` | Upgrade to proof when supported |
 | `risk-assess` | `incidents`, dimensions | Risk + governance fields |
@@ -341,7 +341,7 @@ Aligned with golden case `CASE_1_DEAD_WININET_PROXY` and fleet demo patterns.
 ## 7. How this supports Data Analyst / Risk Analyst interviews
 
 | Interview theme | What you demonstrate |
-|-----------------|----------------------|
+| ----------------- | ---------------------- |
 | **Data modeling** | Star/snowflake-style incident fact with evidence and control test dimensions |
 | **SQL fluency** | [sql_analytics_queries.md](sql_analytics_queries.md) — 12+ business questions |
 | **KPI definition** | Evidence maturity %, policy block rate, audit completeness, MTTD |

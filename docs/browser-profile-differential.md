@@ -34,7 +34,7 @@ python -m windows_network_toolkit browser-profile repair-preview 104.com.tw --br
 ## Evidence modes
 
 | Mode | Description |
-|------|-------------|
+| ------ | ------------- |
 | A — HAR compare | User exports HARs from normal vs private windows |
 | B — Controlled Playwright | Ephemeral vs toolkit test profile (optional `[browser]` extra); labeled as reproduction, not user-profile proof |
 | C — Read-only profile inspect | Copies Chromium SQLite; cookie **metadata** only |

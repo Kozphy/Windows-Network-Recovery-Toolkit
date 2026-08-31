@@ -27,7 +27,7 @@ stateDiagram-v2
 ## Transition classes (machine output)
 
 | Class | Typical trigger |
-|-------|-----------------|
+| ------- | ----------------- |
 | `LOCALHOST_PROXY_ENABLED` | Off → on with loopback server |
 | `PROXY_SERVER_REMOVED_PARTIAL` | Server cleared, ProxyEnable still 1 |
 | `PROXY_DISABLED_AND_SERVER_REMOVED` | Server cleared + ProxyEnable 0 |

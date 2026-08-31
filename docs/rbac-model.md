@@ -8,7 +8,7 @@ Demo token authentication via headers:
 ## Permission matrix
 
 | Role | Ingest evidence | Review incidents | Read incidents | Audit / executive report |
-|------|-----------------|------------------|----------------|--------------------------|
+| ------ | ----------------- | ------------------ | ---------------- | -------------------------- |
 | operator | yes | no | yes | no |
 | risk_reviewer | no | yes | yes | yes |
 | auditor_readonly | no | no | yes | yes |

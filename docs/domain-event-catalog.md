@@ -3,7 +3,7 @@
 Canonical events for the technology-risk loop (`trisk_domain_events.jsonl` + optional Postgres).
 
 | Event type | Emitted when | Aggregate |
-|------------|--------------|-----------|
+| ------------ | -------------- | ----------- |
 | `EvidenceCollected` | `POST /v1/evidence` succeeds | `evidence:{event_id}` |
 | `IncidentDetected` | Worker creates incident | `incident:{incident_id}` |
 | `RiskClassified` | Risk score attached | `incident:{incident_id}` |

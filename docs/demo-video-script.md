@@ -136,7 +136,7 @@ uvicorn backend.main:app --reload
 ## 3-Minute Version
 
 | Time | Scene | Action |
-|------|-------|--------|
+| ------ | ------- | -------- |
 | 0:00–0:30 | Problem | Show browser error + ping OK |
 | 0:30–1:15 | Diagnosis | `proxy-status --fixture dead_proxy_59081.json` |
 | 1:15–1:45 | Proof | `diagnose --proof --fixture ...` — highlight limitations |
@@ -151,7 +151,7 @@ uvicorn backend.main:app --reload
 ## 5-Minute Version
 
 | Time | Scene | Action |
-|------|-------|--------|
+| ------ | ------- | -------- |
 | 0:00–0:45 | Problem | Browser fail + ping/DNS OK; explain WinINET vs WinHTTP |
 | 0:45–1:45 | Diagnosis | `proxy-status`, `proxy-owner` — no listener |
 | 1:45–2:45 | Evidence chain | `diagnose --proof`, `proxy-timeline` or replay JSONL |

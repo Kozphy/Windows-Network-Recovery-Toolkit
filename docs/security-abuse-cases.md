@@ -3,7 +3,7 @@
 See [threat-model.md](threat-model.md) for full table.
 
 | Scenario | Mitigation | Test |
-|----------|------------|------|
+| ---------- | ------------ | ------ |
 | Malformed evidence injection | 400/422 validation; quarantine status | `test_abuse_cases.py` |
 | Fake endpoint identity | endpoint_id required; audit metadata | `test_abuse_cases.py` |
 | Duplicate replay | content_hash idempotency | `test_idempotency.py` |

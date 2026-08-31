@@ -46,7 +46,7 @@ stateDiagram-v2
 ## Evidence graph node kinds
 
 | Kind | Example |
-|------|---------|
+| ------ | --------- |
 | `process` | node.exe ← powershell.exe |
 | `registry_write` | ProxyEnable=1 |
 | `listener` | 127.0.0.1:61187 |
@@ -57,6 +57,6 @@ stateDiagram-v2
 ## API surfaces
 
 | Version | Base path | Purpose |
-|---------|-----------|---------|
+| --------- | ----------- | --------- |
 | v1 | `/platform/*` | Fleet, incidents, remediation preview |
 | v2 | `/platform/v2/*` | Events, decisions, replay, policies |

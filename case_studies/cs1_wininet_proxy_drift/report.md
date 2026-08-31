@@ -2,14 +2,14 @@
 
 ## Executive Summary
 
-Classification: **DEAD_PROXY_CONFIG** (ordinal 0.92 heuristic score, not probability).  
-Proof conclusion: **supported**.  
+Classification: **DEAD_PROXY_CONFIG** (ordinal 0.92 heuristic score, not probability).
+Proof conclusion: **supported**.
 Principle compliance: **all four principles satisfied**.
 
 ## Evidence Chain
 
 | Tier | Signal | Value | Note |
-|------|--------|-------|------|
+| ------ | -------- | ------- | ------ |
 | OBSERVATION | wininet_proxy_enabled | true | Registry read — not proof |
 | OBSERVATION | listener_found | false | Netstat — not proof |
 | PROOF_ATTEMPT | localhost_listener_check | failed | No listener on configured port |
@@ -25,7 +25,7 @@ Principle compliance: **all four principles satisfied**.
 ## Principle Compliance
 
 | Principle | Status |
-|-----------|--------|
+| ----------- | -------- |
 | Observation is not proof | Pass |
 | Correlation is not causation | Pass |
 | Confidence is not certainty | Pass |

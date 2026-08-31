@@ -34,7 +34,7 @@ flowchart LR
 ## Why observability improves confidence (without proof)
 
 | Question | Metrics answer | Metrics do **not** answer |
-|----------|----------------|---------------------------|
+| ---------- | ---------------- | --------------------------- |
 | Are proxy drift signals increasing? | `proxy_change_total` rate by `hostname` hash | Who wrote the registry key |
 | Is policy blocking more than usual? | `policy_block_total` vs `policy_preview_total` | Whether block was “correct” |
 | Are hypotheses ever proof-confirmed? | `hypothesis_confirmed_total` / `proof_success_total` | Root cause with legal-grade attribution |
@@ -53,7 +53,7 @@ flowchart LR
 Exposed at **`GET /metrics`** (text exposition).
 
 | Metric | Labels | Meaning |
-|--------|--------|---------|
+| -------- | -------- | --------- |
 | `proxy_change_total` | hostname, policy, hypothesis, confidence | Observation-tier proxy/registry drift |
 | `hypothesis_generated_total` | … | Ranked hypothesis emitted |
 | `hypothesis_confirmed_total` | … | Proof tier CONFIRMED only |
@@ -66,7 +66,7 @@ Exposed at **`GET /metrics`** (text exposition).
 ### Label semantics
 
 | Label | Value |
-|-------|--------|
+| ------- | -------- |
 | `hostname` | **16-char hash** of endpoint id (not raw hostname) |
 | `policy` | `allow` \| `preview` \| `block` |
 | `hypothesis` | Sanitized slug from accepted/ranked hypothesis |
@@ -79,7 +79,7 @@ Legacy flat counters (`platform_*`) and JSONL-derived gauges (`platform_endpoint
 ## Instrumentation points
 
 | Location | Emits |
-|----------|--------|
+| ---------- | -------- |
 | `POST /platform/correlation/run` | Full pipeline via `record_reasoning_pipeline()` |
 | `POST /platform/remediation/preview` | Policy + hypothesis counters |
 | Process startup | `bootstrap_labeled_metrics_from_storage()` from audit/signals JSONL |
@@ -94,7 +94,7 @@ Module: [`backend/observability_metrics.py`](../backend/observability_metrics.py
 Provisioned from [`deploy/grafana/provisioning/dashboards/json/`](../deploy/grafana/provisioning/dashboards/json/):
 
 | Dashboard | UID | Focus |
-|-----------|-----|--------|
+| ----------- | ----- | -------- |
 | Event Overview | `er-events-overview` | Hypothesis rate, proxy observations |
 | Policy Decisions | `er-policy-decisions` | ALLOW / PREVIEW / BLOCK mix |
 | Hypothesis Accuracy | `er-hypothesis-accuracy` | Generated vs confirmed, proof success/failure |
@@ -110,7 +110,7 @@ Access: `http://localhost:3001` when using `docker compose up`.
 [`deploy/prometheus/alerts.yml`](../deploy/prometheus/alerts.yml):
 
 | Alert | Intent |
-|-------|--------|
+| ------- | -------- |
 | `suspicious_proxy_changes` | Spike in observation-tier proxy changes — investigate, do not auto-remediate |
 | `excessive_policy_blocks` | Policy friction or abuse — review RBAC/policy config |
 | `repeated_registry_modifications` | Sustained registry-related signals — escalate for human + proof-tier review |

@@ -16,7 +16,7 @@
 ## Step 2: Set data types
 
 | Table | Column | Type |
-|-------|--------|------|
+| ------- | -------- | ------ |
 | All facts | `date_key` | Whole number |
 | fact_incidents | `confidence_score` | Decimal |
 | fact_incidents | `has_limitations` | True/False |

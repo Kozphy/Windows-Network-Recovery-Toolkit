@@ -32,7 +32,7 @@ Portfolio signal shifts from “I can run security tools” to:
 ## Implemented controls
 
 | Control | Mechanism |
-|---|---|
+| --- | --- |
 | Deny by default | `evaluate_safety` |
 | Dry-run preview | `validate` / `dry_run_preview` |
 | Schema safety | cleanup required; remote/prod forbidden |

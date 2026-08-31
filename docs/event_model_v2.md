@@ -15,7 +15,7 @@ Repeated cases where HKCU proxy is disabled and later re-enabled are **reliabili
 ## Repair success versus reliability success
 
 | Question | Typical v1 artefact | v2 artefact |
-|----------|---------------------|-------------|
+| ---------- | --------------------- | ------------- |
 | Did `reg add` succeed? | `repair_audit.jsonl` `results[].code == 0` | `repair_attempt.result.command_success` |
 | Is ProxyEnable actually 0 after repair? | `verification_result.ok` embedded in v1 row | `verification` event |
 | Did the machine **stay** fixed? | (not modeled) | `drift_detected` comparing previous known-good vs current |
@@ -27,7 +27,7 @@ Repeated cases where HKCU proxy is disabled and later re-enabled are **reliabili
 All under `logs/` at the toolkit repo root:
 
 | File | Contents |
-|------|----------|
+| ------ | ---------- |
 | `snapshots.jsonl` | `snapshot` rows (WinINET HKCU observations + parsed proxy fields). |
 | `repairs.jsonl` | `repair_attempt` rows (argv, confirmation policy, subprocess result). |
 | `verifications.jsonl` | `verification` rows (expected vs observed, ok, confidence). |

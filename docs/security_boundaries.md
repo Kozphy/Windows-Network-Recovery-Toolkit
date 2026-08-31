@@ -24,7 +24,7 @@ This platform is a **local-first diagnostic and remediation-preview** system. Th
 ## Control surfaces
 
 | Control | Implementation |
-|---------|------------------|
+| --------- | ------------------ |
 | Dry-run default | API `ExecuteIn.dry_run=True`; tests enforce |
 | Typed confirmation | Registry allowlist + confirmation phrases |
 | No arbitrary shell | Policy rejects injection patterns |

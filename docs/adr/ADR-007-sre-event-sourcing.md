@@ -19,7 +19,7 @@ Google SRE practice: optimize for **correctness and operational reliability**, n
 Introduce `platform_core/sre/` as the operational layer:
 
 | Capability | Implementation |
-|------------|----------------|
+| ------------ | ---------------- |
 | Event sourcing | `sre_domain_events.jsonl` — `DomainEvent` envelope with per-aggregate sequence |
 | Deterministic projections | `Projector.fold()` rebuilds `IncidentProjection` |
 | Failure domain isolation | `FailureDomain` bulkheads + circuit breakers + `domain.circuit_*` audit events |
@@ -36,7 +36,7 @@ Introduce `platform_core/sre/` as the operational layer:
 ### Epistemic invariants (unchanged)
 
 - Observation ≠ Proof
-- Correlation ≠ Causation  
+- Correlation ≠ Causation
 - Confidence ≠ Certainty
 - Malware-class RCA without proof tier → investigative language only
 
@@ -50,7 +50,7 @@ Introduce `platform_core/sre/` as the operational layer:
 ## Alternatives rejected
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Mutable incident rows in SQLite | Breaks replay; violates audit requirements |
 | MTTR from `platform_signals.jsonl` | Not tied to incident lifecycle; incorrect for SRE review |
 | Auto-resolve on high confidence | Violates proof requirements; unsafe |

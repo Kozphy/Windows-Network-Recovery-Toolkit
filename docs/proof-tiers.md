@@ -9,7 +9,7 @@ Modules: `src/platform_core/governance/proof_tier.py`, `windows_network_toolkit/
 ## Tier Definitions
 
 | Tier | Name | Definition |
-|------|------|------------|
+| ------ | ------ | ------------ |
 | **T0** | Observation only | Unstructured or uncorroborated note |
 | **T1** | Single deterministic signal | Structured WinINET/WinHTTP/PAC read |
 | **T2** | Multiple independent signals | Config + listener + path contrast |
@@ -24,7 +24,7 @@ Modules: `src/platform_core/governance/proof_tier.py`, `windows_network_toolkit/
 ## Remediation Permissions by Tier
 
 | Tier | Preview remediation | Live registry apply | Destructive actions |
-|------|--------------------|--------------------|---------------------|
+| ------ | -------------------- | -------------------- | --------------------- |
 | T0 | No | No | Block |
 | T1 | Observe only | No | Block |
 | T2 | Preview allowed | Requires confirmation | Block |
@@ -39,7 +39,7 @@ Confidence is not certainty. Policy ALLOW/PREVIEW is not a safety guarantee.
 ## Mapping to Evidence Tiers
 
 | Proof T0–T5 | Evidence tier (platform_core) |
-|-------------|-------------------------------|
+| ------------- | ------------------------------- |
 | T0–T1 | `OBSERVED_ONLY` |
 | T2 | `CORRELATED` |
 | T3 | `PROVEN_NETWORK_IMPACT` (partial) |

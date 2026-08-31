@@ -5,7 +5,7 @@ Add portfolio screenshots here before publishing to GitHub or LinkedIn.
 ## Recommended captures
 
 | File (placeholder) | What to capture |
-|------------------|-----------------|
+| ------------------ | ----------------- |
 | `01-browser-proxy-error.png` | Browser `ERR_PROXY_CONNECTION_FAILED` with ping terminal beside it |
 | `02-proxy-status-json.png` | `proxy-status --fixture dead_proxy_59081.json` highlighting classification |
 | `03-diagnose-proof.png` | `diagnose --proof` output with `proof_attempts` and `limitations` |

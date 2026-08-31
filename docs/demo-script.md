@@ -1,7 +1,7 @@
 # 3-Minute Demo Script — Technology Risk & Endpoint Reliability
 
-**Audience:** Technology Risk Analyst, Cyber Risk Consultant, IT Audit, Platform Reliability  
-**Duration:** ~3 minutes (fixture-safe on any OS)  
+**Audience:** Technology Risk Analyst, Cyber Risk Consultant, IT Audit, Platform Reliability
+**Duration:** ~3 minutes (fixture-safe on any OS)
 **Safety:** Read-only / preview-only — no host mutation
 
 ---
@@ -34,9 +34,9 @@ python -m windows_network_toolkit proxy-status --fixture examples/evidence/DEAD_
 
 **Point out:**
 
-- `DEAD_PROXY_CONFIG` primary classification  
-- `WININET_WINHTTP_MISMATCH` secondary signal  
-- `limitations[]` — does not prove MITM  
+- `DEAD_PROXY_CONFIG` primary classification
+- `WININET_WINHTTP_MISMATCH` secondary signal
+- `limitations[]` — does not prove MITM
 - `governance` envelope — `claim_strength`, `execution_authority: preview_only`
 
 ---
@@ -105,7 +105,7 @@ python -m windows_network_toolkit governance-report `
 ## Optional extensions
 
 | Scenario | Fixture |
-|----------|---------|
+| ---------- | --------- |
 | Dev proxy (not malicious) | `examples/evidence/LOCAL_PROXY_ACTIVE.json` |
 | Reverter suspected | `tests/fixtures/case_studies/case_3_reverter_suspected.json` |
 | Risk decision record | `risk-assess --fixture` (any case study JSON) |

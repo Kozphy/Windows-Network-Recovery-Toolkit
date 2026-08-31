@@ -13,7 +13,7 @@ See `windows_network_toolkit/examples/proxy_drift_incident.jsonl`
 ## 3. Evidence Table
 
 | Signal | Value | Tier |
-|--------|-------|------|
+| -------- | ------- | ------ |
 | wininet_proxy_enabled | true | CORRELATED |
 | proxy_bypass_succeeded | true | PROVEN_NETWORK_IMPACT |
 

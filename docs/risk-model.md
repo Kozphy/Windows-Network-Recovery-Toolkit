@@ -1,6 +1,6 @@
 # Technology Risk Scoring Model
 
-**Status:** Phase 1 — `windows_network_toolkit/risk_scoring_engine.py`  
+**Status:** Phase 1 — `windows_network_toolkit/risk_scoring_engine.py`
 **Positioning:** Ordinal governance input for human review — **not** malware verdicting, EDR scoring, or autonomous remediation authority.
 
 ---
@@ -12,7 +12,7 @@ Evidence → Incident Classification → Proof tier → Control Testing → Risk
 ```
 
 | Stage | Module | Output |
-|-------|--------|--------|
+| ------- | -------- | -------- |
 | Classification | `incident_classifier.py` | `incident_class`, `confidence`, `risk_level` (triage) |
 | Control testing | `control_tests.py` | PASS / FAIL / PARTIAL / NOT_TESTED per control |
 | **Risk scoring** | `risk_scoring_engine.py` | `likelihood`, `impact`, `risk_score`, `risk_level`, `explanation` |
@@ -24,7 +24,7 @@ Evidence → Incident Classification → Proof tier → Control Testing → Risk
 ## Inputs (`RiskScoringInput`)
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `incident_class` | string | Primary classification label (e.g. `DEAD_PROXY_CONFIG`) |
 | `evidence_quality` | float 0–1 | Ordinal confidence from classifier |
 | `proof_level` | string | T0–T4 tier or `NOT_RUN` |
@@ -37,7 +37,7 @@ Evidence → Incident Classification → Proof tier → Control Testing → Risk
 ## Outputs (`RiskScoringResult`)
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `likelihood` | `low` \| `medium` \| `high` — ordinal, not probability |
 | `impact` | Business impact band |
 | `risk_score` | 0–100 composite for sorting and dashboards |
@@ -62,7 +62,7 @@ Evidence → Incident Classification → Proof tier → Control Testing → Risk
 ## Relationship to other risk modules
 
 | Module | When to use |
-|--------|-------------|
+| -------- | ------------- |
 | `risk_scoring_engine.py` | **Endpoint analytics pipeline** — incidents + control tests from JSONL/fixtures |
 | `src/platform_core/risk/risk_rating.py` | **Fixture case studies** — governance reports with mature control catalog |
 | `incident_classifier.risk_level` | Fast triage label before full scoring |
@@ -74,11 +74,11 @@ Do not merge formulas without an explicit adapter — each serves a different ev
 
 ## Governance principles (enforced in `limitations[]`)
 
-1. Observation is not proof.  
-2. Correlation is not causation.  
-3. Confidence is not certainty.  
-4. Classification is not accusation.  
-5. Policy permission is not safety guarantee.  
+1. Observation is not proof.
+2. Correlation is not causation.
+3. Confidence is not certainty.
+4. Classification is not accusation.
+5. Policy permission is not safety guarantee.
 6. Automation must not silently change registry, firewall, adapter, or process state.
 
 ---

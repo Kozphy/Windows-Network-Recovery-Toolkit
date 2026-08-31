@@ -1,7 +1,7 @@
 # Failure Taxonomy
 
 | Category | Meaning |
-|---|---|
+| --- | --- |
 | SIMULATION_FAILURE | Fixture load / sim stage error |
 | TELEMETRY_MISSING | Required events absent |
 | COLLECTOR_FAILURE | Collector/normalization failure |

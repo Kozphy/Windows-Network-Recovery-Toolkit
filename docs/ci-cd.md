@@ -3,7 +3,7 @@
 This repository is a **Python 3.11** monorepo (FastAPI backend, CLI toolkits, Next.js frontend) with **Docker Compose** for production-shaped local and VM deployment.
 
 | Layer | Tooling |
-|-------|---------|
+| ------- | --------- |
 | Language | Python 3.11+, TypeScript (Next.js 14) |
 | Package manager | `pip` + editable install (`pip install -e ".[dev]"`) |
 | Config | `pyproject.toml`, `pytest.ini`, `Makefile` |
@@ -81,7 +81,7 @@ pytest -q --junitxml=reports/junit.xml
 ## Branch workflow
 
 | Branch | Purpose |
-|--------|---------|
+| -------- | --------- |
 | `Multi_Domain_Decision_Platform` | Current default development branch — merge via PR only |
 | `main` / `master` | Protected alternate / legacy default branches — merge via PR only |
 | `feature/*`, `fix/*`, `chore/*` | Short-lived work branches |
@@ -103,7 +103,7 @@ Do **not** push secrets, `.env`, tokens, or local audit exports.
 On every **pull request to `Multi_Domain_Decision_Platform`, `main`, or `master`**, GitHub Actions runs [`.github/workflows/ci.yml`](../.github/workflows/ci.yml):
 
 | Job | What it checks |
-|-----|----------------|
+| ----- | ---------------- |
 | `lint` | Ruff lint + format, Bandit on core packages |
 | `typecheck` | Mypy on `src/platform_core/{ai_risk_analyst,risk,governance,analytics}` |
 | `test` | Safety contracts (ordered), full pytest, Linux integration, principle tests, fixture CLI smoke |
@@ -116,7 +116,7 @@ Artifacts: JUnit XML (`junit-<sha>`) retained 14 days.
 ### Related workflows (not duplicated in CI)
 
 | Workflow | When | Purpose |
-|----------|------|---------|
+| ---------- | ------ | --------- |
 | [`build.yml`](../.github/workflows/build.yml) | Push to default branch | Build + push immutable image to **GHCR** |
 | [`deploy.yml`](../.github/workflows/deploy.yml) | After successful Build (main) or manual | SSH deploy to VM via Docker Compose |
 | [`security.yml`](../.github/workflows/security.yml) | PR/push + weekly schedule | pip-audit, Trivy filesystem + container |
@@ -145,7 +145,7 @@ Optional (stricter): `pip-audit`, `trivy (filesystem)`, `trivy (container)` from
 ### Review policy
 
 | Setting | Recommendation |
-|---------|----------------|
+| --------- | ---------------- |
 | Require pull request before merging | On |
 | Required approving reviews | 1 |
 | Dismiss stale approvals on new commits | On |
@@ -186,7 +186,7 @@ PR merge to main
 Deploy workflow expects (no defaults in repo):
 
 | Secret | Purpose |
-|--------|---------|
+| -------- | --------- |
 | `DEPLOY_HOST` | Target VM hostname or IP |
 | `DEPLOY_USER` | SSH user |
 | `DEPLOY_SSH_KEY` | Private key for deploy user |
@@ -195,7 +195,7 @@ Deploy workflow expects (no defaults in repo):
 Runtime env vars (set on the **host** or in compose `.env` — **not committed**):
 
 | Variable | Example use |
-|----------|-------------|
+| ---------- | ------------- |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Database |
 | `DATABASE_URL` | API connection string |
 | `PLATFORM_API_TOKEN` / `X-Api-Token` | API auth |
@@ -220,7 +220,7 @@ GitHub Actions → **Deploy** → **Run workflow** → set `image_tag` to the pr
 ## Environment variables and secrets
 
 | Do | Don't |
-|----|-------|
+| ---- | ------- |
 | Store secrets in GitHub Actions secrets or host `.env` | Commit `.env`, API keys, SSH keys |
 | Use fixture mode in CI (`--fixture`, `DEMO_MODE=true`) | Point CI at production databases |
 | Document required vars in compose comments / this doc | Hard-code tokens in workflows |

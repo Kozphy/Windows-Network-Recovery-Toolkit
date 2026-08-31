@@ -3,7 +3,7 @@
 Realistic JSON evidence bundles for interview demos and tests.
 
 | File | Primary classification |
-|------|------------------------|
+| ------ | ------------------------ |
 | `DEAD_PROXY_CONFIG.json` | Dead localhost WinINET proxy |
 | `WININET_WINHTTP_MISMATCH.json` | Stack divergence |
 | `LOCAL_PROXY_ACTIVE.json` | Active dev-style listener |

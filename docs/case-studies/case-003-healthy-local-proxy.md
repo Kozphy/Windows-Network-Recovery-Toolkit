@@ -15,7 +15,7 @@ Proxy configured on localhost; connectivity works as expected for dev tooling.
 ## Known / Not proven
 
 | Known | Not proven |
-|-------|------------|
+| ------- | ------------ |
 | Local proxy is intentional and listening | Enterprise approval for that proxy binary |
 | Classification should not escalate to incident | Absence of shadow IT review |
 

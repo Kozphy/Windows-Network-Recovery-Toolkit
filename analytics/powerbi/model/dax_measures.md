@@ -224,7 +224,7 @@ RETURN
 ## Formatting recommendations
 
 | Measure | Format |
-|---------|--------|
+| --------- | -------- |
 | High Risk Rate, Control Pass Rate, Preview Only Rate | Percentage, 1 decimal |
 | Mean Time to Evidence | Whole number minutes |
 | Count measures | Whole number |

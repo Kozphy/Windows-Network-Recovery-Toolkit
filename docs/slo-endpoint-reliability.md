@@ -7,7 +7,7 @@ See [google-l11-reference.md](google-l11-reference.md) (L6 substance) and [produ
 ## SLIs
 
 | SLI | Meaning | Source | Target (local operator) |
-|-----|---------|--------|-------------------------|
+| ----- | --------- | -------- | ------------------------- |
 | Time-to-direct after rewrite | Detect localhost WinINET rewrite → preview/apply direct | `rewrite_detected` + `recovered_at` in platform JSONL | Measure first; aim minutes, not hours |
 | False-clear rate | Proxy classified healthy while path-health or browser-stall still degraded | `proxy_healthy_path_degraded` vs `proxy_healthy_path_ok` | Drive toward 0 via `operator-incident` |
 | Dual-stack path success | IPv4 vs IPv6 HTTPS probe outcomes | `path_health_ipv4` / `path_health_ipv6` | IPv4 success when IPv6 is broken is expected; do not treat IPv6 fail as malware |

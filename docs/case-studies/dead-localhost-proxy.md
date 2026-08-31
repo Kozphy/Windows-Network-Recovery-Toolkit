@@ -1,7 +1,7 @@
 # Case study: dead localhost WinINET proxy (127.0.0.1:59081)
 
-**Classification:** `DEAD_PROXY_CONFIG` + secondary `WININET_WINHTTP_MISMATCH`  
-**Proof status:** supported (confidence ~0.92)  
+**Classification:** `DEAD_PROXY_CONFIG` + secondary `WININET_WINHTTP_MISMATCH`
+**Proof status:** supported (confidence ~0.92)
 **Remediation allowed:** `DISABLE_WININET_PROXY` with typed confirmation only
 
 ---
@@ -22,7 +22,7 @@ This pattern is common when **WinINET proxy is enabled** but the **configured lo
 Fixture: `tests/fixtures/enert/dead_proxy_59081.json`
 
 | Signal | Value |
-|--------|-------|
+| -------- | ------- |
 | `ProxyEnable` | `1` |
 | `ProxyServer` | `127.0.0.1:59081` |
 | WinHTTP | direct (no proxy) |
@@ -71,7 +71,7 @@ python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/ener
 ```
 
 | Proof attempt | Status | Meaning |
-|---------------|--------|---------|
+| --------------- | -------- | --------- |
 | `localhost_listener_check` | failed | No process listening on configured port |
 | `wininet_winhttp_comparison` | supported | Browser proxy path differs from WinHTTP direct path |
 
@@ -84,7 +84,7 @@ See [proof-vs-observation.md](../proof-vs-observation.md).
 ## Policy decision
 
 | Action | Default |
-|--------|---------|
+| -------- | --------- |
 | Observe / diagnose | Allow |
 | `DISABLE_WININET_PROXY` | Allow **with** `--confirm DISABLE_WININET_PROXY` |
 | Kill proxy process | **Blocked** (no listener exists) |

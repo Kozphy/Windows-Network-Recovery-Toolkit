@@ -7,7 +7,7 @@ Deterministic counters for portfolio demos, dashboards, and `GET /platform/metri
 ## Core KPIs
 
 | Metric | Source | Meaning |
-|--------|--------|---------|
+| -------- | -------- | --------- |
 | **diagnosis_latency_ms** | CLI/API timing wrappers | Wall time for fixture or read-only diagnose path |
 | **audit_events_count** | `audit.jsonl`, `decision_audit.jsonl` tails | Append-only rows written |
 | **policy_decision_distribution** | Reasoning / platform events | Count of ALLOW vs PREVIEW vs BLOCK |
@@ -24,7 +24,7 @@ Deterministic counters for portfolio demos, dashboards, and `GET /platform/metri
 Nine deterministic scenarios in [`demo_data/manifest.json`](../demo_data/manifest.json):
 
 | Scenario id | Fixture pointer |
-|-------------|-----------------|
+| ------------- | ----------------- |
 | `healthy_endpoint` | `tests/fixtures/features_healthy_signals.json` |
 | `proxy_drift` | `tests/fixtures/features_proxy_issue.json` |
 | `localhost_proxy_stale_listener` | `tests/fixtures/platform/proxy_loopback_enabled.json` |

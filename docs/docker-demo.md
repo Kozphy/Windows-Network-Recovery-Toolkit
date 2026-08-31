@@ -60,7 +60,7 @@ Writable demo artifacts: `demo-output/` (audit, reports, timelines).
 ## Troubleshooting
 
 | Issue | Fix |
-|-------|-----|
+| ------- | ----- |
 | Port 8000 in use | Stop other API or change host port in compose file |
 | Health check fails | Wait for `start_period`; check container logs |
 | `/trisk/*` empty | `PLATFORM_FIXTURE_MODE=1` uses bundled fixtures |

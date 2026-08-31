@@ -3,7 +3,7 @@
 Not a formal SOC2 certification. Maps policy outcomes to ITGC-style control categories.
 
 | Policy outcome | Controls |
-|----------------|----------|
+| ---------------- | ---------- |
 | ALLOW | Prevent, Audit |
 | PREVIEW_ONLY | Detect, Audit |
 | REQUIRE_HUMAN_APPROVAL | Approve, Prevent, Audit |

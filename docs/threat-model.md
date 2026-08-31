@@ -9,7 +9,7 @@ Test contracts: `tests/test_policy_safety_contract.py`, `tests/test_proxy_classi
 ---
 
 | # | Risk | Existing control | Required behavior | Test coverage | Gap / future work |
-|---|------|------------------|-------------------|---------------|-------------------|
+| --- | ------ | ------------------ | ------------------- | --------------- | ------------------- |
 | 1 | Operator treats classification as malware verdict | Non-claim language in reports; no `MALWARE_*` classes | Classifications are triage labels with `limitations[]` | `tests/test_non_claim_regression.py`, `tests/test_proxy_classifier_safety_contract.py` | UI banners in future dashboard |
 | 2 | Autonomous registry repair without confirmation | Dry-run default; `DISABLE_WININET_PROXY` token | No live apply without typed phrase | `tests/test_policy_safety_contract.py`, `tests/windows_network_toolkit/test_safety_contract.py` | Agent-side double-confirm |
 | 3 | API caller forces destructive execute | `PLATFORM_SAFE_MODE`, `DEMO_MODE` blocks execute | HTTP 403 or dry-run forced on demo/safe paths | `tests/test_docker_demo_contract.py`, `tests/api/` | Full RBAC on `/platform/execute` |

@@ -7,7 +7,7 @@ How this repository stays **deterministic**, **offline-safe**, and **audit-defen
 ## 1. Unit tests
 
 | Area | Location | Purpose |
-|------|----------|---------|
+| ------ | ---------- | --------- |
 | Proxy parser / loopback | `tests/test_proxy_guard_parser.py` | Host/port parsing, IPv6 loopback |
 | Proxy state machine | `tests/test_proxy_state_transitions.py` | Fixture-driven transitions |
 | Safety contracts | `tests/test_proxy_classifier_safety_contract.py` | No remote proxy on empty after; no malware language |
@@ -20,10 +20,10 @@ How this repository stays **deterministic**, **offline-safe**, and **audit-defen
 
 ## 2. Fixture replay tests
 
-- **Input:** JSON/JSONL under `tests/fixtures/proxy_transitions/`  
-- **Engine:** `proxy_replay.py` + `proxy_state_machine.py`  
-- **Assertions:** `transition_class`, `primary_classification`, `safety_violations == []`  
-- **Invariant:** `test_after_proxy_server_none_is_never_remote_proxy_configured`  
+- **Input:** JSON/JSONL under `tests/fixtures/proxy_transitions/`
+- **Engine:** `proxy_replay.py` + `proxy_state_machine.py`
+- **Assertions:** `transition_class`, `primary_classification`, `safety_violations == []`
+- **Invariant:** `test_after_proxy_server_none_is_never_remote_proxy_configured`
 
 ```powershell
 python -m windows_network_toolkit proxy-replay --input tests/fixtures/proxy_transitions/proxy_enable_flapping_loop.jsonl
@@ -35,7 +35,7 @@ pytest -q tests/test_proxy_state_transitions.py
 ## 3. Safety contract tests (CI must fail if violated)
 
 | Contract | Test anchor |
-|----------|-------------|
+| ---------- | ------------- |
 | Registry mutation requires typed confirmation | `tests/test_policy_safety_contract.py` |
 | Dry-run default on remediation | `tests/test_api_dry_run_default.py` |
 | No malware verdict without limitations | `tests/test_cs1_principle_compliance.py` |
@@ -52,11 +52,11 @@ pytest -q tests/test_proxy_state_transitions.py
 
 ## 5. Audit tamper detection
 
-- `verify_chain()` on append-only records  
-- Modified `payload` or `classification` breaks chain  
-- Tests: `tests/test_governance_safety_contracts.py`, `tests/platform_core/governance/test_hash_chained_audit.py`  
+- `verify_chain()` on append-only records
+- Modified `payload` or `classification` breaks chain
+- Tests: `tests/test_governance_safety_contracts.py`, `tests/platform_core/governance/test_hash_chained_audit.py`
 
-**Proves:** post-write integrity · **Does not prove:** original observations were true  
+**Proves:** post-write integrity · **Does not prove:** original observations were true
 
 ---
 

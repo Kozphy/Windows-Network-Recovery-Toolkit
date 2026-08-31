@@ -1,7 +1,7 @@
 # Audit Hash Chain Explained
 
-**Status:** Technical reference for ITGC and internal audit walkthroughs  
-**Implementation:** `src/platform_core/governance/chain_of_custody.py`, `src/platform_core/audit/writer.py`  
+**Status:** Technical reference for ITGC and internal audit walkthroughs
+**Implementation:** `src/platform_core/governance/chain_of_custody.py`, `src/platform_core/audit/writer.py`
 **Related CLI:** `python -m windows_network_toolkit audit verify <path.jsonl>`
 
 ---
@@ -17,7 +17,7 @@ The hash chain provides **tamper-evident append-only integrity** for decision au
 Each audit record includes:
 
 | Field | Role |
-|-------|------|
+| ------- | ------ |
 | Body fields | Command, timestamp, classification, policy outcome, snapshots, limitations |
 | `previous_hash` | Prior record's `current_hash`, or `genesis` for first record |
 | `current_hash` | SHA-256 of `previous_hash \| canonical_json(body)` |
@@ -56,7 +56,7 @@ python -m windows_network_toolkit audit verify logs/canonical_decision_audit.jso
 python -m windows_network_toolkit audit verify platform_data/audit.jsonl
 ```
 
-**Pass output:** `verified: true`, message `ok`  
+**Pass output:** `verified: true`, message `ok`
 **Fail output:** `verified: false`, index of first break
 
 Governance report surfaces this as `audit_chain_verification.verified` and KPI `hash_chain_invalid_count`.
@@ -66,7 +66,7 @@ Governance report surfaces this as `audit_chain_verification.verified` and KPI `
 ## What verify PROVES
 
 | Claim | Supported? |
-|-------|------------|
+| ------- | ------------ |
 | Records were appended in order without modifying prior bodies | **Yes** (if verify passes) |
 | No record was deleted from middle of chain | **Yes** (subsequent hashes would break) |
 | Body content at export time matches hash | **Yes** |
@@ -77,7 +77,7 @@ Governance report surfaces this as `audit_chain_verification.verified` and KPI `
 ## What verify does NOT PROVE
 
 | Claim | Supported? |
-|-------|------------|
+| ------- | ------------ |
 | Observations are factually correct | **No** |
 | Registry reads were complete | **No** |
 | All operator actions were logged | **No** — off-tool actions invisible |
@@ -91,7 +91,7 @@ Governance report surfaces this as `audit_chain_verification.verified` and KPI `
 ## Integration points
 
 | Consumer | Usage |
-|----------|-------|
+| ---------- | ------- |
 | `governance-report` | Blocks attestation narrative when chain invalid |
 | `powerbi_star_export` | Calls `verify_chain` when loading audit dir |
 | `build_risk_kpi_summary` | Populates `audit_integrity` KPIs |
@@ -102,7 +102,7 @@ Governance report surfaces this as `audit_chain_verification.verified` and KPI `
 ## Failure scenarios
 
 | Scenario | verify result | Response |
-|----------|---------------|----------|
+| ---------- | --------------- | ---------- |
 | Manual edit of historical row | FAIL at edited index | Do not rely on report; restore backup |
 | Truncated file mid-record | FAIL or parse error | Treat as incomplete evidence |
 | Empty file | PASS (vacuous) or no-op | NOT_TESTED for CTRL-010 |
@@ -124,7 +124,7 @@ Governance report surfaces this as `audit_chain_verification.verified` and KPI `
 ## Comparison to digital signatures
 
 | Mechanism | Provides |
-|-----------|----------|
+| ----------- | ---------- |
 | Hash chain | Ordered integrity, tamper detection |
 | HMAC / asymmetric sign | Authenticity of writer (not implemented in v1) |
 | WORM storage | Immutability at rest (operational — not code) |

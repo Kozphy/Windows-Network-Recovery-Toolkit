@@ -27,7 +27,7 @@ This platform provides **structured evidence**, **risk classification**, **contr
 ## Big 4 relevance
 
 | Practice area | How this project maps |
-|---------------|----------------------|
+| --------------- | ---------------------- |
 | **IT General Controls (ITGC)** | Configuration monitoring, change governance, audit trail integrity |
 | **Change management** | Policy-gated remediation preview; typed confirmation; rollback review |
 | **Incident management** | Evidence pipeline, timeline merge, deterministic replay |
@@ -70,7 +70,7 @@ Governance / Audit Trail
 ## Interview story (STAR)
 
 | | |
-|---|---|
+| --- | --- |
 | **Situation** | Browser and dev tools failed while DNS/ping worked. WinINET showed `ProxyEnable=1` and `ProxyServer=127.0.0.1:59081`. WinHTTP was direct. No listener on 59081. |
 | **Task** | Build a safer way to diagnose, prove, classify, and remediate **without** blindly changing registry or network settings. |
 | **Action** | Built evidence collectors, proof engine, risk classification, policy gates, dry-run remediation, append-only audit trail, replay, FastAPI endpoints, dashboard, Prometheus metrics, and CI safety contracts. Added business/control layer (`risk-assess`, `control-test`, `governance-report`). |

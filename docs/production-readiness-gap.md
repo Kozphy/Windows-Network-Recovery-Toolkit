@@ -5,7 +5,7 @@
 See also: [production_readiness.md](production_readiness.md), [classifier-evaluation-report.md](classifier-evaluation-report.md), [human-review-workflow.md](human-review-workflow.md), [evidence-replay-benchmark.md](evidence-replay-benchmark.md).
 
 | Area | Current Portfolio Prototype | Production Requirement | Gap | Recommended Next Step |
-|------|----------------------------|------------------------|-----|------------------------|
+| ------ | ---------------------------- | ------------------------ | ----- | ------------------------ |
 | Endpoint evidence collection | WNT CLI + fixture inject | Signed agent with scheduled collection | No fleet agent | Package Windows service agent |
 | Fixture replay | `replay-benchmark` + deterministic pipeline tests | Continuous replay in CI on every classifier change | **CI-gated** on PRs (`eval-benchmarks` job, `--min-deterministic-rate 1.0`); no hosted eval service | Keep golden JSONL current |
 | Classifier evaluation | `classifier-benchmark` offline harness | Versioned golden set + drift alerts | **CI-gated** locally (`--min-primary-match-rate 0.85`, `--max-unsafe-rate 0.0`); artifacts uploaded; no hosted eval service | Expand golden set; still not a hosted eval SaaS |

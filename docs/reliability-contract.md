@@ -17,7 +17,7 @@ This document defines the minimum behavioral guarantees for evidence-backed tech
 The current portfolio implementation is process-local and fixture-first. It demonstrates deterministic decision construction, not distributed exactly-once processing.
 
 | Stage | Current semantic | Future production target |
-|---|---|---|
+| --- | --- | --- |
 | Evidence collection | best effort, fixture or local collector | at-least-once ingestion with signed envelopes |
 | Classification | deterministic function for a fixed input/version | idempotent worker execution |
 | Policy evaluation | version-pinned decision input | versioned control plane with shadow evaluation |

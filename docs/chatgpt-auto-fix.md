@@ -9,7 +9,7 @@ Preview-first orchestration for **ChatGPT desktop app / browser path degradation
 ## When to use
 
 | Symptom | May help | Will not fix |
-|---------|----------|--------------|
+| --------- | ---------- | -------------- |
 | Browser or app cannot reach `chatgpt.com` | Dead localhost WinINET proxy, WinHTTP loopback hints, DNS cache | OpenAI server outage |
 | Sidebar loads, messages blank | Proxy/VPN interaction, Electron stack, DNS, reversible Chromium network-state quarantine | Cookies, authentication/session corruption, server-side faults |
 | Many `ChatGPT.exe` rows | Count and audit the exact rows; cold restart after confirmation | Prove that each process is hung or identify root cause from count alone |
@@ -129,7 +129,7 @@ python -m src remediate --scenario chatgpt_app_firewall --dry-run false --confir
 ## Confirmation tokens
 
 | Token | Used by | Mutations |
-|-------|---------|-----------|
+| ------- | --------- | ----------- |
 | `CLEAR_DEAD_LOCALHOST_PROXY` | `proxy-guardian` (step 1) | HKCU WinINET `ProxyEnable` when classification is dead/stale and **no listener** exists on the configured localhost port |
 | `DISABLE_WININET_PROXY` | Standalone `proxy-disable` | Explicit standalone HKCU WinINET proxy-disable workflow |
 | `APPLY_CHATGPT_LOW_RISK` | `auto-fix-chatgpt` CLI / LOW-risk executor (step 4) | Allowlisted only: `ipconfig /flushdns`, `netsh winhttp reset proxy`, bounded ChatGPT.exe stop/start, and reversible `Network Persistent State` quarantine when selected by evidence |
@@ -141,7 +141,7 @@ Tokens are never inferred or filled automatically. Live ChatGPT apply requires b
 ## LOW-risk actions (evidence-gated)
 
 | Action | Command | Notes |
-|--------|---------|-------|
+| -------- | --------- | ------- |
 | `flush_dns` | `ipconfig /flushdns` | Selected when DNS probe fails or browser OK but app path fails |
 | `reset_winhttp_proxy` | `netsh winhttp reset proxy` | WinHTTP loopback hints or proxy/localhost hypothesis |
 | `restart_chatgpt_app` | Stop/start `ChatGPT.exe` | App process detected with degraded HTTPS probe |
@@ -158,7 +158,7 @@ The cold restart does **not** touch Cookies, Login Data, Local Storage, extensio
 After a live run, review:
 
 | Path | Contents |
-|------|----------|
+| ------ | ---------- |
 | `logs/network_recovery_events.jsonl` | Append-only scenario diagnosis + remediation rows |
 | `reports/last_network_recovery_diagnosis.json` | Latest signal bundle, hypotheses, recommended actions |
 | `.audit/proxy-disable.jsonl` | Guardian/proxy-disable apply rows (step 1) |
@@ -212,7 +212,7 @@ Exit codes: script **0** when HTTPS probe healthy or dry-run; **1** when still d
 ## Module map
 
 | Path | Role |
-|------|------|
+| ------ | ------ |
 | `scripts/auto-fix-chatgpt.ps1` | Four-step PowerShell orchestrator |
 | `src/network_recovery/auto_fix.py` | CLI orchestrator |
 | `src/network_recovery/app_state.py` | Bounded process count, state discovery, metadata-only observation, and reversible quarantine helper |

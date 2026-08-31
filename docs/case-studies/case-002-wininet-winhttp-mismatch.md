@@ -15,7 +15,7 @@ Some apps use system proxy; others bypass — inconsistent connectivity.
 ## Known / Not proven
 
 | Known | Not proven |
-|-------|------------|
+| ------- | ------------ |
 | Dual-stack proxy configuration drift | Intentional enterprise policy vs local corruption |
 | Apps disagree on egress path | Attacker manipulation |
 

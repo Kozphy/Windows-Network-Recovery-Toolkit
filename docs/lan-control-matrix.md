@@ -1,7 +1,7 @@
 # LAN Control Matrix — CTRL-LAN-001..008
 
 | ID | Objective | Pass | Fail signal |
-|----|-----------|------|-------------|
+| ---- | ----------- | ------ | ------------- |
 | CTRL-LAN-001 | Maintain asset inventory | ≥2 devices with IP/MAC | Empty inventory |
 | CTRL-LAN-002 | Detect unauthorized devices | No unknown unapproved devices | Unknown vendor without DHCP cross-check |
 | CTRL-LAN-003 | Review IoT outbound DNS | DNS logs + IoT devices | IoT without DNS import |

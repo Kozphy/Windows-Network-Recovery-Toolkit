@@ -24,7 +24,7 @@ Endpoint reliability tooling often drifts into silent agent phone-home behavior.
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Managed SaaS as primary story | Misaligns with stated local-first positioning |
 | Always-on agent upload | Violates “no silent telemetry” principle |
 | Centralized log store required | Blocks air-gapped use cases |

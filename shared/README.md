@@ -7,7 +7,7 @@ Cross-service configuration consumed by the **optional SaaS demo stack** (Supaba
 ## Contents
 
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `plan_limits.json` | Free / pro / team monthly diagnosis limits for usage metering |
 
 ---

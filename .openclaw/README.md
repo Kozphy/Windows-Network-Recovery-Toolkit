@@ -3,7 +3,7 @@
 This directory holds **example** OpenClaw configuration for the WNRT coding agent.
 
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `openclaw.example.json5` | Documented sandboxed agent config — copy locally; do not commit secrets |
 | `task.example.json` | Example approved low-risk task for `scripts/openclaw_task_runner.py` |
 | `runs/` | Local audit JSON (gitignored; never commit) |

@@ -45,7 +45,7 @@ Multi-tenant via `X-Api-Tenant` + `trisk_tenants`. RBAC extends existing `V1Role
 ## Alternatives considered
 
 | Alternative | Rejected because |
-|-------------|------------------|
+| ------------- | ------------------ |
 | Microservices per service | Operational overhead exceeds portfolio scope |
 | Single monolithic `decision.py` | Poor testability and auditor explainability |
 | LLM orchestration layer | Violates no-autonomous-AI-authority constraint |

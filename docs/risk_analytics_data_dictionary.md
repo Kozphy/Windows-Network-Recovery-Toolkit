@@ -5,7 +5,7 @@ Dashboard-ready fields from audit JSONL and portfolio CLI outputs.
 ## Incident grain (`incidents.csv` fixture)
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | incident_id | string | Unique incident key |
 | classification | string | Primary triage label |
 | evidence_tier | string | observation / correlation / proof |
@@ -16,7 +16,7 @@ Dashboard-ready fields from audit JSONL and portfolio CLI outputs.
 ## Control test grain (`control_tests.csv`)
 
 | Column | Description |
-|--------|-------------|
+| -------- | ------------- |
 | control_id | CT-* identifier |
 | control_objective | ITGC-style objective |
 | result | PASS / FAIL / EXCEPTION / INSUFFICIENT_EVIDENCE |
@@ -26,7 +26,7 @@ Dashboard-ready fields from audit JSONL and portfolio CLI outputs.
 ## Remediation grain (`remediation_actions.csv`)
 
 | Column | Description |
-|--------|-------------|
+| -------- | ------------- |
 | action | remediation_preview / remediation_execute |
 | dry_run | true = preview |
 | decision | allowed / blocked |

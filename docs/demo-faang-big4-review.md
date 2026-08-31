@@ -1,7 +1,7 @@
 # Demo Guide — FAANG Engineering & Big 4 Audit Review
 
-**Purpose:** Two reviewer-optimized demo paths with 60-second pitches and command lists  
-**Environment:** Windows preferred for live probes; Linux/macOS uses `--fixture` mode  
+**Purpose:** Two reviewer-optimized demo paths with 60-second pitches and command lists
+**Environment:** Windows preferred for live probes; Linux/macOS uses `--fixture` mode
 **Disclaimer:** Portfolio demonstration — not production fleet attestation.
 
 ---
@@ -122,7 +122,7 @@ python -m windows_network_toolkit control-test --fixture tests/fixtures/case_stu
 ### Case study highlights
 
 | Case | Classification | Control highlight | Limitation to state |
-|------|----------------|-------------------|---------------------|
+| ------ | ---------------- | ------------------- | --------------------- |
 | Dead proxy | `DEAD_PROXY_CONFIG` | CTRL-001 FAIL | Not malware |
 | WinHTTP mismatch | `WININET_WINHTTP_MISMATCH` | CTRL-002 FAIL | Alignment ≠ policy approval |
 | Reverter | `REVERTER_SUSPECTED` | CTRL-007 FAIL | Correlation — collect E13 |

@@ -33,7 +33,7 @@ gantt
 **Goal:** Introduce fleet contracts without changing runtime behavior.
 
 | Task | Deliverable | Exit criteria |
-|------|-------------|---------------|
+| ------ | ------------- | --------------- |
 | Fleet envelope | `platform_core/fleet/models.py` | Agent can emit `FleetEventEnvelope` |
 | Partitioning | `assign_partition()` | Deterministic tests 10k endpoints |
 | Dedup interface | `IdempotencyStore` | Unit tests: accept/duplicate/conflict |
@@ -41,7 +41,7 @@ gantt
 | Observability labels | `fleet/observability.py` | Metrics documented |
 | ADR-008 approved | Architecture sign-off | SRE + Security review |
 
-**Risk:** None — additive only.  
+**Risk:** None — additive only.
 **Rollback:** Delete fleet package; no production impact.
 
 ---
@@ -59,7 +59,7 @@ flowchart LR
 ```
 
 | Task | Detail |
-|------|--------|
+| ------ | -------- |
 | Deploy 2+ gateway replicas per region | K8s / Container Apps, autoscale on CPU + lag |
 | Redis cluster for idempotency | 72h TTL; `SETNX` with payload hash check |
 | Agent retry policy | Exponential backoff; max 24h WAL retention |
@@ -80,7 +80,7 @@ flowchart LR
 **Goal:** Kafka/Redpanda as hot path; consumers build projections.
 
 | Task | Detail |
-|------|--------|
+| ------ | -------- |
 | Provision 3-broker Redpanda cluster (or managed Kafka) | 256 partitions on `erp.telemetry.shared` |
 | Implement `KafkaEventPublisher` adapter | Behind `EventPublisher` protocol |
 | Deploy normalizer consumer group | Writes to Postgres + ClickHouse |
@@ -101,7 +101,7 @@ flowchart LR
 **Goal:** Production auth; tenant isolation enforced at API and DB.
 
 | Task | Detail |
-|------|--------|
+| ------ | -------- |
 | Entra ID app registration | Agent + operator apps |
 | JWT middleware | Replace `X-Operator-Role` in prod |
 | Postgres RLS policies | `tenant_id` on all tables |
@@ -111,7 +111,7 @@ flowchart LR
 **RBAC migration:**
 
 | Old (demo) | New (prod) |
-|------------|------------|
+| ------------ | ------------ |
 | `X-Operator-Role: admin` | JWT `roles: [tenant_admin]` |
 | `X-Operator-Id` | JWT `sub` |
 | — | JWT `tenant_id` (required) |
@@ -130,7 +130,7 @@ flowchart LR
 **Goal:** Partition replay workers; cold audit archive.
 
 | Task | Detail |
-|------|--------|
+| ------ | -------- |
 | `erp.replay.jobs` topic + workers | `ReplayCoordinator` distributed mode |
 | S3 lifecycle policies | Audit blobs 7y retention |
 | ClickHouse MTTR rollups | Replace signal-based MTTR for fleet KPIs |
@@ -151,7 +151,7 @@ flowchart LR
 **Goal:** Stream is system of record; JSONL export-only.
 
 | Week | Action |
-|------|--------|
+| ------ | -------- |
 | 39 | Stop dual-write to JSONL for **new** events |
 | 40 | Migrate historical JSONL → cold store (batch ETL) |
 | 41 | Read APIs query Postgres/ClickHouse only |
@@ -178,7 +178,7 @@ flowchart TB
 ```
 
 | Source file | Target | Notes |
-|-------------|--------|-------|
+| ------------- | -------- | ------- |
 | `platform_events.jsonl` | `erp.telemetry.shared` | Assign `tenant_id=legacy` if missing |
 | `sre_domain_events.jsonl` | `erp.sre.domain.shared` | Preserve `sequence` ordering |
 | `platform_decisions.jsonl` | `erp.audit.signed` | Verify HMAC before import |
@@ -194,7 +194,7 @@ flowchart TB
 ## Environment matrix
 
 | Environment | Endpoints | `FLEET_MODE` | Stream | Idempotency |
-|-------------|-----------|--------------|--------|-------------|
+| ------------- | ----------- | -------------- | -------- | ------------- |
 | Dev laptop | 1 | `local` | — | in-memory |
 | CI | — | `local` | — | in-memory |
 | Staging | 1,000 | `stream` | 3-node Redpanda | Redis |
@@ -211,7 +211,7 @@ Local integration test stack: Redpanda + Redis + Postgres + API. Not production 
 ## Game day scenarios (pre-cutover)
 
 | Scenario | Expected behavior |
-|----------|-------------------|
+| ---------- | ------------------- |
 | Gateway AZ loss | Agents failover; WAL drains; lag < 5m |
 | Redis idempotency outage | Gateway 503; agents retain WAL; no dupes on recovery |
 | Tenant ingest flood | Rate limit triggers; other tenants unaffected |
@@ -223,7 +223,7 @@ Local integration test stack: Redpanda + Redis + Postgres + API. Not production 
 ## Success metrics
 
 | Metric | Pre-migration | Post-migration |
-|--------|---------------|----------------|
+| -------- | --------------- | ---------------- |
 | Max endpoints | ~100 (JSONL) | 100,000 |
 | Ingest p99 | N/A | < 500ms |
 | Replay max incidents/hour | ~10 | 1,000+ |
@@ -235,7 +235,7 @@ Local integration test stack: Redpanda + Redis + Postgres + API. Not production 
 ## Team ownership (recommended)
 
 | Area | Owner |
-|------|-------|
+| ------ | ------- |
 | Agent + WAL | Endpoint team |
 | Ingest gateway + dedup | Platform ingress |
 | Stream + consumers | Data platform |

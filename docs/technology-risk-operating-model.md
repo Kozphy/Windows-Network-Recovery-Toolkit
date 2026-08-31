@@ -5,7 +5,7 @@ Portfolio operating model — not enterprise policy.
 ## Roles
 
 | Role | Responsibilities |
-|------|------------------|
+| ------ | ------------------ |
 | Operator | Ingest evidence, run collectors |
 | Risk reviewer | Human review queue, override classification |
 | Auditor (read-only) | Audit verify, executive reports, event timeline |

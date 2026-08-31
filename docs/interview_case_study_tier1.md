@@ -20,7 +20,7 @@
 ## Technical tradeoffs
 
 | Choice | Why |
-|--------|-----|
+| -------- | ----- |
 | JSONL not Postgres by default | Local-first, portfolio-friendly, replayable |
 | Ordinal confidence | Honest epistemics vs fake probabilities |
 | Preview-only default | Safety over automation speed |

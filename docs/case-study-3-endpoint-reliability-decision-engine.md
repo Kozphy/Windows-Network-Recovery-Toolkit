@@ -32,7 +32,7 @@ These are **observations** until the proof engine validates structured contrast 
 ## Hypothesis
 
 | # | Hypothesis | Engine mapping |
-|---|------------|----------------|
+| --- | ------------ | ---------------- |
 | H1 | WinINET proxy drift with working direct path | `WININET_PROXY_DRIFT` / `PROXY_PATH_FAIL_DIRECT_PATH_SUCCESS` |
 | H2 | Unknown localhost listener | `UNKNOWN_LOCAL_PROXY` |
 | H3 | Registry reverter respawn | `REVERTER_SUSPECTED` (via `proxy-watch`) |
@@ -46,8 +46,8 @@ These are **observations** until the proof engine validates structured contrast 
 Collectors → Evidence fusion → Hypothesis ranking → Policy engine → Remediation preview → Audit JSONL → Replay
 ```
 
-**Canonical modules:** `src/platform_core/` (evidence, proof, policy, audit)  
-**CLI facade:** `windows_network_toolkit/`  
+**Canonical modules:** `src/platform_core/` (evidence, proof, policy, audit)
+**CLI facade:** `windows_network_toolkit/`
 **Decision ranking:** `windows_network_toolkit/decision/hypothesis_engine.py`
 
 ### Commands — full decision path (fixture-safe)
@@ -89,7 +89,7 @@ uvicorn backend.main:app --reload
 ### Evidence tiers
 
 | Level | Claim strength |
-|-------|----------------|
+| ------- | ---------------- |
 | `OBSERVED_ONLY` | Registry/netstat reads |
 | `CORRELATED` | Listener/process match |
 | `PROVEN_REGISTRY_WRITER` | Sysmon E13 / Procmon |
@@ -99,7 +99,7 @@ uvicorn backend.main:app --reload
 ### Policy outcomes (representative)
 
 | Condition | Policy decision |
-|-----------|-----------------|
+| ----------- | ----------------- |
 | High confidence, unproven | `PREVIEW_ONLY` |
 | Proof confirmed, safe tier action | `ALLOW` (with confirmation) |
 | Proof rejected | `BLOCK` |
@@ -167,7 +167,7 @@ For unknown listener fixture, recommended action: `INVESTIGATE_LISTENER` (human 
 ## Risk Controls
 
 | Risk | Mitigation |
-|------|------------|
+| ------ | ------------ |
 | Wrong remediation | Dry-run default; typed confirmation; LKG snapshot |
 | False certainty | Evidence tier guards; limitations in every output |
 | Audit tampering | Append-only JSONL; hash-chain verification path |
@@ -179,7 +179,7 @@ For unknown listener fixture, recommended action: `INVESTIGATE_LISTENER` (human 
 ## Lessons Learned
 
 | Principle | Application |
-|-----------|-------------|
+| ----------- | ------------- |
 | **Observation ≠ Proof** | Signal JSONL is input; proof engine must validate before tier upgrade. |
 | **Correlation ≠ Causation** | Hypothesis ranking uses correlation; policy gates require proof for strong actions. |
 | **Confidence ≠ Certainty** | Ordinal scores drive policy rows — not Bayesian malware verdicts. |

@@ -11,7 +11,7 @@ This RLS model aligns with the platform governance principle: **classification i
 **Purpose:** Diagnose endpoint reliability and view remediation previews.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | fact_incidents | All rows |
 | fact_policy_decisions | All rows |
 | fact_control_tests | `control_domain = "Endpoint Reliability"` |
@@ -28,7 +28,7 @@ This RLS model aligns with the platform governance principle: **classification i
 **Purpose:** Review classifications and proof tiers without malware accusation semantics.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | fact_incidents | All rows |
 | dim_proof_tier | All rows |
 | dim_classification | `is_security_accusation = FALSE` (all rows in this model) |
@@ -48,7 +48,7 @@ dim_classification[is_security_accusation] = FALSE ()
 **Purpose:** Audit trail, limitations, governance envelope fields.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | fact_incidents | All rows |
 | fact_policy_decisions | All rows |
 | fact_control_tests | All rows |
@@ -64,7 +64,7 @@ dim_classification[is_security_accusation] = FALSE ()
 **Purpose:** Aggregated KPIs only — no endpoint-level drilldown.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | fact_incidents | **None at row level** — use aggregated visuals only |
 
 **Implementation pattern:**
@@ -80,7 +80,7 @@ dim_classification[is_security_accusation] = FALSE ()
 ## Column-level security (optional)
 
 | Column | IT Support | Security | Audit | Risk Committee |
-|--------|------------|----------|-------|----------------|
+| -------- | ------------ | ---------- | ------- | ---------------- |
 | incident_id | Visible | Visible | Visible | Hidden |
 | audit_id | Visible | Hidden | Visible | Hidden |
 | confidence_score | Visible | Visible | Visible | Aggregated only |

@@ -3,7 +3,7 @@
 Typed models live in `windows_network_toolkit/diagnostics/browser_profile/models.py`.
 
 | Model | Role |
-|-------|------|
+| ------- | ------ |
 | `RawNetworkBaseline` | OS DNS/TCP/TLS/HTTP + proxy env (no browser cookies) |
 | `BrowserProfileEvidence` | Profile id/name/path/open hint |
 | `BrowserSiteStateEvidence` | Cookie **count/meta**, SW/cache flags |

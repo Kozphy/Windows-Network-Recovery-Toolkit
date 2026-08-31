@@ -3,7 +3,7 @@
 ## Assets
 
 | Asset | Sensitivity |
-|-------|-------------|
+| ------- | ------------- |
 | `platform_events.jsonl` | Medium — endpoint telemetry, may include process paths |
 | `platform_decisions.jsonl` | High — policy outcomes, hypothesis labels |
 | Audit HMAC signatures | High — tamper detection integrity |
@@ -19,7 +19,7 @@
 ## Threats & mitigations
 
 | Threat | Impact | Mitigation |
-|--------|--------|------------|
+| -------- | -------- | ------------ |
 | Forged high-confidence hypothesis | Unauthorized remediation | Policy defaults PREVIEW; ALLOW requires proof + confirmation |
 | Audit log tampering | False compliance | HMAC-SHA256 on `PlatformDecisionRecord`; verify endpoint |
 | Replay injection | Wrong historical state | Events keyed by `event_id`; replay loads stored rows only |

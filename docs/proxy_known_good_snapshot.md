@@ -5,7 +5,7 @@ Named, operator-captured snapshots of **allowlisted proxy-related network postur
 ## Data captured per `proxy-snapshot save`
 
 | Surface | Fields / sources |
-|--------|-------------------|
+| -------- | ------------------- |
 | **HKCU WinINET** | `ProxyEnable`, `ProxyServer`, `AutoConfigURL`, `ProxyOverride` (via registry probe shared with Proxy Guard). |
 | **WinHTTP** | Full text of `netsh winhttp show proxy`, plus parsed direct-access vs proxy literal for restore. |
 | **Git (global)** | `http.proxy`, `https.proxy`. |
@@ -17,7 +17,7 @@ Payloads intentionally avoid machine identifiers beyond what already appears ins
 ## Storage
 
 | Path | Role |
-|------|------|
+| ------ | ------ |
 | `logs/proxy_known_good_snapshots.jsonl` | Append-only stream; each line is `{ schema_version, name, saved_at, risk_summary, snapshot }`. Latest row per `--name` wins for `show`, `diff`, `restore`. |
 | `config/last_known_good_proxy.example.json` | Committed synthetic template; copy locally to `config/last_known_good_proxy.json` (gitignored). |
 

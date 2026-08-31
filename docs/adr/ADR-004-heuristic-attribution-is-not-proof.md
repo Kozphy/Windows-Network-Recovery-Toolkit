@@ -24,7 +24,7 @@ Loopback proxy incidents often correlate a listening `node.exe` (or similar) wit
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Treat port owner as proof | False positives when proxy is re-enabled by unrelated parent |
 | Hide attribution entirely | Reduces operator value for triage |
 | Require Sysmon for all installs | Too heavy for local-first prototype |

@@ -49,7 +49,7 @@ Observation → Event Normalization → State Transition → Hypothesis Ranking
 ## Alternatives considered
 
 | Alternative | Rejected because |
-|-------------|------------------|
+| ------------- | ------------------ |
 | Single monolithic `decision_engine.py` in `src/` | Duplicates platform_core contracts; harder to test/replay |
 | Immediate auto-remediation on high confidence | Violates observation≠proof; unsafe for malware hypotheses |
 | MongoDB event store | Team standard is append-only SQL + JSONL for audit immutability |

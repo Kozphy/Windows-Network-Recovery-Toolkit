@@ -5,7 +5,7 @@ Local-first **Endpoint Reliability Platform** — security observability and saf
 ## Assets
 
 | Asset | Description |
-|-------|-------------|
+| ------- | ------------- |
 | Endpoint state | Registry/proxy snapshots, diagnoses, fleet heartbeats |
 | Audit JSONL | Append-only decision and remediation history |
 | Operator trust | Policy/confirmation UX |
@@ -14,7 +14,7 @@ Local-first **Endpoint Reliability Platform** — security observability and saf
 ## Threats
 
 | Threat | Impact |
-|--------|--------|
+| -------- | -------- |
 | Malicious local process modifies proxy settings | Browser/dev-tool traffic redirected; ping/DNS may still pass |
 | Benign developer tool creates localhost proxy | False-positive attribution if treated as malware |
 | Stale telemetry causes wrong attribution | Writer/listener mismatch; incorrect incident severity |
@@ -25,7 +25,7 @@ Local-first **Endpoint Reliability Platform** — security observability and saf
 ## Controls
 
 | Control | Mechanism |
-|---------|-----------|
+| --------- | ----------- |
 | Local-first design | No default cloud upload; `PLATFORM_DATA_DIR` on disk |
 | Synthetic fixtures in git | `tests/fixtures/demo/` — no real endpoint logs committed |
 | Real logs ignored | `.gitignore` for `platform_data/`, `reports/`, machine exports |
@@ -42,7 +42,7 @@ Local-first **Endpoint Reliability Platform** — security observability and saf
 ## Attacker model
 
 | Actor | Capability | Goal |
-|-------|------------|------|
+| ------- | ------------ | ------ |
 | Malicious local process | Mutate HKCU proxy keys, bind localhost port | Redirect traffic |
 | Compromised browser path | Fail HTTPS while network probes pass | Hide exfil path |
 | Malicious listener | Own port without writing registry | Mislead attribution |

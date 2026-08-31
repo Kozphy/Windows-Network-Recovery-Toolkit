@@ -21,7 +21,7 @@ CLI (JSON only) → facade → canonical engine → audit JSONL
 ```
 
 | Layer | Location | Rule |
-|-------|----------|------|
+| ------- | ---------- | ------ |
 | CLI handlers | `windows_network_toolkit/cli.py` | Parse args, serialize JSON, exit codes |
 | Facades | `windows_network_toolkit/*.py` | Delegate; no duplicated business logic |
 | Engines | `src/platform_core/` | Classification, proof, policy, timeline |
@@ -49,7 +49,7 @@ Tests: `tests/windows_network_toolkit/test_cli_json_contract.py`
 ## Reliability patterns
 
 | Pattern | Implementation |
-|---------|----------------|
+| --------- | ---------------- |
 | Idempotent reads | `proxy-status`, `proxy-owner` |
 | Soft-fail audit | Writes to `.audit/` never crash commands |
 | Deterministic fixtures | `tests/fixtures/enert/dead_proxy_59081.json` |

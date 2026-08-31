@@ -1,6 +1,6 @@
 # Platform engineering gap report
 
-**Audit date:** 2026-06-08  
+**Audit date:** 2026-06-08
 **Scope:** README promises vs repository reality (local-first endpoint reliability platform)
 
 This document is the Phase 1 reality audit. It maps claimed capabilities to files, tests, and CI evidence. Gaps are explicit — no marketing language.
@@ -10,7 +10,7 @@ This document is the Phase 1 reality audit. It maps claimed capabilities to file
 ## Executive summary
 
 | Area | Status | Evidence |
-|------|--------|----------|
+| ------ | -------- | ---------- |
 | GitHub Actions CI | **Present** | `.github/workflows/ci.yml` (lint / test / build-smoke) |
 | Security workflow | **Present** | `.github/workflows/security.yml` (pip-audit + Trivy fs/image) |
 | Docker local stack | **Present** | `Dockerfile`, `docker-compose.yml`, `.env.example` |
@@ -28,7 +28,7 @@ This document is the Phase 1 reality audit. It maps claimed capabilities to file
 ### Required (Phase 2 target)
 
 | Check | File | Status |
-|-------|------|--------|
+| ------- | ------ | -------- |
 | Triggers `push` + `pull_request` on `main` | `ci.yml` | Yes |
 | Python 3.11 | `ci.yml` | Yes |
 | `pip install -e ".[dev]"` | `ci.yml` | Yes |
@@ -42,7 +42,7 @@ This document is the Phase 1 reality audit. It maps claimed capabilities to file
 ### Legacy split workflows (still present)
 
 | Workflow | Notes |
-|----------|-------|
+| ---------- | ------- |
 | `lint.yml` | Duplicate of CI lint; safe to require only `ci` / `lint` job |
 | `test.yml` | Broader (mypy, coverage); **fixed** missing line continuation in pytest-safety step |
 | `build.yml` | GHCR push on default branch; complements `build-smoke` |
@@ -54,7 +54,7 @@ This document is the Phase 1 reality audit. It maps claimed capabilities to file
 ## 2. Security workflow
 
 | Requirement | Status |
-|-------------|--------|
+| ------------- | -------- |
 | `.github/workflows/security.yml` | Yes |
 | Trivy filesystem scan | Yes (`trivy-fs` job) |
 | HIGH / CRITICAL severity | Yes |
@@ -67,7 +67,7 @@ This document is the Phase 1 reality audit. It maps claimed capabilities to file
 ## 3. Docker local stack
 
 | Component | Path | Status |
-|-----------|------|--------|
+| ----------- | ------ | -------- |
 | Dockerfile | `Dockerfile` | Multi-stage Python 3.11 |
 | Compose | `docker-compose.yml` | `api`, `prometheus`, `grafana` |
 | Env template | `.env.example` | Yes |
@@ -85,7 +85,7 @@ This document is the Phase 1 reality audit. It maps claimed capabilities to file
 ## 4. Demo path (read-only / fixture)
 
 | Step | Command | Mutates host? |
-|------|---------|---------------|
+| ------ | --------- | --------------- |
 | Diagnosis | `python -m src diagnose --fixture tests/fixtures/features_healthy_signals.json` | No |
 | Timeline replay | `python -m src proxy-timeline --fixture … --format markdown` | No |
 | Policy | `python -m src proxy-policy --fixture … --format json` | No |
@@ -100,7 +100,7 @@ Orchestration: `scripts/demo_tier1.ps1`, `make demo-tier1`, `docs/verified_demo.
 ## 5. Documentation
 
 | Doc | Exists |
-|-----|--------|
+| ----- | -------- |
 | `docs/verified_demo.md` | Yes |
 | `docs/ci_branch_protection.md` | Yes (update job names to `ci` workflow) |
 | `docs/production_readiness.md` | Yes |
@@ -111,7 +111,7 @@ Orchestration: `scripts/demo_tier1.ps1`, `make demo-tier1`, `docs/verified_demo.
 ## 6. Safety tests matrix
 
 | Guarantee | Test location |
-|-----------|---------------|
+| ----------- | --------------- |
 | No silent process kill | `test_policy_safety_contract.py`, `tests/api/test_remediation_safety.py`, `tests/policy/test_safety_boundaries.py` |
 | No firewall reset | Same + `test_safety_regression.py` |
 | No adapter disable | Same |

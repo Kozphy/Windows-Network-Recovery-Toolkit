@@ -9,7 +9,7 @@ The platform demonstrates **AI-assisted technology-risk engineering**, not auton
 ## Capability matrix
 
 | Domain | Required evidence | Repository target | Acceptance criterion |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Secure engineering | Static analysis, dependency review, secrets hygiene | GitHub security CI | Every pull request receives automated security checks; high-confidence findings are triaged before merge |
 | Threat modeling | Assets, trust boundaries, abuse cases, mitigations | `docs/threat-model.md` | Every new execution path documents abuse cases and control ownership |
 | Responsible AI | Human approval, non-claims, limitations, traceability | README, policy gates, decision records | AI output cannot mutate state; explanations identify evidence and limitations |
@@ -110,7 +110,7 @@ Automated findings are evidence for review, not automatic proof of exploitabilit
 ## Recruiter-facing proficiency levels
 
 | Level | Demonstrated behavior |
-|---|---|
+| --- | --- |
 | Foundation | Writes safe scripts, tests basic cases, explains threats and limitations |
 | Associate | Implements policy gates, CI checks, audit records, deterministic evaluation, and least-privilege controls |
 | Professional | Designs trust boundaries, abuse-case tests, incident workflows, AI evaluation criteria, and control evidence for multiple stakeholders |

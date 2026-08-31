@@ -7,7 +7,7 @@ Keep the git tree focused on **source, fixtures, and docs**. Runtime artifacts s
 ## Ignored paths (`.gitignore`)
 
 | Path | Reason |
-|------|--------|
+| ------ | -------- |
 | `node_modules/`, `.next/` | Frontend build deps |
 | `.venv/`, `__pycache__/`, `*.egg-info/` | Python env / packaging |
 | `logs/`, `reports/` | Operator runtime output |

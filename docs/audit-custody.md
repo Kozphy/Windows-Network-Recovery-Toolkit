@@ -6,7 +6,7 @@ tamper detection. This is **not** WORM storage, SIEM, or formal assurance.
 ## Paths
 
 | Artifact | Default path | Override |
-|----------|--------------|----------|
+| ---------- | -------------- | ---------- |
 | Canonical custody JSONL | `.audit/canonical_custody.jsonl` | `WNT_AUDIT_DIR` |
 | Tip anchor | `.audit/canonical_custody.tip.json` | sibling of JSONL, or `--tip-path` |
 
@@ -27,7 +27,7 @@ After each hash-chained append, the writer refreshes:
 }
 ```
 
-- **Chain verify** — JSONL hashes are internally consistent  
+- **Chain verify** — JSONL hashes are internally consistent
 - **Tip match** — last `current_hash` equals the tip file (detects full-file rewrite if tip was not updated)
 
 Same-directory tip is defense-in-depth only. Relocate or sign tips for stronger custody.
@@ -50,7 +50,7 @@ python -m windows_network_toolkit audit verify .audit/canonical_custody.jsonl --
 ## Modules
 
 | Module | Role |
-|--------|------|
+| -------- | ------ |
 | `src/platform_core/audit/writer.py` | Hash-chained append + tip refresh |
 | `src/platform_core/audit/tip_anchor.py` | Tip write / load / verify |
 | `src/platform_core/audit/custody.py` | Proxy/ensure event mapping into custody |
@@ -58,6 +58,6 @@ python -m windows_network_toolkit audit verify .audit/canonical_custody.jsonl --
 
 ## Limitations
 
-- Observation ≠ proof; tip match ≠ immutability  
-- Confirmation **tokens are never stored** — only `confirmation_supplied: true/false`  
-- Soft-fail on custody write errors so remediation is not blocked by disk issues  
+- Observation ≠ proof; tip match ≠ immutability
+- Confirmation **tokens are never stored** — only `confirmation_supplied: true/false`
+- Soft-fail on custody write errors so remediation is not blocked by disk issues

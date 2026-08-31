@@ -5,7 +5,7 @@
 ## Rules
 
 | Trigger | Recommendation |
-|---------|----------------|
+| --------- | ---------------- |
 | Unknown IoT + work devices | Guest Wi-Fi / VLAN for IoT |
 | Smart TV + laptop, no segmentation proof | Separate work from casting devices |
 | UPnP/SSDP observed | Review UPnP; disable if unnecessary |

@@ -13,7 +13,7 @@ The trisk pipeline has hash-chained audit JSONL and Postgres rows but no single 
 Introduce `src/platform_core/events/` with append-only `trisk_domain_events.jsonl` and optional `trisk_domain_events` Postgres table.
 
 | Store | Purpose |
-|-------|---------|
+| ------- | --------- |
 | Domain events | Operational timeline, MCP, UI |
 | Audit chain | Governance hash chain |
 | Postgres trisk_* | Queryable incidents |

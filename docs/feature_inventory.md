@@ -3,7 +3,7 @@
 Maps platform capabilities to repository files and records gaps for **full Linux runtime** and **full cloud deploy**.
 
 | Feature | Status | Primary entry points |
-|---------|--------|----------------------|
+| --------- | -------- | ---------------------- |
 | Linux | Partial | `platform_core/network_diagnostics/linux.py`, `src/proxy_guard/linux_proxy_snapshot.py` |
 | Docker | Yes | `docker-compose.yml`, `Dockerfile`, `frontend/Dockerfile` |
 | GitHub Actions | Yes | `.github/workflows/*.yml` |
@@ -19,7 +19,7 @@ Maps platform capabilities to repository files and records gaps for **full Linux
 ### What exists
 
 | Area | Files |
-|------|--------|
+| ------ | -------- |
 | OS detection & WSL | `platform_core/os_probe.py`, `platform_core/network_diagnostics/base.py` |
 | Linux diagnostics (observe-only) | `platform_core/network_diagnostics/linux.py`, `platform_core/network_diagnostics/__init__.py` |
 | Linux proxy snapshot collector (scaffold) | `src/proxy_guard/linux_proxy_snapshot.py`, `src/proxy_guard/linux_proxy_commands.py` |
@@ -32,7 +32,7 @@ Maps platform capabilities to repository files and records gaps for **full Linux
 ### Windows-only (not Linux runtime)
 
 | Area | Files |
-|------|--------|
+| ------ | -------- |
 | Sysmon / registry causation | `src/telemetry/sysmon_reader.py`, `src/correlation/proxy_causation.py`, `src/proxy_guard/proxy_watch.py` |
 | Proxy guard / remediation | `src/proxy_guard/*` (except Linux snapshot scaffold) |
 | Network recovery CLI | `src/network_recovery/cli_handlers.py`, `src/network_state/cli_handlers.py` |
@@ -59,7 +59,7 @@ python -m src proxy-linux-snapshot --json   # structured JSON
 ## Docker — yes
 
 | File | Role |
-|------|------|
+| ------ | ------ |
 | `docker-compose.yml` | API + Prometheus + Grafana (`PLATFORM_FIXTURE_MODE=1`) |
 | `docker-compose.full.yml` | Frontend dashboard, Loki, Promtail |
 | `docker-compose.scale.yml` | Postgres, Redis, Redpanda for fleet ingest dev |
@@ -78,7 +78,7 @@ python -m src proxy-linux-snapshot --json   # structured JSON
 ## GitHub Actions — yes
 
 | Workflow | File | Purpose |
-|----------|------|---------|
+| ---------- | ------ | --------- |
 | Unified CI | `.github/workflows/ci.yml` | Lint, proxy pipeline tests, full pytest, frontend build |
 | Tests | `.github/workflows/test.yml` | Ruff, pytest, coverage artifacts |
 | Lint | `.github/workflows/lint.yml` | Ruff-focused |
@@ -91,7 +91,7 @@ python -m src proxy-linux-snapshot --json   # structured JSON
 ## CI/CD — yes (CI + image publish; not full CD)
 
 | Layer | Files |
-|-------|--------|
+| ------- | -------- |
 | Local CI parity | `Makefile` (`test`, `lint`, `demo`, `replay-fixtures`) |
 | Python packaging | `pyproject.toml` |
 | Container registry CD | `.github/workflows/build.yml` → `ghcr.io/${{ github.repository }}` |
@@ -111,7 +111,7 @@ python -m src proxy-linux-snapshot --json   # structured JSON
 ## Prometheus — yes
 
 | File | Role |
-|------|------|
+| ------ | ------ |
 | `docker-compose.yml` | `prometheus` service |
 | `deploy/prometheus/prometheus.yml` | Scrape `api:8000/metrics` |
 | `deploy/prometheus/alerts.yml` | Alert rules |
@@ -136,7 +136,7 @@ python -m src proxy-linux-snapshot --json   # structured JSON
 ## Grafana — yes
 
 | File | Role |
-|------|------|
+| ------ | ------ |
 | `docker-compose.yml` | `grafana` service (port `3001`) |
 | `deploy/grafana/provisioning/datasources/datasources.yml` | Prometheus datasource |
 | `deploy/grafana/provisioning/dashboards/dashboards.yml` | Dashboard provisioning |
@@ -157,7 +157,7 @@ python -m src proxy-linux-snapshot --json   # structured JSON
 ### What exists
 
 | Area | Files |
-|------|--------|
+| ------ | -------- |
 | Local-first philosophy | `docs/adr/ADR-005-local-first-no-default-telemetry-upload.md` |
 | SaaS extension contracts | `docs/extension_points_multi_host_saas.md` |
 | Fleet scale architecture | `docs/architecture/fleet_scale_100k.md`, `docs/adr/ADR-008-fleet-scale-100k-endpoints.md` |
@@ -178,7 +178,7 @@ python -m src proxy-linux-snapshot --json   # structured JSON
 ### Missing for full cloud deploy
 
 | Layer | What to add |
-|-------|-------------|
+| ------- | ------------- |
 | **IaC** | Terraform/Bicep for VPC, managed Postgres, Redis, Kafka, secrets |
 | **K8s production** | HPA, ingress + TLS, PodDisruptionBudgets, network policies |
 | **CD pipeline** | `deploy.yml`: build → push → `helm upgrade` per environment |
