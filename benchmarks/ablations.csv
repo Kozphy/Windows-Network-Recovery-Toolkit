@@ -1,0 +1,57 @@
+ablation,ablation_name,metric,full_system_value,ablated_value,absolute_delta,relative_delta,sample_size,notes
+A1,remove_proof_tiers,accuracy,1.0000,1.0000,0.0000,0.0000,8,Force T0 tier
+A1,remove_proof_tiers,macro_f1,1.0000,1.0000,0.0000,0.0000,8,Force T0 tier
+A1,remove_proof_tiers,explicit_evidence_rate,1.0000,1.0000,0.0000,0.0000,8,Force T0 tier
+A1,remove_proof_tiers,explicit_limitations_rate,1.0000,1.0000,0.0000,0.0000,8,Force T0 tier
+A1,remove_proof_tiers,proof_tier_met_rate,0.8750,0.2500,-0.6250,-0.7143,8,Force T0 tier
+A1,remove_proof_tiers,unsafe_action_proposal_rate,0.0000,0.0000,0.0000,0.0000,8,Force T0 tier
+A1,remove_proof_tiers,policy_match_rate,0.7500,0.7500,0.0000,0.0000,8,Force T0 tier
+A1,remove_proof_tiers,abstention_rate,0.0000,0.0000,0.0000,0.0000,8,Force T0 tier
+A2,remove_listener_process,accuracy,1.0000,0.6250,-0.3750,-0.3750,8,Strip listener/process evidence
+A2,remove_listener_process,macro_f1,1.0000,0.6429,-0.3571,-0.3571,8,Strip listener/process evidence
+A2,remove_listener_process,explicit_evidence_rate,1.0000,1.0000,0.0000,0.0000,8,Strip listener/process evidence
+A2,remove_listener_process,explicit_limitations_rate,1.0000,1.0000,0.0000,0.0000,8,Strip listener/process evidence
+A2,remove_listener_process,proof_tier_met_rate,0.8750,0.8750,0.0000,0.0000,8,Strip listener/process evidence
+A2,remove_listener_process,unsafe_action_proposal_rate,0.0000,0.0000,0.0000,0.0000,8,Strip listener/process evidence
+A2,remove_listener_process,policy_match_rate,0.7500,0.5000,-0.2500,-0.3333,8,Strip listener/process evidence
+A2,remove_listener_process,abstention_rate,0.0000,0.0000,0.0000,0.0000,8,Strip listener/process evidence
+A3,remove_tls_path,accuracy,1.0000,1.0000,0.0000,0.0000,8,Strip TLS/path/browser probe evidence
+A3,remove_tls_path,macro_f1,1.0000,1.0000,0.0000,0.0000,8,Strip TLS/path/browser probe evidence
+A3,remove_tls_path,explicit_evidence_rate,1.0000,1.0000,0.0000,0.0000,8,Strip TLS/path/browser probe evidence
+A3,remove_tls_path,explicit_limitations_rate,1.0000,1.0000,0.0000,0.0000,8,Strip TLS/path/browser probe evidence
+A3,remove_tls_path,proof_tier_met_rate,0.8750,0.8750,0.0000,0.0000,8,Strip TLS/path/browser probe evidence
+A3,remove_tls_path,unsafe_action_proposal_rate,0.0000,0.0000,0.0000,0.0000,8,Strip TLS/path/browser probe evidence
+A3,remove_tls_path,policy_match_rate,0.7500,0.7500,0.0000,0.0000,8,Strip TLS/path/browser probe evidence
+A3,remove_tls_path,abstention_rate,0.0000,0.0000,0.0000,0.0000,8,Strip TLS/path/browser probe evidence
+A4,remove_limitations,accuracy,1.0000,1.0000,0.0000,0.0000,8,Clear limitations[]
+A4,remove_limitations,macro_f1,1.0000,1.0000,0.0000,0.0000,8,Clear limitations[]
+A4,remove_limitations,explicit_evidence_rate,1.0000,1.0000,0.0000,0.0000,8,Clear limitations[]
+A4,remove_limitations,explicit_limitations_rate,1.0000,0.0000,-1.0000,-1.0000,8,Clear limitations[]
+A4,remove_limitations,proof_tier_met_rate,0.8750,0.8750,0.0000,0.0000,8,Clear limitations[]
+A4,remove_limitations,unsafe_action_proposal_rate,0.0000,0.0000,0.0000,0.0000,8,Clear limitations[]
+A4,remove_limitations,policy_match_rate,0.7500,0.7500,0.0000,0.0000,8,Clear limitations[]
+A4,remove_limitations,abstention_rate,0.0000,0.0000,0.0000,0.0000,8,Clear limitations[]
+A5,remove_policy_gate,accuracy,1.0000,1.0000,0.0000,0.0000,8,Policy always ALLOW
+A5,remove_policy_gate,macro_f1,1.0000,1.0000,0.0000,0.0000,8,Policy always ALLOW
+A5,remove_policy_gate,explicit_evidence_rate,1.0000,1.0000,0.0000,0.0000,8,Policy always ALLOW
+A5,remove_policy_gate,explicit_limitations_rate,1.0000,1.0000,0.0000,0.0000,8,Policy always ALLOW
+A5,remove_policy_gate,proof_tier_met_rate,0.8750,0.8750,0.0000,0.0000,8,Policy always ALLOW
+A5,remove_policy_gate,unsafe_action_proposal_rate,0.0000,1.0000,1.0000,0.0000,8,Policy always ALLOW
+A5,remove_policy_gate,policy_match_rate,0.7500,0.3750,-0.3750,-0.5000,8,Policy always ALLOW
+A5,remove_policy_gate,abstention_rate,0.0000,0.0000,0.0000,0.0000,8,Policy always ALLOW
+A6,remove_hash_chain,accuracy,1.0000,1.0000,0.0000,0.0000,8,Audit chain ablated
+A6,remove_hash_chain,macro_f1,1.0000,1.0000,0.0000,0.0000,8,Audit chain ablated
+A6,remove_hash_chain,explicit_evidence_rate,1.0000,1.0000,0.0000,0.0000,8,Audit chain ablated
+A6,remove_hash_chain,explicit_limitations_rate,1.0000,1.0000,0.0000,0.0000,8,Audit chain ablated
+A6,remove_hash_chain,proof_tier_met_rate,0.8750,0.8750,0.0000,0.0000,8,Audit chain ablated
+A6,remove_hash_chain,unsafe_action_proposal_rate,0.0000,0.0000,0.0000,0.0000,8,Audit chain ablated
+A6,remove_hash_chain,policy_match_rate,0.7500,0.7500,0.0000,0.0000,8,Audit chain ablated
+A6,remove_hash_chain,abstention_rate,0.0000,0.0000,0.0000,0.0000,8,Audit chain ablated
+A7,remove_cross_signal_aggregation,accuracy,1.0000,0.5000,-0.5000,-0.5000,8,Flat rules instead of aggregation
+A7,remove_cross_signal_aggregation,macro_f1,1.0000,0.3929,-0.6071,-0.6071,8,Flat rules instead of aggregation
+A7,remove_cross_signal_aggregation,explicit_evidence_rate,1.0000,1.0000,0.0000,0.0000,8,Flat rules instead of aggregation
+A7,remove_cross_signal_aggregation,explicit_limitations_rate,1.0000,1.0000,0.0000,0.0000,8,Flat rules instead of aggregation
+A7,remove_cross_signal_aggregation,proof_tier_met_rate,0.8750,0.2500,-0.6250,-0.7143,8,Flat rules instead of aggregation
+A7,remove_cross_signal_aggregation,unsafe_action_proposal_rate,0.0000,0.0000,0.0000,0.0000,8,Flat rules instead of aggregation
+A7,remove_cross_signal_aggregation,policy_match_rate,0.7500,1.0000,0.2500,0.3333,8,Flat rules instead of aggregation
+A7,remove_cross_signal_aggregation,abstention_rate,0.0000,0.0000,0.0000,0.0000,8,Flat rules instead of aggregation

@@ -211,6 +211,11 @@ jobs:
           python -m src.purple_team benchmark --no-evidence --json --output reports/purple_benchmark.json
           python -m src.purple_team baselines --output reports/purple_baselines.json
 
+      - name: Research benchmark smoke (schema + determinism)
+        run: |
+          pytest -q tests/experiments --basetemp=.pytest_tmp
+          python -m experiments.run_benchmark --smoke --seed 42 --output experiments/results/ci_smoke
+
       - name: Upload eval artifacts
         if: always()
         uses: actions/upload-artifact@v4

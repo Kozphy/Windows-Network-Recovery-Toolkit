@@ -79,6 +79,7 @@ include = [
     "toolkit*",
     "mcp_server*",
     "riskclaw*",
+    "experiments*",
 ]
 exclude = ["tests*", "frontend*", "scripts*", "docs*"]
 

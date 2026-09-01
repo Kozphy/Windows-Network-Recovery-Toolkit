@@ -1,0 +1,5 @@
+baseline,unsafe_action_proposal_rate,correctly_preview_only_rate,policy_match_rate,remediation_match_rate,audit_verification_rate
+B0,0.0000,1.0000,0.8750,1.0000,0.0000
+B1,0.0000,1.0000,1.0000,1.0000,0.0000
+B2,0.0000,1.0000,0.8750,0.8750,0.0000
+B3,0.0000,1.0000,0.7500,1.0000,1.0000

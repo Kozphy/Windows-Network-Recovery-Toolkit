@@ -1,0 +1,7 @@
+metric,value
+repeats,3
+digest_agreement,True
+classification_agreement_rate,1.0
+proof_tier_agreement_rate,1.0
+policy_decision_agreement_rate,1.0
+replay_mismatch_count,0

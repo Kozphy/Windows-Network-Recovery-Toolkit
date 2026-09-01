@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report fix-proxy fix-chatgpt ensure ensure-direct
+.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report fix-proxy fix-chatgpt ensure ensure-direct research research-smoke
 
 WATCH_MINUTES ?= 15
 
@@ -140,3 +140,10 @@ prod-demo-benchmark:
 
 prod-demo-report:
 	curl -sf -H "X-Api-Token: dev-trisk-token" -H "X-Api-Role: auditor_readonly" http://127.0.0.1:8000/v1/reports/executive
+
+research-smoke:
+	$(PYTEST) -q tests/experiments --basetemp=.pytest_tmp
+	$(PYTHON) -m experiments.run_benchmark --smoke --seed 42
+
+research:
+	$(PYTHON) -m experiments.run_all --seed 42

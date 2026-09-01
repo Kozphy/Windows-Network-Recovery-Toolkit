@@ -1,20 +1,26 @@
 # Benchmarks
 
-This directory is reserved for **generated, reviewable benchmark evidence**.
+Generated, reviewable benchmark evidence for research question RQ1 (`RESEARCH.md`).
 
-It should eventually contain the quantitative outputs produced by the experiment workflow in [`../experiments/README.md`](../experiments/README.md). Until those experiments are implemented and run, this directory intentionally contains no performance claims.
-
-## Planned artifacts
+## Dataset v1
 
 ```text
-benchmarks/
-  README.md
-  results.csv
-  confusion_matrix.csv
-  ablations.csv
-  environment.json
-  benchmark_report.md
+benchmarks/dataset_v1/
+  manifest.json       # SHA-256 hashes (frozen)
+  cases.jsonl         # 22 cases (17 dev, 5 held-out)
+  label_schema.json
+  provenance.md
 ```
+
+## Generated artifacts (from `python -m experiments.run_all`)
+
+| File | Description |
+|------|-------------|
+| [`results.csv`](results.csv) | Headline B0–B3 metrics + git/dataset digests |
+| [`statistical_summary.csv`](statistical_summary.csv) | Bootstrap 95% CIs |
+| [`ablations.csv`](ablations.csv) | A1–A7 vs full system |
+| [`error_analysis.csv`](error_analysis.csv) | B3 failure taxonomy |
+| [`../experiments/results/latest/`](../experiments/results/latest/) | Raw predictions, confusion matrices, metadata |
 
 ## Evidence contract
 

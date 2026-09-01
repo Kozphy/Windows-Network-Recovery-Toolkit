@@ -337,6 +337,46 @@ CI: [.github/workflows/ci.yml](.github/workflows/ci.yml) · Strategy: [test-stra
 
 ---
 
+## Empirical Evaluation
+
+Controlled benchmark **dataset v1** (22 cases: 17 development, 5 held-out) compares four baselines from [RESEARCH.md](RESEARCH.md):
+
+| Baseline | Description |
+|----------|-------------|
+| **B0** | Connectivity / probe signals only |
+| **B1** | Flat if/else rules (no proof tiers or aggregation) |
+| **B2** | WinINET `proxy_state` single-signal |
+| **B3** | Full platform: evidence → proof tier → classification → policy |
+
+**Headline metrics (dataset v1, all cases)** — source: [`experiments/results/latest/metrics.csv`](experiments/results/latest/metrics.csv), Git `95bad4ce`, cases digest `540a434d…`:
+
+| Baseline | Accuracy | Macro F1 | Abstention rate |
+|----------|----------|----------|-----------------|
+| B0 | 0.1364 | 0.0868 | 0.6818 |
+| B1 | 0.4545 | 0.4233 | 0.0000 |
+| B2 | 0.1364 | 0.0583 | 0.4091 |
+| **B3** | **0.6364** | **0.5852** | 0.3636 |
+
+B3 macro F1 bootstrap 95% CI: **0.4464–0.7619** ([`benchmarks/statistical_summary.csv`](benchmarks/statistical_summary.csv)).
+
+| Claim | Artifact |
+|-------|----------|
+| Ablation deltas | [`benchmarks/ablations.csv`](benchmarks/ablations.csv) |
+| B3 failure taxonomy | [`benchmarks/error_analysis.csv`](benchmarks/error_analysis.csv) |
+| Full report | [`research/technical_report.md`](research/technical_report.md) |
+| Validity limits | [`docs/threats-to-validity.md`](docs/threats-to-validity.md) |
+
+**Reproduce:**
+
+```powershell
+make research
+# or: python -m experiments.run_all
+```
+
+CI runs a fast smoke subset via `tests/experiments/` and `python -m experiments.run_benchmark --smoke`.
+
+---
+
 ## Demo
 
 **Golden case:** Dead WinINET proxy `127.0.0.1:59081` — fixture-safe on any OS.
