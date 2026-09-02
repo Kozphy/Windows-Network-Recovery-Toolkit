@@ -43,6 +43,10 @@ class ClassificationMetrics:
     macro_precision: float
     macro_recall: float
     macro_f1: float
+    micro_f1: float
+    false_positive_rate: float
+    false_negative_rate: float
+    supported_classification_rate: float
     unsupported_rate: float
     abstention_rate: float
     exact_match_count: int = 0
@@ -121,11 +125,48 @@ def compute_classification_metrics(
     exact = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t == p)
     accuracy = exact / len(cases) if cases else 0.0
     macro_p, macro_r, macro_f1, per_class = _per_class_prf(y_true, y_pred, labels=labels)
+    tp_sum = fp_sum = fn_sum = 0
+    for label in labels:
+        tp = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t == label and p == label)
+        fp = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t != label and p == label)
+        fn = sum(1 for t, p in zip(y_true, y_pred, strict=True) if t == label and p != label)
+        tp_sum += tp
+        fp_sum += fp
+        fn_sum += fn
+    micro_p = tp_sum / (tp_sum + fp_sum) if (tp_sum + fp_sum) else 0.0
+    micro_r = tp_sum / (tp_sum + fn_sum) if (tp_sum + fn_sum) else 0.0
+    micro_f1 = (2 * micro_p * micro_r / (micro_p + micro_r)) if (micro_p + micro_r) else 0.0
+
+    _healthy = {"DIRECT_OK", "BOTH_DIRECT_AND_PROXY_WORK", "LOCAL_PROXY_ACTIVE"}
+    pos_expected = [t for t in y_true if t not in _ABSTAIN_CLASSES and t not in _healthy]
+    neg_expected = [t for t in y_true if t in _healthy]
+    fp_count = sum(
+        1
+        for t, p in zip(y_true, y_pred, strict=True)
+        if t in _healthy and p not in _healthy and p not in _ABSTAIN_CLASSES
+    )
+    fn_count = sum(
+        1
+        for t, p in zip(y_true, y_pred, strict=True)
+        if t not in _healthy
+        and t not in _ABSTAIN_CLASSES
+        and (p in _ABSTAIN_CLASSES or p in _healthy)
+    )
+    fpr = fp_count / len(neg_expected) if neg_expected else 0.0
+    fnr = fn_count / len(pos_expected) if pos_expected else 0.0
+
     unsupported = sum(
         1 for p in predictions if p.unsupported or p.predicted_incident_class == "UNKNOWN"
     )
     abstained = sum(
         1 for p in predictions if p.abstained or p.predicted_incident_class in _ABSTAIN_CLASSES
+    )
+    supported = sum(
+        1
+        for p in predictions
+        if p.supporting_evidence
+        and not p.abstained
+        and p.predicted_incident_class not in _ABSTAIN_CLASSES
     )
     metrics = ClassificationMetrics(
         baseline=baseline,
@@ -134,6 +175,10 @@ def compute_classification_metrics(
         macro_precision=macro_p,
         macro_recall=macro_r,
         macro_f1=macro_f1,
+        micro_f1=micro_f1,
+        false_positive_rate=fpr,
+        false_negative_rate=fnr,
+        supported_classification_rate=supported / len(cases) if cases else 0.0,
         unsupported_rate=unsupported / len(cases) if cases else 0.0,
         abstention_rate=abstained / len(cases) if cases else 0.0,
         exact_match_count=exact,

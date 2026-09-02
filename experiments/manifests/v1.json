@@ -1,0 +1,17 @@
+{
+  "manifest_version": "experiment_manifest.v1",
+  "experiment_id": "classification_benchmark_v1",
+  "description": "B0-B3 comparison on benchmark dataset v1 (fixture-synthetic Windows proxy/network scenarios).",
+  "dataset_version": "v1",
+  "dataset_path": "benchmarks/dataset_v1",
+  "baselines": ["B0", "B1", "B2", "B3"],
+  "random_seed": 42,
+  "bootstrap_iterations": 1000,
+  "confidence_level": 0.95,
+  "smoke_case_limit": 8,
+  "output_subdirs": {
+    "raw": "experiments/raw_results",
+    "processed": "experiments/processed_results"
+  },
+  "research_question_ref": "RESEARCH.md#primary-research-question"
+}

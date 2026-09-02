@@ -11,6 +11,7 @@ from typing import Any
 from experiments.ablations import run_ablations, write_ablations_csv
 from experiments.baselines import predict_b0, predict_b1, predict_b2, predict_b3
 from experiments.baselines.base import BaselinePrediction
+from experiments.contract import ExperimentRunRecord, load_manifest
 from experiments.dataset import (
     DEFAULT_DATASET_DIR,
     BenchmarkCaseV1,
@@ -111,6 +112,49 @@ def run_reproducibility_check(
     }
 
 
+def _build_run_records(
+    *,
+    experiment_id: str,
+    timestamp_utc: str,
+    git_sha: str,
+    dataset_version: str,
+    manifest_version: str,
+    seed: int,
+    cases: list[BenchmarkCaseV1],
+    predictions: list[BaselinePrediction],
+    baseline: str,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for case, pred in zip(cases, predictions, strict=True):
+        rec = ExperimentRunRecord(
+            experiment_id=experiment_id,
+            timestamp_utc=timestamp_utc,
+            git_commit_sha=git_sha,
+            dataset_version=dataset_version,
+            manifest_version=manifest_version,
+            baseline=baseline,
+            configuration=experiment_id,
+            random_seed=seed,
+            scenario_id=case.case_id,
+            ground_truth=case.expected_incident_class,
+            prediction=pred.predicted_incident_class,
+            proof_tier=pred.proof_tier,
+            policy_posture=pred.policy_posture,
+            remediation_posture=pred.remediation_posture,
+            recovery_action=pred.remediation_posture,
+            recovery_success="not_applicable",
+            detection_latency_ms=None,
+            recovery_latency_ms=None,
+            unsupported_decision=pred.unsupported,
+            abstained=pred.abstained,
+            unsafe_action_proposed=pred.unsafe_action_proposed,
+            split=case.split,
+            limitations_count=len(pred.limitations),
+        )
+        rows.append(rec.model_dump())
+    return rows
+
+
 def run_benchmark(
     *,
     output_dir: Path | None = None,
@@ -118,30 +162,41 @@ def run_benchmark(
     split: str | None = None,
     smoke: bool = False,
     seed: int = 42,
+    manifest_path: Path | None = None,
 ) -> Path:
-    """Execute full B0–B3 benchmark and write artifacts."""
-    errors = validate_dataset(dataset_dir)
-    if errors:
-        raise ValueError("dataset validation failed: " + "; ".join(errors))
+    """Execute B0–B3 benchmark and write artifacts."""
+    exp_manifest = load_manifest(manifest_path)
+    manifest_errors = validate_dataset(dataset_dir)
+    if manifest_errors:
+        raise ValueError("dataset validation failed: " + "; ".join(manifest_errors))
 
-    manifest = write_manifest(dataset_dir)
+    dataset_manifest = write_manifest(dataset_dir)
     root = repo_root()
     cases = load_cases(dataset_dir, split=split)
-    if smoke and len(cases) > 8:
-        cases = cases[:8]
+    limit = exp_manifest.smoke_case_limit if smoke else None
+    if limit and len(cases) > limit:
+        cases = cases[:limit]
+    baselines = list(exp_manifest.baselines)
 
     run_id = _run_id()
     out = output_dir or (root / "experiments" / "results" / run_id)
+    raw_dir = root / exp_manifest.output_subdirs.raw / run_id
+    processed_dir = root / exp_manifest.output_subdirs.processed / run_id
     out.mkdir(parents=True, exist_ok=True)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    processed_dir.mkdir(parents=True, exist_ok=True)
 
     metadata = build_run_metadata(
         run_id=run_id, dataset_dir=dataset_dir, random_seed=seed, smoke=smoke
     )
-    metadata["manifest"] = manifest.model_dump()
+    metadata["experiment_manifest"] = exp_manifest.model_dump()
+    metadata["manifest"] = dataset_manifest.model_dump()
     metadata["split_filter"] = split
 
     all_predictions: list[dict[str, Any]] = []
+    all_run_records: list[dict[str, Any]] = []
     metrics_rows: list[dict[str, Any]] = []
+    latency_rows: list[dict[str, Any]] = []
     evidence_rows: list[dict[str, Any]] = []
     safety_rows: list[dict[str, Any]] = []
     per_class_rows: list[dict[str, Any]] = []
@@ -149,12 +204,28 @@ def run_benchmark(
     b3_predictions: list[BaselinePrediction] | None = None
     full_metrics_for_ablation: dict[str, float] = {}
 
-    for baseline_name in ("B0", "B1", "B2", "B3"):
+    ts = metadata.get("timestamp_utc", "")
+    git_sha = metadata.get("git_sha", "unknown")
+
+    for baseline_name in baselines:
         preds = run_baseline(baseline_name, cases, root=root)
         if baseline_name == "B3":
             b3_predictions = preds
         rows = predictions_to_rows(cases, preds)
         all_predictions.extend(rows)
+        all_run_records.extend(
+            _build_run_records(
+                experiment_id=exp_manifest.experiment_id,
+                timestamp_utc=ts,
+                git_sha=git_sha,
+                dataset_version=exp_manifest.dataset_version,
+                manifest_version=exp_manifest.manifest_version,
+                seed=seed,
+                cases=cases,
+                predictions=preds,
+                baseline=baseline_name,
+            )
+        )
 
         cls_m, per_class, labels, matrix = compute_classification_metrics(
             baseline_name, cases, preds
@@ -170,9 +241,23 @@ def run_benchmark(
                 "macro_precision": f"{cls_m.macro_precision:.4f}",
                 "macro_recall": f"{cls_m.macro_recall:.4f}",
                 "macro_f1": f"{cls_m.macro_f1:.4f}",
+                "micro_f1": f"{cls_m.micro_f1:.4f}",
+                "false_positive_rate": f"{cls_m.false_positive_rate:.4f}",
+                "false_negative_rate": f"{cls_m.false_negative_rate:.4f}",
+                "supported_classification_rate": f"{cls_m.supported_classification_rate:.4f}",
                 "unsupported_rate": f"{cls_m.unsupported_rate:.4f}",
                 "abstention_rate": f"{cls_m.abstention_rate:.4f}",
                 "exact_match_count": cls_m.exact_match_count,
+            }
+        )
+        latency_rows.append(
+            {
+                "baseline": baseline_name,
+                "mean_detection_ms": "not_applicable",
+                "median_detection_ms": "not_applicable",
+                "p95_detection_ms": "not_applicable",
+                "mean_recovery_ms": "not_applicable",
+                "note": "fixture-only benchmark; no live timing captured",
             }
         )
         evidence_rows.append(
@@ -230,10 +315,14 @@ def run_benchmark(
     metadata["reproducibility"] = repro
 
     write_predictions_csv(out / "predictions.csv", all_predictions)
+    write_predictions_csv(raw_dir / "predictions.csv", all_predictions)
+    write_predictions_csv(raw_dir / "run_records.csv", all_run_records)
     write_metrics_csv(out / "metrics.csv", metrics_rows)
+    write_metrics_csv(processed_dir / "metrics.csv", metrics_rows)
     write_metrics_csv(out / "per_class_metrics.csv", per_class_rows)
     write_metrics_csv(out / "evidence_metrics.csv", evidence_rows)
     write_metrics_csv(out / "safety_metrics.csv", safety_rows)
+    write_metrics_csv(processed_dir / "latency.csv", latency_rows)
     write_metrics_csv(
         out / "reproducibility_metrics.csv",
         [{"metric": k, "value": v} for k, v in repro.items() if k != "digests"],
@@ -241,6 +330,8 @@ def run_benchmark(
 
     benchmarks_dir = root / "benchmarks"
     write_statistical_summary_csv(benchmarks_dir / "statistical_summary.csv", stat_rows)
+    write_statistical_summary_csv(benchmarks_dir / "bootstrap_ci.csv", stat_rows)
+    write_metrics_csv(benchmarks_dir / "results.csv", metrics_rows)
 
     ablation_rows = run_ablations(cases, full_metrics_for_ablation, root=root)
     write_ablations_csv(benchmarks_dir / "ablations.csv", ablation_rows)
@@ -279,6 +370,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--split", choices=["development", "held_out"], default=None)
     parser.add_argument("--smoke", action="store_true", help="Fast smoke subset")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=None,
+        help="Experiment manifest JSON (default: experiments/manifests/v1.json)",
+    )
     args = parser.parse_args(argv)
     out = run_benchmark(
         output_dir=args.output,
@@ -286,6 +383,7 @@ def main(argv: list[str] | None = None) -> int:
         split=args.split,
         smoke=args.smoke,
         seed=args.seed,
+        manifest_path=args.manifest,
     )
     print(json.dumps({"status": "ok", "output_dir": str(out)}, indent=2))
     return 0

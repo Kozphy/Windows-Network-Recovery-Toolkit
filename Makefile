@@ -1,4 +1,4 @@
-.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report fix-proxy fix-chatgpt ensure ensure-direct research research-smoke
+.PHONY: test lint typecheck demo demo-api demo-tier1 demo-production demo-healthy demo-proxy-drift demo-final-causation replay-fixtures install verify-lint verify-format portfolio-test proxy-intermittent prod-demo-up prod-demo-down prod-demo-health prod-demo-benchmark prod-demo-report fix-proxy fix-chatgpt ensure ensure-direct research research-smoke research-interactions
 
 WATCH_MINUTES ?= 15
 
@@ -147,3 +147,9 @@ research-smoke:
 
 research:
 	$(PYTHON) -m experiments.run_all --seed 42
+
+research-viz:
+	$(PYTHON) -m experiments.viz --open
+
+research-interactions:
+	$(PYTHON) -m research.interactions

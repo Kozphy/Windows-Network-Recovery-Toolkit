@@ -59,6 +59,8 @@ logs/
 reports/
 !reports/.gitignore
 !reports/sample_*.md
+!benchmarks/reports/
+!benchmarks/reports/**
 !src/reports/
 !src/reports/**
 src/reports/**/__pycache__/
@@ -79,6 +81,8 @@ config/last_known_good_proxy.json
 !tests/fixtures/**/*.jsonl
 !examples/**/*.jsonl
 !benchmarks/dataset_v1/cases.jsonl
+!datasets/v1/scenarios.jsonl
+!experiments/results/interaction_cases.jsonl
 !windows_network_toolkit/examples/*.jsonl
 !demo_data/**/*.jsonl
 
@@ -97,6 +101,8 @@ post_cleanup_pytest.txt
 .pytest_full_summary.txt
 
 # Additional local tooling and generated artifacts
+experiments/raw_results/
+experiments/processed_results/
 .ipynb_checkpoints/
 .ropeproject/
 .history/

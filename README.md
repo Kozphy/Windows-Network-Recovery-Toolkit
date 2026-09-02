@@ -6,7 +6,17 @@
 
 **Status:** Independently developed enterprise-style **reference implementation** — not production deployment at a named institution.
 
-**Enterprise docs:** [Executive summary](docs/executive-summary.md) · [Case study](docs/case-study.md) · [Portfolio summary](docs/portfolio-summary.md) · [Documentation index](docs/DOCUMENTATION_INDEX.md)
+### Reviewer quick scan (30 seconds)
+
+| Question | Answer |
+|----------|--------|
+| **What problem?** | Windows proxy/network drift breaks apps while basic connectivity tests pass |
+| **What's distinctive?** | Evidence tiers, policy-gated preview, hash-chained audit, reproducible B0–B3 benchmark |
+| **Empirically evaluated?** | Dataset v1 (22 fixture scenarios), bootstrap CIs, ablations A1–A7, interaction factorials |
+| **Not verified?** | Live enterprise MTTR, field recovery timing, production safety at scale |
+| **Reproduce?** | [`REPRODUCING.md`](REPRODUCING.md) · `./scripts/reproduce.ps1` · `make research` |
+
+**Enterprise docs:** [Executive summary](docs/executive-summary.md) · [Case study](docs/case-study.md) · [Portfolio summary](docs/portfolio-summary.md) · [Documentation index](docs/DOCUMENTATION_INDEX.md) · [Gap analysis](docs/research/GAP_ANALYSIS.md)
 
 ---
 
@@ -363,17 +373,25 @@ B3 macro F1 bootstrap 95% CI: **0.4464–0.7619** ([`benchmarks/statistical_summ
 |-------|----------|
 | Ablation deltas | [`benchmarks/ablations.csv`](benchmarks/ablations.csv) |
 | B3 failure taxonomy | [`benchmarks/error_analysis.csv`](benchmarks/error_analysis.csv) |
-| Full report | [`research/technical_report.md`](research/technical_report.md) |
+| Full report | [`docs/research/TECHNICAL_REPORT.md`](docs/research/TECHNICAL_REPORT.md) |
+| Claims matrix | [`docs/research/CLAIMS_EVIDENCE_MATRIX.md`](docs/research/CLAIMS_EVIDENCE_MATRIX.md) |
+| Failure analysis | [`docs/research/FAILURE_ANALYSIS.md`](docs/research/FAILURE_ANALYSIS.md) |
 | Validity limits | [`docs/threats-to-validity.md`](docs/threats-to-validity.md) |
+| Reproduce | [`REPRODUCING.md`](REPRODUCING.md) |
+| **Visualization** | [`benchmarks/reports/research_dashboard.html`](benchmarks/reports/research_dashboard.html) · [Power BI template](analytics/powerbi/research/README.md) |
 
 **Reproduce:**
 
 ```powershell
+./scripts/reproduce.ps1
+# or
 make research
-# or: python -m experiments.run_all
+# Viz only: python -m experiments.viz --open
 ```
 
 CI runs a fast smoke subset via `tests/experiments/` and `python -m experiments.run_benchmark --smoke`.
+
+**Phase 1 — Interaction effects** (factorial fault designs): `make research-interactions` → [`experiments/results/interaction_effects.csv`](experiments/results/interaction_effects.csv) · [`docs/research/interaction_effects.md`](docs/research/interaction_effects.md)
 
 ---
 

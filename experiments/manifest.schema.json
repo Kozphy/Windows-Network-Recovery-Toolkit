@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kozphy.github.io/wnrt/experiment-manifest.v1.json",
+  "title": "Research Experiment Manifest v1",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "experiment_id",
+    "dataset_version",
+    "baselines",
+    "random_seed"
+  ],
+  "properties": {
+    "manifest_version": { "type": "string", "const": "experiment_manifest.v1" },
+    "experiment_id": { "type": "string" },
+    "description": { "type": "string" },
+    "dataset_version": { "type": "string" },
+    "dataset_path": { "type": "string" },
+    "baselines": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["B0", "B1", "B2", "B3"] },
+      "minItems": 1
+    },
+    "random_seed": { "type": "integer" },
+    "bootstrap_iterations": { "type": "integer", "minimum": 100 },
+    "confidence_level": { "type": "number", "minimum": 0.5, "maximum": 0.99 },
+    "smoke_case_limit": { "type": ["integer", "null"] },
+    "output_subdirs": {
+      "type": "object",
+      "properties": {
+        "raw": { "type": "string" },
+        "processed": { "type": "string" }
+      }
+    },
+    "research_question_ref": { "type": "string" }
+  },
+  "additionalProperties": false
+}

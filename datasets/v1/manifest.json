@@ -1,0 +1,11 @@
+{
+  "schema_version": "research_scenario_corpus.v1",
+  "dataset_version": "v1",
+  "source": "benchmarks/dataset_v1",
+  "case_count": 22,
+  "files": {
+    "cases.jsonl": "540a434dfc3b76b2ed9fc9cab8fb81e8dc32bc4114d826ac014b1042eaf195c3",
+    "label_schema.json": "f065eb47229f6c59587054dad0041ec0494ac89d92636cbeade06277bddb0530",
+    "provenance.md": "d5f83ef1fe37bbf3f14f26eebdb4dbb83af60c418b2df3fe58641d8f4566271c"
+  }
+}

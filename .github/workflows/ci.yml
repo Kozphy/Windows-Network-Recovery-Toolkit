@@ -214,7 +214,14 @@ jobs:
       - name: Research benchmark smoke (schema + determinism)
         run: |
           pytest -q tests/experiments --basetemp=.pytest_tmp
-          python -m experiments.run_benchmark --smoke --seed 42 --output experiments/results/ci_smoke
+          python -m experiments.run_benchmark --smoke --seed 42 --manifest experiments/configs/v1.json --output experiments/results/ci_smoke
+          test -f benchmarks/bootstrap_ci.csv
+          test -f benchmarks/results.csv
+
+      - name: Interaction effects smoke (Phase 1)
+        run: |
+          pytest -q tests/research/interactions
+          python -m research.interactions
 
       - name: Upload eval artifacts
         if: always()

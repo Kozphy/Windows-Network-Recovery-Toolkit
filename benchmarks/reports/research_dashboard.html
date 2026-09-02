@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Research Benchmark Dashboard — Dataset v1</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9cb3;
+      --accent: #3b82f6; --warn: #f59e0b; --ok: #10b981; --border: #2d3a4f;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 1.5rem; }
+    h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .banner { background: #422006; border: 1px solid #92400e; color: #fde68a; padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.85rem; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    .card h2 { font-size: 1rem; margin: 0 0 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .meta { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .meta span { background: var(--card); border: 1px solid var(--border); padding: 0.4rem 0.75rem; border-radius: 6px; font-size: 0.8rem; }
+    canvas { max-height: 280px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    th, td { border: 1px solid var(--border); padding: 0.35rem 0.5rem; text-align: left; }
+    th { background: #243044; color: var(--muted); }
+    .heat { text-align: center; font-weight: 600; }
+    .full { grid-column: 1 / -1; }
+    footer { margin-top: 2rem; color: var(--muted); font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>Research Benchmark Dashboard</h1>
+  <p class="subtitle">B0–B3 baseline comparison · Dataset v1 · fixture-synthetic evaluation</p>
+  <div class="banner">
+    Classification is triage evidence — not malware attribution. Metrics are from deterministic fixtures;
+    latency/recovery timing is not applicable. Do not treat as enterprise field validation.
+  </div>
+  <div class="meta">
+    <span>Run: 20260902T104552Z</span>
+    <span>Git: e09566bbffa7</span>
+    <span>Cases: 22</span>
+    <span>Seed: 42</span>
+    <span>Source: C:\Users\dbdf0\Kozphy\Windows-Network-Recovery-Toolkit\experiments\results\latest</span>
+  </div>
+  <div class="grid">
+    <div class="card">
+      <h2>Macro F1 by baseline (95% bootstrap CI)</h2>
+      <canvas id="chartF1"></canvas>
+    </div>
+    <div class="card">
+      <h2>Accuracy by baseline</h2>
+      <canvas id="chartAcc"></canvas>
+    </div>
+    <div class="card">
+      <h2>Abstention rate</h2>
+      <canvas id="chartAbs"></canvas>
+    </div>
+    <div class="card">
+      <h2>Ablation Δ macro F1 (B3 full → ablated)</h2>
+      <canvas id="chartAblation"></canvas>
+    </div>
+    <div class="card">
+      <h2>B3 failure categories</h2>
+      <canvas id="chartFail"></canvas>
+    </div>
+    <div class="card full">
+      <h2>B3 confusion matrix (counts)</h2>
+      <table><thead><tr><th>Expected \ Predicted</th><th>BOTH_DIRECT_AND_PROXY_WORK</th><th>BROWSER_QUIC_STALL</th><th>DEAD_PROXY_CONFIG</th><th>DIRECT_OK</th><th>ERROR_INSUFFICIENT_DATA</th><th>HAPPY_EYEBALLS_STALL</th><th>IPV6_BROKEN_IPV4_OK</th><th>POSSIBLE_MITM_RISK</th><th>PROXY_SERVER_CHANGED_TO_REMOTE</th><th>REVERTER_SUSPECTED</th><th>UNKNOWN_LOCAL_PROXY</th><th>WININET_WINHTTP_MISMATCH</th></tr></thead><tbody><tr><th>BOTH_DIRECT_AND_PROXY_WORK</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.85)">1</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>BROWSER_QUIC_STALL</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.85)">1</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>DEAD_PROXY_CONFIG</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.85)">6</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>DIRECT_OK</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.2833333333333333)">2</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>ERROR_INSUFFICIENT_DATA</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.14166666666666666)">1</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>HAPPY_EYEBALLS_STALL</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.14166666666666666)">1</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>IPV6_BROKEN_IPV4_OK</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.2833333333333333)">2</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>POSSIBLE_MITM_RISK</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.14166666666666666)">1</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>PROXY_SERVER_CHANGED_TO_REMOTE</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.14166666666666666)">1</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>REVERTER_SUSPECTED</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.2833333333333333)">2</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>UNKNOWN_LOCAL_PROXY</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.2833333333333333)">2</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr><tr><th>WININET_WINHTTP_MISMATCH</th><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.2833333333333333)">2</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td><td class="heat" style="background:rgba(59,130,246,0.0)">0</td></tr></tbody></table>
+    </div>
+    <div class="card full">
+      <h2>B3 misclassifications (sample)</h2>
+      <table><thead><tr><th>Case</th><th>Expected</th><th>Predicted</th><th>Category</th></tr></thead><tbody><tr><td>RB-v1-012</td><td>DIRECT_OK</td><td>INSUFFICIENT_DATA</td><td>insufficient_evidence</td></tr><tr><td>RB-v1-013</td><td>UNKNOWN_LOCAL_PROXY</td><td>INSUFFICIENT_DATA</td><td>insufficient_evidence</td></tr><tr><td>RB-v1-014</td><td>POSSIBLE_MITM_RISK</td><td>INSUFFICIENT_DATA</td><td>insufficient_evidence</td></tr><tr><td>RB-v1-015</td><td>PROXY_SERVER_CHANGED_TO_REMOTE</td><td>INSUFFICIENT_DATA</td><td>insufficient_evidence</td></tr><tr><td>RB-v1-017</td><td>DEAD_PROXY_CONFIG</td><td>LOCAL_PROXY_ACTIVE</td><td>cross_signal_interaction</td></tr><tr><td>RB-v1-019</td><td>DIRECT_OK</td><td>INSUFFICIENT_DATA</td><td>insufficient_evidence</td></tr><tr><td>RB-v1-021</td><td>UNKNOWN_LOCAL_PROXY</td><td>INSUFFICIENT_DATA</td><td>insufficient_evidence</td></tr><tr><td>RB-v1-022</td><td>DEAD_PROXY_CONFIG</td><td>INSUFFICIENT_DATA</td><td>insufficient_evidence</td></tr></tbody></table>
+    </div>
+  </div>
+  <footer>
+    Generated by <code>python -m experiments.viz</code> · Regenerate via <code>make research</code> or
+    <code>./scripts/reproduce.ps1</code> · Power BI tables: <code>analytics/powerbi/research/data/</code>
+  </footer>
+  <script>
+    const DATA = {"baselines": ["B0", "B1", "B2", "B3"], "baselineLabels": ["B0 Connectivity", "B1 Flat rules", "B2 Single signal", "B3 Full platform"], "macroF1": [0.0868, 0.4233, 0.0583, 0.5852], "accuracy": [0.1364, 0.4545, 0.1364, 0.6364], "abstention": [0.6818, 0.0, 0.4091, 0.3636], "f1CiLower": [0.0, 0.2667, 0.0, 0.4464], "f1CiUpper": [0.1922, 0.6016, 0.1327, 0.7619], "ablationLabels": ["A3 remove_tls_path", "A7 remove_cross_signal_aggregation", "A2 remove_listener_process", "A1 remove_proof_tiers", "A4 remove_limitations", "A5 remove_policy_gate", "A6 remove_hash_chain"], "ablationDeltas": [-0.2557, -0.1619, -0.1302, 0.0, 0.0, 0.0, 0.0], "failureLabels": ["insufficient_evidence", "cross_signal_interaction"], "failureCounts": [7, 1]};
+    const colors = ['#64748b','#94a3b8','#6366f1','#3b82f6'];
+    Chart.defaults.color = '#8b9cb3';
+    Chart.defaults.borderColor = '#2d3a4f';
+
+    new Chart(document.getElementById('chartF1'), {
+      type: 'bar',
+      data: {
+        labels: DATA.baselineLabels,
+        datasets: [{
+          label: 'Macro F1',
+          data: DATA.macroF1,
+          backgroundColor: colors,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        scales: { y: { min: 0, max: 1 } },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              afterLabel: (ctx) => {
+                const i = ctx.dataIndex;
+                return `95% CI: ${DATA.f1CiLower[i].toFixed(4)} – ${DATA.f1CiUpper[i].toFixed(4)}`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    new Chart(document.getElementById('chartAcc'), {
+      type: 'bar',
+      data: { labels: DATA.baselineLabels, datasets: [{ label: 'Accuracy', data: DATA.accuracy, backgroundColor: colors, borderRadius: 4 }] },
+      options: { scales: { y: { min: 0, max: 1 } } }
+    });
+
+    new Chart(document.getElementById('chartAbs'), {
+      type: 'bar',
+      data: { labels: DATA.baselineLabels, datasets: [{ label: 'Abstention rate', data: DATA.abstention, backgroundColor: '#f59e0b', borderRadius: 4 }] },
+      options: { scales: { y: { min: 0, max: 1 } } }
+    });
+
+    new Chart(document.getElementById('chartAblation'), {
+      type: 'bar',
+      data: {
+        labels: DATA.ablationLabels,
+        datasets: [{ label: 'Δ macro F1', data: DATA.ablationDeltas, backgroundColor: DATA.ablationDeltas.map(d => d < 0 ? '#ef4444' : '#10b981'), borderRadius: 4 }]
+      },
+      options: { indexAxis: 'y', scales: { x: { min: -0.35, max: 0.05 } } }
+    });
+
+    new Chart(document.getElementById('chartFail'), {
+      type: 'doughnut',
+      data: {
+        labels: DATA.failureLabels,
+        datasets: [{ data: DATA.failureCounts, backgroundColor: ['#ef4444','#f59e0b','#8b5cf6','#64748b'] }]
+      },
+      options: { plugins: { legend: { position: 'bottom' } } }
+    });
+  </script>
+</body>
+</html>
