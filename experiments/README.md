@@ -173,7 +173,8 @@ python experiments/scripts/build_report.py --results experiments/results/v1 --ou
 
 The runner is fixture-only and does not read or mutate live Windows state. It validates
 the case contract in `experiments/schemas/proxy-risk-case-v1.schema.json`, rejects duplicate
-case IDs and split-directory drift, executes B0–B3 twice to check deterministic replay,
+case IDs and split-directory drift, executes every configured B0–B3 baseline and A1–A4
+ablation twice to check deterministic replay,
 and records the Git SHA, dataset digest, configuration digest, environment, and raw output
 digest. The report builder refuses to aggregate raw results whose digest no longer matches
 the manifest.
