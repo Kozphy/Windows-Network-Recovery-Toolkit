@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -57,10 +58,26 @@ def test_split_directory_drift_is_rejected(tmp_path: Path) -> None:
         load_research_cases(tmp_path)
 
 
+def test_malformed_nested_health_evidence_is_rejected(tmp_path: Path) -> None:
+    destination = tmp_path / "development"
+    destination.mkdir()
+    payload = json.loads((CASES / "development" / "DEV-001.json").read_text(encoding="utf-8"))
+    del payload["signals"]["health_inject"]["proxy_status"]
+    (destination / "case.json").write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="proxy_status"):
+        load_research_cases(tmp_path)
+
+
 def test_execute_benchmark_is_offline_and_replay_stable(tmp_path: Path) -> None:
     config = load_config(CONFIG, repo_root=ROOT)
-    revision = "a" * 40
-    manifest = execute_benchmark(CONFIG, tmp_path, repo_root=ROOT, code_revision=revision)
+    revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    manifest = execute_benchmark(CONFIG, tmp_path, repo_root=ROOT, code_revision="HEAD")
     rows = json.loads((tmp_path / "case_results.json").read_text(encoding="utf-8"))
     assert len(rows) == 12 * (len(config.baselines) + len(config.ablations))
     assert manifest["dataset"]["case_count"] == 12
@@ -68,6 +85,12 @@ def test_execute_benchmark_is_offline_and_replay_stable(tmp_path: Path) -> None:
     assert manifest["dataset"]["sha256"] == dataset_digest(load_research_cases(CASES))
     assert all(row["replay_mismatch"] is False for row in rows)
     assert all(row["limitations"] for row in rows)
+
+
+def test_invalid_code_revision_is_rejected_before_manifest_write(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="invalid Git commit revision"):
+        execute_benchmark(CONFIG, tmp_path, repo_root=ROOT, code_revision="not-a-commit")
+    assert not (tmp_path / "manifest.json").exists()
 
 
 def test_report_regenerates_metrics_and_preserves_failures(tmp_path: Path) -> None:
