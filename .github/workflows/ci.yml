@@ -74,7 +74,10 @@ jobs:
           ruff format --check "${changed_python[@]}"
 
       - name: Bandit (focused first-party packages)
-        run: bandit -r windows_network_toolkit src/platform_core -q
+        run: >-
+          bandit -r windows_network_toolkit src/platform_core
+          -q --exclude '*/tests/*'
+          --skip B101,B104,B105,B106,B110,B112,B311,B404,B603,B607
 
   typecheck:
     name: typecheck

@@ -36,11 +36,12 @@ repos:
         name: mypy (scoped packages)
         entry: python -m mypy src/platform_core/ai_risk_analyst src/platform_core/risk src/platform_core/governance src/platform_core/analytics --ignore-missing-imports
         language: system
-        types: [python]
         pass_filenames: false
+        always_run: true
 
       - id: pytest-offline
         name: pytest (offline safety suite)
         entry: python -m pytest tests/policy tests/api tests/replay -q --basetemp=.pytest_tmp_precommit
         language: system
         pass_filenames: false
+        always_run: true
