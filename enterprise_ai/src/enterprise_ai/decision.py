@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -24,9 +24,17 @@ class DecisionEngine:
     ) -> Decision:
         allowed = set(allowed_actions)
         if proposed_action not in allowed:
-            return Decision(proposed_action, False, "action_not_allowed", confidence, require_human_review)
+            return Decision(
+                proposed_action, False, "action_not_allowed", confidence, require_human_review
+            )
         if confidence < min_confidence:
-            return Decision(proposed_action, False, "confidence_below_threshold", confidence, require_human_review)
+            return Decision(
+                proposed_action,
+                False,
+                "confidence_below_threshold",
+                confidence,
+                require_human_review,
+            )
         if require_human_review and not human_approved:
             return Decision(proposed_action, False, "human_review_required", confidence, True)
         return Decision(proposed_action, True, "approved", confidence, require_human_review)
