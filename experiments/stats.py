@@ -85,10 +85,14 @@ def build_statistical_summary(
         ("macro_f1", _macro_f1),
         (
             "abstention_rate",
-            lambda yt, yp: sum(
-                1 for p in yp if p in {"ERROR_INSUFFICIENT_DATA", "INSUFFICIENT_DATA", "UNKNOWN"}
-            )
-            / len(yp),
+            lambda yt, yp: (
+                sum(
+                    1
+                    for p in yp
+                    if p in {"ERROR_INSUFFICIENT_DATA", "INSUFFICIENT_DATA", "UNKNOWN"}
+                )
+                / len(yp)
+            ),
         ),
     ):
         point, lo, hi = bootstrap_metric(y_true, y_pred, fn, seed=seed)

@@ -533,10 +533,10 @@ def _render_failures_table(rows: list[dict[str, str]]) -> str:
         return "<p>No B3 failures recorded (perfect classification).</p>"
     header = "<tr><th>Case</th><th>Expected</th><th>Predicted</th><th>Category</th></tr>"
     body = "".join(
-        f"<tr><td>{escape(r.get('case_id',''))}</td>"
-        f"<td>{escape(r.get('expected',''))}</td>"
-        f"<td>{escape(r.get('predicted',''))}</td>"
-        f"<td>{escape(r.get('failure_category',''))}</td></tr>"
+        f"<tr><td>{escape(r.get('case_id', ''))}</td>"
+        f"<td>{escape(r.get('expected', ''))}</td>"
+        f"<td>{escape(r.get('predicted', ''))}</td>"
+        f"<td>{escape(r.get('failure_category', ''))}</td></tr>"
         for r in rows
     )
     return f"<table><thead>{header}</thead><tbody>{body}</tbody></table>"

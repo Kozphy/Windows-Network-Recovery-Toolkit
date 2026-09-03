@@ -32,6 +32,12 @@ ALLOWED_JSONL_PREFIXES = (
     "windows_network_toolkit\\examples\\",
     "demo_data/",
     "demo_data\\",
+    "benchmarks/dataset_v1/",
+    "benchmarks\\dataset_v1\\",
+    "datasets/v1/",
+    "datasets\\v1\\",
+    "experiments/results/",
+    "experiments\\results\\",
 )
 
 # Committed synthetic portfolio samples (see reports/.gitignore !sample_*.md).
