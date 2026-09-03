@@ -53,6 +53,7 @@ def test_normalize_listener_and_probe() -> None:
     )
     assert listener.evidence_type == "listener_state"
     assert probe.normalized_fields["proxy_status"] == "DIRECT_ONLY_WORKS"
+    assert probe.normalized_fields["proxy_probe_ok"] is False
 
 
 def test_classify_dead_proxy_config() -> None:

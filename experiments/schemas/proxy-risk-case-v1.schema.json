@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/wnrt/proxy-risk-case-v1.schema.json",
+  "title": "WNRT Proxy Risk Research Case v1",
+  "type": "object",
+  "required": [
+    "case_id",
+    "split",
+    "scenario_name",
+    "expected_class",
+    "expected_min_tier",
+    "expected_policy",
+    "signals",
+    "provenance",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "proxy_risk_case.v1"},
+    "case_id": {"type": "string", "minLength": 1},
+    "split": {"enum": ["development", "held_out", "adversarial"]},
+    "scenario_name": {"type": "string", "minLength": 1},
+    "expected_class": {"type": "string", "minLength": 1},
+    "expected_min_tier": {"pattern": "^T[0-7]$"},
+    "expected_policy": {"enum": ["OBSERVE", "PREVIEW_ONLY", "HUMAN_REVIEW", "BLOCK"]},
+    "signals": {"type": "object"},
+    "provenance": {"type": "string", "minLength": 1},
+    "limitations": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "ambiguity_allowed": {"type": "boolean", "default": false}
+  },
+  "additionalProperties": false
+}
