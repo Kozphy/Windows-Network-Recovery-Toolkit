@@ -25,6 +25,14 @@
         "new_state": {"wininet_proxy_enabled": true, "wininet_proxy_server": "127.0.0.1:7890"},
         "reverter_suspected": true,
         "reverter_diagnosis": {"status": "REVERTER_SUSPECTED"}
+      },
+      {
+        "timestamp_utc": "2026-08-03T00:02:02Z",
+        "endpoint_id": "research-endpoint-203",
+        "old_state": {"wininet_proxy_enabled": true, "wininet_proxy_server": "127.0.0.1:7890"},
+        "new_state": {"wininet_proxy_enabled": false, "wininet_proxy_server": ""},
+        "reverter_suspected": true,
+        "reverter_diagnosis": {"status": "REVERTER_SUSPECTED"}
       }
     ]
   }
