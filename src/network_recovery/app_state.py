@@ -143,7 +143,7 @@ def describe_network_state_location(path: Path, *, env: Mapping[str, str] | None
     for variable in ("APPDATA", "LOCALAPPDATA"):
         base = values.get(variable, "").strip()
         if base and raw.casefold().startswith(str(Path(base)).casefold()):
-            suffix = raw[len(str(Path(base))) :].lstrip("\\/")
+            suffix = raw[len(str(Path(base))) :].lstrip("\\/").replace("/", "\\")
             return f"%{variable}%\\{suffix}"
     return path.name
 
