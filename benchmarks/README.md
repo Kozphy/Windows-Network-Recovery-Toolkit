@@ -1,5 +1,13 @@
 # Benchmarks
 
+## Research publication package
+
+- English preprint: `paper/proxy-risk-benchmark-v1-preprint.md`
+- External-user protocol: `validation/external-user-study-v1.md`
+- De-identified response template: `validation/external-user-study-v1-template.csv`
+
+The external protocol is published for execution; no external-validation result is claimed until independently collected records pass the protocol's claim gate.
+
 This directory contains **generated, reviewable benchmark evidence**.
 
 The quantitative outputs are produced by the experiment workflow in
