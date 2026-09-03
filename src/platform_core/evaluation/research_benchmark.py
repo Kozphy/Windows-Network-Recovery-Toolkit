@@ -20,7 +20,7 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from windows_network_toolkit.analytics_pipeline import normalize_events_from_fixture
 from windows_network_toolkit.incident_classifier import classify_incident_from_events
@@ -30,6 +30,108 @@ ABLATIONS = ("A1_NO_LISTENER", "A2_NO_PATH_HEALTH", "A3_NO_WINHTTP_CONTRAST", "A
 ABSTAIN_LABEL = "INSUFFICIENT_DATA"
 _TIER_RANK = {f"T{index}": index for index in range(8)}
 _UNSAFE_POLICY_MODES = {"APPLY_DIRECTLY", "AUTO_REMEDIATE"}
+
+
+class _StrictEvidenceModel(BaseModel):
+    """Base contract for nested, repository-authored benchmark evidence."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class ProxyStateEvidence(_StrictEvidenceModel):
+    """Observed WinINET/WinHTTP proxy state for one endpoint."""
+
+    timestamp_utc: str
+    endpoint_id: str
+    wininet_proxy_enabled: bool
+    wininet_proxy_server: str
+    winhttp_direct_access: bool
+    localhost_port: int | None = None
+
+
+class ProcessEvidence(_StrictEvidenceModel):
+    """Process attributed to a local proxy listener."""
+
+    pid: int
+    name: str
+    exe_path: str | None = None
+    cmdline: str | list[str] | None = None
+
+
+class ProxyOwnerEvidence(_StrictEvidenceModel):
+    """Listener observation and optional process attribution."""
+
+    timestamp_utc: str
+    endpoint_id: str
+    listener_found: bool
+    localhost_port: int
+    process: ProcessEvidence | None = None
+    writer_proof: bool | None = None
+    sysmon_event_id: int | None = None
+
+    @model_validator(mode="after")
+    def _listener_requires_process(self) -> ProxyOwnerEvidence:
+        if self.listener_found and self.process is None:
+            raise ValueError("process evidence is required when listener_found is true")
+        return self
+
+
+class HealthEvidence(_StrictEvidenceModel):
+    """Direct-versus-proxy path-health observation."""
+
+    timestamp_utc: str
+    endpoint_id: str
+    proxy_status: str
+    direct_probe_ok: bool
+    proxy_probe_ok: bool | None
+    tcp_listening: bool | None = None
+    tcp_connect_ok: bool | None = None
+    proxy_https_connect_ok: bool | None = None
+    failure_reason: str | None = None
+    external_probe_ok: bool | None = None
+
+
+class HealthAuditEvidence(_StrictEvidenceModel):
+    """Audit wrapper accepted by the existing fixture normalizer."""
+
+    timestamp_utc: str
+    endpoint_id: str | None = None
+    health: HealthEvidence
+
+
+class ProxyTransitionState(_StrictEvidenceModel):
+    """Relevant proxy fields before or after a timeline transition."""
+
+    wininet_proxy_enabled: bool
+    wininet_proxy_server: str
+    localhost_port: int | None = None
+
+
+class ReverterDiagnosis(_StrictEvidenceModel):
+    """Precomputed temporal diagnosis attached to a transition."""
+
+    status: str
+
+
+class TimelineEvidence(_StrictEvidenceModel):
+    """One chronological proxy-state transition."""
+
+    timestamp_utc: str
+    endpoint_id: str
+    old_state: ProxyTransitionState
+    new_state: ProxyTransitionState
+    reverter_suspected: bool
+    reverter_diagnosis: ReverterDiagnosis
+
+
+class SignalBundle(_StrictEvidenceModel):
+    """Validated evidence families allowed in proxy-risk benchmark v1."""
+
+    proxy_state: ProxyStateEvidence | None = None
+    proxy_owner: ProxyOwnerEvidence | None = None
+    health_inject: HealthEvidence | None = None
+    health_audit: HealthAuditEvidence | None = None
+    timeline: list[TimelineEvidence] = Field(default_factory=list)
 
 
 class ResearchCase(BaseModel):
@@ -50,6 +152,13 @@ class ResearchCase(BaseModel):
     provenance: str
     limitations: list[str] = Field(min_length=1)
     ambiguity_allowed: bool = False
+
+    @field_validator("signals", mode="before")
+    @classmethod
+    def _valid_signals(cls, value: Any) -> dict[str, Any]:
+        """Reject malformed nested evidence before any baseline sees the case."""
+        validated = SignalBundle.model_validate(value)
+        return validated.model_dump(mode="python", exclude_unset=True)
 
     @field_validator("case_id", "scenario_name", "expected_class", "provenance")
     @classmethod
@@ -398,15 +507,19 @@ def _run_case(case: ResearchCase, baseline: str, benchmark_version: str) -> Case
     )
 
 
-def _git_commit(root: Path) -> str:
+def _git_commit(root: Path, revision: str = "HEAD") -> str:
+    """Resolve a Git revision to its canonical 40-character commit SHA."""
     completed = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
+        ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"],
         cwd=root,
         check=False,
         capture_output=True,
         text=True,
     )
-    return completed.stdout.strip() if completed.returncode == 0 else "unknown"
+    resolved = completed.stdout.strip()
+    if completed.returncode != 0 or len(resolved) != 40:
+        raise ValueError(f"invalid Git commit revision: {revision!r}")
+    return resolved
 
 
 def execute_benchmark(
@@ -418,6 +531,7 @@ def execute_benchmark(
 ) -> dict[str, Any]:
     """Execute all configured baselines and write raw results plus a frozen manifest."""
     root = _repo_root(repo_root)
+    resolved_revision = _git_commit(root, code_revision or "HEAD")
     config_file = config_path if config_path.is_absolute() else root / config_path
     config = load_config(config_file, repo_root=root)
     cases_dir = Path(config.cases_root)
@@ -447,7 +561,7 @@ def execute_benchmark(
     manifest = {
         "schema_version": "proxy_risk_benchmark_manifest.v1",
         "benchmark_version": config.benchmark_version,
-        "git_commit": code_revision or _git_commit(root),
+        "git_commit": resolved_revision,
         "dataset": {
             "name": "proxy-risk-benchmark",
             "version": config.benchmark_version,
