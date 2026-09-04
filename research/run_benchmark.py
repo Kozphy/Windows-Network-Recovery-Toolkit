@@ -18,6 +18,7 @@ from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
     brier_score_loss,
+    confusion_matrix,
     f1_score,
     precision_score,
     recall_score,
@@ -124,11 +125,14 @@ def _temporal_split(
 
 def _evaluate(y_true: pd.Series | np.ndarray, probability: np.ndarray) -> dict[str, float]:
     prediction = (probability >= 0.5).astype(int)
+    tn, fp, fn, tp = confusion_matrix(y_true, prediction, labels=[0, 1]).ravel()
+    negative_count = tn + fp
     metrics: dict[str, float] = {
         "accuracy": float(accuracy_score(y_true, prediction)),
         "precision": float(precision_score(y_true, prediction, zero_division=0)),
         "recall": float(recall_score(y_true, prediction, zero_division=0)),
         "f1": float(f1_score(y_true, prediction, zero_division=0)),
+        "false_positive_rate": float(fp / negative_count) if negative_count else 0.0,
         "brier": float(brier_score_loss(y_true, probability)),
     }
     if len(np.unique(y_true)) > 1:
