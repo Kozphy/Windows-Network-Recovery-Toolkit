@@ -18,6 +18,7 @@ from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
     brier_score_loss,
+    confusion_matrix,
     f1_score,
     precision_score,
     recall_score,
@@ -122,13 +123,16 @@ def _temporal_split(
     return x_train, x_test, y_train, y_test, summary
 
 
-def _evaluate(y_true: pd.Series, probability: np.ndarray) -> dict[str, float]:
+def _evaluate(y_true: pd.Series | np.ndarray, probability: np.ndarray) -> dict[str, float]:
     prediction = (probability >= 0.5).astype(int)
+    tn, fp, fn, tp = confusion_matrix(y_true, prediction, labels=[0, 1]).ravel()
+    negative_count = tn + fp
     metrics: dict[str, float] = {
         "accuracy": float(accuracy_score(y_true, prediction)),
         "precision": float(precision_score(y_true, prediction, zero_division=0)),
         "recall": float(recall_score(y_true, prediction, zero_division=0)),
         "f1": float(f1_score(y_true, prediction, zero_division=0)),
+        "false_positive_rate": float(fp / negative_count) if negative_count else 0.0,
         "brier": float(brier_score_loss(y_true, probability)),
     }
     if len(np.unique(y_true)) > 1:
@@ -137,8 +141,65 @@ def _evaluate(y_true: pd.Series, probability: np.ndarray) -> dict[str, float]:
     return metrics
 
 
+def _calibration_diagnostics(
+    y_true: pd.Series | np.ndarray,
+    probability: np.ndarray,
+    bins: int = 10,
+) -> dict[str, Any]:
+    """Return ECE and reliability-bin evidence without plotting dependencies."""
+    y = np.asarray(y_true, dtype=float)
+    p = np.asarray(probability, dtype=float)
+    if len(y) != len(p) or len(y) == 0:
+        raise ValueError("Calibration diagnostics require non-empty aligned arrays")
+    p = np.clip(p, 0.0, 1.0)
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    rows: list[dict[str, float | int]] = []
+    ece = 0.0
+    for index in range(bins):
+        left, right = edges[index], edges[index + 1]
+        mask = (p >= left) & ((p < right) if index < bins - 1 else (p <= right))
+        count = int(mask.sum())
+        if count == 0:
+            continue
+        mean_confidence = float(p[mask].mean())
+        observed_rate = float(y[mask].mean())
+        gap = abs(mean_confidence - observed_rate)
+        ece += (count / len(y)) * gap
+        rows.append(
+            {
+                "bin": index,
+                "count": count,
+                "mean_probability": mean_confidence,
+                "observed_positive_rate": observed_rate,
+                "absolute_gap": float(gap),
+            }
+        )
+    return {"bins": bins, "ece": float(ece), "reliability": rows}
+
+
+def _rules_probability(frame: pd.DataFrame) -> np.ndarray:
+    """Deterministic rules-only comparator on the same holdout rows.
+
+    This intentionally stays simple. It is a comparator, not a tuned replacement for
+    the toolkit's full control engine. Numeric proxy/WinHTTP/TLS/DNS signals contribute
+    one rule vote when non-zero. The score is the fraction of triggered available rules.
+    """
+    rule_columns = [
+        column
+        for column in frame.columns
+        if any(token in column.lower() for token in ("proxy", "winhttp", "tls", "dns"))
+        and pd.api.types.is_numeric_dtype(frame[column])
+    ]
+    if not rule_columns:
+        return np.zeros(len(frame), dtype=float)
+    votes = np.column_stack(
+        [pd.to_numeric(frame[column], errors="coerce").fillna(0).to_numpy() > 0 for column in rule_columns]
+    )
+    return votes.mean(axis=1).astype(float)
+
+
 def _bootstrap_f1_ci(
-    y_true: pd.Series,
+    y_true: pd.Series | np.ndarray,
     probability: np.ndarray,
     iterations: int,
     alpha: float = 0.05,
@@ -155,6 +216,43 @@ def _bootstrap_f1_ci(
         "lower": float(np.quantile(scores, alpha / 2)),
         "median": float(np.quantile(scores, 0.5)),
         "upper": float(np.quantile(scores, 1 - alpha / 2)),
+    }
+
+
+def _paired_bootstrap_f1_delta(
+    y_true: pd.Series | np.ndarray,
+    candidate_probability: np.ndarray,
+    baseline_probability: np.ndarray,
+    iterations: int,
+    alpha: float = 0.05,
+) -> dict[str, float | int]:
+    """Paired bootstrap CI for candidate F1 minus rules-only baseline F1."""
+    y = np.asarray(y_true)
+    candidate_probability = np.asarray(candidate_probability)
+    baseline_probability = np.asarray(baseline_probability)
+    if not (len(y) == len(candidate_probability) == len(baseline_probability)):
+        raise ValueError("Paired comparison arrays must have equal length")
+    rng = np.random.default_rng(RANDOM_STATE)
+    deltas: list[float] = []
+    for _ in range(iterations):
+        sample = rng.integers(0, len(y), size=len(y))
+        candidate = (candidate_probability[sample] >= 0.5).astype(int)
+        baseline = (baseline_probability[sample] >= 0.5).astype(int)
+        deltas.append(
+            float(
+                f1_score(y[sample], candidate, zero_division=0)
+                - f1_score(y[sample], baseline, zero_division=0)
+            )
+        )
+    lower = float(np.quantile(deltas, alpha / 2))
+    upper = float(np.quantile(deltas, 1 - alpha / 2))
+    return {
+        "iterations": iterations,
+        "lower": lower,
+        "median": float(np.quantile(deltas, 0.5)),
+        "upper": upper,
+        "probability_candidate_better": float(np.mean(np.asarray(deltas) > 0)),
+        "interval_excludes_zero": bool(lower > 0 or upper < 0),
     }
 
 
@@ -196,7 +294,23 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if y_train.nunique() < 2:
         raise ValueError("Training window must contain both classes for supervised benchmarking.")
 
-    results: dict[str, Any] = {}
+    rules_probability = _rules_probability(x_test)
+    rules_result = {
+        "model": "rules_only",
+        "ablation": "full",
+        "features": [
+            column
+            for column in x_test.columns
+            if any(token in column.lower() for token in ("proxy", "winhttp", "tls", "dns"))
+            and pd.api.types.is_numeric_dtype(x_test[column])
+        ],
+        "calibrated": False,
+        "metrics": _evaluate(y_test, rules_probability),
+        "calibration": _calibration_diagnostics(y_test, rules_probability, args.calibration_bins),
+        "f1_bootstrap_ci": _bootstrap_f1_ci(y_test, rules_probability, args.bootstrap_iterations),
+    }
+
+    results: dict[str, Any] = {"rules_only:full": rules_result}
     for ablation_name, columns in _ablation_sets(x_train.columns.tolist()).items():
         train_view = x_train[columns]
         test_view = x_test[columns]
@@ -210,7 +324,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "features": columns,
                 "calibrated": bool(args.calibrate),
                 "metrics": _evaluate(y_test, probability),
+                "calibration": _calibration_diagnostics(y_test, probability, args.calibration_bins),
                 "f1_bootstrap_ci": _bootstrap_f1_ci(y_test, probability, args.bootstrap_iterations),
+                "paired_vs_rules_f1_delta": _paired_bootstrap_f1_delta(
+                    y_test,
+                    probability,
+                    rules_probability,
+                    args.bootstrap_iterations,
+                ),
             }
 
     out = Path(args.out)
@@ -224,7 +345,19 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     (out / "benchmark.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     rows = []
     for key, item in results.items():
-        rows.append({"run": key, **item["metrics"], "ci_lower": item["f1_bootstrap_ci"]["lower"], "ci_upper": item["f1_bootstrap_ci"]["upper"]})
+        paired = item.get("paired_vs_rules_f1_delta", {})
+        rows.append(
+            {
+                "run": key,
+                **item["metrics"],
+                "ece": item["calibration"]["ece"],
+                "ci_lower": item["f1_bootstrap_ci"]["lower"],
+                "ci_upper": item["f1_bootstrap_ci"]["upper"],
+                "f1_delta_vs_rules": paired.get("median"),
+                "f1_delta_ci_lower": paired.get("lower"),
+                "f1_delta_ci_upper": paired.get("upper"),
+            }
+        )
     pd.DataFrame(rows).to_csv(out / "benchmark.csv", index=False)
     return report
 
@@ -235,6 +368,7 @@ def main() -> None:
     parser.add_argument("--timestamp-column", default="observed_at")
     parser.add_argument("--test-fraction", type=float, default=0.2)
     parser.add_argument("--bootstrap-iterations", type=int, default=1000)
+    parser.add_argument("--calibration-bins", type=int, default=10)
     parser.add_argument("--calibrate", action="store_true")
     parser.add_argument("--out", default="research/results/latest")
     args = parser.parse_args()
@@ -242,6 +376,8 @@ def main() -> None:
         raise ValueError("--test-fraction must be between 0.05 and 0.5")
     if args.bootstrap_iterations < 100:
         raise ValueError("--bootstrap-iterations must be at least 100")
+    if args.calibration_bins < 2:
+        raise ValueError("--calibration-bins must be at least 2")
     report = run(args)
     print(json.dumps(report, indent=2))
 
