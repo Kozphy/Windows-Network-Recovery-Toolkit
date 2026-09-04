@@ -1,0 +1,26 @@
+{
+  "experiment_id": "controlled-ci-v1",
+  "purpose": "End-to-end reproducibility and regression validation only",
+  "claim_boundary": "Synthetic controlled telemetry is not evidence of real-world detection quality",
+  "dataset": {
+    "generator": "research/generate_controlled_telemetry.py",
+    "rows": 600,
+    "random_state": 42,
+    "timestamp_column": "observed_at",
+    "target": "failure_label"
+  },
+  "protocol": {
+    "split": "strict temporal holdout",
+    "test_fraction": 0.2,
+    "calibration": "sigmoid/Platt",
+    "calibration_bins": 10,
+    "bootstrap_iterations_ci": 200,
+    "baselines": ["rules_only", "logistic_regression", "random_forest"],
+    "comparisons": ["paired bootstrap F1 delta vs rules-only"],
+    "ablations": ["without_proxy", "without_tls", "without_dns"]
+  },
+  "expected_artifacts": [
+    "research/results/ci/benchmark.json",
+    "research/results/ci/benchmark.csv"
+  ]
+}
