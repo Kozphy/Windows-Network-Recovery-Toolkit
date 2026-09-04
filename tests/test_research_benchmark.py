@@ -47,9 +47,10 @@ def test_evaluate_returns_primary_probability_metrics():
     y = pd.Series([0, 0, 1, 1])
     p = np.array([0.1, 0.2, 0.8, 0.9])
     result = benchmark._evaluate(y, p)
-    for name in ("precision", "recall", "f1", "brier", "roc_auc", "pr_auc"):
+    for name in ("precision", "recall", "f1", "false_positive_rate", "brier", "roc_auc", "pr_auc"):
         assert name in result
     assert result["f1"] == pytest.approx(1.0)
+    assert result["false_positive_rate"] == pytest.approx(0.0)
 
 
 def test_bootstrap_ci_is_ordered_and_deterministic():
