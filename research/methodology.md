@@ -1,66 +1,96 @@
-# Evaluation Methodology
+# Research Methodology
 
-## 1. Baselines
+## Evaluation goal
 
-Evaluate at minimum:
+Determine whether predictive models add measurable value over deterministic Windows/network controls without overstating evidence quality.
 
-1. deterministic rules-only baseline;
-2. Logistic Regression;
-3. Random Forest;
-4. boosted-tree candidates already supported by the toolkit;
-5. the proposed hybrid rules + ML decision-evidence architecture.
+## Primary protocol
 
-Complexity is justified only when it produces repeatable incremental value over simpler baselines.
+Use a strict temporal holdout whenever timestamps are available:
 
-## 2. Data partitioning
+1. Sort observations by time.
+2. Train only on the earlier window.
+3. Evaluate once on the later holdout window.
+4. Never tune against the final holdout.
 
-When timestamped observations exist, use chronological train/validation/test partitions. Threshold selection, feature selection, calibration and hyperparameter selection must use training/validation data only. The test partition is evaluated after the protocol is frozen.
+This approximates the real deployment direction: past evidence is used to predict future outcomes.
 
-If temporal data is unavailable, clearly label stratified random splitting as a limitation rather than treating it as equivalent evidence.
+## Baselines
 
-## 3. Metrics
+The research stack compares:
 
-Report:
+- deterministic rules-only evidence on the same holdout rows
+- logistic regression
+- random forest
+- optional calibrated versions of supervised models
+- richer models may be added only when they answer a specific research question
 
-- precision and recall;
-- F1;
-- false-positive and false-negative rates;
-- ROC-AUC;
-- PR-AUC;
-- Brier score;
-- expected calibration error when calibration experiments are enabled;
-- sample counts and class prevalence.
+The rules comparator intentionally stays simple. It is a fixed reference point rather than a tuned replacement for the toolkit control engine.
 
-Operational thresholds must be reported with the metrics they produce.
+## Metrics
 
-## 4. Calibration
+Report at minimum:
 
-Raw classifier probabilities must not be described as calibrated. Compare uncalibrated probabilities with an explicit calibration method fitted without test leakage. Report reliability/calibration results alongside discrimination metrics.
+- accuracy
+- precision
+- recall
+- F1
+- ROC-AUC when both classes exist in the holdout
+- PR-AUC when both classes exist in the holdout
+- Brier score
+- Expected Calibration Error (ECE)
+- reliability-bin statistics
 
-## 5. Uncertainty
+Threshold-dependent metrics use a documented threshold, currently 0.5 in the benchmark runner unless a future experiment explicitly defines otherwise.
 
-Use bootstrap resampling or another documented method to report confidence intervals for headline metrics. Record random seeds and resampling configuration.
+## Calibration
 
-## 6. Ablation
+A probabilistic classifier is not automatically a calibrated risk model.
 
-Remove coherent feature/control groups from the full system and rerun the frozen evaluation. Examples include proxy evidence, DNS/TLS signals, reset history, network profile and deterministic-control evidence.
+The runner supports sigmoid/Platt calibration through `CalibratedClassifierCV` and separately reports Brier score, ECE, and reliability bins. Calibration quality must be re-evaluated when time, environment, or endpoint population changes.
 
-## 7. Failure analysis
+## Uncertainty
 
-Review false positives and false negatives by the taxonomy in `failure_taxonomy.md`. Do not treat aggregate F1 as sufficient evidence of operational safety.
+Use deterministic percentile bootstrap intervals for F1 to quantify sampling uncertainty. The default benchmark uses 1,000 resamples with a fixed seed for reproducibility.
 
-## 8. Reproducibility
+## Paired comparison
 
-Each benchmark result should preserve:
+When comparing ML with deterministic controls, resample the same holdout rows for both systems. Report the bootstrap distribution of:
 
-- dataset/version identifier;
-- commit SHA;
-- experiment configuration;
-- dependency/runtime information;
-- random seed;
-- generated metrics;
-- evaluation timestamp.
+`F1(candidate) - F1(rules_only)`
 
-## 9. Threats to validity
+The benchmark records the median delta, confidence interval, and fraction of bootstrap samples where the candidate is better. An interval excluding zero is stronger evidence than a raw point-estimate difference, but it is not proof of cross-environment generalization.
 
-Explicitly discuss construct validity (does `failure_label` represent the intended risk?), internal validity (leakage/confounding), external validity (environment coverage) and statistical conclusion validity (sample size/uncertainty).
+## Ablation
+
+Remove feature groups such as proxy, TLS, and DNS signals while holding the evaluation window constant. Use ablation evidence to identify whether a feature/control group contributes measurable value rather than assuming every engineered feature is useful.
+
+## Failure analysis
+
+For observed errors, classify at least:
+
+- false positive
+- false negative
+- data-quality failure
+- configuration drift
+- feature extraction failure
+- model failure
+- policy failure
+- remediation failure
+- verification failure
+
+## Reproducibility
+
+Each reported result should preserve:
+
+- dataset version/provenance
+- collection window
+- label definition
+- feature schema
+- code commit
+- random seed
+- command/configuration
+- generated JSON/CSV artifacts
+- limitations and threats to validity
+
+Synthetic or demo data may verify software execution but must never be presented as evidence of production effectiveness.
