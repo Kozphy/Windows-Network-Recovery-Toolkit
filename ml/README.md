@@ -28,6 +28,10 @@ Windows telemetry / control evidence
  recovery / escalation / human review
               |
           audit trail
+              |
+        FastAPI inference API
+              |
+        browser dashboard
 ```
 
 ## Models
@@ -80,10 +84,37 @@ See `sample_features.csv` for the expected shape. Production telemetry should re
 
 ## Quick start
 
+Train the ML layer:
+
 ```bash
 python -m pip install -r ml/requirements.txt
 python ml/train_models.py --data ml/sample_features.csv
 ```
+
+Run the dashboard/API:
+
+```bash
+python -m pip install -r api/requirements.txt
+uvicorn api.app:app --reload
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+The same service exposes:
+
+```text
+GET  /api/health
+GET  /api/models
+GET  /api/metrics
+POST /api/predict
+GET  /docs
+```
+
+The dashboard renders live model artifacts when they exist. If models have not been trained yet, the UI stays available but clearly reports that inference/metrics are unavailable instead of inventing benchmark values.
 
 For a trained tree model:
 
@@ -111,6 +142,20 @@ Recommended downstream record:
 }
 ```
 
+## Frontend capabilities
+
+The initial dashboard includes:
+
+- overall risk score and failure probability
+- model/severity display
+- interactive prediction form
+- model benchmark table
+- decision recommendation and human-approval state
+- API health/model-artifact readiness
+- responsive desktop/mobile layout
+
+The UI is deliberately dependency-light HTML/CSS/JavaScript and is served directly by FastAPI. A later productization step can replace it with React/Next.js without changing the API contract.
+
 ## Next research upgrades
 
-The next useful additions are probability calibration, temporal validation, model/data drift monitoring, survival analysis for time-to-failure, and ablation/statistical-significance tests. Those extensions should be driven by real labeled telemetry rather than synthetic benchmark numbers.
+The next useful additions are probability calibration, temporal validation, model/data drift monitoring, survival analysis for time-to-failure, SHAP plots inside the dashboard, ablation/statistical-significance tests, authentication/RBAC, and integration with real toolkit telemetry/control evidence. Those extensions should be driven by real labeled telemetry rather than synthetic benchmark numbers.
