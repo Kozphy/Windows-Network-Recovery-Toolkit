@@ -11,6 +11,7 @@ Level 7 is earned through reproducible empirical evidence, not repository size o
 - [x] Random-forest baseline
 - [x] Deterministic rules-only comparator on the same holdout rows
 - [x] Optional sigmoid/Platt probability calibration
+- [x] Precision / recall / F1 / false-positive rate
 - [x] Brier score
 - [x] Expected Calibration Error (ECE)
 - [x] Reliability-bin output
@@ -26,7 +27,6 @@ Level 7 is earned through reproducible empirical evidence, not repository size o
 - [ ] Versioned labeled telemetry dataset with documented provenance
 - [ ] Explicit label-generation/adjudication procedure populated with real evidence
 - [ ] Benchmark results generated from that dataset and committed or attached as immutable artifacts
-- [ ] False-positive rate reported explicitly in benchmark output
 - [ ] Observed false-positive and false-negative cases populated in the failure taxonomy
 - [ ] Cross-environment or cross-device validation where data permits
 - [ ] Clean-environment reproduction through CI or a documented container/lockfile path
