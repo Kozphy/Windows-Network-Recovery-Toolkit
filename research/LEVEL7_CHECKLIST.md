@@ -1,27 +1,42 @@
-# Level 7 Evidence Gate
+# Level 7 Research-Grade Exit Checklist
 
-Level 7 is an evidence threshold, not a feature-count threshold.
+Level 7 is earned through reproducible empirical evidence, not repository size or model count.
 
-## Executable evaluation
-- [x] Temporal past-to-future holdout runner
-- [x] Simple supervised baselines
-- [x] Optional probability calibration
-- [x] Bootstrap uncertainty interval
-- [x] Feature-group ablation support
-- [x] Machine-readable result artifacts
+## Implemented in the research stack
 
-## Required before claiming Level 7 complete
+- [x] Explicit research questions and falsifiable hypotheses
+- [x] Dataset card and claim-discipline template
+- [x] Strict temporal holdout support
+- [x] Logistic-regression baseline
+- [x] Random-forest baseline
+- [x] Deterministic rules-only comparator on the same holdout rows
+- [x] Optional sigmoid/Platt probability calibration
+- [x] Brier score
+- [x] Expected Calibration Error (ECE)
+- [x] Reliability-bin output
+- [x] Deterministic bootstrap confidence interval for F1
+- [x] Paired bootstrap F1-delta comparison against rules-only baseline
+- [x] Proxy/TLS/DNS feature-group ablations
+- [x] Machine-readable JSON/CSV benchmark artifacts
+- [x] Regression tests for temporal split, ablations, metrics, bootstrap CI, rules baseline, calibration diagnostics, and paired comparison
+- [x] Failure taxonomy schema
+
+## Evidence gates still required before claiming full Level 7
+
 - [ ] Versioned labeled telemetry dataset with documented provenance
-- [ ] Rules-only baseline evaluated on the same temporal holdout
-- [ ] False-positive rate reported explicitly
-- [ ] Calibration error / reliability analysis
-- [ ] Full-vs-baseline paired statistical comparison
-- [ ] Failure taxonomy populated from observed errors
-- [ ] Reproduction command verified in a clean environment / CI
-- [ ] Dataset card filled with actual collection window and labeling procedure
-- [ ] Leakage review completed
-- [ ] Limitations and threats-to-validity reviewed against generated results
+- [ ] Explicit label-generation/adjudication procedure populated with real evidence
+- [ ] Benchmark results generated from that dataset and committed or attached as immutable artifacts
+- [ ] Observed false-positive and false-negative cases populated in the failure taxonomy
+- [ ] Cross-environment or cross-device validation where data permits
+- [ ] Clean-environment reproduction through CI or a documented container/lockfile path
+- [ ] Review of leakage risks and confirmation that no future information enters training features
+- [ ] Review of calibration stability under temporal drift
+- [ ] Research conclusions updated to distinguish supported findings from hypotheses
 
 ## Claim discipline
 
-Synthetic/demo data may validate software execution, but it must not be presented as evidence of production detection quality or enterprise effectiveness. ML output remains decision evidence; remediation requires policy/human governance.
+Until the evidence gates above are complete, describe the project as:
+
+> An advanced full-stack technology-risk platform with a research-grade evaluation framework in active validation.
+
+Do **not** describe synthetic/demo benchmark output as production performance or real-world effectiveness.
