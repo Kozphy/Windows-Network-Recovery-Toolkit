@@ -1,0 +1,500 @@
+# Machine-readable endpoint failure taxonomy for research evaluation.
+# Ground-truth labels in benchmarks may use incident_class strings; map via incident_class_aliases.
+# This catalog is synthetic/research-oriented — not a malware or EDR attribution scheme.
+
+schema_version: failure_taxonomy.v1
+title: Endpoint Connectivity Failure Taxonomy
+description: >
+  Stable failure classes for evidence-based Windows endpoint diagnosis research.
+  Safe remediation candidates are preview/policy-gated suggestions only.
+
+families:
+  - id: PROXY
+    name: Proxy configuration and path
+  - id: DNS
+    name: DNS resolution
+  - id: TLS
+    name: TLS and certificate path
+  - id: ROUTING
+    name: Routing and connectivity
+  - id: POLICY
+    name: Policy and management interference
+  - id: APP_PATH
+    name: Application-path scope
+  - id: MIXED
+    name: Compound / multi-layer failure
+  - id: HEALTHY
+    name: Healthy / insufficient evidence (control classes)
+
+classes:
+  - id: F_PROXY_001
+    family: PROXY
+    name: WinINET proxy drift
+    description: WinINET proxy settings diverge from expected direct or approved proxy baseline.
+    observable_evidence:
+      - wininet_proxy_enable
+      - wininet_proxy_server
+      - proxy_state_snapshot
+    expected_symptoms:
+      - browser_or_wininet_apps_fail
+      - basic_ping_may_succeed
+    possible_confounders:
+      - user_intentional_proxy
+      - transient_gpo_apply
+    safe_remediation_candidates:
+      - PREVIEW_DISABLE_WININET_PROXY
+    verification_requirements:
+      - re_read_wininet_proxy_state
+      - optional_direct_probe
+    incident_class_aliases:
+      - DEAD_PROXY_CONFIG
+      - LOCAL_PROXY_ACTIVE
+    severity_default: medium
+    compound: false
+
+  - id: F_PROXY_002
+    family: PROXY
+    name: WinHTTP proxy drift
+    description: WinHTTP proxy configuration diverges from WinINET or approved baseline.
+    observable_evidence:
+      - winhttp_proxy
+      - stack_contrast
+    expected_symptoms:
+      - service_or_winhttp_client_failures
+    possible_confounders:
+      - machine_vs_user_proxy_scope
+    safe_remediation_candidates:
+      - PREVIEW_ALIGN_WINHTTP
+    verification_requirements:
+      - re_read_winhttp_proxy
+    incident_class_aliases: []
+    severity_default: medium
+    compound: false
+
+  - id: F_PROXY_003
+    family: PROXY
+    name: WinINET and WinHTTP mismatch
+    description: WinINET and WinHTTP disagree on proxy enablement or server.
+    observable_evidence:
+      - wininet_proxy_server
+      - winhttp_proxy
+      - stack_contrast
+    expected_symptoms:
+      - some_apps_work_others_fail
+    possible_confounders:
+      - pac_vs_explicit_mixed_config
+    safe_remediation_candidates:
+      - PREVIEW_ALIGN_STACKS
+    verification_requirements:
+      - stack_contrast_recheck
+    incident_class_aliases:
+      - WININET_WINHTTP_MISMATCH
+    severity_default: medium
+    compound: false
+
+  - id: F_PROXY_004
+    family: PROXY
+    name: Dead localhost proxy
+    description: Proxy points at localhost/loopback listener that is down or non-responsive.
+    observable_evidence:
+      - proxy_server_localhost
+      - listener_absent_or_refused
+      - proxy_probe_fail
+    expected_symptoms:
+      - browsers_fail_while_direct_may_work
+    possible_confounders:
+      - intermittent_local_forwarder
+    safe_remediation_candidates:
+      - PREVIEW_DISABLE_WININET_PROXY
+    verification_requirements:
+      - listener_check
+      - direct_and_proxy_probes
+    incident_class_aliases:
+      - DEAD_PROXY_CONFIG
+      - UNKNOWN_LOCAL_PROXY
+    severity_default: high
+    compound: false
+
+  - id: F_PROXY_005
+    family: PROXY
+    name: Invalid or broken PAC
+    description: PAC URL configured but script missing, unreachable, or returns unusable proxy.
+    observable_evidence:
+      - pac_url
+      - pac_fetch_status
+    expected_symptoms:
+      - intermittent_or_total_proxy_path_failure
+    possible_confounders:
+      - captive_portal_html_as_pac
+    safe_remediation_candidates:
+      - PREVIEW_CLEAR_PAC
+    verification_requirements:
+      - pac_reachability_recheck
+    incident_class_aliases:
+      - PAC_CONFIGURED
+    severity_default: medium
+    compound: false
+
+  - id: F_PROXY_006
+    family: PROXY
+    name: Stale or changed proxy server
+    description: Proxy server value changed unexpectedly (e.g. localhost to remote).
+    observable_evidence:
+      - proxy_transition_events
+      - before_after_proxy_server
+    expected_symptoms:
+      - sudden_path_change
+      - possible_external_proxy_risk
+    possible_confounders:
+      - legitimate_mdm_change
+    safe_remediation_candidates:
+      - PREVIEW_RESTORE_LAST_KNOWN_GOOD
+      - HUMAN_REVIEW
+    verification_requirements:
+      - provenance_and_policy_review
+    incident_class_aliases:
+      - PROXY_SERVER_CHANGED_TO_REMOTE
+      - REVERTER_SUSPECTED
+      - POSSIBLE_MITM_RISK
+    severity_default: high
+    compound: false
+
+  - id: F_DNS_001
+    family: DNS
+    name: Resolver unavailable
+    description: Configured DNS resolver does not respond.
+    observable_evidence:
+      - dns_query_timeout
+      - resolver_address
+    expected_symptoms:
+      - name_resolution_failures
+      - ip_literal_may_work
+    possible_confounders:
+      - local_firewall_dns_block
+    safe_remediation_candidates:
+      - PREVIEW_DNS_DIAGNOSTIC_ONLY
+    verification_requirements:
+      - dns_probe_retry
+    incident_class_aliases: []
+    severity_default: high
+    compound: false
+
+  - id: F_DNS_002
+    family: DNS
+    name: Incorrect DNS server
+    description: Resolver is reachable but returns incorrect or captive answers.
+    observable_evidence:
+      - dns_answer_mismatch
+      - expected_vs_observed_a_record
+    expected_symptoms:
+      - wrong_site_or_nxdomain
+    possible_confounders:
+      - split_horizon_dns
+    safe_remediation_candidates:
+      - PREVIEW_DNS_DIAGNOSTIC_ONLY
+    verification_requirements:
+      - compare_alternate_resolver
+    incident_class_aliases: []
+    severity_default: medium
+    compound: false
+
+  - id: F_DNS_003
+    family: DNS
+    name: Lookup timeout or partial DNS failure
+    description: Intermittent or partial DNS failures under load or Happy Eyeballs race.
+    observable_evidence:
+      - dns_latency
+      - partial_success_flags
+    expected_symptoms:
+      - intermittent_app_stalls
+    possible_confounders:
+      - ipv6_dns_path_issues
+    safe_remediation_candidates:
+      - PREVIEW_DNS_DIAGNOSTIC_ONLY
+    verification_requirements:
+      - repeated_lookup_sample
+    incident_class_aliases:
+      - HAPPY_EYEBALLS_STALL
+    severity_default: medium
+    compound: false
+
+  - id: F_TLS_001
+    family: TLS
+    name: Certificate trust failure
+    description: TLS handshake fails due to untrusted or incomplete chain.
+    observable_evidence:
+      - tls_verify_error
+      - cert_chain_summary
+    expected_symptoms:
+      - https_failures
+      - http_may_work
+    possible_confounders:
+      - enterprise_tls_inspection
+    safe_remediation_candidates:
+      - HUMAN_REVIEW
+    verification_requirements:
+      - tls_path_reprobe
+    incident_class_aliases:
+      - POSSIBLE_MITM_RISK
+    severity_default: high
+    compound: false
+
+  - id: F_TLS_002
+    family: TLS
+    name: Expired certificate
+    description: Peer or intermediary certificate is expired.
+    observable_evidence:
+      - cert_not_after
+      - tls_verify_error
+    expected_symptoms:
+      - time_bounded_https_failure
+    possible_confounders:
+      - incorrect_client_clock
+    safe_remediation_candidates:
+      - HUMAN_REVIEW
+    verification_requirements:
+      - clock_check
+      - tls_reprobe
+    incident_class_aliases: []
+    severity_default: medium
+    compound: false
+
+  - id: F_TLS_003
+    family: TLS
+    name: Protocol or path mismatch
+    description: TLS protocol/cipher or path differs across direct vs proxy routes.
+    observable_evidence:
+      - tls_path_contrast
+      - alpn_or_version
+    expected_symptoms:
+      - path_dependent_https_failure
+    possible_confounders:
+      - quic_vs_tcp_browser_behavior
+    safe_remediation_candidates:
+      - PREVIEW_BROWSER_PATH_CHECK
+    verification_requirements:
+      - dual_path_tls_compare
+    incident_class_aliases:
+      - BROWSER_QUIC_STALL
+    severity_default: medium
+    compound: false
+
+  - id: F_ROUTING_001
+    family: ROUTING
+    name: Gateway unavailable
+    description: Default gateway unreachable.
+    observable_evidence:
+      - gateway_ping_fail
+      - route_table_snapshot
+    expected_symptoms:
+      - no_off_subnet_connectivity
+    possible_confounders:
+      - wifi_association_without_l3
+    safe_remediation_candidates:
+      - PREVIEW_NETWORK_DIAGNOSTIC_ONLY
+    verification_requirements:
+      - gateway_reprobe
+    incident_class_aliases: []
+    severity_default: high
+    compound: false
+
+  - id: F_ROUTING_002
+    family: ROUTING
+    name: Partial or local-only connectivity
+    description: Local network works; selected remote paths fail (including IPv6 broken / IPv4 OK).
+    observable_evidence:
+      - ipv4_ok
+      - ipv6_fail
+      - path_health
+    expected_symptoms:
+      - dual_stack_app_stalls
+    possible_confounders:
+      - destination_ipv6_only_issues
+    safe_remediation_candidates:
+      - PREVIEW_PATH_DIAGNOSTIC_ONLY
+    verification_requirements:
+      - dual_stack_probes
+    incident_class_aliases:
+      - IPV6_BROKEN_IPV4_OK
+    severity_default: medium
+    compound: false
+
+  - id: F_POLICY_001
+    family: POLICY
+    name: Registry or GPO policy conflict
+    description: Managed policy reasserts proxy/network settings after local change.
+    observable_evidence:
+      - gpo_or_mdm_indicators
+      - reverter_signals
+    expected_symptoms:
+      - settings_snap_back
+    possible_confounders:
+      - multiple_management_agents
+    safe_remediation_candidates:
+      - HUMAN_REVIEW
+      - PREVIEW_ONLY
+    verification_requirements:
+      - soak_watch_for_rewrite
+    incident_class_aliases:
+      - REVERTER_SUSPECTED
+    severity_default: high
+    compound: false
+
+  - id: F_POLICY_002
+    family: POLICY
+    name: Security software interference
+    description: Security/filtering software alters proxy or TLS path (observation only; not attribution).
+    observable_evidence:
+      - local_listener_ownership_hints
+      - tls_interception_signals
+    expected_symptoms:
+      - forced_local_proxy
+    possible_confounders:
+      - legitimate_enterprise_inspection
+    safe_remediation_candidates:
+      - HUMAN_REVIEW
+    verification_requirements:
+      - non_accusatory_evidence_bundle
+    incident_class_aliases:
+      - UNKNOWN_LOCAL_PROXY
+      - POSSIBLE_MITM_RISK
+    severity_default: high
+    compound: false
+
+  - id: F_APP_001
+    family: APP_PATH
+    name: Browser-only failure
+    description: Browser path fails while CLI or other stacks succeed.
+    observable_evidence:
+      - browser_probe
+      - cli_probe
+    expected_symptoms:
+      - browser_specific_outage
+    possible_confounders:
+      - extension_or_quic_issues
+    safe_remediation_candidates:
+      - PREVIEW_BROWSER_PATH_CHECK
+    verification_requirements:
+      - cross_stack_probes
+    incident_class_aliases:
+      - BROWSER_QUIC_STALL
+    severity_default: low
+    compound: false
+
+  - id: F_APP_002
+    family: APP_PATH
+    name: System-wide failure
+    description: Multiple stacks fail consistently under the same evidence window.
+    observable_evidence:
+      - multi_stack_fail
+    expected_symptoms:
+      - broad_connectivity_loss
+    possible_confounders:
+      - upstream_outage
+    safe_remediation_candidates:
+      - PREVIEW_NETWORK_DIAGNOSTIC_ONLY
+    verification_requirements:
+      - multi_target_probes
+    incident_class_aliases: []
+    severity_default: high
+    compound: false
+
+  - id: F_MIXED_001
+    family: MIXED
+    name: Proxy plus DNS compound failure
+    description: Dead or drifted proxy combined with DNS resolution problems.
+    observable_evidence:
+      - proxy_probe_fail
+      - dns_failure_flags
+    expected_symptoms:
+      - multi_layer_outage
+    possible_confounders:
+      - single_root_cause_appearing_as_two
+    safe_remediation_candidates:
+      - PREVIEW_ONLY
+      - HUMAN_REVIEW
+    verification_requirements:
+      - staged_verification_per_layer
+    incident_class_aliases: []
+    severity_default: high
+    compound: true
+
+  - id: F_MIXED_002
+    family: MIXED
+    name: Proxy plus TLS compound failure
+    description: Proxy path issues combined with TLS trust or path mismatch.
+    observable_evidence:
+      - proxy_state
+      - tls_path_contrast
+    expected_symptoms:
+      - https_via_proxy_fails
+    possible_confounders:
+      - inspection_proxy_expected_in_enterprise
+    safe_remediation_candidates:
+      - HUMAN_REVIEW
+    verification_requirements:
+      - dual_path_tls_and_proxy_recheck
+    incident_class_aliases:
+      - POSSIBLE_MITM_RISK
+    severity_default: high
+    compound: true
+
+  - id: F_HEALTHY_001
+    family: HEALTHY
+    name: Direct path healthy
+    description: Control class — direct connectivity succeeds without requiring proxy remediation.
+    observable_evidence:
+      - direct_probe_ok
+    expected_symptoms:
+      - apps_work_direct
+    possible_confounders:
+      - latent_misconfig_not_exercised
+    safe_remediation_candidates:
+      - NONE
+    verification_requirements:
+      - optional_health_recheck
+    incident_class_aliases:
+      - DIRECT_OK
+    severity_default: none
+    compound: false
+
+  - id: F_HEALTHY_002
+    family: HEALTHY
+    name: Direct and proxy both work
+    description: Control class — both paths succeed.
+    observable_evidence:
+      - direct_probe_ok
+      - proxy_probe_ok
+    expected_symptoms:
+      - no_user_impact
+    possible_confounders:
+      - unhealthy_alternate_destinations
+    safe_remediation_candidates:
+      - NONE
+    verification_requirements:
+      - dual_path_ok
+    incident_class_aliases:
+      - BOTH_DIRECT_AND_PROXY_WORK
+    severity_default: none
+    compound: false
+
+  - id: F_HEALTHY_003
+    family: HEALTHY
+    name: Insufficient evidence
+    description: Control/abstention class — evidence incomplete for a supported diagnosis.
+    observable_evidence:
+      - missing_required_fields
+    expected_symptoms:
+      - unknown
+    possible_confounders:
+      - collector_failure
+    safe_remediation_candidates:
+      - NONE
+      - PREVIEW_ONLY
+    verification_requirements:
+      - collect_additional_evidence
+    incident_class_aliases:
+      - ERROR_INSUFFICIENT_DATA
+      - INSUFFICIENT_DATA
+    severity_default: low
+    compound: false

@@ -332,6 +332,8 @@ def run_benchmark(
     write_statistical_summary_csv(benchmarks_dir / "statistical_summary.csv", stat_rows)
     write_statistical_summary_csv(benchmarks_dir / "bootstrap_ci.csv", stat_rows)
     write_metrics_csv(benchmarks_dir / "results.csv", metrics_rows)
+    write_statistical_summary_csv(out / "bootstrap_ci.csv", stat_rows)
+    write_metrics_csv(out / "results.csv", metrics_rows)
 
     ablation_rows = run_ablations(cases, full_metrics_for_ablation, root=root)
     write_ablations_csv(benchmarks_dir / "ablations.csv", ablation_rows)

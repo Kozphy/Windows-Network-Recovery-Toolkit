@@ -28,7 +28,13 @@ A **local-first Windows endpoint reliability toolkit** evolving into a **Purple 
 | [purple_team/scenario-authoring.md](purple_team/scenario-authoring.md) | How to add scenarios |
 | [purple-team-upgrade-report.md](purple-team-upgrade-report.md) | Before → after upgrade report |
 | [open-source-checklist.md](open-source-checklist.md) | Secrets, git hygiene, pre-commit gitleaks, public release |
-| [../research/questions.md](../research/questions.md) | Research questions |
+| [../research/questions.md](../research/questions.md) | Purple Team research questions |
+| [research/research_questions.md](research/research_questions.md) | Diagnostic RQ1–RQ3 (formal) |
+| [research/research_architecture.md](research/research_architecture.md) | Research pipeline architecture |
+| [research/research_grade_gap_analysis.md](research/research_grade_gap_analysis.md) | Research-grade gap analysis |
+| [research/threats_to_validity.md](research/threats_to_validity.md) | Diagnostic threats to validity |
+| [research/data_leakage_controls.md](research/data_leakage_controls.md) | Train/test and label leakage controls |
+| [../research/dataset/README.md](../research/dataset/README.md) | Public research dataset façade |
 
 ## Portfolio pack (recruiters, Big 4, FAANG, PL-300)
 

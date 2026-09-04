@@ -351,12 +351,26 @@ CI: [.github/workflows/ci.yml](.github/workflows/ci.yml) · Strategy: [test-stra
 
 Controlled benchmark **dataset v1** (22 cases: 17 development, 5 held-out) compares four baselines from [RESEARCH.md](RESEARCH.md):
 
+### Research Evaluation
+
+| Topic | Doc |
+|-------|-----|
+| **Research questions (RQ1–RQ3)** | [docs/research/research_questions.md](docs/research/research_questions.md) |
+| **Architecture** | [docs/research/research_architecture.md](docs/research/research_architecture.md) |
+| **Gap analysis** | [docs/research/research_grade_gap_analysis.md](docs/research/research_grade_gap_analysis.md) |
+| **Threats to validity** | [docs/research/threats_to_validity.md](docs/research/threats_to_validity.md) |
+| **Benchmark / baselines** | B0–B3 below; ML/LLM baselines planned as `B_ML` / `B_LLM` (not required for offline smoke) |
+| **Dataset limitations** | Synthetic/fixture-derived only — not enterprise field proof |
+| **Safety** | Preview / dry-run default; no destructive remediation in research CI |
+
+Research evaluation framework is implemented for B0–B3 + ablations + bootstrap CI. Classical ML and LLM baselines, paired significance tests, and preprint skeleton are **pending** (see gap analysis). Do not treat fixture macro-F1 as production MTTR evidence.
+
 | Baseline | Description |
 |----------|-------------|
 | **B0** | Connectivity / probe signals only |
 | **B1** | Flat if/else rules (no proof tiers or aggregation) |
 | **B2** | WinINET `proxy_state` single-signal |
-| **B3** | Full platform: evidence → proof tier → classification → policy |
+| **B3** | Full platform: evidence → proof tier → classification → policy (**proposed system**) |
 
 **Headline metrics (dataset v1, all cases)** — source: [`experiments/results/latest/metrics.csv`](experiments/results/latest/metrics.csv), Git `95bad4ce`, cases digest `540a434d…`:
 

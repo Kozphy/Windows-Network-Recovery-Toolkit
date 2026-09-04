@@ -44,6 +44,8 @@ def test_benchmark_smoke_outputs() -> None:
         "predictions.csv",
         "metrics.csv",
         "reproducibility_metrics.csv",
+        "bootstrap_ci.csv",
+        "results.csv",
     ):
         assert (out / name).is_file(), name
     metadata = json.loads((out / "metadata.json").read_text(encoding="utf-8"))
