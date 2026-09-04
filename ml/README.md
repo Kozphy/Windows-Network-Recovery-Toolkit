@@ -111,6 +111,10 @@ GET  /api/health
 GET  /api/models
 GET  /api/metrics
 POST /api/predict
+POST /api/telemetry
+GET  /api/history
+GET  /api/explainability
+GET  /api/drift
 GET  /docs
 ```
 
@@ -124,7 +128,36 @@ python ml/explain_model.py \
   --data ml/sample_features.csv
 ```
 
-This produces ranked SHAP feature importance suitable for governance reports and human review.
+This produces ranked SHAP feature importance in `ml/artifacts/shap_importance.csv`. The dashboard renders that artifact through `/api/explainability`.
+
+## Phase 2 operational intelligence
+
+Successful predictions are now persisted locally to `data/risk_history.sqlite3`, which is already ignored by the repository's runtime-data rules. Each record contains timestamp, device ID, source, model, probability, severity, governance recommendation, approval requirement, and the input evidence fields.
+
+The dashboard adds:
+
+- historical per-device risk trend
+- persisted observation count and timestamp
+- global SHAP feature-importance bars
+- recent-versus-baseline risk drift indicator
+- explicit evidence source (`manual` or `telemetry`)
+- a live telemetry ingestion contract
+
+A minimal sender is included at `collector/send_telemetry.py`:
+
+```bash
+python collector/send_telemetry.py \
+  --device-id PC-001 \
+  --model xgboost \
+  --proxy-mismatch 1 \
+  --dns-failure-rate 0.12 \
+  --tls-error-count 7 \
+  --adapter-reset-count 2 \
+  --winhttp-drift 1 \
+  --network-profile domain
+```
+
+The collector bridge uses the Python standard library and is intentionally separated from feature collection. Production integration should map real toolkit evidence into this normalized feature contract rather than hard-code values.
 
 ## Intended decision flow
 
@@ -142,20 +175,30 @@ Recommended downstream record:
 }
 ```
 
+## Monitoring boundary
+
+`/api/drift` is a lightweight operational indicator based on recent risk-score movement. It is **not** a formal feature/data-drift detector. Production research should add PSI/KS tests, temporal validation, alert thresholds, and evaluation against known regime changes.
+
+The SHAP panel currently renders global importance exported from a trained tree model. A later phase can add local per-observation SHAP explanations tied to each persisted prediction.
+
 ## Frontend capabilities
 
-The initial dashboard includes:
+The dashboard now includes:
 
 - overall risk score and failure probability
 - model/severity display
-- interactive prediction form
+- interactive per-device prediction form
 - model benchmark table
 - decision recommendation and human-approval state
 - API health/model-artifact readiness
+- historical risk trend
+- drift status
+- SHAP importance visualization
+- telemetry ingestion example
 - responsive desktop/mobile layout
 
-The UI is deliberately dependency-light HTML/CSS/JavaScript and is served directly by FastAPI. A later productization step can replace it with React/Next.js without changing the API contract.
+The UI remains dependency-light HTML/CSS/JavaScript served directly by FastAPI. A later productization step can replace it with React/Next.js without changing the API contract.
 
 ## Next research upgrades
 
-The next useful additions are probability calibration, temporal validation, model/data drift monitoring, survival analysis for time-to-failure, SHAP plots inside the dashboard, ablation/statistical-significance tests, authentication/RBAC, and integration with real toolkit telemetry/control evidence. Those extensions should be driven by real labeled telemetry rather than synthetic benchmark numbers.
+The next useful additions are probability calibration, temporal validation, formal model/data drift monitoring, local SHAP explanations, survival analysis for time-to-failure, ablation/statistical-significance tests, authentication/RBAC, and direct mapping from the toolkit's real evidence collectors into the feature contract. Those extensions should be driven by real labeled telemetry rather than synthetic benchmark numbers.
