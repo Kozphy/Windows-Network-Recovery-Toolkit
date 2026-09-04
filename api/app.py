@@ -8,10 +8,12 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / "ml" / "artifacts"
+FRONTEND = ROOT / "frontend"
 
 app = FastAPI(
     title="Windows Network Recovery Risk API",
@@ -56,6 +58,7 @@ def health() -> dict[str, Any]:
         "status": "ok",
         "artifacts_present": ARTIFACTS.exists(),
         "metrics_present": (ARTIFACTS / "metrics.json").exists(),
+        "frontend_present": (FRONTEND / "index.html").exists(),
     }
 
 
@@ -108,3 +111,8 @@ def predict(payload: PredictionRequest) -> dict[str, Any]:
         "human_approval_required": approval_required,
         "governance_note": "Model output is decision evidence, not an autonomous remediation command.",
     }
+
+
+# Mount the dashboard last so /api/* routes keep precedence.
+if FRONTEND.exists():
+    app.mount("/", StaticFiles(directory=FRONTEND, html=True), name="frontend")
