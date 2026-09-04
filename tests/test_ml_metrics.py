@@ -1,5 +1,8 @@
-import numpy as np
-import pandas as pd
+import pytest
+
+np = pytest.importorskip("numpy")
+pd = pytest.importorskip("pandas")
+pytest.importorskip("sklearn")
 
 from ml.train_models import evaluate
 
