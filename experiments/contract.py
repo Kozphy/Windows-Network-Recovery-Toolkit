@@ -83,7 +83,7 @@ def validate_manifest_file(path: Path) -> list[str]:
     except Exception as exc:  # noqa: BLE001
         return [str(exc)]
     for baseline in manifest.baselines:
-        if baseline not in {"B0", "B1", "B2", "B3"}:
+        if baseline not in {"B0", "B1", "B2", "B3", "B_ML"}:
             errors.append(f"unknown baseline: {baseline}")
     ds = _REPO_ROOT / manifest.dataset_path
     if not ds.is_dir():

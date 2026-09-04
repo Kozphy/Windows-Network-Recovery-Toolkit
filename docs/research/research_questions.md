@@ -24,7 +24,7 @@ Observation ≠ proof · Correlation ≠ causation · Classification ≠ accusat
 
 **H1.** Under a fixed synthetic/fixture benchmark with independent ground-truth labels, the proposed evidence-tiered system (repo baseline **B3**) achieves higher **macro F1** and lower **false-positive rate** on non-healthy classes than B0 (connectivity-only) and B1 (flat rules), without increasing unsafe remediation proposals.
 
-*ML (`B_ML`) and LLM (`B_LLM`) comparisons are in scope once those baselines exist; until then H1 is evaluated against B0–B2 + proposed B3 only.*
+*ML (`B_ML`, Bernoulli NB) is included in the harness; LLM (`B_LLM`) remains optional/future. Small-n ML scores are methodological, not enterprise field claims.*
 
 ### Independent variables
 

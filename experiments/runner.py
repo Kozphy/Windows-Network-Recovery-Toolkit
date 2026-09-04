@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
+import tracemalloc
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from experiments.ablations import run_ablations, write_ablations_csv
 from experiments.baselines import predict_b0, predict_b1, predict_b2, predict_b3
+from experiments.baselines.b_ml_bernoulli import BernoulliNbBaseline, fit_b_ml_from_dataset
 from experiments.baselines.base import BaselinePrediction
 from experiments.contract import ExperimentRunRecord, load_manifest
 from experiments.dataset import (
@@ -45,6 +48,9 @@ BASELINES = {
     "B3": predict_b3,
 }
 
+# B_ML is handled specially (fit on development, then predict).
+SPECIAL_BASELINES = frozenset({"B_ML"})
+
 
 def _run_id() -> str:
     return datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -55,13 +61,43 @@ def run_baseline(
     cases: list[BenchmarkCaseV1],
     *,
     root: Path,
-) -> list[BaselinePrediction]:
-    fn = BASELINES[name]
+    seed: int = 42,
+    dataset_dir: Path | None = None,
+    ml_model: BernoulliNbBaseline | None = None,
+) -> tuple[list[BaselinePrediction], dict[str, Any]]:
+    """Run one baseline; returns predictions and runtime stats."""
+    runtime: dict[str, Any] = {
+        "baseline": name,
+        "case_count": len(cases),
+        "wall_clock_ms": 0.0,
+        "peak_tracemalloc_kib": None,
+        "mean_per_case_ms": None,
+        "live_detection_latency_ms": "not_applicable",
+        "note": "fixture prediction wall-clock; not live endpoint detection latency",
+    }
+    tracemalloc.start()
+    t0 = time.perf_counter()
     predictions: list[BaselinePrediction] = []
-    for case in cases:
-        fixture = load_fixture(case, root=root)
-        predictions.append(fn(case, fixture))
-    return predictions
+    try:
+        if name == "B_ML":
+            model = ml_model or fit_b_ml_from_dataset(seed=seed, dataset_dir=dataset_dir, root=root)
+            for case in cases:
+                fixture = load_fixture(case, root=root)
+                predictions.append(model.predict(case, fixture))
+        else:
+            fn = BASELINES[name]
+            for case in cases:
+                fixture = load_fixture(case, root=root)
+                predictions.append(fn(case, fixture))
+    finally:
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        runtime["wall_clock_ms"] = round(elapsed_ms, 3)
+        runtime["peak_tracemalloc_kib"] = round(peak / 1024.0, 3)
+        if cases:
+            runtime["mean_per_case_ms"] = round(elapsed_ms / len(cases), 3)
+    return predictions, runtime
 
 
 def run_reproducibility_check(
@@ -77,7 +113,7 @@ def run_reproducibility_check(
     total_pairs = 0
     prior: list[BaselinePrediction] | None = None
     for _ in range(repeats):
-        preds = run_baseline("B3", cases, root=root)
+        preds, _runtime = run_baseline("B3", cases, root=root)
         digest = stable_digest(
             [
                 {
@@ -197,18 +233,33 @@ def run_benchmark(
     all_run_records: list[dict[str, Any]] = []
     metrics_rows: list[dict[str, Any]] = []
     latency_rows: list[dict[str, Any]] = []
+    runtime_rows: list[dict[str, Any]] = []
     evidence_rows: list[dict[str, Any]] = []
     safety_rows: list[dict[str, Any]] = []
     per_class_rows: list[dict[str, Any]] = []
     stat_rows = []
     b3_predictions: list[BaselinePrediction] | None = None
     full_metrics_for_ablation: dict[str, float] = {}
+    ml_model: BernoulliNbBaseline | None = None
+    if "B_ML" in baselines:
+        ml_model = fit_b_ml_from_dataset(seed=seed, dataset_dir=dataset_dir, root=root)
+        metadata["b_ml"] = ml_model.metadata()
 
     ts = metadata.get("timestamp_utc", "")
     git_sha = metadata.get("git_sha", "unknown")
 
     for baseline_name in baselines:
-        preds = run_baseline(baseline_name, cases, root=root)
+        if baseline_name not in BASELINES and baseline_name not in SPECIAL_BASELINES:
+            raise ValueError(f"unknown baseline: {baseline_name}")
+        preds, runtime = run_baseline(
+            baseline_name,
+            cases,
+            root=root,
+            seed=seed,
+            dataset_dir=dataset_dir,
+            ml_model=ml_model,
+        )
+        runtime_rows.append(runtime)
         if baseline_name == "B3":
             b3_predictions = preds
         rows = predictions_to_rows(cases, preds)
@@ -257,7 +308,13 @@ def run_benchmark(
                 "median_detection_ms": "not_applicable",
                 "p95_detection_ms": "not_applicable",
                 "mean_recovery_ms": "not_applicable",
-                "note": "fixture-only benchmark; no live timing captured",
+                "batch_wall_clock_ms": runtime["wall_clock_ms"],
+                "mean_per_case_ms": runtime["mean_per_case_ms"],
+                "peak_tracemalloc_kib": runtime["peak_tracemalloc_kib"],
+                "note": (
+                    "live detection/recovery latency not applicable on fixtures; "
+                    "batch_wall_clock_ms is offline prediction runtime"
+                ),
             }
         )
         evidence_rows.append(
@@ -323,6 +380,8 @@ def run_benchmark(
     write_metrics_csv(out / "evidence_metrics.csv", evidence_rows)
     write_metrics_csv(out / "safety_metrics.csv", safety_rows)
     write_metrics_csv(processed_dir / "latency.csv", latency_rows)
+    write_metrics_csv(out / "runtime.csv", runtime_rows)
+    write_metrics_csv(processed_dir / "runtime.csv", runtime_rows)
     write_metrics_csv(
         out / "reproducibility_metrics.csv",
         [{"metric": k, "value": v} for k, v in repro.items() if k != "digests"],
@@ -354,6 +413,7 @@ def run_benchmark(
         "evidence_metrics.csv",
         "safety_metrics.csv",
         "reproducibility_metrics.csv",
+        "runtime.csv",
         "metadata.json",
     ):
         src = out / name

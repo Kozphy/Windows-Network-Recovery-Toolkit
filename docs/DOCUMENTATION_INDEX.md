@@ -29,7 +29,12 @@ A **local-first Windows endpoint reliability toolkit** evolving into a **Purple 
 | [purple-team-upgrade-report.md](purple-team-upgrade-report.md) | Before → after upgrade report |
 | [open-source-checklist.md](open-source-checklist.md) | Secrets, git hygiene, pre-commit gitleaks, public release |
 | [../research/questions.md](../research/questions.md) | Purple Team research questions |
-| [research/research_questions.md](research/research_questions.md) | Diagnostic RQ1–RQ3 (formal) |
+| [research_question.md](research_question.md) | Alias → formal RQ1–RQ3 |
+| [dataset.md](dataset.md) | Alias → dataset v1 + research façade |
+| [methodology.md](methodology.md) | Evaluation methodology |
+| [failure_taxonomy.md](failure_taxonomy.md) | Alias → F_* taxonomy |
+| [threats_to_validity.md](threats_to_validity.md) | Alias → threats docs |
+| [../paper/outline.md](../paper/outline.md) | Preprint outline (no invented results) |
 | [research/research_architecture.md](research/research_architecture.md) | Research pipeline architecture |
 | [research/research_grade_gap_analysis.md](research/research_grade_gap_analysis.md) | Research-grade gap analysis |
 | [research/threats_to_validity.md](research/threats_to_validity.md) | Diagnostic threats to validity |
