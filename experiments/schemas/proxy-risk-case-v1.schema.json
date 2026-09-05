@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/wnrt/proxy-risk-case-v1.schema.json",
+  "title": "WNRT Proxy Risk Research Case v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "case_id",
+    "split",
+    "scenario_name",
+    "expected_class",
+    "expected_min_tier",
+    "expected_policy",
+    "signals",
+    "provenance",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "proxy_risk_case.v1"},
+    "case_id": {"type": "string", "minLength": 1},
+    "split": {"enum": ["development", "held_out", "adversarial"]},
+    "scenario_name": {"type": "string", "minLength": 1},
+    "expected_class": {"type": "string", "minLength": 1},
+    "expected_min_tier": {"type": "string", "pattern": "^T[0-7]$"},
+    "expected_policy": {"enum": ["OBSERVE", "PREVIEW_ONLY", "HUMAN_REVIEW", "BLOCK"]},
+    "signals": {
+      "type": "object",
+      "properties": {
+        "proxy_state": {"$ref": "#/$defs/proxyState"},
+        "proxy_owner": {"$ref": "#/$defs/proxyOwner"},
+        "health_inject": {"$ref": "#/$defs/health"},
+        "health_audit": {"$ref": "#/$defs/healthAudit"},
+        "timeline": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/timelineEvent"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {"type": "string", "minLength": 1},
+    "limitations": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "ambiguity_allowed": {"type": "boolean", "default": false}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "proxyState": {
+      "type": "object",
+      "required": ["timestamp_utc", "endpoint_id", "wininet_proxy_enabled", "wininet_proxy_server", "winhttp_direct_access"],
+      "properties": {
+        "timestamp_utc": {"type": "string", "minLength": 1},
+        "endpoint_id": {"type": "string", "minLength": 1},
+        "wininet_proxy_enabled": {"type": "boolean"},
+        "wininet_proxy_server": {"type": "string"},
+        "winhttp_direct_access": {"type": "boolean"},
+        "localhost_port": {"type": ["integer", "null"], "minimum": 1, "maximum": 65535}
+      },
+      "additionalProperties": false
+    },
+    "process": {
+      "type": "object",
+      "required": ["pid", "name"],
+      "properties": {
+        "pid": {"type": "integer", "minimum": 0},
+        "name": {"type": "string", "minLength": 1},
+        "exe_path": {"type": ["string", "null"]},
+        "cmdline": {
+          "oneOf": [
+            {"type": "string"},
+            {"type": "array", "items": {"type": "string"}},
+            {"type": "null"}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "proxyOwner": {
+      "type": "object",
+      "required": ["timestamp_utc", "endpoint_id", "listener_found", "localhost_port"],
+      "properties": {
+        "timestamp_utc": {"type": "string", "minLength": 1},
+        "endpoint_id": {"type": "string", "minLength": 1},
+        "listener_found": {"type": "boolean"},
+        "localhost_port": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "process": {"$ref": "#/$defs/process"},
+        "writer_proof": {"type": ["boolean", "null"]},
+        "sysmon_event_id": {"type": ["integer", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"listener_found": {"const": true}}, "required": ["listener_found"]},
+          "then": {"required": ["process"]}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "health": {
+      "type": "object",
+      "required": ["timestamp_utc", "endpoint_id", "proxy_status", "direct_probe_ok", "proxy_probe_ok"],
+      "properties": {
+        "timestamp_utc": {"type": "string", "minLength": 1},
+        "endpoint_id": {"type": "string", "minLength": 1},
+        "proxy_status": {"type": "string", "minLength": 1},
+        "direct_probe_ok": {"type": "boolean"},
+        "proxy_probe_ok": {"type": ["boolean", "null"]},
+        "tcp_listening": {"type": ["boolean", "null"]},
+        "tcp_connect_ok": {"type": ["boolean", "null"]},
+        "proxy_https_connect_ok": {"type": ["boolean", "null"]},
+        "failure_reason": {"type": ["string", "null"]},
+        "external_probe_ok": {"type": ["boolean", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "healthAudit": {
+      "type": "object",
+      "required": ["timestamp_utc", "health"],
+      "properties": {
+        "timestamp_utc": {"type": "string", "minLength": 1},
+        "endpoint_id": {"type": ["string", "null"]},
+        "health": {"$ref": "#/$defs/health"}
+      },
+      "additionalProperties": false
+    },
+    "transitionState": {
+      "type": "object",
+      "required": ["wininet_proxy_enabled", "wininet_proxy_server"],
+      "properties": {
+        "wininet_proxy_enabled": {"type": "boolean"},
+        "wininet_proxy_server": {"type": "string"},
+        "localhost_port": {"type": ["integer", "null"], "minimum": 1, "maximum": 65535}
+      },
+      "additionalProperties": false
+    },
+    "timelineEvent": {
+      "type": "object",
+      "required": ["timestamp_utc", "endpoint_id", "old_state", "new_state", "reverter_suspected", "reverter_diagnosis"],
+      "properties": {
+        "timestamp_utc": {"type": "string", "minLength": 1},
+        "endpoint_id": {"type": "string", "minLength": 1},
+        "old_state": {"$ref": "#/$defs/transitionState"},
+        "new_state": {"$ref": "#/$defs/transitionState"},
+        "reverter_suspected": {"type": "boolean"},
+        "reverter_diagnosis": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {"status": {"type": "string", "minLength": 1}},
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

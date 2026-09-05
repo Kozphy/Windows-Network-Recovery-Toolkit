@@ -164,14 +164,24 @@ The desired behavior may be abstention or a lower proof tier rather than a force
 
 ## Reproduction goal
 
-The end state should support a command such as:
+The proxy-risk v1 vertical slice supports:
 
 ```powershell
-python experiments/scripts/run_benchmark.py --config experiments/configs/full-platform-v1.json
-python experiments/scripts/build_report.py --results experiments/results --out benchmarks
+python experiments/scripts/run_benchmark.py --config experiments/configs/proxy-risk-v1.json --out experiments/results/v1
+python experiments/scripts/build_report.py --results experiments/results/v1 --out benchmarks/v1
 ```
 
-Those scripts do not yet exist merely because this documentation names them. Add them only when backed by real executable implementations and tests.
+The runner is fixture-only and does not read or mutate live Windows state. It validates
+the case contract in `experiments/schemas/proxy-risk-case-v1.schema.json`, rejects duplicate
+case IDs and split-directory drift, executes every configured B0–B3 baseline and A1–A4
+ablation twice to check deterministic replay,
+and records the Git SHA, dataset digest, configuration digest, environment, and raw output
+digest. The report builder refuses to aggregate raw results whose digest no longer matches
+the manifest.
+
+Current v1 scope is deliberately narrow: endpoint proxy-state, listener, path-health, and
+WinINET/WinHTTP mismatch evidence. ML/LLM comparisons and human operator studies remain
+future work; they must not be inferred from this fixture-only benchmark.
 
 ## Reporting rules
 

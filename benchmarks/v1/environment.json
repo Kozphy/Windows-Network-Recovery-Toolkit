@@ -1,0 +1,19 @@
+{
+  "benchmark_version": "v1",
+  "dataset": {
+    "case_count": 12,
+    "name": "proxy-risk-benchmark",
+    "sha256": "77edc7334336a16b6614b699940050b0dafbaf62ac09872e52a12aaaaf2af792",
+    "split_counts": {
+      "adversarial": 4,
+      "development": 4,
+      "held_out": 4
+    },
+    "version": "v1"
+  },
+  "git_commit": "4660a5a76bc2c7724403222434060f363d5f66f7",
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.39",
+  "python_version": "3.12.13",
+  "schema_version": "proxy_risk_benchmark_manifest.v1",
+  "seed": 42
+}

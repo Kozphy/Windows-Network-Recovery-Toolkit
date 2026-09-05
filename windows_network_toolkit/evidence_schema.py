@@ -155,12 +155,17 @@ def normalize_probe_result(raw: dict[str, Any], *, source_command: str = "proxy-
     ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
     endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
     health = raw.get("health") if isinstance(raw.get("health"), dict) else raw
+    proxy_probe_ok = health.get("proxy_probe_ok")
+    if proxy_probe_ok is None:
+        proxy_probe_ok = health.get("external_probe_ok")
     normalized = {
         "proxy_status": health.get("proxy_status"),
         "tcp_listening": health.get("tcp_listening"),
         "tcp_connect_ok": health.get("tcp_connect_ok"),
         "direct_probe_ok": health.get("direct_probe_ok"),
-        "proxy_probe_ok": health.get("proxy_probe_ok") or health.get("external_probe_ok"),
+        # False is a measured failure, not a missing value. Avoid ``a or b`` here
+        # because it silently converted False into None when no fallback existed.
+        "proxy_probe_ok": proxy_probe_ok,
         "proxy_https_connect_ok": health.get("proxy_https_connect_ok"),
         "failure_reason": health.get("failure_reason"),
     }

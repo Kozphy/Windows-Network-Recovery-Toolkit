@@ -1,19 +1,33 @@
 # Benchmarks
 
-This directory is reserved for **generated, reviewable benchmark evidence**.
+## Research publication package
 
-It should eventually contain the quantitative outputs produced by the experiment workflow in [`../experiments/README.md`](../experiments/README.md). Until those experiments are implemented and run, this directory intentionally contains no performance claims.
+- English preprint: `paper/proxy-risk-benchmark-v1-preprint.md`
+- External-user protocol: `validation/external-user-study-v1.md`
+- De-identified response template: `validation/external-user-study-v1-template.csv`
+
+The external protocol is published for execution; no external-validation result is claimed until independently collected records pass the protocol's claim gate.
+
+This directory contains **generated, reviewable benchmark evidence**.
+
+The quantitative outputs are produced by the experiment workflow in
+[`../experiments/README.md`](../experiments/README.md). Versioned output belongs under
+`benchmarks/v1/`; every aggregate must be reproducible from case-level JSON and a
+digest-verified manifest.
 
 ## Planned artifacts
 
 ```text
 benchmarks/
   README.md
-  results.csv
-  confusion_matrix.csv
-  ablations.csv
-  environment.json
-  benchmark_report.md
+  v1/
+    results.csv
+    per_class_metrics.csv
+    confusion_matrix.csv
+    ablations.csv
+    failure_analysis.md
+    environment.json
+    benchmark_report.md
 ```
 
 ## Evidence contract

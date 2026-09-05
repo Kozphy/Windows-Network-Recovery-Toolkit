@@ -1,0 +1,33 @@
+{
+  "ablations": [
+    "A1_NO_LISTENER",
+    "A2_NO_PATH_HEALTH",
+    "A3_NO_WINHTTP_CONTRAST",
+    "A4_NO_TIMELINE"
+  ],
+  "baselines": [
+    "B0_CONNECTIVITY",
+    "B1_FLAT_RULES",
+    "B2_HEALTH_STATUS",
+    "B3_FULL_PLATFORM"
+  ],
+  "benchmark_version": "v1",
+  "config_sha256": "207563723df151972ef36e7725f61090a434180a1d7a787d8c80348e42ea9626",
+  "dataset": {
+    "case_count": 12,
+    "name": "proxy-risk-benchmark",
+    "sha256": "77edc7334336a16b6614b699940050b0dafbaf62ac09872e52a12aaaaf2af792",
+    "split_counts": {
+      "adversarial": 4,
+      "development": 4,
+      "held_out": 4
+    },
+    "version": "v1"
+  },
+  "git_commit": "4660a5a76bc2c7724403222434060f363d5f66f7",
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.39",
+  "python_version": "3.12.13",
+  "raw_results_sha256": "d4a8f422b94de625ecf87007768d9ec577aee344ba7550ad8dd1d78a12e489b5",
+  "schema_version": "proxy_risk_benchmark_manifest.v1",
+  "seed": 42
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": "proxy_risk_benchmark_config.v1",
+  "benchmark_version": "v1",
+  "seed": 42,
+  "cases_root": "tests/fixtures/research/proxy_risk_v1",
+  "splits": ["development", "held_out", "adversarial"],
+  "baselines": [
+    "B0_CONNECTIVITY",
+    "B1_FLAT_RULES",
+    "B2_HEALTH_STATUS",
+    "B3_FULL_PLATFORM"
+  ],
+  "ablations": [
+    "A1_NO_LISTENER",
+    "A2_NO_PATH_HEALTH",
+    "A3_NO_WINHTTP_CONTRAST",
+    "A4_NO_TIMELINE"
+  ]
+}

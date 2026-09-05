@@ -1,0 +1,3 @@
+study_version,participant_code,organization_code,role_band,experience_band,scenario_id,scenario_provenance,condition,order_index,expected_label,predicted_label,diagnosis_correct,supporting_evidence_present,limitations_present,proposed_action,expected_policy_posture,unsafe_action_proposed,time_to_diagnosis_seconds,time_to_safe_action_seconds,diagnostic_step_count,setting_change_count,reversal_count,evidence_traceability_rating_1_5,clarity_rating_1_5,decision_confidence_rating_1_5,excluded,exclusion_reason,notes
+v1,P001,ORG_A,endpoint_engineer,3_to_5_years,EXT-001,independently_supplied,normal_workflow,1,,,,,,,,,,,,,,,,,,,false,,
+v1,P001,ORG_A,endpoint_engineer,3_to_5_years,EXT-002,independently_supplied,evidence_tiered,2,,,,,,,,,,,,,,,,,,,false,,
