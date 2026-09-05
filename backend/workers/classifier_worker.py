@@ -101,6 +101,11 @@ def _run_classification_job_inner(event_id: str) -> dict[str, Any]:
             control_tests=controls,
             policy=policy,
         )
+        # Tenant scope follows the evidence record so async classification cannot
+        # detach an incident from the organization that owns the endpoint.
+        if row.tenant_id:
+            stored.tenant_id = row.tenant_id
+            session.add(stored)
 
         primary = stored.primary_classification
         status = (
@@ -114,6 +119,7 @@ def _run_classification_job_inner(event_id: str) -> dict[str, Any]:
             "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "event_id": event_id,
             "incident_id": stored.incident_id,
+            "tenant_id": row.tenant_id,
             "classification": {"primary_classification": primary},
             "dry_run": True,
             "limitations": list(stored.limitations or []),
@@ -132,6 +138,7 @@ def _run_classification_job_inner(event_id: str) -> dict[str, Any]:
             payload={
                 "incident_id": stored.incident_id,
                 "event_id": event_id,
+                "tenant_id": row.tenant_id,
                 "primary_classification": primary,
             },
             limitations=list(stored.limitations or [])[:3],

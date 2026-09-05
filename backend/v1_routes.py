@@ -397,3 +397,10 @@ def trisk_health_v1() -> dict[str, Any]:
         "event_store": event_ok,
         "limitations": ["Demo health — not attested SLO."],
     }
+
+
+# Additive YC/P0 product-control-plane slice. Keeping this mount at the end
+# preserves the existing technology-risk route behavior and URL contracts.
+from backend.product_v1_routes import router as product_v1_router  # noqa: E402
+
+router.include_router(product_v1_router)
