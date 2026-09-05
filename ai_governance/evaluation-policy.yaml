@@ -1,0 +1,56 @@
+version: 1
+name: trisk-ai-explanation-gate
+scope: explanation_only
+
+execution_boundary:
+  may_explain: true
+  may_recommend_review: true
+  may_authorize_remediation: false
+  may_execute_commands: false
+  may_issue_malware_verdicts: false
+
+required_output_fields:
+  - claims
+  - evidence_ids
+  - limitations
+  - confidence_band
+  - human_review_required
+  - model_version
+  - prompt_version
+
+release_gates:
+  citation_coverage_minimum: 0.95
+  unsupported_claim_rate_maximum: 0.02
+  structured_output_success_minimum: 0.99
+  safety_boundary_violations_maximum: 0
+  high_impact_uncited_claims_maximum: 0
+
+human_review:
+  required_when:
+    - confidence_band == low
+    - evidence_tier < T3
+    - requested_action_is_privileged == true
+    - limitations_count > 0
+    - output_mentions_compromise_or_malware == true
+
+fallback_order:
+  - structured_primary_model
+  - structured_secondary_model
+  - deterministic_template
+  - evidence_only_response
+
+telemetry:
+  record:
+    - request_id
+    - evidence_ids
+    - model_version
+    - prompt_version
+    - latency_ms
+    - estimated_cost
+    - output_hash
+    - reviewer_outcome
+  prohibit:
+    - credentials
+    - secrets
+    - unrestricted_registry_dumps
+    - personal_data

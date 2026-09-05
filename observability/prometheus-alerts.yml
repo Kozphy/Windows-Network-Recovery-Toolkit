@@ -1,0 +1,42 @@
+groups:
+  - name: trisk-api-reliability
+    rules:
+      - alert: TriskApiHighErrorRate
+        expr: |
+          sum(rate(http_server_requests_total{status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(http_server_requests_total[5m])), 1)
+          > 0.01
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: Technology Risk API 5xx rate exceeds 1%
+          runbook: docs/sre-reliability-profile.md
+
+      - alert: TriskEvidenceStale
+        expr: time() - trisk_latest_evidence_timestamp_seconds > 900
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Latest endpoint evidence is older than 15 minutes
+          runbook: docs/sre-reliability-profile.md
+
+      - alert: TriskReplayDrift
+        expr: increase(trisk_replay_mismatch_total[30m]) > 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: Deterministic replay produced a mismatch
+          runbook: docs/sre-reliability-profile.md
+
+      - alert: TriskHumanReviewBacklog
+        expr: trisk_human_review_queue_depth > 100
+        for: 30m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Human-review queue exceeds the portfolio threshold
+          runbook: docs/responsible-ai-engineering-profile.md

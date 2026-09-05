@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "mode": "verify-only",
+  "budgets": {
+    "max_iterations": 8,
+    "max_task_seconds": 30,
+    "max_failures": 1
+  },
+  "allowed_actions": [
+    "read_file",
+    "check_path_exists",
+    "check_text_contains",
+    "emit_audit_record"
+  ],
+  "approval_required": [
+    "write_file",
+    "run_subprocess",
+    "network_access",
+    "registry_change",
+    "firewall_change",
+    "process_control",
+    "credential_access",
+    "endpoint_remediation"
+  ],
+  "stop_conditions": [
+    "verification_passed",
+    "verification_failed",
+    "budget_exhausted",
+    "policy_denied",
+    "invalid_task"
+  ],
+  "audit": {
+    "format": "jsonl",
+    "include_policy_version": true,
+    "include_sha256": true
+  }
+}
