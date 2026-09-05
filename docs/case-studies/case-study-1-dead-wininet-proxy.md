@@ -15,7 +15,7 @@ Employees cannot access SaaS, SSO, or internal web applications while basic conn
 ## Evidence Collected
 
 | Signal | Value | Tier |
-|--------|-------|------|
+| -------- | ------- | ------ |
 | WinINET proxy enabled | true | Observation |
 | ProxyServer | 127.0.0.1:59081 | Observation |
 | WinHTTP | direct | Observation |
@@ -31,26 +31,26 @@ python -m windows_network_toolkit diagnose --proof --fixture tests/fixtures/ener
 
 ## Classification
 
-**Primary:** `DEAD_PROXY_CONFIG`  
-**Secondary:** `WININET_WINHTTP_MISMATCH`, `LOCALHOST_PROXY`, `DEAD_LOCALHOST_PORT`  
+**Primary:** `DEAD_PROXY_CONFIG`
+**Secondary:** `WININET_WINHTTP_MISMATCH`, `LOCALHOST_PROXY`, `DEAD_LOCALHOST_PORT`
 **Severity:** medium · **Confidence:** 0.92 (ordinal)
 
 ## Proof Level
 
-Structured proof **supported** via localhost listener check and WinINET/WinHTTP comparison.  
+Structured proof **supported** via localhost listener check and WinINET/WinHTTP comparison.
 Does **not** prove malware, MITM, or registry writer identity.
 
 ## Risk Assessment
 
 | Dimension | Rating |
-|-----------|--------|
+| ----------- | -------- |
 | Inherent risk | Medium (productivity impact) |
 | Residual risk | Medium–Low after controls |
 | Security escalation | Not warranted without additional telemetry |
 
 ## Policy Decision
 
-**Outcome:** `PREVIEW_ONLY`  
+**Outcome:** `PREVIEW_ONLY`
 **Action allowed:** `DISABLE_WININET_PROXY` only with typed confirmation and rollback review.
 
 ## Remediation Preview

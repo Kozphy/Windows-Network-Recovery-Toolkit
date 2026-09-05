@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -19,6 +19,7 @@ dependencies = [
     "httpx>=0.27",
     "stripe>=9.0",
     "sqlmodel>=0.0.22",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -60,6 +61,7 @@ dev = [
 [project.scripts]
 wnrt = "windows_network_toolkit.cli:console_main"
 wnrt-api = "backend.__main__:main"
+purple = "src.purple_team.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -76,13 +78,38 @@ include = [
     "windows_network_toolkit*",
     "toolkit*",
     "mcp_server*",
+    "riskclaw*",
+    "experiments*",
+    "research*",
 ]
 exclude = ["tests*", "frontend*", "scripts*", "docs*"]
 
 [tool.pytest.ini_options]
-# Primary config lives in pytest.ini (pytest prefers pytest.ini over this section).
 pythonpath = ["."]
-testpaths = ["tests"]
+testpaths = ["tests", "windows_network_toolkit/tests"]
+python_files = ["test_*.py"]
+norecursedirs = [
+    ".git",
+    "__pycache__",
+    "*.egg",
+    ".eggs",
+    "dist",
+    "build",
+    "docs",
+    ".tox",
+    ".nox",
+    ".pytest_cache",
+    ".hypothesis",
+    "integration_linux",
+    "node_modules",
+    ".venv",
+    "venv",
+]
+addopts = "--strict-markers --import-mode=importlib -p no:schemathesis --basetemp=.pytest_tmp"
+markers = [
+    "linux_integration: real Linux kernel behavior (tests/integration_linux; Linux CI only)",
+    "scale: synthetic local scale tests (100/1k/10k endpoint fixtures; not production benchmarks)",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
@@ -162,6 +189,7 @@ files = [
     "evidence",
     "failure_system",
     "windows_network_toolkit",
+    "riskclaw",
     "tests/policy",
     "tests/api",
     "tests/replay",

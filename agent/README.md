@@ -3,7 +3,7 @@
 **Status:** Legacy SaaS demo agent — distinct from the **read-only local agent** in `windows_network_toolkit/agent/`.
 
 | Agent | Entry | Mutates endpoint? | Sends data to |
-|-------|-------|-------------------|---------------|
+| ------- | ------- | ------------------- | --------------- |
 | **Read-only (preferred)** | `python -m windows_network_toolkit agent *` | **No** | Local JSONL spool only |
 | **Legacy (this folder)** | `python agent/agent.py` | Can trigger backend `/diagnose` flows | Remote FastAPI + Supabase JWT |
 

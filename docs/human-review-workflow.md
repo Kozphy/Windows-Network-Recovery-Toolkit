@@ -37,7 +37,7 @@ flowchart LR
 ## Rules
 
 | Rule | Enforcement |
-|------|-------------|
+| ------ | ------------- |
 | AI suggests explanation only | `explanation_guardrails` + `apply_guardrails` |
 | AI cannot approve remediation | `record_decision` rejects `ai_*` actors on risky actions |
 | AI cannot override policy gates | Policy engine remains authoritative |

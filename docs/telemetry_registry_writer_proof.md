@@ -35,7 +35,7 @@ See [ADR-004-heuristic-attribution-is-not-proof.md](adr/ADR-004-heuristic-attrib
 ## Sysmon / Event Log / ETW role
 
 | Source | Role in v1 |
-|--------|------------|
+| -------- | ------------ |
 | **Sysmon EID 13** | Primary fixture parser; extracts `TargetObject`, `Details`, `Image`, `ProcessId` |
 | **Windows Event Log** | Fixture-first abstraction; live query is optional and best-effort |
 | **ETW** | Optional adapter; fixture parser only in tests — no live session required |
@@ -54,7 +54,7 @@ Under `HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings\`.
 ## Evidence levels
 
 | Level | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `NO_TELEMETRY` | No telemetry rows supplied |
 | `NO_RELEVANT_REGISTRY_WRITES` | Telemetry present but no proxy-key writes in window |
 | `REGISTRY_WRITER_OBSERVED` | Relevant registry writes observed |

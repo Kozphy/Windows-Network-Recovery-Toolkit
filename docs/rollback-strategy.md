@@ -11,7 +11,7 @@
 Every policy-gated remediation path that may mutate endpoint state should produce this **six-part preview package** before any live change:
 
 | # | Artifact | Purpose |
-|---|----------|---------|
+| --- | ---------- | --------- |
 | 1 | **Pre-change evidence snapshot** | Read-only capture of proxy/registry posture at decision time |
 | 2 | **Proposed mutation preview** | Forward change described as dry-run steps (no execution) |
 | 3 | **Human approval token** | Cryptographic gate — operator must present matching token |
@@ -32,7 +32,7 @@ Policy ALLOW ──► Mutation preview ──► Approval token ──► Rever
 ## Code locations
 
 | Component | Path |
-|-----------|------|
+| ----------- | ------ |
 | Preview package builder | `src/platform_core/remediation/rollback.py` |
 | Planner integration | `src/platform_core/remediation/planner.py` |
 | `RemediationPreview.rollback_preview` | `platform_core/models.py` |
@@ -116,7 +116,7 @@ Policy `ALLOW` or `PREVIEW_ONLY` is **not** a safety guarantee — rollback revi
 ## Tests
 
 | Test file | Coverage |
-|-----------|----------|
+| ----------- | ---------- |
 | `tests/platform_core/remediation/test_rollback_preview.py` | Six-part package, limitations, no execute without confirmation, audit append |
 | `tests/platform_core/remediation/test_remediation_planner.py` | Planner dry-run + legacy rollback plan steps |
 | `tests/test_remediation_preview.py` | Classic preview rollback copy |

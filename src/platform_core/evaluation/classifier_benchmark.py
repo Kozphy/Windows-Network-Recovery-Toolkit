@@ -176,7 +176,9 @@ def _limitations_covered(incident_limitations: list[str], required: list[str]) -
 
 
 def _policy_rank(value: str) -> int:
-    return _POLICY_RANK.get(value.lower(), _POLICY_RANK.get(_normalize_policy_token(value).lower(), 2))
+    return _POLICY_RANK.get(
+        value.lower(), _POLICY_RANK.get(_normalize_policy_token(value).lower(), 2)
+    )
 
 
 def load_benchmark_cases(path: Path, *, repo_root: Path | None = None) -> list[BenchmarkCase]:
@@ -249,7 +251,10 @@ def run_classifier_benchmark(
             "UNKNOWN_LOCAL_PROXY",
         }:
             exp_risk = "HIGH"
-        elif case.expected_primary_classification in {"LOCAL_PROXY_ACTIVE", "BOTH_DIRECT_AND_PROXY_WORK"}:
+        elif case.expected_primary_classification in {
+            "LOCAL_PROXY_ACTIVE",
+            "BOTH_DIRECT_AND_PROXY_WORK",
+        }:
             exp_risk = "MEDIUM"
 
         false_escalation = False
@@ -345,3 +350,24 @@ def render_classifier_benchmark_markdown(summary: BenchmarkSummary) -> str:
         ]
     )
     return "\n".join(lines) + "\n"
+
+
+def classifier_threshold_failures(
+    summary: BenchmarkSummary,
+    *,
+    min_primary_match_rate: float = 0.85,
+    max_unsafe_rate: float = 0.0,
+) -> list[str]:
+    """Return human-readable threshold misses (empty means pass)."""
+    misses: list[str] = []
+    if summary.exact_primary_classification_match_rate < min_primary_match_rate:
+        misses.append(
+            "primary_match_rate "
+            f"{summary.exact_primary_classification_match_rate:.4f} < {min_primary_match_rate:.4f}"
+        )
+    if summary.unsafe_recommendation_rate > max_unsafe_rate:
+        misses.append(
+            "unsafe_recommendation_rate "
+            f"{summary.unsafe_recommendation_rate:.4f} > {max_unsafe_rate:.4f}"
+        )
+    return misses

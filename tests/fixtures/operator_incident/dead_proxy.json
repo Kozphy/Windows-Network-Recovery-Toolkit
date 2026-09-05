@@ -1,0 +1,9 @@
+{
+  "timestamp_utc": "2026-08-15T00:00:00Z",
+  "proxy": {
+    "classification": "DEAD_PROXY_CONFIG",
+    "limitations": ["Classification is triage guidance — not malware verdict or registry writer proof."]
+  },
+  "rewriter": { "match": false },
+  "path_health": { "classification": "PROXY_ENABLED_CHECK_GUARDIAN" }
+}

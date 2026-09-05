@@ -5,7 +5,7 @@ This document summarizes the portfolio upgrade from “strong prototype” to pr
 ## New capabilities
 
 | Area | Module / path | CLI / API |
-|------|---------------|-----------|
+| ------ | --------------- | ----------- |
 | Case studies | `case_studies/00*` | `incident-review --incident-id` |
 | Incident review | `platform_core/incident_review/` | markdown / json output |
 | SLO metrics | `platform_core/reliability_metrics.py` | `GET /platform/slo`, Prometheus |

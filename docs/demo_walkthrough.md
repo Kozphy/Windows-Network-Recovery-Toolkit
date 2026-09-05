@@ -4,8 +4,8 @@ Scenario: **ICMP works but browser traffic fails** because of **WinHTTP/system p
 
 ## Prerequisites
 
-- Python **3.10+** recommended  
-- Repo root as working directory  
+- Python **3.10+** recommended
+- Repo root as working directory
 
 ```powershell
 cd C:\path\to\Windows-Network-Recovery-Toolkit
@@ -33,7 +33,7 @@ Invoke-WebRequest http://127.0.0.1:8000/platform/health -UseBasicParsing | Selec
 **RBAC lite (portfolio demo headers):**
 
 | Scenario | Headers |
-|---------|---------|
+| --------- | --------- |
 | Admin (full remediation + audit) | `X-Operator-Role: admin` |
 | Viewer (metrics/incidents/events only) | `X-Operator-Role: viewer` |
 | Operator | `X-Operator-Role: operator` (**preview + dry-run execute**) |
@@ -112,7 +112,7 @@ Invoke-WebRequest http://127.0.0.1:8000/platform/failure-events/ingest -Method P
 
 Populate `failure_block_id` on the FailureEvent UUID from `failure_system` diagnose shards, **or** call:
 
-`GET /platform/failure-events/demo-ev-proxy-1`  
+`GET /platform/failure-events/demo-ev-proxy-1`
 
 If the FailureBlock shard is absent, **`failure_block_linked.found`** is `false`.
 

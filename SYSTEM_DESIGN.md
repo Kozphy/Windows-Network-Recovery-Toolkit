@@ -1,7 +1,7 @@
 # SYSTEM_DESIGN.md
 
-**Technology Risk & Control Analytics Platform**  
-**Status:** Production-shaped portfolio prototype — not enterprise-certified software  
+**Technology Risk & Control Analytics Platform**
+**Status:** Production-shaped portfolio prototype — not enterprise-certified software
 **Audience:** FAANG / platform / SRE reviewers and Big 4 / technology risk / audit reviewers
 
 **Related docs:** [docs/domain-model.md](docs/domain-model.md) · [docs/architecture-infographic.md](docs/architecture-infographic.md) · [docs/state-machine.md](docs/state-machine.md) · [docs/control-matrix.md](docs/control-matrix.md) · [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md) · [docs/safety_model.md](docs/safety_model.md) · [docs/threat-model.md](docs/threat-model.md) · [docs/production-readiness-gap.md](docs/production-readiness-gap.md)
@@ -35,7 +35,7 @@ This platform standardizes **Evidence → Risk → Decision → Audit** so platf
 ## 3. Non-Goals and Explicit Boundaries
 
 | Not this | What the system does instead |
-|----------|------------------------------|
+| ---------- | ------------------------------ |
 | **Antivirus / EDR / XDR** | Reliability triage labels (`DEAD_PROXY_CONFIG`, `UNKNOWN_LOCAL_PROXY`) with `limitations[]`; no signature engine or quarantine |
 | **Malware verdicts** | Blocks `MALWARE_*` classifications; `unsafe_inferences_blocked[]` in safety contracts |
 | **MITM confirmation** | `POSSIBLE_MITM_RISK` requires multiple indicators; never emits "MITM confirmed" |
@@ -67,7 +67,7 @@ flowchart LR
 ```
 
 | Stage | Role |
-|-------|------|
+| ------- | ------ |
 | **Evidence Collection** | Read-only CLI probes: `proxy-status`, `proxy-health`, `localhost-diagnose`, `proxy-watch`, `diagnose --proof`, optional fixture inject |
 | **Evidence Normalization** | Canonical `EvidenceEvent` rows with deterministic `event_id`, `evidence_tier`, `limitations[]` |
 | **Deterministic Classification** | Full before/after state machine + incident classifier — same fixture → same label |
@@ -89,7 +89,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ## 5. Component Architecture
 
 | Component | Responsibility | Input | Output | Failure Mode | Reviewer Value |
-|-----------|----------------|-------|--------|--------------|----------------|
+| ----------- | ---------------- | ------- | -------- | -------------- | ---------------- |
 | **CLI evidence collectors** | Read registry, probes, watch timeline | Live Windows or `--fixture` JSON | JSON stdout, JSONL watch log | Partial registry read → insufficient data class | Automation-friendly, CI-reproducible |
 | **Evidence normalizer** | Stable `EvidenceEvent` schema | Raw CLI dicts | Normalized events + tiers | Missing timestamp → dedupe gaps | Single analytics grain |
 | **Classifier / state machine** | Primary label + secondary signals | Before/after proxy state, probes | `IncidentRecord`, `ProxyTransition` | Field-diff false positive if not full-state | Interview-grade safety design |
@@ -117,7 +117,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### EvidenceEvent
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Canonical normalized observation row for classification, controls, and export |
 | **Key fields** | `event_id`, `timestamp_utc`, `endpoint_id`, `evidence_type`, `normalized_fields`, `evidence_tier`, `limitations[]` |
 | **Design value** | Deterministic `event_id` enables dedupe and replay |
@@ -128,7 +128,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### IncidentRecord
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Classified endpoint incident with human interpretation |
 | **Key fields** | `incident_id`, `incident_class`, `secondary_signals`, `confidence`, `limitations[]`, `proof_tier` |
 | **Design value** | Stable JSON contract for API and Power BI |
@@ -137,7 +137,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### ClassificationResult
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Structured classifier output before incident persistence |
 | **Key fields** | `primary_classification`, `secondary_signals`, `severity`, `confidence`, `reasoning`, `recommended_next_actions` |
 | **Design value** | Separates label from policy and remediation |
@@ -146,7 +146,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### ProofTier
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Claim-strength label T0–T5 |
 | **Key fields** | Tier enum, linked evidence types |
 | **Design value** | Prevents narrative overclaim |
@@ -155,7 +155,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### RiskScore
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Governance prioritization input |
 | **Key fields** | `likelihood`, `impact`, `risk_score`, `risk_level`, `human_review_recommended` |
 | **Design value** | Combines classification, controls, business impact |
@@ -164,7 +164,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### ControlTestResult
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Detective/preventive control evaluation |
 | **Key fields** | `control_id`, `test_result`, `evidence[]`, `limitations[]`, `recommendation` |
 | **Design value** | CTRL-001–010 portfolio mapping |
@@ -173,7 +173,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### PolicyDecision
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Authorized action boundary |
 | **Key fields** | `action`, `outcome` (e.g. `PREVIEW_ONLY`), `requires_confirmation`, `dry_run` |
 | **Design value** | Policy permission is not safety guarantee |
@@ -182,7 +182,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### RemediationPreview
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Intended registry change without execution |
 | **Key fields** | `dry_run`, planned keys/values, `typed_confirmation_token` |
 | **Design value** | Recommendation is not execution authority |
@@ -191,7 +191,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### RiskDecisionRecord
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Governed decision artifact linking evidence to outcome |
 | **Key fields** | `decision_id`, `incident_id`, `policy_decision_id`, `actor`, `limitations[]` |
 | **Design value** | Single row for committee drill-down |
@@ -202,7 +202,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### AuditEvent
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Append-only log row |
 | **Key fields** | `timestamp`, `incident_id`, `action`, `actor`, `dry_run`, `prev_hash`, `row_hash` |
 | **Design value** | Tamper-evident chain |
@@ -211,7 +211,7 @@ Infographic: [docs/architecture-infographic.md](docs/architecture-infographic.md
 ### GovernanceReport
 
 | | |
-|--|--|
+| -- | -- |
 | **Purpose** | Committee-ready management information pack |
 | **Key fields** | KPIs, control summary, human-review queue, `limitations_and_non_claims` |
 | **Design value** | Big 4 storytelling without attestation |
@@ -263,7 +263,7 @@ Classification is **deterministic**: the same normalized evidence fixture produc
 ### Primary labels (12)
 
 | Label | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `NO_PROXY` | Proxy disabled, no PAC |
 | `DEAD_PROXY_CONFIG` | Localhost proxy configured, no listener |
 | `LOCAL_PROXY_ACTIVE` | Listener on configured port |
@@ -293,7 +293,7 @@ Full reference: [docs/classification-model.md](docs/classification-model.md)
 ## 9. Proof Tier Model
 
 | Tier | Definition | Example evidence | Allowed language (summary) |
-|------|------------|------------------|----------------------------|
+| ------ | ------------ | ------------------ | ---------------------------- |
 | **T0** | User-reported symptom only | Helpdesk note, screenshot | "User reported browser failure" |
 | **T1** | Local configuration snapshot | `proxy-status` registry read | "WinINET points to 127.0.0.1:59081" |
 | **T2** | Network probe / listener evidence | `netstat`, port listen check | "No listener on configured port" |
@@ -321,7 +321,7 @@ Normative ladder: [docs/proxy-proof-ladder.md](docs/proxy-proof-ladder.md)
 ### Blocked or gated
 
 | Action | Gate |
-|--------|------|
+| -------- | ------ |
 | Registry mutation | Typed confirmation token (`DISABLE_WININET_PROXY`) |
 | Process kill | Blocked in policy registry |
 | Firewall reset | Blocked |
@@ -361,7 +361,7 @@ python -m windows_network_toolkit classifier-benchmark --cases examples/evaluati
 ### Why it matters
 
 | Stakeholder | Value |
-|-------------|-------|
+| ------------- | ------- |
 | Internal audit | Reconstruct who decided what, when, with what limitations |
 | Platform engineering | Regression-test classifier and pipeline determinism |
 | Risk committee | Trust integrity of exported KPIs without claiming formal assurance |
@@ -388,7 +388,7 @@ See: [docs/audit-hash-chain-explained.md](docs/audit-hash-chain-explained.md) ·
 The **read-only** Technology Risk API is mounted from `backend/technology_risk_routes.py`. It delegates to `run_endpoint_analytics_pipeline` — no registry mutation, no audit append on GET.
 
 | Endpoint | Purpose | Notes |
-|----------|---------|-------|
+| ---------- | --------- | ------- |
 | `GET /trisk/health` | Service health + positioning disclaimer | Distinct from root `GET /health` (ERP platform) |
 | `GET /incidents` | Paginated incident summaries | `limitations[]` on response; `fixture` query for demo |
 | `GET /risks` | Ordinal risk score items | `schema_version: technology_risk_scoring.v1` |
@@ -426,7 +426,7 @@ CLI: `python -m windows_network_toolkit powerbi-export --audit-dir … --out-dir
 **Module:** `src/platform_core/analytics/powerbi_star_export.py`
 
 | Table | Grain |
-|-------|-------|
+| ------- | ------- |
 | `fact_incidents` | One row per incident — risk level, proof tier keys |
 | `fact_control_tests` | One row per control test execution |
 | `fact_policy_decisions` | Policy outcomes per incident |
@@ -454,7 +454,7 @@ Reference: [docs/powerbi-interview-story.md](docs/powerbi-interview-story.md) ·
 ## 14. Observability and Operations
 
 | Capability | Status | Notes |
-|------------|--------|-------|
+| ------------ | -------- | ------- |
 | `GET /trisk/health` | **Implemented** | Demo and full stack |
 | Structured JSON CLI output | **Implemented** | All primary commands |
 | Prometheus metrics | **Production-shaped** | Full `docker-compose.yml` stack |
@@ -472,7 +472,7 @@ Operations doc: [docs/observability.md](docs/observability.md)
 Separate from API/Prometheus observability above. Collects **post-logon WinINET drift** on the endpoint via `src/proxy_drift/`.
 
 | Capability | Status | Notes |
-|------------|--------|-------|
+| ------------ | -------- | ------- |
 | Combined install (`install-startup-observability`) | **Implemented** | Guardian + boot trace; task-first with Startup hook fallback |
 | Boot trace JSONL (`proxy-boot-trace`) | **Implemented** | WinINET/WinHTTP/listener deltas |
 | Dead-proxy guardian (`proxy-guardian`) | **Implemented** | Dead localhost only; typed confirmation |
@@ -497,7 +497,7 @@ Docs: [docs/startup-observability.md](docs/startup-observability.md) · [docs/de
 Summary of abuse scenarios and mitigations (full table: [docs/threat-model.md](docs/threat-model.md)):
 
 | Abuse scenario | Mitigation |
-|----------------|------------|
+| ---------------- | ------------ |
 | AI overclaiming malware | `explanation_guardrails`; forbidden phrase scan in benchmarks |
 | Operator killing processes | Blocked in policy registry; not default CLI |
 | Registry mutation without approval | Dry-run default; typed confirmation; audit row |
@@ -514,7 +514,7 @@ Test contracts: `tests/test_policy_safety_contract.py`, `tests/test_governance_s
 ## 16. Failure Modes and Trade-Offs
 
 | Failure mode | Impact | Detection | Mitigation | Remaining limitation |
-|--------------|--------|-----------|------------|----------------------|
+| -------------- | -------- | ----------- | ------------ | ---------------------- |
 | Missing listener evidence | Under-diagnosis of dead proxy | `proxy-health` FAIL | Path + port probes | Probe success ≠ authorized proxy |
 | Wrong process correlation | Misattributed writer | PARTIAL control result | Require Sysmon E13 for T4+ | PID on port ≠ registry writer |
 | Incomplete registry writer proof | Overclaim in narrative | Proof tier cap | Limitations + human review | No E13 → no writer proof |
@@ -541,7 +541,7 @@ Test contracts: `tests/test_policy_safety_contract.py`, `tests/test_governance_s
 ### Future enterprise scaling (not fully implemented)
 
 | Direction | Purpose |
-|-----------|---------|
+| ----------- | --------- |
 | Central evidence ingestion | Multi-endpoint collection |
 | Queue-based pipeline | Async processing at fleet scale |
 | Signed endpoint agent | Scheduled collection, Authenticode trust |
@@ -562,7 +562,7 @@ Honest gap table: [docs/production-readiness-gap.md](docs/production-readiness-g
 This project demonstrates platform engineering discipline applicable to internal developer reliability tooling:
 
 | Pillar | Evidence |
-|--------|----------|
+| -------- | ---------- |
 | State-machine design | `proxy_state_machine.py` — full before/after transitions |
 | Deterministic behavior | `replay-benchmark`, transition tests |
 | Failure-mode analysis | Section 16; classifier benchmark false-escalation metrics |
@@ -577,7 +577,7 @@ This project demonstrates platform engineering discipline applicable to internal
 ### Reviewer Q&A (concise)
 
 | Question | Answer |
-|----------|--------|
+| ---------- | -------- |
 | Is this production fleet software? | **No** — production-shaped prototype with honest gaps |
 | Why CLI-first? | Automation, CI fixtures, operator trust via visible JSON |
 | How do you prevent classifier drift? | `classifier-benchmark` golden set + replay hash compare |
@@ -591,7 +591,7 @@ Guide: [docs/faang-platform-review.md](docs/faang-platform-review.md)
 ## 19. Big 4 / Technology Risk Review Angle
 
 | Pillar | Evidence |
-|--------|----------|
+| -------- | ---------- |
 | Control matrix thinking | CTRL-001–010 in [docs/control-matrix.md](docs/control-matrix.md) |
 | Evidence quality | T0–T5 proof ladder |
 | Human review | `human_review.jsonl` workflow |
@@ -604,7 +604,7 @@ Guide: [docs/faang-platform-review.md](docs/faang-platform-review.md)
 ### Reviewer Q&A (concise)
 
 | Question | Answer |
-|----------|--------|
+| ---------- | -------- |
 | Is this a formal audit opinion? | **No** — management information for committees |
 | Does listener prove registry writer? | **No** — correlation; Sysmon E13 for writer tier |
 | Can AI disable proxy? | **No** — human confirmation + policy gate |
@@ -654,7 +654,7 @@ Reference: [docs/ai-risk-analyst-guardrails.md](docs/ai-risk-analyst-guardrails.
 Condensed from [docs/production-readiness-gap.md](docs/production-readiness-gap.md):
 
 | Area | Current state | Production gap | Next step |
-|------|---------------|----------------|-----------|
+| ------ | --------------- | ---------------- | ----------- |
 | Deployment | Docker compose + Makefile | GitOps, signed releases | Helm + SBOM |
 | Authentication | Open demo `/trisk/*` reads | OAuth2 / mTLS | Entra ID integration |
 | RBAC | Policy registry only | Role-scoped execute/export | API middleware |
@@ -676,15 +676,15 @@ Condensed from [docs/production-readiness-gap.md](docs/production-readiness-gap.
 
 ### Shared 3-minute arc
 
-1. **Symptom** — browser fails, ping works  
-2. **Evidence** — `proxy-status`, `diagnose --proof`  
-3. **Classification** — `DEAD_PROXY_CONFIG` + limitations  
-4. **Proof tier** — T1 config + T2/T3 path (not malware)  
-5. **Policy gate** — `PREVIEW_ONLY`  
-6. **Preview** — `proxy-disable --dry-run`  
-7. **Audit** — append row + `audit verify`  
-8. **Governance report** — KPIs + human-review queue  
-9. **Replay** — `replay-benchmark` determinism  
+1. **Symptom** — browser fails, ping works
+2. **Evidence** — `proxy-status`, `diagnose --proof`
+3. **Classification** — `DEAD_PROXY_CONFIG` + limitations
+4. **Proof tier** — T1 config + T2/T3 path (not malware)
+5. **Policy gate** — `PREVIEW_ONLY`
+6. **Preview** — `proxy-disable --dry-run`
+7. **Audit** — append row + `audit verify`
+8. **Governance report** — KPIs + human-review queue
+9. **Replay** — `replay-benchmark` determinism
 10. **Limitations** — "Classification is not accusation"
 
 ### FAANG / SRE version
@@ -717,7 +717,7 @@ Unified script: [docs/demo-faang-big4-review.md](docs/demo-faang-big4-review.md)
 Additional diagrams for future documentation (some already exist in linked docs):
 
 | Diagram | Status / location |
-|---------|-------------------|
+| --------- | ------------------- |
 | C4 context diagram | Future — synthesize from this document |
 | C4 container diagram | Partial — [docs/architecture-infographic.md](docs/architecture-infographic.md) |
 | Proxy state machine diagram | [docs/state-machine.md](docs/state-machine.md) |
@@ -733,7 +733,7 @@ Additional diagrams for future documentation (some already exist in linked docs)
 ## Epistemic Principles (woven throughout)
 
 | Principle | Meaning |
-|-----------|---------|
+| ----------- | --------- |
 | Observation ≠ proof | Tier ladder caps claim strength |
 | Correlation ≠ causation | Listener PID ≠ registry writer without E13 |
 | Confidence is ordinal | 0.92 is not 92% probability of malware |
@@ -753,7 +753,7 @@ Additional diagrams for future documentation (some already exist in linked docs)
 ### Components added
 
 | Component | Path | Role |
-|-----------|------|------|
+| ----------- | ------ | ------ |
 | SQLModel persistence | `backend/db/` | Endpoints, evidence, incidents, controls, audit chain |
 | Ingestion API | `backend/v1_routes.py` | `POST /v1/evidence`, read incidents, review, reports |
 | Queue abstraction | `backend/queue/` | `QueueBackend` — memory (CI) or RQ (compose) |
@@ -789,7 +789,7 @@ Legacy `/trisk/*` and `/platform/*` routes remain unchanged.
 Five-layer evolution for decision intelligence — see [docs/ai-native-platform-architecture.md](docs/ai-native-platform-architecture.md).
 
 | Layer | Implementation |
-|-------|----------------|
+| ------- | ---------------- |
 | L1 Evidence | CLI collectors + `browser-evidence` (Playwright/HAR) |
 | L2 Risk Intelligence | Existing `analytics_pipeline` + controls |
 | L3 Agent contracts | `src/platform_core/agents/contracts/` + orchestrator stub |
@@ -807,7 +807,7 @@ Five-layer evolution for decision intelligence — see [docs/ai-native-platform-
 Service-oriented decision infrastructure — see [docs/enterprise-decision-platform-architecture.md](docs/enterprise-decision-platform-architecture.md).
 
 | Service | Package | API |
-|---------|---------|-----|
+| --------- | --------- | ----- |
 | Evidence | `backend/services/evidence_service.py` | `/v1/enterprise/observations`, `/evidence` |
 | Classification | `backend/services/classification_service.py` | `/v1/enterprise/classify`, pipeline |
 | Policy | `backend/services/policy_service.py` + YAML | `/v1/enterprise/policy/*` |

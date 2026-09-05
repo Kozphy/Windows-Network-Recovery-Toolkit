@@ -1,0 +1,53 @@
+{
+  "run_id": "20260901T151326Z",
+  "timestamp_utc": "2026-09-01T15:13:26.578398+00:00",
+  "git_sha": "95bad4ce215d1b75f562a8c4f7a50a1bbca471db",
+  "python_version": "3.14.6 (tags/v3.14.6:c63aec6, Jun 10 2026, 10:26:10) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "dependency_versions": {
+    "python": "3.14.6",
+    "pydantic": "2.13.4",
+    "pytest": "8.4.2"
+  },
+  "dataset_version": "v1",
+  "dataset_hashes": {
+    "cases.jsonl": "540a434dfc3b76b2ed9fc9cab8fb81e8dc32bc4114d826ac014b1042eaf195c3",
+    "label_schema.json": "f065eb47229f6c59587054dad0041ec0494ac89d92636cbeade06277bddb0530",
+    "provenance.md": "d5f83ef1fe37bbf3f14f26eebdb4dbb83af60c418b2df3fe58641d8f4566271c"
+  },
+  "case_count": 22,
+  "random_seed": 42,
+  "smoke_mode": false,
+  "repo_root": "C:\\Users\\dbdf0\\Kozphy\\Windows-Network-Recovery-Toolkit",
+  "manifest": {
+    "schema_version": "research_benchmark_dataset.v1",
+    "dataset_version": "v1",
+    "case_count": 22,
+    "development_count": 17,
+    "held_out_count": 5,
+    "files": {
+      "cases.jsonl": "540a434dfc3b76b2ed9fc9cab8fb81e8dc32bc4114d826ac014b1042eaf195c3",
+      "label_schema.json": "f065eb47229f6c59587054dad0041ec0494ac89d92636cbeade06277bddb0530",
+      "provenance.md": "d5f83ef1fe37bbf3f14f26eebdb4dbb83af60c418b2df3fe58641d8f4566271c"
+    },
+    "research_question_ref": "RESEARCH.md#primary-research-question"
+  },
+  "split_filter": null,
+  "reproducibility": {
+    "repeats": 3,
+    "digest_agreement": true,
+    "digests": [
+      "476041a55dc4d54ccf4fcf00a00d00faaeb9a87bcc68bc54f9226507101d34f6",
+      "476041a55dc4d54ccf4fcf00a00d00faaeb9a87bcc68bc54f9226507101d34f6",
+      "476041a55dc4d54ccf4fcf00a00d00faaeb9a87bcc68bc54f9226507101d34f6"
+    ],
+    "classification_agreement_rate": 1.0,
+    "proof_tier_agreement_rate": 1.0,
+    "policy_decision_agreement_rate": 1.0,
+    "replay_mismatch_count": 0
+  },
+  "failure_mode_summary": {
+    "insufficient_evidence": 7,
+    "cross_signal_interaction": 1
+  }
+}

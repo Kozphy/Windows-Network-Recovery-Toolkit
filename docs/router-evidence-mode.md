@@ -5,7 +5,7 @@ Import router exports for **correlated** home/SOHO LAN analytics.
 ## Supported imports
 
 | `--type` | Input formats | Normalized fields |
-|----------|---------------|-------------------|
+| ---------- | --------------- | ------------------- |
 | `dns` | CSV, JSON array | `client_ip`, `domain`, `timestamp_utc` |
 | `firewall` | CSV | `src_ip`, `dst_ip`, `port`, `action` |
 | `dhcp` | CSV, JSON | `mac`, `ip`, `hostname`, `lease_utc` |

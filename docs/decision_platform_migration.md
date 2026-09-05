@@ -33,7 +33,7 @@ Map API persistence columns to `PlatformDomain` enum (extend `di_events.domain` 
 ## Phase 4 — Legacy alias deprecation
 
 | Legacy | Target |
-|--------|--------|
+| -------- | -------- |
 | `platform_core.decision_domain.DecisionDomain.ENDPOINT_RELIABILITY` | `PlatformDomain.WINDOWS` |
 | `decision_domain.DecisionOutcome` (expected) | `decision_platform.Decision` |
 | `outcome_learning.DecisionOutcome` (recorded) | `decision_platform.Outcome` |

@@ -1,0 +1,31 @@
+{
+  "host": "fixture-host",
+  "pre_state": {"ProxyEnable": 0, "ProxyServer": ""},
+  "post_state": {
+    "ProxyEnable": 1,
+    "ProxyServer": "corp-proxy.example:8080",
+    "authorized": true,
+    "change_ticket": "CHG-1001"
+  },
+  "baseline_state": {
+    "ProxyEnable": 1,
+    "ProxyServer": "corp-proxy.example:8080",
+    "authorized": true,
+    "change_ticket": "CHG-1001"
+  },
+  "telemetry_events": [
+    {
+      "source": "registry",
+      "event_type": "proxy_configuration_change",
+      "entity": "HKCU\\\\Internet Settings",
+      "before": {"ProxyEnable": 0, "ProxyServer": ""},
+      "after": {
+        "ProxyEnable": 1,
+        "ProxyServer": "corp-proxy.example:8080",
+        "authorized": true,
+        "change_ticket": "CHG-1001"
+      },
+      "confidence": 0.99
+    }
+  ]
+}

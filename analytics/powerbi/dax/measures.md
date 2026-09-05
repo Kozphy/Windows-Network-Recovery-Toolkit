@@ -189,7 +189,7 @@ SUM ( fact_costs[monthly_cost_usd] )
 ## Formatting recommendations
 
 | Measure | Format |
-|---------|--------|
+| --------- | -------- |
 | Control Failure Rate | Percentage, 1 decimal |
 | Repeat Incident Rate | Percentage, 1 decimal |
 | Mean time metrics | Decimal number + " min" suffix |

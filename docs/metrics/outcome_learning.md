@@ -3,7 +3,7 @@
 ## Measured metrics
 
 | Metric | Definition |
-|--------|------------|
+| -------- | ------------ |
 | `decision_accuracy` | Share of outcomes marked `was_successful=True` |
 | `false_positive_rate` | Share marked `was_false_positive=True` |
 | `policy_block_rate` | Share blocked by policy |

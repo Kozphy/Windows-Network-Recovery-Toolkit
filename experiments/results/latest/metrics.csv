@@ -1,0 +1,5 @@
+baseline,sample_size,accuracy,macro_precision,macro_recall,macro_f1,micro_f1,false_positive_rate,false_negative_rate,supported_classification_rate,unsupported_rate,abstention_rate,exact_match_count
+B0,22,0.1364,0.0889,0.1806,0.0868,0.1364,0.0000,0.8889,0.3182,0.0000,0.6818,3
+B1,22,0.4545,0.4619,0.4722,0.4233,0.4545,0.3333,0.2778,1.0000,0.0000,0.0000,10
+B2,22,0.1364,0.0370,0.1667,0.0583,0.1364,0.0000,0.6667,0.5909,0.0000,0.4091,3
+B3,22,0.6364,0.5938,0.6389,0.5852,0.6364,0.0000,0.3333,0.6364,0.0000,0.3636,14

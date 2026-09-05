@@ -11,7 +11,7 @@
 ## Current state summary
 
 | Area | What exists today | Maturity |
-|------|-------------------|----------|
+| ------ | ------------------- | ---------- |
 | Windows evidence | `windows_network_toolkit/collectors/`, WinINET/WinHTTP probes, proxy state machine | **Strong** (portfolio-ready with fixtures) |
 | Cross-platform observe | `platform_core/network_diagnostics/` (Windows / Linux / generic macOS fallback) | **Foundation** |
 | Endpoint agent | `endpoint_agent/` — read-only cycles, JSONL spool, optional HTTP sync | **Prototype** |
@@ -69,7 +69,7 @@
 ## Portfolio scope vs production scope
 
 | Capability | Portfolio scope (this repo) | Production scope (out of band / future) |
-|------------|----------------------------|----------------------------------------|
+| ------------ | ---------------------------- | ---------------------------------------- |
 | Agent deployment | Local read-only agent, JSONL spool, docs | Signed MSI, Intune, fleet MDM, mTLS ingest |
 | Scale claims | Synthetic 100–10k fixture fleet tests | Proven multi-tenant Kafka/EventStore ingest |
 | Observability | Structured logs + Prometheus counters | Hosted APM, SLO paging, log retention legal hold |
@@ -87,7 +87,7 @@ Do **not** claim enterprise fleet scale or malware detection unless tests and do
 ### Phase 1 — Architecture and interfaces (done)
 
 | Deliverable | Path |
-|-------------|------|
+| ------------- | ------ |
 | Evidence collection contracts | `src/platform_core/evidence_collection/` |
 | Platform support levels | `FULL`, `PARTIAL`, `NOT_SUPPORTED` |
 | Factory | `get_endpoint_evidence_collector()` |
@@ -99,7 +99,7 @@ Do **not** claim enterprise fleet scale or malware detection unless tests and do
 ### Phase 2 — Agent deployment MVP (done)
 
 | Deliverable | Path |
-|-------------|------|
+| ------------- | ------ |
 | CLI | `agent run`, `agent once`, `agent health`, `agent spool-status` |
 | Read-only agent loop | `windows_network_toolkit/agent/` — spool only, no remediation |
 | Local health endpoint | Optional `127.0.0.1` HTTP health (read-only status) |
@@ -109,7 +109,7 @@ Do **not** claim enterprise fleet scale or malware detection unless tests and do
 ### Phase 3 — Metrics / logs / tracing (done)
 
 | Deliverable | Path |
-|-------------|------|
+| ------------- | ------ |
 | Structured JSON logging | `src/platform_core/operability/structured_logging.py` |
 | Metric counters | `src/platform_core/operability/metrics_registry.py` + `events.py` |
 | Prometheus | Merged into `GET /metrics` in `backend/main.py` |
@@ -120,7 +120,7 @@ Do **not** claim enterprise fleet scale or malware detection unless tests and do
 ### Phase 4 — Scale testing and concurrency (done)
 
 | Deliverable | Path |
-|-------------|------|
+| ------------- | ------ |
 | Fleet fixtures | 100 / 1k / 10k synthetic endpoint event records |
 | Concurrency tests | ingest, JSONL append, hash-chain, spool read/write |
 | Docs | `docs/scale-testing.md` |
@@ -130,7 +130,7 @@ Do **not** claim enterprise fleet scale or malware detection unless tests and do
 ### Phase 5 — Linux/macOS foundation (done)
 
 | Deliverable | Path |
-|-------------|------|
+| ------------- | ------ |
 | OS abstraction docs | `docs/cross-platform-support.md` |
 | Linux collector depth | env proxy, gsettings/NM hints, listening ports |
 | macOS collector depth | `networksetup` hints, env proxy, listening ports |
@@ -141,7 +141,7 @@ Do **not** claim enterprise fleet scale or malware detection unless tests and do
 ### Phase 6 — Packaging / installer (done)
 
 | Deliverable | Path |
-|-------------|------|
+| ------------- | ------ |
 | Strategy doc | `docs/packaging-installer.md` |
 | pipx / wheel / Windows zip | Documented in strategy doc + `scripts/run-portable-wnrt.ps1` |
 | Service plans | Windows service, systemd, launchd — **documented opt-in only** |
@@ -151,7 +151,7 @@ Do **not** claim enterprise fleet scale or malware detection unless tests and do
 ### Phase 7 — Security review pack (done)
 
 | Deliverable | Path |
-|-------------|------|
+| ------------- | ------ |
 | Consolidated pack | `docs/security-review.md` |
 | Topics | assets, boundaries, threat model, abuse cases, policy gates, audit, supply chain, secrets |
 | Tests | `tests/security/test_security_review_pack.py` + existing safety contract suite |
@@ -160,7 +160,7 @@ Do **not** claim enterprise fleet scale or malware detection unless tests and do
 ### Phase 8 — Rollback strategy (done)
 
 | Deliverable | Path |
-|-------------|------|
+| ------------- | ------ |
 | Docs | `docs/rollback-strategy.md` |
 | Model | pre-change snapshot, preview record, approval token, rollback preview, audit row |
 | Code | `src/platform_core/remediation/rollback.py`, `RemediationPreview.rollback_preview` |
@@ -209,7 +209,7 @@ docs/rollback-strategy.md                  # Phase 8
 ## Security boundaries
 
 | Boundary | Enforcement |
-|----------|-------------|
+| ---------- | ------------- |
 | No autonomous remediation | Policy engine + dry-run default + confirmation tokens |
 | Blocked actions | `KILL_PROXY_PROCESS`, `FIREWALL_RESET`, `ADAPTER_DISABLE`, `WINHTTP_MODIFY` |
 | Agent read-only default | No registry writes, no process kill in agent loops |
@@ -223,7 +223,7 @@ docs/rollback-strategy.md                  # Phase 8
 ## Test strategy
 
 | Layer | Approach |
-|-------|----------|
+| ------- | ---------- |
 | Unit | Pure functions, fixture payloads, forced `os_family` in factory |
 | Safety contracts | Existing `test_policy_safety_contract.py` — never weaken |
 | Integration | Fixture replay; Windows-only tests gated with `skipif` |
@@ -271,7 +271,7 @@ Live rollback execution is **out of scope** until explicit operator runbooks and
 ## Definition of done (program-level)
 
 | Phase | Done when |
-|-------|-----------|
+| ------- | ----------- |
 | **1** | Factory + collectors + tests green; Windows unchanged; non-Windows labeled PARTIAL/NOT_SUPPORTED |
 | **2** | Agent CLI read-only; spool + health; docs + tests |
 | **3** | Metrics counters + trace_id propagation tested; `/metrics` exposes new series |
@@ -288,7 +288,7 @@ Live rollback execution is **out of scope** until explicit operator runbooks and
 ## Phase status tracker
 
 | Phase | Status |
-|-------|--------|
+| ------- | -------- |
 | 1 — Interfaces | **Started** (`src/platform_core/evidence_collection/`) |
 | Phase 2 — Agent MVP | **Done** (`windows_network_toolkit/agent/`, `docs/agent-deployment.md`) |
 | 3 — Observability | Planned |

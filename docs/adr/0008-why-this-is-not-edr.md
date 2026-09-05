@@ -13,7 +13,7 @@ Reviewers conflate endpoint proxy triage tooling with Endpoint Detection and Res
 Explicitly scope the platform as **technology risk and endpoint reliability decision infrastructure**:
 
 | Capability | This platform | EDR/XDR |
-|------------|---------------|---------|
+| ------------ | --------------- | --------- |
 | Registry/proxy read | Yes | Often yes |
 | Path probes | Yes | Varies |
 | Malware verdict | **No** | Yes |
@@ -28,7 +28,7 @@ Documentation, classifications, and governance report repeat non-claims. Classif
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Market as "lightweight EDR" | False advertising; wrong buyer expectations |
 | Add signature scanning | Scope creep; duplicates AV |
 | Remove security-adjacent classes entirely | Loses cyber triage workshop value |

@@ -13,7 +13,7 @@ Interview-ready materials for **IT Risk Advisory**, **Technology Consulting**, *
 ## Start here
 
 | Document | Use when |
-|----------|----------|
+| ---------- | ---------- |
 | [big4_interview_positioning.md](big4_interview_positioning.md) | Core framing, disclaimers, Big 4 mapping |
 | [technology_risk_control_matrix.md](technology_risk_control_matrix.md) | Control testing workshop / whiteboard |
 | [interview_pitch_90_seconds.md](interview_pitch_90_seconds.md) | Phone screen / recruiter call |
@@ -35,7 +35,7 @@ Interview-ready materials for **IT Risk Advisory**, **Technology Consulting**, *
 ## What this is (and is not)
 
 | Is | Is not |
-|----|--------|
+| ---- | -------- |
 | Decision infrastructure for technology risk | Antivirus, EDR, or XDR |
 | Evidence → hypothesis → proof → policy → audit | Autonomous remediation |
 | Control testing and governance reporting | Malware verdict engine |
@@ -80,7 +80,7 @@ Implemented in `src/platform_core/risk/` and exposed via `risk-assess`, `control
 For **US Data Analyst**, **Risk Data Analyst**, and **Technology Risk Analyst** interviews:
 
 | Resource | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | [analytics_data_model.md](analytics_data_model.md) | Warehouse ER model, DDL, ETL mapping, example rows |
 | [sql_analytics_queries.md](sql_analytics_queries.md) | 12+ KPI queries with business questions |
 | [`schemas/analytics_warehouse.sql`](../schemas/analytics_warehouse.sql) | Executable DDL |

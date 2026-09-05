@@ -25,7 +25,7 @@ python -m toolkit report windows_network_toolkit/examples/proxy_drift_incident.j
 ## API routes
 
 | Route | Purpose |
-|-------|---------|
+| ------- | --------- |
 | `GET /health` | Service liveness |
 | `GET /platform/status` | Platform status |
 | `POST /platform/diagnose` | Run pipeline on signals or fixture |

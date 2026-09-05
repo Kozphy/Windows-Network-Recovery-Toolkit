@@ -26,7 +26,7 @@ API and CLI execute paths consult both layers. **Operator role** may preview and
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | RBAC-only (no registry) | Easy to add ad-hoc dangerous actions without review |
 | YAML policy without code registry | Harder to test deterministically in CI |
 | ML-driven auto-execute | Unexplainable; conflicts with epistemic boundaries |

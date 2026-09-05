@@ -58,7 +58,7 @@ flowchart LR
 ## Failure modes
 
 | Failure | Symptom | Mitigation |
-|---------|---------|------------|
+| --------- | --------- | ------------ |
 | Stale heartbeat | Endpoint `unknown` | `apply_stale_policy` |
 | Missing writer telemetry | `LISTENER_OBSERVED` only | Import Sysmon EID 13 |
 | Writer/listener mismatch | `WRITER_LISTENER_MISMATCH` | Manual investigation |
@@ -80,7 +80,7 @@ See [threat_model.md](threat_model.md). Key point: **listener ≠ registry write
 ## Scaling path
 
 | Stage | Storage | Notes |
-|-------|---------|-------|
+| ------- | --------- | ------- |
 | Single endpoint | Local JSONL | Current default |
 | Small fleet | Agent heartbeats → `fleet_endpoints.jsonl` | Implemented |
 | Multi-site | Object storage + indexer | Future |
@@ -89,7 +89,7 @@ See [threat_model.md](threat_model.md). Key point: **listener ≠ registry write
 ## Module map
 
 | Module | Responsibility |
-|--------|----------------|
+| -------- | ---------------- |
 | `telemetry/` | Writer/listener fusion |
 | `platform_core/fleet_store.py` | Endpoint heartbeats |
 | `platform_core/incident_engine.py` | Incident rules + transitions |

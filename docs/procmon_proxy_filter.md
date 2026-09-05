@@ -25,14 +25,14 @@ Canonical asset: [`telemetry/procmon/wininet_proxy_regsetvalue.filter.json`](../
 2. **Filter → Filter…** (Ctrl+L).
 3. Add **Include** rules:
 
-| Column | Relation | Value |
-|--------|----------|-------|
-| Operation | is | `RegSetValue` |
-| Path | contains | `Internet Settings\ProxyEnable` |
-| Path | contains | `Internet Settings\ProxyServer` |
-| Path | contains | `Internet Settings\AutoConfigURL` |
-| Path | contains | `Internet Settings\ProxyOverride` |
-| Path | contains | `Internet Settings\AutoDetect` |
+   | Column | Relation | Value |
+   | -------- | ---------- | ------- |
+   | Operation | is | `RegSetValue` |
+   | Path | contains | `Internet Settings\ProxyEnable` |
+   | Path | contains | `Internet Settings\ProxyServer` |
+   | Path | contains | `Internet Settings\AutoConfigURL` |
+   | Path | contains | `Internet Settings\ProxyOverride` |
+   | Path | contains | `Internet Settings\AutoDetect` |
 
 4. Enable **Drop Filtered Events**.
 5. Reproduce the rewrite (browser / scheduled task / wait for reverter).
@@ -54,7 +54,7 @@ python -m src proxy-watch --interval 3 --soak-minutes 2 --exit-on-rewrite
 ## Epistemic boundaries
 
 | Claim | Status |
-|-------|--------|
+| ------- | -------- |
 | Procmon row shows process X wrote `ProxyEnable` | Strong local **writer evidence** (within capture limits) |
 | Process listening on `127.0.0.1:N` wrote the key | **Correlation only** unless Sysmon/Procmon agrees |
 | Intent / malware family | **Out of scope** for this toolkit |

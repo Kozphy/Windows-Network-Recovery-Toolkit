@@ -1,0 +1,43 @@
+id: proxy-drift-001
+title: Unauthorized WinINET Proxy Modification
+category: endpoint_configuration
+risk_level: medium
+safe_for_local_execution: true
+description: >
+  Controlled fixture simulation of unauthorized local proxy enablement to validate
+  drift detection, remediation recommendation, and baseline verification.
+preconditions:
+  - fixture_only
+  - writable_test_configuration
+  - windows_lab_or_ci
+simulation:
+  action: modify_test_proxy_state
+  fixture_path: tests/fixtures/purple_team/proxy_drift_unauthorized.json
+  produces_events:
+    - registry_change
+    - proxy_configuration_change
+expected_telemetry:
+  - registry_change
+  - proxy_configuration_change
+expected_detection: DET-PROXY-001
+expected_response: restore_known_good_configuration
+expect_detection: true
+benign_control: false
+verification:
+  post_conditions:
+    - proxy_state_matches_baseline
+  independent: true
+cleanup:
+  required: true
+  steps:
+    - restore fixture baseline_state into remediated_state
+    - emit evidence bundle
+    - no live registry write
+false_positive_notes: Approved enterprise proxy changes must set authorized=true.
+mitre:
+  techniques:
+    - T1112
+  notes: Registry modification technique mapping is approximate for configuration drift labs.
+limitations:
+  - Fixture simulation only — does not mutate live WinINET.
+  - Observation ≠ attribution of a human adversary.

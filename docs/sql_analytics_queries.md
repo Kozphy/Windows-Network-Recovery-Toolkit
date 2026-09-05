@@ -13,7 +13,7 @@ Analyst-ready SQL for **Data Analyst**, **Risk Data Analyst**, **Technology Risk
 ## Portfolio query index
 
 | # | Topic | Section |
-|---|-------|---------|
+| --- | ------- | --------- |
 | 1 | Incident count by classification | Query 1 |
 | 2 | Percentage of total by classification | Query 1 (`pct_of_total`) |
 | 3 | Evidence tier distribution | Query 2 |
@@ -28,7 +28,7 @@ Analyst-ready SQL for **Data Analyst**, **Risk Data Analyst**, **Technology Risk
 
 ### Query 1 — Incident count by classification
 
-**Business question:**  
+**Business question:**
 Which endpoint failure patterns occur most often, and where should we focus playbook and control investments?
 
 **SQL:**
@@ -43,14 +43,14 @@ GROUP BY classification
 ORDER BY incident_count DESC;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 High counts for `DEAD_PROXY_CONFIG` suggest reliability-driven L1 volume rather than security incidents. Use this to separate **helpdesk efficiency** work from **escalation** work. Pair with `evidence_tier` — a high count at `observation` only may indicate immature triage.
 
 ---
 
 ### Query 2 — Evidence maturity distribution
 
-**Business question:**  
+**Business question:**
 What share of incidents reach proof or attribution tier versus stopping at observation?
 
 **SQL:**
@@ -72,14 +72,14 @@ ORDER BY CASE evidence_tier
 END;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 A healthy program shows growing `proof` share for repeat classifications. Heavy `observation` with high `business_impact` is a **control gap** — detective controls or telemetry (Sysmon E13) may be missing. Never treat `avg_confidence` as malware probability.
 
 ---
 
 ### Query 3 — Policy block rate
 
-**Business question:**  
+**Business question:**
 How often does the policy engine block or gate destructive actions?
 
 **SQL:**
@@ -95,14 +95,14 @@ GROUP BY pd.decision
 ORDER BY decision_count DESC;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Strong `PREVIEW_ONLY` and `BLOCK` rates indicate governance culture aligned with dry-run defaults. Sudden drops in blocks after a tooling change may signal **policy regression** — worth audit follow-up.
 
 ---
 
 ### Query 4 — Audit completeness rate
 
-**Business question:**  
+**Business question:**
 What percentage of closed incidents have a valid hash-chained audit trail?
 
 **SQL:**
@@ -121,14 +121,14 @@ LEFT JOIN audit_chain_checks ac ON ac.incident_id = i.incident_id
 WHERE i.closed_at IS NOT NULL;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 IT Audit and SOX-style reviewers care about **reconstructability**. Below-target completeness means incidents closed without verification — a finding for ITGC incident management. `NULL` audit checks on open incidents are expected.
 
 ---
 
 ### Query 5 — High-risk endpoint count
 
-**Business question:**  
+**Business question:**
 How many critical endpoints have open high-impact incidents?
 
 **SQL:**
@@ -151,14 +151,14 @@ ORDER BY CASE e.criticality
 END;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Concentration of open incidents on `critical` assets drives prioritization for risk committees and FinTech operational resilience reviews. Cross-filter `classification` for security-adjacent patterns (`UNKNOWN_LOCAL_PROXY`, `POSSIBLE_MITM_RISK`).
 
 ---
 
 ### Query 6 — Top recurring endpoint risks
 
-**Business question:**  
+**Business question:**
 Which endpoints generate repeat incidents (chronic drift or reverter behavior)?
 
 **SQL:**
@@ -180,14 +180,14 @@ ORDER BY incident_count DESC, e.criticality DESC
 LIMIT 20;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Repeat offenders may indicate **reverter processes**, broken golden images, or users with local admin. This query supports **root-cause analytics** without claiming malware — correlate with `REVERTER_SUSPECTED` classifications in a filtered view.
 
 ---
 
 ### Query 7 — Low confidence but high business impact
 
-**Business question:**  
+**Business question:**
 Where are we making high-stakes decisions with weak evidence (audit exception candidates)?
 
 **SQL:**
@@ -210,14 +210,14 @@ WHERE i.business_impact IN ('high', 'critical')
 ORDER BY i.business_impact DESC, i.confidence_score ASC;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Classic **risk analytics exception report** for Internal Audit. These rows should trigger escalation or more telemetry — not autonomous remediation. Demonstrates epistemic discipline in SQL filters.
 
 ---
 
 ### Query 8 — Control test pass/fail summary
 
-**Business question:**  
+**Business question:**
 Are detective and preventive controls operating effectively across incidents?
 
 **SQL:**
@@ -234,14 +234,14 @@ GROUP BY ct.control_name, ct.control_objective, ct.pass_fail
 ORDER BY ct.control_name, ct.pass_fail;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Expected `FAIL` on drift detection when incidents exist — the control **detected** the issue. `FAIL` on remediation safety or audit trail is a **governance finding**. `NOT_TESTED` rows highlight coverage gaps in the control testing program.
 
 ---
 
 ### Query 9 — Remediation preview vs execution count
 
-**Business question:**  
+**Business question:**
 Is remediation staying preview-only (safe default), or are applies increasing?
 
 **SQL:**
@@ -262,14 +262,14 @@ GROUP BY proposed_action
 ORDER BY preview_only_count DESC;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Low `execution_rate_pct` is **desired** for a preview-first platform. Spikes in `executed_count` without matching `confirmation_required_count` would indicate a safety regression — flag for platform engineering and IT Risk.
 
 ---
 
 ### Query 10 — Incidents missing proof evidence
 
-**Business question:**  
+**Business question:**
 Which incidents lack proof-tier evidence events despite being classified?
 
 **SQL:**
@@ -290,14 +290,14 @@ HAVING MAX(CASE WHEN ee.claim_strength = 'proof' THEN 1 ELSE 0 END) = 0
 ORDER BY i.created_at DESC;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Returns **data quality exceptions** — incident tier claims proof but no proof events exist. Critical for audit analytics: fixes ETL or downgrades inflated tiers. Empty result set means model integrity is good.
 
 ---
 
 ### Query 11 — Mean time to diagnosis
 
-**Business question:**  
+**Business question:**
 How fast are we moving from incident open to completed structured diagnosis?
 
 **SQL:**
@@ -319,14 +319,14 @@ GROUP BY i.classification
 ORDER BY avg_diagnosis_minutes DESC;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Operational efficiency KPI for SRE and IT support leadership. **SQLite variant:** use `(julianday(diagnosis_completed_at) - julianday(diagnosis_started_at)) * 1440` instead of `EXTRACT`. Label dashboards "fixture/prototype MTTD" unless fed by production agents.
 
 ---
 
 ### Query 12 — Monthly incident trend
 
-**Business question:**  
+**Business question:**
 Are technology risk incidents increasing or decreasing month over month?
 
 **SQL:**
@@ -344,7 +344,7 @@ GROUP BY DATE_TRUNC('month', i.created_at), i.classification
 ORDER BY incident_month DESC, incident_count DESC;
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Trend lines feed **management reporting** and FinTech operational risk committees. Rising `DEAD_PROXY_CONFIG` with stable proof rate may mean onboarding/image issues; rising `UNKNOWN_LOCAL_PROXY` with low confidence warrants security review — not automatic blocking.
 
 **SQLite / BigQuery notes:**
@@ -356,7 +356,7 @@ Trend lines feed **management reporting** and FinTech operational risk committee
 
 ## Bonus — Executive KPI single row
 
-**Business question:**  
+**Business question:**
 What is the one-screen risk posture for leadership?
 
 **SQL:**
@@ -373,7 +373,7 @@ SELECT
 FROM (SELECT 1);
 ```
 
-**Interpretation:**  
+**Interpretation:**
 Dashboard headline metrics for portfolio demos. Emphasize `preview_only_pct` near 100% as **intentional governance**, not failure to remediate.
 
 ---

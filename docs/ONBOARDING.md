@@ -17,7 +17,7 @@ Evidence → Classification → Control tests → Risk scoring → Human review 
 ```
 
 | Stage | Primary module | CLI / API |
-|-------|----------------|-----------|
+| ------- | ---------------- | ----------- |
 | Evidence | `evidence_schema.py`, `proxy_state.py`, `proxy_health.py` | `proxy-status`, `proxy-health` |
 | Classification | `incident_classifier.py` | (inside `analytics-summary`) |
 | Control tests | `control_tests.py` | `control-test`, `GET /controls` |
@@ -68,7 +68,7 @@ See `windows_network_toolkit/safety.py` and `SECURITY.md`.
 Full argparse definitions live in `windows_network_toolkit/cli.py`.
 
 | Group | Commands |
-|-------|----------|
+| ------- | ---------- |
 | Evidence | `proxy-status`, `proxy-health`, `proxy-watch`, `proxy-owner`, `diagnose`, `evidence-report` |
 | Proof | `proxy-proof`, `tls-proof`, `proxy-writer-attribution` |
 | Remediation | `proxy-disable` (dry-run default) |
@@ -105,7 +105,7 @@ uvicorn backend.main:app --reload
 ```
 
 | Route | Purpose |
-|-------|---------|
+| ------- | --------- |
 | `GET /trisk/health` | Technology risk API health |
 | `GET /incidents` | Classified incidents |
 | `GET /risks` | Risk scores |
@@ -133,7 +133,7 @@ Root `GET /health` serves the ERP platform router — not the technology risk AP
 ## Troubleshooting
 
 | Symptom | Check |
-|---------|--------|
+| --------- | -------- |
 | Empty analytics | Audit dir empty — use `--fixture` or run `proxy-watch` |
 | HIGH risk but low proof | Expected with T0/T1 — read `limitations[]` |
 | API 403 on fixture | Path must be under `tests/fixtures` or `examples` |

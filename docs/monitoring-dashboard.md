@@ -16,7 +16,7 @@ python -m windows_network_toolkit procmon-import .\capture.csv
 Useful flags:
 
 | Flag | Meaning |
-|------|---------|
+| ------ | --------- |
 | `--host` / `--port` | Bind address (default `127.0.0.1:8765`) |
 | `--watch-interval` | Proxy poll seconds (default `1.0`, min `0.2`) |
 | `--storage-path` | Explicit JSONL path (default `.audit/dashboard-events.jsonl`) |
@@ -25,7 +25,7 @@ Useful flags:
 ## Architecture
 
 | Layer | Path | Role |
-|-------|------|------|
+| ------- | ------ | ------ |
 | CLI | `windows_network_toolkit/cli.py` (`dashboard`, `procmon-import`) | Entry + bind safety |
 | UI | `windows_network_toolkit/dashboard/` | NiceGUI Overview / timeline / process snapshot |
 | Collectors | `collectors/proxy_state.py`, `proxy_listener.py`, `proxy_watcher.py`, `process_snapshot.py`, `procmon_import.py` | Read-only evidence |
@@ -45,7 +45,7 @@ Pipeline: **HKCU read → listener correlate → classify → append event (on c
 ## Troubleshooting
 
 | Symptom | Check |
-|---------|--------|
+| --------- | -------- |
 | `SystemExit` / nicegui missing | `pip install -e ".[dashboard]"` |
 | Refuses `0.0.0.0` | Use `127.0.0.1` or `--allow-non-loopback-bind` knowingly |
 | Empty timeline | Wait for first poll (baseline) or import Procmon CSV |

@@ -11,7 +11,7 @@
 **Purpose:** Diagnose endpoint reliability; view remediation previews.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | `fact_incidents` | All rows |
 | `fact_policy_decisions` | All rows |
 | `fact_control_tests` | `control_domain = "Endpoint Reliability"` |
@@ -26,7 +26,7 @@
 **Purpose:** Review classifications and proof tiers without accusatory semantics.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | `fact_incidents` | All rows |
 | `dim_proof_tier` | All rows |
 | `dim_classification` | `is_security_accusation = FALSE` |
@@ -46,7 +46,7 @@ dim_classification[is_security_accusation] = FALSE ()
 **Purpose:** Sample incidents, control tests, and audit trail fields for ITGC-style review.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | `fact_incidents` | All rows |
 | `fact_control_tests` | All rows |
 | `fact_policy_decisions` | All rows |
@@ -61,7 +61,7 @@ dim_classification[is_security_accusation] = FALSE ()
 **Purpose:** Aggregated KPIs only — no raw registry paths or host identifiers.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | `fact_incidents` | Aggregates via measures; hide detail columns |
 | `fact_control_tests` | Summary measures only |
 | `dim_date` | All rows |
@@ -78,7 +78,7 @@ dim_classification[is_security_accusation] = FALSE ()
 **Purpose:** Replay determinism and safety contract metrics.
 
 | Table | Filter |
-|-------|--------|
+| ------- | -------- |
 | `fact_control_tests` | `control_id` IN { "CTRL-009", "CTRL-010" } OR all rows for engineering sandbox |
 | `fact_incidents` | All rows in fixture-backed demo tenant |
 

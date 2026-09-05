@@ -23,7 +23,7 @@ No automatic process kill or silent registry write in health pipeline.
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Auto-disable on HIGH risk | Confidence is ordinal; false positives would break dev workflows |
 | Boolean `--confirm` flag | Too easy to script; typed phrase forces deliberate action |
 | Remediation without audit | Breaks hash chain reconstruction |

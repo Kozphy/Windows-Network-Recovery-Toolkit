@@ -45,7 +45,7 @@ Policy engine returns **PREVIEW** until proof + confirmation. Live recovery need
 ## Escalation
 
 | Condition | Action |
-|-----------|--------|
+| ----------- | -------- |
 | Unknown binary path | Collect Sysmon Event ID 13; do not auto-kill |
 | Security product proxy | Add to `config/proxy_allowlist.yaml`; document vendor |
 | Repeated re-enable after admin script | Capture process tree; open security incident |

@@ -1,0 +1,27 @@
+# Gitleaks allowlist for known placeholders and test fixtures.
+# See docs/open-source-checklist.md
+
+title = "WNRT gitleaks config"
+
+[allowlist]
+description = "Documented placeholders, examples, and test-only tokens"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.local\.example$''',
+  '''backend/\.env\.example$''',
+  '''tests/''',
+  '''docs/''',
+  '''docker-compose\.yml$''',
+  '''docker-compose\..*\.yml$''',
+]
+
+regexTarget = "match"
+regexes = [
+  '''dev-platform-key-change-me''',
+  '''change-me-in-production''',
+  '''sk_test_xxx''',
+  '''whsec_xxx''',
+  '''your_supabase_jwt_secret''',
+  '''test-secret''',
+  '''super-secret-token''',
+]

@@ -10,7 +10,7 @@ Evidence → Hypothesis → Proof → Policy → Stakeholder → Timing
 ## Separation of concerns
 
 | Layer | Answers | Does not |
-|-------|---------|----------|
+| ------- | --------- | ---------- |
 | Evidence / Proof | What was observed; how strong is the claim? | Who must approve |
 | Policy | What is technically permitted? | When to act |
 | Stakeholder | Who owns / approves / executes / is informed? | Technical truth |

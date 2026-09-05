@@ -5,7 +5,7 @@
 The same WinINET registry signal can yield different browser outcomes:
 
 | Case | ProxyEnable | Listener | Browser |
-|------|-------------|----------|---------|
+| ------ | ------------- | ---------- | --------- |
 | A (broken) | 1 | localhost:PORT stale / dead | ERR_PROXY_CONNECTION_FAILED |
 | B (healthy) | 1 | localhost:PORT + process alive | Works |
 
@@ -18,7 +18,7 @@ The same WinINET registry signal can yield different browser outcomes:
 ## Composite states
 
 | State | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `DIRECT` | Proxy off; no latent loopback server string |
 | `LATENT_MISCONFIG` | `ProxyServer` set (often loopback) while `ProxyEnable=0` |
 | `LOOPBACK_OPERATIONAL` | Proxy on, listener up, proxied path succeeds (or listener-only tier) |
@@ -35,7 +35,7 @@ The same WinINET registry signal can yield different browser outcomes:
 ## Policy hints (operator layer)
 
 | Composite | Operator hint |
-|-----------|----------------|
+| ----------- | ---------------- |
 | `LOOPBACK_OPERATIONAL` | `observe_no_rollback` — path works; guard does not auto-reset |
 | `LOOPBACK_BROKEN` | `remediation_preview` — use `proxy-disable` preview before apply |
 | Others | `observe_no_rollback` unless insufficient signal |

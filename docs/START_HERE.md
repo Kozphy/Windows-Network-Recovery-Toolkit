@@ -20,7 +20,7 @@ A **LAN privacy module** adds home/SOHO device inventory, router log import, pri
 ## Safety guarantees
 
 | Principle | Enforced |
-|-----------|----------|
+| ----------- | ---------- |
 | Observation ≠ Proof | Evidence tier state machine |
 | Correlation ≠ Causation | Guards block destructive unlock |
 | Confidence ≠ Certainty | Ordinal scores only |
@@ -41,7 +41,7 @@ See [demo_5_min.md](demo_5_min.md) for expected output.
 ## Architecture (canonical core)
 
 | Package | Role |
-|---------|------|
+| --------- | ------ |
 | **`src/platform_core/`** | Canonical decision engine (evidence, policy, audit chain, replay) |
 | **`windows_network_toolkit/`** | Windows portfolio CLI, collectors, reports, `/platform/*` API |
 | **`src/proxy_guard/`** | Live Windows proxy probes and remediation previews |

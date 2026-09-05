@@ -1,0 +1,16 @@
+{
+  "host": "fixture-host",
+  "pre_state": {"state": "healthy", "last_sync_age_hours": 1},
+  "post_state": {"state": "stale", "last_sync_age_hours": 96},
+  "baseline_state": {"state": "healthy", "last_sync_age_hours": 1},
+  "telemetry_events": [
+    {
+      "source": "endpoint_inventory",
+      "event_type": "endpoint_state",
+      "entity": "device-fixture-01",
+      "before": {"state": "healthy", "last_sync_age_hours": 1},
+      "after": {"state": "stale", "last_sync_age_hours": 96},
+      "confidence": 0.94
+    }
+  ]
+}

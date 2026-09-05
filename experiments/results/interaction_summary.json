@@ -1,0 +1,1544 @@
+{
+  "manifest": {
+    "schema_version": "interaction_effects.v1",
+    "experiment_count": 6,
+    "case_count": 72,
+    "git_sha": "e09566bbffa7cbdc2e3d5d173e10493d0f0b52ee",
+    "random_seed": 42,
+    "timestamp_utc": "2026-09-02T10:45:53.663613+00:00",
+    "experiments": [
+      "proxy_x_firewall",
+      "proxy_x_tls",
+      "wininet_x_winhttp",
+      "proxy_x_listener",
+      "dns_x_proxy",
+      "listener_x_process"
+    ]
+  },
+  "experiments": [
+    {
+      "experiment_id": "proxy_x_firewall",
+      "factor_a_name": "proxy_fault",
+      "factor_b_name": "firewall_fault",
+      "description": "Dead/misconfigured localhost proxy \u00d7 outbound firewall filtering.",
+      "git_sha": "e09566bbffa7cbdc2e3d5d173e10493d0f0b52ee",
+      "dataset_digest": "ccab779430035ec7a9ad64babedbc8255684c4808d7fa2266da4da373b5ed3ee",
+      "random_seed": 42,
+      "sample_size": 12,
+      "effects": [
+        {
+          "outcome": "y_severity",
+          "main_effect_x1": 0.44999999999999996,
+          "main_effect_x2": 0.4,
+          "interaction_effect": -1.1102230246251565e-16,
+          "lpm_beta_0": -4.440892098500626e-16,
+          "lpm_beta_1": 0.4500000000000006,
+          "lpm_beta_2": 0.40000000000000063,
+          "lpm_beta_3": -8.881784197001252e-16,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.4000000000000001,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.45,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.85,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -0.8500000000000001,
+          "ci_upper": 0.4499999999999999,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": 0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 1.0,
+          "lpm_beta_2": 1.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.4000000000000001,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.45,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.85,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -2.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_severity",
+          "main_effect_x1": 0.40400000000000014,
+          "main_effect_x2": 0.30499999999999994,
+          "interaction_effect": -0.6099999999999999,
+          "lpm_beta_0": 0.2550000000000005,
+          "lpm_beta_1": 0.7089999999999996,
+          "lpm_beta_2": 0.6099999999999994,
+          "lpm_beta_3": -0.6099999999999994,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.4000000000000001,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.45,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.85,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -1.5739999999999998,
+          "ci_upper": 0.3540000000000001,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": 0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 1.0,
+          "lpm_beta_2": 1.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.4000000000000001,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.45,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.85,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -2.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        }
+      ],
+      "assumptions": [
+        "2x2 factorial with synthetic fixtures; not a field experiment.",
+        "Interaction contrast = Y11 - Y10 - Y01 + Y00 on cell means.",
+        "Linear probability / severity scale \u2014 not logistic regression.",
+        "Small sample sizes \u2014 CIs are exploratory, not confirmatory."
+      ],
+      "limitations": [
+        "Designed factorial \u2014 ground-truth interaction may differ from platform response.",
+        "No causal identification claim; observational association on fixtures only."
+      ]
+    },
+    {
+      "experiment_id": "proxy_x_tls",
+      "factor_a_name": "proxy_fault",
+      "factor_b_name": "tls_path_fault",
+      "description": "Proxy misconfiguration \u00d7 TLS/path certificate mismatch.",
+      "git_sha": "e09566bbffa7cbdc2e3d5d173e10493d0f0b52ee",
+      "dataset_digest": "ccab779430035ec7a9ad64babedbc8255684c4808d7fa2266da4da373b5ed3ee",
+      "random_seed": 42,
+      "sample_size": 12,
+      "effects": [
+        {
+          "outcome": "y_severity",
+          "main_effect_x1": 0.535,
+          "main_effect_x2": 0.385,
+          "interaction_effect": 0.07000000000000012,
+          "lpm_beta_0": 1.4802973661668753e-16,
+          "lpm_beta_1": 0.4999999999999997,
+          "lpm_beta_2": 0.34999999999999964,
+          "lpm_beta_3": 0.07000000000000058,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.3499999999999999,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.5,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.92,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -0.8499999999999999,
+          "ci_upper": 0.5700000000000001,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": 0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 1.0,
+          "lpm_beta_2": 1.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.3499999999999999,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.5,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.92,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -2.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_severity",
+          "main_effect_x1": 0.40400000000000014,
+          "main_effect_x2": 0.30499999999999994,
+          "interaction_effect": -0.6099999999999999,
+          "lpm_beta_0": 0.2550000000000005,
+          "lpm_beta_1": 0.7089999999999996,
+          "lpm_beta_2": 0.6099999999999994,
+          "lpm_beta_3": -0.6099999999999994,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.3499999999999999,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.5,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.92,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -1.5739999999999998,
+          "ci_upper": 0.3540000000000001,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": 0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 1.0,
+          "lpm_beta_2": 1.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.3499999999999999,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.5,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.92,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -2.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        }
+      ],
+      "assumptions": [
+        "2x2 factorial with synthetic fixtures; not a field experiment.",
+        "Interaction contrast = Y11 - Y10 - Y01 + Y00 on cell means.",
+        "Linear probability / severity scale \u2014 not logistic regression.",
+        "Small sample sizes \u2014 CIs are exploratory, not confirmatory."
+      ],
+      "limitations": [
+        "Designed factorial \u2014 ground-truth interaction may differ from platform response.",
+        "No causal identification claim; observational association on fixtures only."
+      ]
+    },
+    {
+      "experiment_id": "wininet_x_winhttp",
+      "factor_a_name": "wininet_proxy_enabled",
+      "factor_b_name": "winhttp_direct_access",
+      "description": "WinINET proxy state \u00d7 WinHTTP direct-access stack mismatch.",
+      "git_sha": "e09566bbffa7cbdc2e3d5d173e10493d0f0b52ee",
+      "dataset_digest": "ccab779430035ec7a9ad64babedbc8255684c4808d7fa2266da4da373b5ed3ee",
+      "random_seed": 42,
+      "sample_size": 12,
+      "effects": [
+        {
+          "outcome": "y_severity",
+          "main_effect_x1": 0.42500000000000004,
+          "main_effect_x2": 0.32499999999999996,
+          "interaction_effect": 0.4499999999999999,
+          "lpm_beta_0": -3.700743415417188e-17,
+          "lpm_beta_1": 0.2000000000000001,
+          "lpm_beta_2": 0.10000000000000002,
+          "lpm_beta_3": 0.4499999999999999,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.10000000000000002,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.20000000000000004,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.75,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8740000000000001
+            }
+          ],
+          "ci_lower": -0.30000000000000004,
+          "ci_upper": 0.65,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": 0.5,
+          "interaction_effect": 1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 0.0,
+          "lpm_beta_2": 0.0,
+          "lpm_beta_3": 1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.10000000000000002,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.20000000000000004,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.75,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8740000000000001
+            }
+          ],
+          "ci_lower": 0.0,
+          "ci_upper": 1.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_severity",
+          "main_effect_x1": 0.2945000000000001,
+          "main_effect_x2": 0.3245,
+          "interaction_effect": 0.6490000000000001,
+          "lpm_beta_0": 0.2549999999999999,
+          "lpm_beta_1": -0.029999999999999954,
+          "lpm_beta_2": 1.4802973661668753e-16,
+          "lpm_beta_3": 0.649,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.10000000000000002,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.20000000000000004,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.75,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8740000000000001
+            }
+          ],
+          "ci_lower": -0.22499999999999998,
+          "ci_upper": 0.9040000000000001,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": 0.5,
+          "interaction_effect": 1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 0.0,
+          "lpm_beta_2": 0.0,
+          "lpm_beta_3": 1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.10000000000000002,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.20000000000000004,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.75,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8740000000000001
+            }
+          ],
+          "ci_lower": 0.0,
+          "ci_upper": 1.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        }
+      ],
+      "assumptions": [
+        "2x2 factorial with synthetic fixtures; not a field experiment.",
+        "Interaction contrast = Y11 - Y10 - Y01 + Y00 on cell means.",
+        "Linear probability / severity scale \u2014 not logistic regression.",
+        "Small sample sizes \u2014 CIs are exploratory, not confirmatory."
+      ],
+      "limitations": [
+        "Designed factorial \u2014 ground-truth interaction may differ from platform response.",
+        "No causal identification claim; observational association on fixtures only."
+      ]
+    },
+    {
+      "experiment_id": "proxy_x_listener",
+      "factor_a_name": "proxy_enabled",
+      "factor_b_name": "listener_present",
+      "description": "WinINET proxy enabled \u00d7 localhost listener attribution present.",
+      "git_sha": "e09566bbffa7cbdc2e3d5d173e10493d0f0b52ee",
+      "dataset_digest": "ccab779430035ec7a9ad64babedbc8255684c4808d7fa2266da4da373b5ed3ee",
+      "random_seed": 42,
+      "sample_size": 12,
+      "effects": [
+        {
+          "outcome": "y_severity",
+          "main_effect_x1": 0.375,
+          "main_effect_x2": -0.12500000000000003,
+          "interaction_effect": -0.35000000000000003,
+          "lpm_beta_0": -1.4802973661668753e-16,
+          "lpm_beta_1": 0.5500000000000003,
+          "lpm_beta_2": 0.05000000000000019,
+          "lpm_beta_3": -0.3500000000000003,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.05000000000000001,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.25,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            }
+          ],
+          "ci_lower": -0.6000000000000001,
+          "ci_upper": 0.19999999999999998,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": -0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 1.0,
+          "lpm_beta_2": 0.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.05000000000000001,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.25,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            }
+          ],
+          "ci_lower": -1.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_severity",
+          "main_effect_x1": 0.3395,
+          "main_effect_x2": -0.36950000000000005,
+          "interaction_effect": -0.7390000000000001,
+          "lpm_beta_0": 0.2549999999999994,
+          "lpm_beta_1": 0.7090000000000009,
+          "lpm_beta_2": 5.921189464667501e-16,
+          "lpm_beta_3": -0.7390000000000008,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.05000000000000001,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.25,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            }
+          ],
+          "ci_lower": -0.9940000000000001,
+          "ci_upper": 0.22499999999999998,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": -0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 1.0,
+          "lpm_beta_2": 0.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.05000000000000001,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.25,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            }
+          ],
+          "ci_lower": -1.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        }
+      ],
+      "assumptions": [
+        "2x2 factorial with synthetic fixtures; not a field experiment.",
+        "Interaction contrast = Y11 - Y10 - Y01 + Y00 on cell means.",
+        "Linear probability / severity scale \u2014 not logistic regression.",
+        "Small sample sizes \u2014 CIs are exploratory, not confirmatory."
+      ],
+      "limitations": [
+        "Designed factorial \u2014 ground-truth interaction may differ from platform response.",
+        "No causal identification claim; observational association on fixtures only."
+      ]
+    },
+    {
+      "experiment_id": "dns_x_proxy",
+      "factor_a_name": "dns_fault",
+      "factor_b_name": "proxy_fault",
+      "description": "DNS resolution failure \u00d7 localhost proxy fault.",
+      "git_sha": "e09566bbffa7cbdc2e3d5d173e10493d0f0b52ee",
+      "dataset_digest": "ccab779430035ec7a9ad64babedbc8255684c4808d7fa2266da4da373b5ed3ee",
+      "random_seed": 42,
+      "sample_size": 12,
+      "effects": [
+        {
+          "outcome": "y_severity",
+          "main_effect_x1": 0.41000000000000003,
+          "main_effect_x2": 0.47,
+          "interaction_effect": -0.019999999999999962,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 0.41999999999999993,
+          "lpm_beta_2": 0.48,
+          "lpm_beta_3": -0.01999999999999987,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.48,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.42,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.88,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -0.8999999999999999,
+          "ci_upper": 0.45999999999999996,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": 0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 1.0,
+          "lpm_beta_2": 1.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.48,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.42,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.88,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -2.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_severity",
+          "main_effect_x1": 0.30499999999999994,
+          "main_effect_x2": 0.40400000000000014,
+          "interaction_effect": -0.6099999999999999,
+          "lpm_beta_0": 0.2550000000000005,
+          "lpm_beta_1": 0.6099999999999994,
+          "lpm_beta_2": 0.7089999999999996,
+          "lpm_beta_3": -0.6099999999999994,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.48,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.42,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.88,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -1.5739999999999998,
+          "ci_upper": 0.3540000000000001,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_failure",
+          "main_effect_x1": 0.5,
+          "main_effect_x2": 0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 0.0,
+          "lpm_beta_1": 1.0,
+          "lpm_beta_2": 1.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.0,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.255
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.48,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.42,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.8649999999999999
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.88,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            }
+          ],
+          "ci_lower": -2.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        }
+      ],
+      "assumptions": [
+        "2x2 factorial with synthetic fixtures; not a field experiment.",
+        "Interaction contrast = Y11 - Y10 - Y01 + Y00 on cell means.",
+        "Linear probability / severity scale \u2014 not logistic regression.",
+        "Small sample sizes \u2014 CIs are exploratory, not confirmatory."
+      ],
+      "limitations": [
+        "Designed factorial \u2014 ground-truth interaction may differ from platform response.",
+        "No causal identification claim; observational association on fixtures only."
+      ]
+    },
+    {
+      "experiment_id": "listener_x_process",
+      "factor_a_name": "listener_present",
+      "factor_b_name": "trusted_process_attribution",
+      "description": "Localhost listener present \u00d7 trusted vs unknown process attribution.",
+      "git_sha": "e09566bbffa7cbdc2e3d5d173e10493d0f0b52ee",
+      "dataset_digest": "ccab779430035ec7a9ad64babedbc8255684c4808d7fa2266da4da373b5ed3ee",
+      "random_seed": 42,
+      "sample_size": 12,
+      "effects": [
+        {
+          "outcome": "y_severity",
+          "main_effect_x1": -0.25000000000000006,
+          "main_effect_x2": -0.14999999999999997,
+          "interaction_effect": -0.30000000000000004,
+          "lpm_beta_0": 0.5500000000000005,
+          "lpm_beta_1": -0.10000000000000053,
+          "lpm_beta_2": -4.440892098500626e-16,
+          "lpm_beta_3": -0.29999999999999954,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.45,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.19499999999999998
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.15,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            }
+          ],
+          "ci_lower": -0.8500000000000001,
+          "ci_upper": 0.25,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_failure",
+          "main_effect_x1": -0.5,
+          "main_effect_x2": -0.5,
+          "interaction_effect": -1.0,
+          "lpm_beta_0": 1.0,
+          "lpm_beta_1": 0.0,
+          "lpm_beta_2": 0.0,
+          "lpm_beta_3": -1.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.45,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.19499999999999998
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.15,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            }
+          ],
+          "ci_lower": -2.0,
+          "ci_upper": 0.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_severity",
+          "main_effect_x1": -0.7540000000000001,
+          "main_effect_x2": 0.015000000000000013,
+          "interaction_effect": 0.030000000000000027,
+          "lpm_beta_0": 0.964,
+          "lpm_beta_1": -0.769,
+          "lpm_beta_2": 2.9605947323337506e-16,
+          "lpm_beta_3": 0.029999999999999655,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.45,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.19499999999999998
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.15,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            }
+          ],
+          "ci_lower": -0.934,
+          "ci_upper": 0.994,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        },
+        {
+          "outcome": "y_platform_failure",
+          "main_effect_x1": -1.0,
+          "main_effect_x2": 0.0,
+          "interaction_effect": 0.0,
+          "lpm_beta_0": 1.0,
+          "lpm_beta_1": -1.0,
+          "lpm_beta_2": 0.0,
+          "lpm_beta_3": 0.0,
+          "sample_size": 12,
+          "cell_summaries": [
+            {
+              "x1": 0,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 0,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.55,
+              "mean_platform_failure": 1.0,
+              "mean_platform_severity": 0.9640000000000001
+            },
+            {
+              "x1": 1,
+              "x2": 0,
+              "n": 3,
+              "mean_y_failure": 1.0,
+              "mean_y_severity": 0.45,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.19499999999999998
+            },
+            {
+              "x1": 1,
+              "x2": 1,
+              "n": 3,
+              "mean_y_failure": 0.0,
+              "mean_y_severity": 0.15,
+              "mean_platform_failure": 0.0,
+              "mean_platform_severity": 0.22499999999999998
+            }
+          ],
+          "ci_lower": -1.0,
+          "ci_upper": 1.0,
+          "ci_method": "percentile_bootstrap_cell_contrast",
+          "effect_size_label": "additive_contrast",
+          "limitations": [
+            "Do not claim statistical significance without adequate sample size and assumptions.",
+            "Designed ground-truth severity may not match platform classifier response.",
+            "Correlation in replicates within a cell is not modeled."
+          ]
+        }
+      ],
+      "assumptions": [
+        "2x2 factorial with synthetic fixtures; not a field experiment.",
+        "Interaction contrast = Y11 - Y10 - Y01 + Y00 on cell means.",
+        "Linear probability / severity scale \u2014 not logistic regression.",
+        "Small sample sizes \u2014 CIs are exploratory, not confirmatory."
+      ],
+      "limitations": [
+        "Designed factorial \u2014 ground-truth interaction may differ from platform response.",
+        "No causal identification claim; observational association on fixtures only."
+      ]
+    }
+  ]
+}

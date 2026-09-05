@@ -5,7 +5,7 @@ Cross-cutting rules for what each evidence source may support.
 ## Evidence sources
 
 | Source | May observe | Must not claim |
-|--------|-------------|----------------|
+| -------- | ------------- | ---------------- |
 | `HOST_LEVEL_OBSERVATION` | ARP/neighbor cache, mDNS/SSDP on segment, traffic to/from this PC | Cross-host port scans, exfiltration proof |
 | `ROUTER_LEVEL_EVIDENCE` | DHCP roster, DNS queries, firewall rows per import | Packet contents, malware verdict |
 | `PACKET_CAPTURE_EVIDENCE` | Flow summaries from PCAP fixtures (v1) | Full payload inspection without capture |

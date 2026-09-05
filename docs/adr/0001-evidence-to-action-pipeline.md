@@ -25,7 +25,7 @@ Every stage preserves `raw_snapshot` for replay. No stage auto-upgrades proof ti
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Single monolithic "fix" command | Hides governance stages; fails audit walkthrough |
 | Direct SIEM-only pipeline | Breaks local-first, air-gapped operator requirements |
 | LLM-first classification | Non-deterministic; violates CI fixture contracts |

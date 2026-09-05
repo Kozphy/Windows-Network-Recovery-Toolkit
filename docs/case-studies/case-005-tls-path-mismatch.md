@@ -15,7 +15,7 @@ HTTPS fails or warns while plain connectivity appears fine — certificate or pa
 ## Known / Not proven
 
 | Known | Not proven |
-|-------|------------|
+| ------- | ------------ |
 | Certificate or path inconsistent with expected profile | Confirmed MITM attack |
 | Browser TLS error correlates with proxy path | Corporate root CA deployment status |
 

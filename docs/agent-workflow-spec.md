@@ -5,7 +5,7 @@ Six agent roles as **JSON contracts** — Phase 1 uses deterministic pipeline ou
 ## Agents
 
 | Agent | Input | Output contract | Human checkpoint |
-|-------|-------|-----------------|------------------|
+| ------- | ------- | ----------------- | ------------------ |
 | Evidence | Collector snapshot | `EvidenceAgentOutput` | None (read-only ingest) |
 | Classification | Evidence event | `ClassificationAgentOutput` | Review queue for accusatory-adjacent classes |
 | Root Cause | Incident + limitations | `RootCauseAgentOutput` | Hypotheses are ordinal, not proof |

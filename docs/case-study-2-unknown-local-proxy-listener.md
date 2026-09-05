@@ -18,7 +18,7 @@ During a security triage review, an analyst noticed WinINET proxy settings point
 ## Initial Observation
 
 | Signal | Value | Tier |
-|--------|-------|------|
+| -------- | ------- | ------ |
 | `ProxyEnable` | `1` | Observation |
 | `ProxyServer` | `127.0.0.1:61526` | Observation |
 | Listener PID | `9999` | Observation |
@@ -30,7 +30,7 @@ During a security triage review, an analyst noticed WinINET proxy settings point
 ## Hypothesis
 
 | # | Hypothesis | Likelihood |
-|---|------------|------------|
+| --- | ------------ | ------------ |
 | H1 | Leftover or unapproved local proxy service | Medium |
 | H2 | Legitimate dev tool using non-standard binary name | Medium |
 | H3 | Suspicious or unauthorized interception | Possible — requires further validation |
@@ -101,7 +101,7 @@ TCP    127.0.0.1:61526    0.0.0.0:0    LISTENING    9999
 ## Analysis
 
 | Hypothesis | Evidence for | Evidence against |
-|------------|--------------|------------------|
+| ------------ | -------------- | ------------------ |
 | H1 Unapproved proxy | Unknown process name; localhost binding | Could be renamed legitimate tool |
 | H2 Legitimate dev tool | Localhost-only binding | Not on known-dev allowlist |
 | H3 Suspicious interception | Proxy enabled + unknown listener | No TLS mismatch or writer proof in this fixture |
@@ -144,7 +144,7 @@ The toolkit correctly keeps confidence at **0.35** and recommends **investigatio
 ## Risk Controls
 
 | Control | Behavior |
-|---------|----------|
+| --------- | ---------- |
 | No silent process kill | `KILL_PROXY_PROCESS` in blocked actions registry |
 | Correlation capped | Listener match cannot unlock `FINAL_CAUSATION` without writer proof |
 | Low confidence blocks aggressive remediation | Policy engine returns `PREVIEW_ONLY` or `BLOCK` |
@@ -153,7 +153,7 @@ The toolkit correctly keeps confidence at **0.35** and recommends **investigatio
 ## Lessons Learned
 
 | Principle | Application |
-|-----------|-------------|
+| ----------- | ------------- |
 | **Observation ≠ Proof** | We observed a listener; we did not prove it wrote the proxy registry keys. |
 | **Correlation ≠ Causation** | PID on port 61526 correlates with proxy traffic; it may not be the registry writer. |
 | **Confidence ≠ Certainty** | 0.35 confidence means "investigate" — not "confirmed threat." |

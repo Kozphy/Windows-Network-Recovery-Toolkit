@@ -1,8 +1,8 @@
 # Decision Intelligence Platform — Architecture
 
-**Status:** Design + reference implementation (2026)  
-**Role:** Principal Systems Architect  
-**Baseline:** Windows Network Recovery Toolkit · canonical core `src/platform_core/`  
+**Status:** Design + reference implementation (2026)
+**Role:** Principal Systems Architect
+**Baseline:** Windows Network Recovery Toolkit · canonical core `src/platform_core/`
 **Module:** `src/platform_core/decision_intelligence/`
 
 ---
@@ -14,7 +14,7 @@ The Decision Intelligence Platform (DIP) transforms **shared evidence** into **m
 ### Example (dead WinINET proxy — CS1)
 
 | Domain | Recommendation | Policy posture |
-|--------|----------------|----------------|
+| -------- | ---------------- | ---------------- |
 | **IT Operations** | Preview disable WinINET proxy after structured proof | PREVIEW + confirmation |
 | **Security** | Monitor process / collect writer telemetry | OBSERVE / investigate |
 | **Risk** | Collect additional evidence before strong claims | Defer remediation |
@@ -90,7 +90,7 @@ EvidenceBundle (shared)
 ### 2.3 Layer responsibilities
 
 | Layer | Mutates host? | Purpose |
-|-------|---------------|---------|
+| ------- | --------------- | --------- |
 | Evidence | No | Single source of truth for all domains |
 | Domain adapters | No | Translate shared evidence → domain candidates |
 | Scoring engine | No | Deterministic benefit/risk/confidence |
@@ -101,7 +101,7 @@ EvidenceBundle (shared)
 ### 2.4 Mapping to existing code
 
 | DIP domain | Existing module | Notes |
-|------------|-----------------|-------|
+| ------------ | ----------------- | ------- |
 | IT Operations | `WindowsAdapter`, WNT remediation | Proxy disable preview |
 | Security | `SecurityAdapter`, hypothesis engine | Process monitor, writer proof |
 | Risk | **New** `RiskAdapter` | Evidence gaps, defer destructive |
@@ -214,7 +214,7 @@ class FederatedDecisionResult(BaseModel):
 Aligns with `platform_core/db/decision_intelligence_schema.sql`:
 
 | Table | Purpose |
-|-------|---------|
+| ------- | --------- |
 | `di_events` | Incident ingest |
 | `di_evidence` | Evidence nodes |
 | `di_decisions` | Per-domain recommendation rows |
@@ -264,7 +264,7 @@ class DecisionDomainAdapter(ABC):
 ### 4.3 Domain logic (CS1 dead proxy)
 
 | Domain | Top candidate | Trigger |
-|--------|---------------|---------|
+| -------- | --------------- | --------- |
 | IT Operations | `preview_disable_wininet` | DEAD_PROXY + proof supported |
 | Security | `monitor_process_and_writer` | localhost proxy, no writer proof |
 | Risk | `collect_additional_evidence` | missing writer telemetry |
@@ -304,7 +304,7 @@ Every `ScoredDecision` includes full `ScoreBreakdown` for explainability.
 ### 5.2 Domain weights (orchestrator layer)
 
 | Domain | Benefit bias | Risk bias | Notes |
-|--------|--------------|-----------|-------|
+| -------- | -------------- | ----------- | ------- |
 | IT Operations | +10 repair speed | standard | Favors restore service |
 | Security | standard | +15 caution | Favors observe/investigate |
 | Risk | standard | +20 defer | Penalizes premature remediation |
@@ -379,7 +379,7 @@ Uses same `content_digest` algorithm as `run_decision_engine` — evidence JSON 
 ## 7. API surface (target)
 
 | Method | Path | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `POST` | `/v1/decision-intelligence/federated/evaluate` | Evidence in → all domain recommendations |
 | `GET` | `/v1/decision-intelligence/federated/{incident_id}` | Latest federated result |
 | `GET` | `/v1/decision-intelligence/federated/{incident_id}/explain` | Graph + breakdowns |
@@ -450,7 +450,7 @@ Extends existing `backend/decision_intelligence/routes.py`.
 ### Phase 1 — Federated DIP core (4 weeks)
 
 | Week | Deliverable |
-|------|-------------|
+| ------ | ------------- |
 | 1 | `DecisionDomain` models + 5 adapters + unit tests |
 | 2 | `FederatedOrchestrator` + explainability graph |
 | 3 | Audit JSONL + `content_digest` replay tests |
@@ -479,11 +479,11 @@ Extends existing `backend/decision_intelligence/routes.py`.
 
 ### MVP success criteria
 
-1. CS1 fixture → 5 domain recommendations with evidence traces  
-2. Identical input → identical `content_digest`  
-3. Every recommendation has ≥1 evidence trace or explicit `missing_evidence`  
-4. No domain recommendation bypasses policy PREVIEW for host mutations  
-5. Replay test passes in CI  
+1. CS1 fixture → 5 domain recommendations with evidence traces
+2. Identical input → identical `content_digest`
+3. Every recommendation has ≥1 evidence trace or explicit `missing_evidence`
+4. No domain recommendation bypasses policy PREVIEW for host mutations
+5. Replay test passes in CI
 
 ---
 

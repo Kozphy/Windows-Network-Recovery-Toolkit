@@ -5,7 +5,7 @@ For technology risk / IT audit advisory interviews. **Management information onl
 ## Control narrative
 
 | Control theme | Implementation | Evidence |
-|---------------|----------------|----------|
+| --------------- | ---------------- | ---------- |
 | Logging & monitoring | Hash-chained audit JSONL + Postgres `AuditChainEntry` | `audit verify`, `/v1/audit/verify` |
 | Change management | Policy-gated remediation previews | `control_tests`, policy registry |
 | Access control | `/v1` RBAC roles | [rbac-model.md](rbac-model.md) |

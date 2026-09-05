@@ -1,0 +1,31 @@
+id: winhttp-mismatch-001
+title: WinHTTP / WinINET Proxy Representation Mismatch
+category: endpoint_configuration
+risk_level: medium
+safe_for_local_execution: true
+description: Controlled mismatch between two test proxy representations.
+preconditions:
+  - fixture_only
+  - dual_stack_config_views
+simulation:
+  action: create_test_proxy_view_mismatch
+  fixture_path: tests/fixtures/purple_team/winhttp_wininet_mismatch.json
+expected_telemetry:
+  - winhttp_wininet_mismatch
+expected_detection: DET-PROXY-002
+expected_response: reconcile_proxy_views
+expect_detection: true
+verification:
+  post_conditions:
+    - winhttp_wininet_reconciled
+  independent: true
+cleanup:
+  required: true
+  steps:
+    - restore baseline dual-view equality in fixture
+    - no live WinHTTP modification
+mitre:
+  techniques: []
+  notes: No forced MITRE mapping — configuration consistency control test.
+limitations:
+  - Does not modify live WinHTTP (blocked action family remains blocked).

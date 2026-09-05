@@ -1,6 +1,6 @@
 # Evidence-to-Action Governance Model
 
-**Schema:** `evidence_to_action.v1`  
+**Schema:** `evidence_to_action.v1`
 **Status:** Normative guidance for narrative, classification, and remediation outputs
 
 ---
@@ -18,7 +18,7 @@ This model supports audit-ready workflows for IT Risk Advisory, SRE governance, 
 ## The Six Principles
 
 | # | Principle | Rule |
-|---|-----------|------|
+| --- | ----------- | ------ |
 | 1 | **Observation is not proof** | Registry reads, netstat snapshots, and proxy state are observations until structured proof checks pass. |
 | 2 | **Correlation is not causation** | Listener/process correlation does not prove registry-writer causation without writer telemetry (e.g., Sysmon E13). |
 | 3 | **Confidence is not certainty** | Scores are ordinal/heuristic rankings — never statistical probabilities of compromise. |
@@ -32,41 +32,41 @@ This model supports audit-ready workflows for IT Risk Advisory, SRE governance, 
 
 ### WinINET proxy drift (`DEAD_PROXY_CONFIG`)
 
-**Observation:** WinINET `ProxyServer` points to `127.0.0.1:59081`; WinHTTP may use direct access.  
-**Proof:** Listener check fails — configured localhost port has no bound process. Conclusion: `supported` for dead proxy path.  
-**Classification:** `DEAD_PROXY_CONFIG` — reliability finding, not security verdict.  
+**Observation:** WinINET `ProxyServer` points to `127.0.0.1:59081`; WinHTTP may use direct access.
+**Proof:** Listener check fails — configured localhost port has no bound process. Conclusion: `supported` for dead proxy path.
+**Classification:** `DEAD_PROXY_CONFIG` — reliability finding, not security verdict.
 **Governance:** `claim_strength: proof`, `causal_language_allowed: false`, `execution_authority: preview_only`.
 
-**Allowed:** "Evidence is consistent with a dead WinINET localhost proxy blocking browser traffic."  
+**Allowed:** "Evidence is consistent with a dead WinINET localhost proxy blocking browser traffic."
 **Prohibited:** "Caused by malware" or "attacker modified the registry."
 
 ### Unknown localhost proxy (`UNKNOWN_LOCAL_PROXY`)
 
-**Observation:** Localhost proxy port has a listener; process attribution may be incomplete.  
-**Correlation:** Process name may correlate with the port — not proof of who wrote WinINET settings.  
-**Classification:** `UNKNOWN_LOCAL_PROXY` — requires further attribution.  
+**Observation:** Localhost proxy port has a listener; process attribution may be incomplete.
+**Correlation:** Process name may correlate with the port — not proof of who wrote WinINET settings.
+**Classification:** `UNKNOWN_LOCAL_PROXY` — requires further attribution.
 **Governance:** `classification_is_accusation: false` always; narrative must not claim compromise.
 
-**Allowed:** "Listener correlated with process X; requires further attribution for registry writer."  
+**Allowed:** "Listener correlated with process X; requires further attribution for registry writer."
 **Prohibited:** "Compromised endpoint" or "proved malware."
 
 ### TLS certificate mismatch (`POSSIBLE_MITM_RISK`)
 
-**Observation:** Browser TLS chain differs from direct `curl` path or expected issuer.  
-**Correlation:** Path divergence supports a **hypothesis** of interception or misconfiguration — not confirmed MITM.  
-**Classification:** `POSSIBLE_MITM_RISK` — security-adjacent triage label.  
+**Observation:** Browser TLS chain differs from direct `curl` path or expected issuer.
+**Correlation:** Path divergence supports a **hypothesis** of interception or misconfiguration — not confirmed MITM.
+**Classification:** `POSSIBLE_MITM_RISK` — security-adjacent triage label.
 **Governance:** Low/medium tiers block "confirmed MITM" language.
 
-**Allowed:** "Possible MITM risk — path mismatch supports further investigation."  
+**Allowed:** "Possible MITM risk — path mismatch supports further investigation."
 **Prohibited:** "Confirmed MITM" or "proves interception" without `FINAL_CAUSATION` tier.
 
 ### Remediation preview (`proxy-disable --dry-run`)
 
-**Recommendation:** Disable WinINET proxy, clear `ProxyServer`, capture rollback snapshot.  
-**Policy:** `PREVIEW_ONLY` by default; typed confirmation `DISABLE_WININET_PROXY` required to apply.  
+**Recommendation:** Disable WinINET proxy, clear `ProxyServer`, capture rollback snapshot.
+**Policy:** `PREVIEW_ONLY` by default; typed confirmation `DISABLE_WININET_PROXY` required to apply.
 **Governance:** `execution_authority: preview_only` until human supplies confirmation phrase.
 
-**Allowed:** "Preview only — requires typed confirmation before registry mutation."  
+**Allowed:** "Preview only — requires typed confirmation before registry mutation."
 **Prohibited:** "Safe to execute automatically."
 
 ---
@@ -74,7 +74,7 @@ This model supports audit-ready workflows for IT Risk Advisory, SRE governance, 
 ## Allowed vs Prohibited Language
 
 | Context | Allowed (default tiers) | Prohibited unless evidence tier is high enough |
-|---------|-------------------------|------------------------------------------------|
+| --------- | ------------------------- | ------------------------------------------------ |
 | Causation | "evidence is consistent with…", "correlated with…", "supports the hypothesis…" | "caused by…", "root cause confirmed…" |
 | Attribution | "requires further attribution…", "listener correlated with…" | "attacker…", "compromised…" |
 | Security labels | "possible MITM risk…", `POSSIBLE_MITM_RISK` as triage | "confirmed MITM", "proves interception" |
@@ -89,7 +89,7 @@ This model supports audit-ready workflows for IT Risk Advisory, SRE governance, 
 ## Evidence Tier Mapping
 
 | Tier | `claim_strength` | Causal language | Typical sources |
-|------|------------------|-----------------|-----------------|
+| ------ | ------------------ | ----------------- | ----------------- |
 | `OBSERVED_ONLY` | `observation` | No | Registry read, proxy state snapshot |
 | `CORRELATED` | `correlation` | No | Listener ↔ port, process name match |
 | `PROVEN_REGISTRY_WRITER` | `proof` | No* | Sysmon E13 / writer telemetry |
@@ -103,7 +103,7 @@ This model supports audit-ready workflows for IT Risk Advisory, SRE governance, 
 ## Policy / Action Mapping
 
 | Policy outcome | `execution_authority` | Required controls |
-|----------------|----------------------|-------------------|
+| ---------------- | ---------------------- | ------------------- |
 | `PREVIEW_ONLY` / dry-run | `preview_only` | Dry-run default, audit log |
 | `ALLOW` (unexecuted) | `human_required` | Typed confirmation, rollback plan |
 | `ALLOW` + confirmation + apply | `human_required` | Snapshot, verification, audit |

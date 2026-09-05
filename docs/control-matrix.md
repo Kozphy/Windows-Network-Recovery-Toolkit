@@ -2,16 +2,27 @@
 
 Portfolio-friendly control mapping for Big 4, Internal Audit, Cyber Risk, and FinTech operational resilience workshops.
 
-**Full framework:** [risk-control-framework.md](risk-control-framework.md)  
-**Test methodology:** [control-testing-methodology.md](control-testing-methodology.md)  
+**Full framework:** [risk-control-framework.md](risk-control-framework.md)
+**Test methodology:** [control-testing-methodology.md](control-testing-methodology.md)
 **Disclaimer:** Informational — not a formal SOC 2 or regulatory attestation. Observation ≠ proof.
 
 ---
 
+## Summary table (enterprise view)
+
+| Control ID | Risk | Control objective | Evidence | Test | Decision | Remediation | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| CTRL-001 | Dead localhost proxy | Detect non-functional WinINET proxy path | proxy-status, probes | `proxy-status`, diagnose | Classify `DEAD_PROXY_CONFIG` | Preview disable | Re-probe path |
+| CTRL-002 | Stack mismatch | Surface WinINET/WinHTTP drift | Registry contrast | Alignment check | Triage mismatch | Preview align | Control re-test |
+| CTRL-004 | Unknown writer | Attribute listener vs writer | proxy-owner, Sysmon | Owner verification | Human review if no E13 | Collect telemetry | Tier upgrade |
+| CTRL-006 | False accusation | Non-accusatory narrative | limitations[], governance | Language contract tests | Block malware labels | N/A | CI regression |
+| CTRL-009 | Unsafe auto-fix | Gate destructive remediation | Policy JSON, audit | `--dry-run` default | PREVIEW_ONLY | Typed confirm apply | Policy tests |
+| CTRL-010 | Evidence tamper | Prove audit integrity | canonical_custody.jsonl | `audit verify --check-tip` | Block export if invalid | N/A | Hash recompute |
+
 ## Summary table (business view)
 
 | Business Objective | Asset | Threat | Control | Test | Finding | Risk | Owner |
-|--------------------|-------|--------|---------|------|---------|------|-------|
+| -------------------- | ------- | -------- | --------- | ------ | --------- | ------ | ------- |
 | Browser access reliability | WinINET proxy config | Dead localhost proxy | Drift detection | `proxy-status`, `diagnose --proof` | `DEAD_PROXY_CONFIG` | Medium | IT Operations |
 | Authorized changes | Registry proxy settings | Unknown writer | Writer attribution | Sysmon E13 correlation | `CORRELATED` / writer proof | Medium–High | Security / IT Risk |
 | HTTPS trust | Certificate path | TLS mismatch | Direct vs proxied contrast | `tls-proof` | `POSSIBLE_MITM_RISK` | High if proof-supported | Security / GRC |
@@ -23,7 +34,7 @@ Portfolio-friendly control mapping for Big 4, Internal Audit, Cyber Risk, and Fi
 ## Detailed control matrix — CTRL-001 through CTRL-010
 
 | ID | Control name | Control type | Frequency | Owner | Evidence sources | Test procedure | Pass criteria | Fail criteria | Limitation |
-|----|--------------|--------------|-----------|-------|------------------|----------------|---------------|---------------|------------|
+| ---- | -------------- | -------------- | ----------- | ------- | ------------------ | ---------------- | --------------- | --------------- | ------------ |
 | **CTRL-001** | Dead WinINET Proxy Detection | Detective | Per incident; continuous with proxy-watch | IT Operations / Endpoint Engineering | `proxy-status`, `proxy-health`, `probe_result` EvidenceEvent, `proxy_status` | Confirm localhost proxy enabled → run path/listener checks → record tier ≥ T1 | Healthy proxy path, or NOT_TESTED when proxy disabled | `DEAD_LOCALHOST_PROXY`, `DIRECT_ONLY_WORKS`, listener not proxy | Proves path failure — not why configured or who wrote registry |
 | **CTRL-002** | WinINET / WinHTTP Stack Alignment | Detective | Per diagnosis; quarterly sample | Platform Engineering | `wininet_proxy_enabled`, `winhttp_direct_access`, transition class | Compare WinINET enable/server vs WinHTTP direct flag | Stacks aligned or proxy disabled | WinINET enabled + WinHTTP direct access | Alignment ≠ corporate policy compliance |
 | **CTRL-003** | Localhost Proxy Path Health | Detective | Per localhost proxy incident | IT Support | TCP listen/connect, HTTPS probe in `probe_result` | Parse ProxyServer → probe external HTTPS via proxy path | Proxy path succeeds when intended | Enabled localhost proxy with failed proxy path | Successful probe ≠ safe or authorized proxy |
@@ -38,7 +49,7 @@ Portfolio-friendly control mapping for Big 4, Internal Audit, Cyber Risk, and Fi
 ### Control objectives (CTRL-001–010)
 
 | ID | Objective |
-|----|-----------|
+| ---- | ----------- |
 | CTRL-001 | Detect dead localhost WinINET proxy paths before ad-hoc registry resets |
 | CTRL-002 | Surface WinINET/WinHTTP stack misalignment that breaks predictable egress |
 | CTRL-003 | Validate functional health of localhost proxy listener and HTTPS path |
@@ -53,7 +64,7 @@ Portfolio-friendly control mapping for Big 4, Internal Audit, Cyber Risk, and Fi
 ### Failure interpretation (CTRL-001–010)
 
 | ID | If control FAILS | Reviewer interpretation |
-|----|------------------|-------------------------|
+| ---- | ------------------ | ------------------------- |
 | CTRL-001 | Dead localhost proxy path | Endpoint reliability risk — browser egress likely broken; not malware |
 | CTRL-002 | WinINET/WinHTTP mismatch | Stack inconsistency — investigate config drift; not compromise proof |
 | CTRL-003 | Proxy path probe failed | Functional proxy failure — verify listener and dev tooling |
@@ -70,7 +81,7 @@ Portfolio-friendly control mapping for Big 4, Internal Audit, Cyber Risk, and Fi
 ## Code mapping reference
 
 | CTRL ID | Endpoint `control_tests.py` | Mature `control_test_mature.py` |
-|---------|------------------------------|--------------------------------|
+| --------- | ------------------------------ | -------------------------------- |
 | CTRL-001 | `WININET_LOCALHOST_PROXY_HEALTH` | `CTRL-EPR-001` |
 | CTRL-002 | `WININET_WINHTTP_ALIGNMENT` | `CTRL-EPR-002` |
 | CTRL-003 | (health sub-check of CTRL-001) | — |

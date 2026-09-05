@@ -1,8 +1,8 @@
 # AI-Assisted Endpoint Investigation Platform — Architecture
 
-**Status:** Design (2026)  
-**Audience:** Staff engineers, security architects, product  
-**Baseline:** Windows Network Recovery Toolkit v0.2.x  
+**Status:** Design (2026)
+**Audience:** Staff engineers, security architects, product
+**Baseline:** Windows Network Recovery Toolkit v0.2.x
 **Non-negotiables:** Evidence-first · No autonomous remediation · Policy-gated actions · Cited recommendations
 
 ---
@@ -18,7 +18,7 @@ Observation → Classification → Proof → Policy → Remediation Preview → 
 with an **AI Investigation Layer** that assists human operators — it does **not** replace proof, policy, or audit. AI outputs are **advisory narratives and search/ranking** over structured evidence already collected by `src/platform_core/` and `windows_network_toolkit/`.
 
 | Principle | Platform enforcement |
-|-----------|---------------------|
+| ----------- | --------------------- |
 | Observation is not proof | AI cannot upgrade evidence tier; `principles.validator` blocks overclaims |
 | Correlation is not causation | Recommendations require `evidence_id[]` citations; listener ≠ writer |
 | Confidence is not certainty | Ordinal scores only; AI prompts forbid probability language |
@@ -146,7 +146,7 @@ sequenceDiagram
 ### 2.3 Layer responsibilities
 
 | Layer | Mutates host? | AI allowed? | Source of truth |
-|-------|---------------|-------------|-----------------|
+| ------- | --------------- | ------------- | ----------------- |
 | Observation | No | No | Probes, registry, netstat |
 | Classification | No | Assist labels only | `platform_core/classification` |
 | Proof | No | No | `proof/engine`, contrast checks |
@@ -343,7 +343,7 @@ Base: `/v1` (canonical). Auth: JWT + RBAC (existing `backend/auth.py`). All writ
 ### 5.1 Investigation endpoints (new)
 
 | Method | Path | Purpose |
-|--------|------|---------|
+| -------- | ------ | --------- |
 | `POST` | `/v1/investigations` | Create investigation from live signals or fixture |
 | `GET` | `/v1/investigations/{id}` | Full `InvestigationPackage` |
 | `GET` | `/v1/investigations/{id}/similar` | Similar case studies + past incidents |
@@ -390,7 +390,7 @@ POST /v1/investigations
 ### 5.2 Case study library (new)
 
 | Method | Path | Purpose |
-|--------|------|---------|
+| -------- | ------ | --------- |
 | `GET` | `/v1/case-studies` | List indexed cases |
 | `GET` | `/v1/case-studies/{case_id}` | Case metadata + fixture refs |
 | `POST` | `/v1/case-studies/{case_id}/replay` | Deterministic replay (read-only) |
@@ -398,7 +398,7 @@ POST /v1/investigations
 ### 5.3 Existing endpoints (unchanged authority)
 
 | Method | Path | Role |
-|--------|------|------|
+| -------- | ------ | ------ |
 | `POST` | `/v1/events` | Ingest signals → pipeline |
 | `POST` | `/v1/policy/evaluate` | Policy gate |
 | `POST` | `/v1/remediation/preview` | Dry-run remediation |
@@ -449,7 +449,7 @@ Structured evidence → AI provider → citation_validator → principles.valida
 ## 7. Component mapping (existing → target)
 
 | Capability | Today | Target |
-|------------|-------|--------|
+| ------------ | ------- | -------- |
 | Observations | `collectors/`, `proxy_state` | Unchanged |
 | Classification | `classification/` | Unchanged |
 | Proof | `proof.py`, `proof/engine` | Unchanged |
@@ -476,7 +476,7 @@ Structured evidence → AI provider → citation_validator → principles.valida
 ### Phase 1 — Investigation domain (3 weeks) — **MVP core**
 
 | Task | Deliverable |
-|------|-------------|
+| ------ | ------------- |
 | 1.1 | `investigation/models.py` + citation validator |
 | 1.2 | `investigation/orchestrator.py` wrapping existing pipeline |
 | 1.3 | `case_library.py` + similar incident search (feature-based) |
@@ -487,7 +487,7 @@ Structured evidence → AI provider → citation_validator → principles.valida
 ### Phase 2 — API + UI (3 weeks)
 
 | Task | Deliverable |
-|------|-------------|
+| ------ | ------------- |
 | 2.1 | `backend/investigation_routes.py` |
 | 2.2 | Frontend investigation detail page |
 | 2.3 | Report export (markdown → HTML) |
@@ -496,7 +496,7 @@ Structured evidence → AI provider → citation_validator → principles.valida
 ### Phase 3 — AI providers (4 weeks)
 
 | Task | Deliverable |
-|------|-------------|
+| ------ | ------------- |
 | 3.1 | `null_provider` (deterministic templates) |
 | 3.2 | `guardrails.py` + prompt YAML |
 | 3.3 | Optional OpenAI/Azure provider behind feature flag |
@@ -506,7 +506,7 @@ Structured evidence → AI provider → citation_validator → principles.valida
 ### Phase 4 — Multi-domain investigation (4 weeks)
 
 | Task | Deliverable |
-|------|-------------|
+| ------ | ------------- |
 | 4.1 | Cross-domain `InvestigationPackage` merge |
 | 4.2 | Security + Windows joint briefs |
 | 4.3 | Outcome learning feedback into similar search |
@@ -524,7 +524,7 @@ See §10 Enterprise roadmap.
 ### In scope (MVP)
 
 | Feature | Notes |
-|---------|-------|
+| --------- | ------- |
 | Investigation orchestrator | Wraps existing pipeline; no new probes |
 | Case study library | `index.yaml` + CS1, CS2 fixtures |
 | Similar incident search | Feature similarity (classification + signals); no vector DB required |
@@ -539,7 +539,7 @@ See §10 Enterprise roadmap.
 ### Out of scope (MVP)
 
 | Feature | Defer to |
-|---------|----------|
+| --------- | ---------- |
 | Autonomous remediation | Never |
 | LLM providers (OpenAI/Azure) | Phase 3 |
 | Vector embedding store | Phase 3+ |
@@ -560,7 +560,7 @@ See §10 Enterprise roadmap.
 ## 10. Enterprise roadmap
 
 | Quarter | Theme | Deliverables |
-|---------|-------|--------------|
+| --------- | ------- | -------------- |
 | Q1 | Investigation platform | MVP + `/v1/investigations` + frontend |
 | Q2 | AI advisory (governed) | Pluggable providers, prompt registry, audit of AI outputs |
 | Q3 | Scale & search | pgvector / Azure AI Search for incident similarity; fleet ingest |
@@ -571,7 +571,7 @@ See §10 Enterprise roadmap.
 ### Production readiness gates
 
 | Gate | Requirement |
-|------|-------------|
+| ------ | ------------- |
 | Security | AI outputs never call remediation executors; SAST on `investigation/ai/` |
 | Reliability | Deterministic replay digest stable without AI provider |
 | Observability | Prometheus: `investigations_total`, `principle_violations_total`, `ai_brief_latency` |
@@ -594,7 +594,7 @@ See §10 Enterprise roadmap.
 ## 12. Quick reference
 
 | Doc | Purpose |
-|-----|---------|
+| ----- | --------- |
 | [architecture.md](architecture.md) | Current platform map |
 | [decision_platform_architecture.md](decision_platform_architecture.md) | Multi-domain adapters |
 | [principles](../src/platform_core/principles/principles.yaml) | Epistemic rules |

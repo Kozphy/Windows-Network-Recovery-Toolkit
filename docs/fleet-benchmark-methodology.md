@@ -33,7 +33,7 @@ Host names, user names, arbitrary environment variables, IP addresses, and netwo
 ## Scenarios
 
 | Scenario | Intent |
-|----------|--------|
+| ---------- | -------- |
 | `mixed_proxy_failures` | Weighted production-like mix |
 | `dead_localhost_proxy_spike` | Dead proxy concentration |
 | `wininet_winhttp_drift` | Stack mismatch drift |

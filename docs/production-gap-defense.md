@@ -23,7 +23,7 @@ Fast reviewer path. Production needs Entra ID / OAuth2 — [rbac-model.md](rbac-
 ## Scorecard summary
 
 | Area | Current | Target (enterprise) |
-|------|---------|---------------------|
+| ------ | --------- | --------------------- |
 | Persistence | Postgres + SQLite tests | HA + backup |
 | Async | RQ + Redis | K8s workers + DLQ |
 | RBAC | Header tokens | SSO + ABAC |

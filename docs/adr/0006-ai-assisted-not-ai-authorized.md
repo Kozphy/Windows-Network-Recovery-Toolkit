@@ -31,7 +31,7 @@ All execution paths remain policy-gated with typed confirmation. `unsafe_inferen
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | LLM as classification primary | Non-deterministic; breaks CI golden fixtures |
 | Hidden AI in CLI output | Fails audit transparency |
 | No AI documentation | Interviewers assume autonomous agent |

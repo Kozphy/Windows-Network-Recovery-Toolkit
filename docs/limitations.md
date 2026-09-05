@@ -7,7 +7,7 @@ Version: 1.0 · Applies to all classifications, reports, and CLI output.
 ## Platform Boundaries
 
 | Limitation | Implication |
-|------------|-------------|
+| ------------ | ------------- |
 | **Not EDR/SIEM/ITSM** | Does not replace enterprise security or ticket systems |
 | **Not malware attribution** | Labels are reliability triage; never `MALWARE_DETECTED` |
 | **Not MITM confirmation** | `POSSIBLE_MITM_RISK` only; never `MITM_CONFIRMED` |

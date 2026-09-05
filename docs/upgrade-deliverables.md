@@ -7,7 +7,7 @@ Upgraded repository positioning to a **research-grade Technology Risk & Control 
 ## Files created
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | `docs/research-framing.md` | Research abstract, methodology, future work |
 | `docs/evidence-model.md` | Signal → governance pipeline |
 | `docs/classification-taxonomy.md` | Per-label FP/FN and policy guidance |

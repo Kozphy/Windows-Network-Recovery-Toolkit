@@ -19,7 +19,7 @@ flowchart LR
 ## Repository map
 
 | Layer | Location |
-|-------|----------|
+| ------- | ---------- |
 | Canonical engine | `src/platform_core/` |
 | Primary CLI | `windows_network_toolkit/` |
 | Platform API | `backend/` (FastAPI `/v1`, legacy `/platform`) |
@@ -68,7 +68,7 @@ Canonical implementation: `src/platform_core/` · Windows probes: `src/proxy_gua
 **Purpose:** Capture observable facts without claiming root cause.
 
 | Source | Signals |
-|--------|---------|
+| -------- | --------- |
 | HKCU WinINET registry | ProxyEnable, ProxyServer, PAC URL |
 | WinHTTP (`netsh`) | Direct vs proxy configuration |
 | Listener probes | localhost port owner (correlation) |
@@ -77,7 +77,7 @@ Canonical implementation: `src/platform_core/` · Windows probes: `src/proxy_gua
 
 **Modules:** `windows_network_toolkit/proxy_state.py`, `src/proxy_guard/`, `src/platform_core/attribution/`
 
-**May claim:** State at time T, probe pass/fail  
+**May claim:** State at time T, probe pass/fail
 **Must not claim:** Malware, confirmed MITM, registry writer without proof tier
 
 ---
@@ -87,7 +87,7 @@ Canonical implementation: `src/platform_core/` · Windows probes: `src/proxy_gua
 **Purpose:** Triage incidents into reviewable labels with secondary signals.
 
 | Primary examples | Meaning |
-|------------------|---------|
+| ------------------ | --------- |
 | `NO_PROXY` | Nominal proxy path |
 | `DEAD_PROXY_CONFIG` | Proxy enabled, listener dead |
 | `LOCAL_PROXY_ACTIVE` | Active localhost listener |
@@ -105,7 +105,7 @@ Canonical implementation: `src/platform_core/` · Windows probes: `src/proxy_gua
 **Purpose:** Upgrade claim strength from observation to supported proof for narrow hypotheses.
 
 | Check | Output |
-|-------|--------|
+| ------- | -------- |
 | `diagnose --proof` | Proof envelope + limitations |
 | `proxy-proof` | Direct vs system-proxy HTTP contrast |
 | `tls-proof` | Certificate metadata contrast |
@@ -122,7 +122,7 @@ Canonical implementation: `src/platform_core/` · Windows probes: `src/proxy_gua
 **Purpose:** Gate remediation — preview by default, block destructive verbs.
 
 | Outcome | Meaning |
-|---------|---------|
+| --------- | --------- |
 | `PREVIEW_ONLY` | Show action; do not execute |
 | `REQUIRE_HUMAN_APPROVAL` | Escalate before change |
 | `BLOCK` | Destructive or low-confidence path denied |
@@ -138,7 +138,7 @@ Canonical implementation: `src/platform_core/` · Windows probes: `src/proxy_gua
 **Purpose:** Audit-ready narratives for risk, compliance, and operations.
 
 | Output | Command / API |
-|--------|----------------|
+| -------- | ---------------- |
 | Evidence timeline report | `evidence-report` |
 | Governance report | `governance-report` |
 | Risk KPI rollup | `risk-kpi-summary` |
@@ -164,7 +164,7 @@ See: [risk-model.md](risk-model.md) · [powerbi-schema.md](powerbi-schema.md)
 **Purpose:** Append-only, hash-chained records for every read, preview, and mutation attempt.
 
 | Store | Content |
-|-------|---------|
+| ------- | --------- |
 | `.audit/*.jsonl` | proxy-status, proxy-disable, proxy-watch |
 | `logs/canonical_decision_audit.jsonl` | Platform decisions |
 | Risk analytics fixtures | Incident KPI source |
@@ -180,7 +180,7 @@ Verify: `python -m windows_network_toolkit audit verify <file.jsonl>`
 **Purpose:** Deterministic re-run from fixtures — CI safety contracts, interview demos.
 
 | Entry | Behavior |
-|-------|----------|
+| ------- | ---------- |
 | `replay` / `demo-scenario` | JSONL fixture → timeline + policy |
 | `replay-certify` | Hash certification |
 | Pytest contracts | Dry-run default, no silent kill, evidence tiers |

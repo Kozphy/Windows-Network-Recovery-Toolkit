@@ -19,7 +19,7 @@ Clamped to **0–100**.
 ## Bands
 
 | Band | Range |
-|------|-------|
+| ------ | ------- |
 | LOW | &lt; 35 |
 | MEDIUM | 35–69 |
 | HIGH | ≥ 70 |

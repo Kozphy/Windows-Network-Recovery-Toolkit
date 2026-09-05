@@ -3,7 +3,7 @@
 Canonical Tier-1 demo JSON lives under [`tests/fixtures/demo/`](../../tests/fixtures/demo/).
 
 | Fixture | Scenario |
-|---------|----------|
+| --------- | ---------- |
 | `healthy_endpoint.json` | Baseline — no drift |
 | `proxy_drift_correlated_only.json` | Listener correlation without writer proof |
 | `sysmon_registry_writer_proven.json` | Sysmon-class writer telemetry |

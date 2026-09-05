@@ -15,7 +15,7 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 ## What this solves
 
 | Layer | Script | Role |
-|-------|--------|------|
+| ------- | -------- | ------ |
 | **0. One-shot auto** | `scripts/auto-fix-proxy.ps1` or `python -m src auto-fix-proxy` | Cursor fix + live guardian + fallback proxy-fix + 60s background guardian |
 | **0b. ChatGPT auto** | `scripts/auto-fix-chatgpt.ps1` | Proxy auto-fix + bad-gateway diagnose + ChatGPT scenario + LOW-risk remediations — see [chatgpt-auto-fix.md](chatgpt-auto-fix.md) |
 | **1. Root cause** | `scripts/configure-cursor-no-proxy.ps1` | Stops Cursor from managing system proxy (`http.proxySupport: off`) |
@@ -29,7 +29,7 @@ This commonly happens when **Cursor**, **Node**, or other local dev proxy tools 
 `proxy-guardian` remediates:
 
 | Case | Condition | Confirm token |
-|------|-----------|---------------|
+| ------ | ----------- | --------------- |
 | **Dead** | enabled localhost proxy, **no listener** | `CLEAR_DEAD_LOCALHOST_PROXY` |
 | **Active-but-broken** (opt-in `--clear-broken`) | listener up, proxy path probe failed | `PREFER_DIRECT_WININET` |
 | **Hold-direct** (opt-in `--hold-direct`) | **any** enabled localhost WinINET (incl. healthy tunnels) | `PREFER_DIRECT_WININET` |
@@ -53,7 +53,7 @@ Listener process name/cmdline is recorded in the audit as **correlation only** (
 When a process is listening on the configured localhost port but **HTTPS via the proxy fails** while **direct HTTPS works**, drift classification is **`BROKEN_LOCALHOST_PROXY`** (legacy: `DEAD_PROXY_CONFIG` for analytics).
 
 | Surface | Behavior |
-|---------|----------|
+| --------- | ---------- |
 | `auto-fix-proxy` / `ensure-proxy-health` | Detects via proxy-vs-direct path probe; clears with confirm `PREFER_DIRECT_WININET` (same token as prefer-direct). Without confirm → `needs_prefer_direct_confirm` / `localhost_proxy_broken`. |
 | `proxy-guardian --clear-broken` | Broken/unusable path clear in the loop. |
 | `proxy-guardian --hold-direct` | Clears **any** enabled localhost WinINET (recurrence / prefer-direct policy). |
@@ -76,12 +76,63 @@ python -m src proxy-guardian --once --clear-broken --hold-direct --confirm-broke
 .\scripts\install-dead-proxy-guardian.ps1 -IntervalSeconds 15
 ```
 
+### Recurring rewrite with suspicious persistence (operator containment)
+
+Hold-direct **clears** WinINET but does **not** remove a Session-0 scheduled task / `system32` payload that keeps rewriting (example pattern: task actions with `iex (iwr …)` + `Add-MpPreference` exclusions + `VersionUpdater*` under `%WINDIR%\System32`).
+
+Use the one-command containment path (**no AI prompt required**):
+
+```powershell
+# Preview (default)
+.\contain-localhost-rewriter.cmd
+python -m src contain-localhost-rewriter --json
+
+# Live apply (elevated; typed token CONTAIN_LOCALHOST_REWRITER)
+.\contain-localhost-rewriter.cmd /APPLY
+python -m src contain-localhost-rewriter --confirm CONTAIN_LOCALHOST_REWRITER --dry-run false --json
+```
+
+| Step | Behavior |
+| ------ | ---------- |
+| Detect | Heuristic match on remote-iex tasks, Defender exclusion tasks, `system32\<non-OS>\node.exe` / `VersionUpdater*` |
+| Preview | Default — planned task delete / process stop / exclusion remove / quarantine |
+| Apply | Requires confirm `CONTAIN_LOCALHOST_REWRITER` (or `/APPLY` on the `.cmd`) |
+| After | Keep `enable-proxy-autofix.cmd` / hold-direct until `logs\proxy_guardian.jsonl` shows no further `guardian_hold_direct_apply` |
+
+**Boundaries:** Not malware attribution; not registry-writer proof; does not weaken `KILL_PROXY_PROCESS` in `safety.py` (this is a distinct operator-gated composite). WNRT guardian / boot-trace tasks and `\Microsoft\Windows\*` tasks are never targeted. Audit: `logs/rewriter_containment.jsonl`. Quarantine: `reports/quarantine/`.
+
+### Broken IPv6 + healthy IPv4 (YouTube / Edge stall)
+
+When WinINET is direct but browsers spin on YouTube/Google while `curl -4` works and `curl -6` returns `http_code=000`, classify with **network-path-health**. Prefer-IPv4 on **Wi-Fi only** is not enough if WSL/vEthernet still has IPv6, or if a running Edge process ignores `--disable-quic`.
+
+Start with the unified card so proxy-off does not false-clear a path/browser stall:
+
+```powershell
+python -m src operator-incident --json
+python -m src network-path-health --json
+.\fix-network-path.cmd /APPLY
+.\fix-browser-stall.cmd /APPLY
+.\fix-youtube.cmd
+```
+
+| Case | Meaning | Action |
+| ------ | --------- | -------- |
+| `IPV6_BROKEN_IPV4_OK` | IPv4 OK, IPv6 fail | Prefer-IPv4 on **all Up adapters** + prefix policy (`PREFER_IPV4_OVER_IPV6`) |
+| `IPV6_PARTIAL_MITIGATION` | Wi-Fi IPv6 off, other adapters still v6 | Re-apply `--all-adapters --force` |
+| `HAPPY_EYEBALLS_STALL` | `curl -4` OK but default dual-stack hangs | All-adapter Prefer-IPv4 + browser cold-start |
+| `IPV6_BROKEN_MITIGATED` | Path OK; browser may still spin | `fix-browser-stall.cmd /APPLY` (`RESTART_BROWSER_DISABLE_QUIC`) |
+| `PROXY_ENABLED_CHECK_GUARDIAN` | ProxyEnable=1 | Use guardian / contain first |
+
+Confirm tokens: `PREFER_IPV4_OVER_IPV6`, `RESTART_BROWSER_DISABLE_QUIC`.
+Audit: `logs/network_path_health.jsonl`, `logs/browser_stall.jsonl`.
+Does **not** weaken `KILL_PROXY_PROCESS` — browser restart is a separate operator-gated action.
+
 ### ChatGPT auto-fix safety (layer 0b)
 
 [auto-fix-chatgpt.ps1](chatgpt-auto-fix.md) chains layer 0 with ChatGPT scenario diagnosis and **LOW-risk only** remediations:
 
 | Boundary | Enforcement |
-|----------|-------------|
+| ---------- | ------------- |
 | Proxy HKCU mutation | Step 1 uses `DISABLE_WININET_PROXY` via `proxy-guardian` — same dead-proxy rules as layer 0 |
 | ChatGPT LOW-risk apply | Step 4 requires `APPLY_CHATGPT_LOW_RISK` for live `flush_dns`, `reset_winhttp_proxy`, `restart_chatgpt_app` |
 | MEDIUM/BLOCK tier | Firewall reset, disable firewall, process kill — **never** auto-executed |
@@ -97,6 +148,7 @@ If messages stay blank after a clean proxy path, follow manual recovery in [chat
 - WinHTTP-only or per-app proxy settings (Git, npm, `HTTP_PROXY` env vars) — see `scripts/proxy_guard/reset_proxy_safe.ps1` for broader cleanup
 - Proof of who wrote the registry key (listener correlation is not writer proof)
 - Malware or MITM — this is endpoint reliability triage, not EDR
+- **Silent** process kill via the agent/policy path (`KILL_PROXY_PROCESS` stays blocked). Operator containment of matched rewriter persistence is opt-in via `contain-localhost-rewriter` + `CONTAIN_LOCALHOST_REWRITER`.
 
 ## Install (no admin required)
 

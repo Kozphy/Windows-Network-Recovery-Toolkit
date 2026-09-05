@@ -5,7 +5,7 @@ The **Endpoint Reliability Platform** mainline detects and explains Windows prox
 These directories are **experimental** or teaching artifacts. They reuse similar patterns (observation → policy → audit) but are **not** the primary product story.
 
 | Path | Topic | Entry |
-|------|-------|-------|
+| ------ | ------- | ------- |
 | `edge_device/` | AI-edge simulation | `python -m src edge-diagnose --fixture tests/fixtures/edge/healthy.json` |
 | `src/market_events/` | Macro/crypto research signals | `python -m src.market_events calendar` |
 | `platform_core/decision_platform/` | Multi-domain adapters | `pytest tests/decision_platform` |

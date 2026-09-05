@@ -7,7 +7,7 @@ This platform separates **what we observed** from **what we tested** and **what 
 ## Definitions
 
 | Term | Meaning |
-|------|---------|
+| ------ | --------- |
 | **Observation** | Read-only facts: registry values, netstat rows, WinHTTP settings |
 | **Hypothesis** | Testable explanation for symptoms (e.g. dead WinINET proxy) |
 | **Proof attempt** | Named check with pass/fail/supported status |
@@ -54,7 +54,7 @@ Implemented in `windows_network_toolkit/proof.py`, wrapping `src/platform_core/p
 ## Proof attempts
 
 | Name | Purpose |
-|------|---------|
+| ------ | --------- |
 | `localhost_listener_check` | netstat / listener probe on configured port |
 | `wininet_winhttp_comparison` | Contrast WinINET proxy path vs WinHTTP direct |
 | `direct_connectivity_check` | Optional HTTP/TCP without proxy |
@@ -83,7 +83,7 @@ python -m windows_network_toolkit diagnose --proof --url https://example.com
 
 ## Relationship to evidence tiers
 
-Platform evidence tiers (`OBSERVED_ONLY` → `FINAL_CAUSATION`) govern **attribution strength**.  
+Platform evidence tiers (`OBSERVED_ONLY` → `FINAL_CAUSATION`) govern **attribution strength**.
 The proof envelope governs **hypothesis support for a specific symptom**.
 
 Both must align before policy allows remediation. See [evidence_model.md](evidence_model.md) and [policy_model.md](policy_model.md).

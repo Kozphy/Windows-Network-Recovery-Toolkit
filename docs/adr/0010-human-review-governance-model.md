@@ -24,7 +24,7 @@ Automation stops at preview and alert — humans authorize apply and external es
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Fully automated SOAR playbooks | Out of scope; safety and audit liability |
 | No queue — rely on operator discipline | Not demoable to Big 4 |
 | Human review only via email | Not structured in audit JSONL |

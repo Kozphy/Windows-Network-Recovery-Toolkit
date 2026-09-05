@@ -67,7 +67,7 @@ flowchart TB
 ## Layer placement (production stack)
 
 | Production layer | This project |
-|------------------|--------------|
+| ------------------ | -------------- |
 | Observability & Logs | **Primary** — audit JSONL, proxy-watch, governance KPIs |
 | Availability & Recovery | **Secondary** — dead-proxy diagnosis, gated remediation preview |
 | APIs & Backend | Optional FastAPI `/trisk/*` (read-only) |

@@ -28,7 +28,7 @@ python -m windows_network_toolkit risk-executive-report --fixture examples/lan/e
 Extended catalog: [demo-commands-reference.md](demo-commands-reference.md) · Panel demo: [interview-demo-3min.md](interview-demo-3min.md)
 
 | Step | Command |
-|------|---------|
+| ------ | --------- |
 | **Golden demo** | `make demo` |
 | Bad gateway diagnose | `python -m windows_network_toolkit bad-gateway-diagnose --url https://example.com` |
 | Audit verify | `python -m toolkit audit verify logs/canonical_decision_audit.jsonl` |

@@ -9,7 +9,7 @@ Browser shows `ERR_PROXY_CONNECTION_FAILED` while ping and DNS still work.
 ## Evidence pattern
 
 | Signal | Observed value |
-|--------|----------------|
+| -------- | ---------------- |
 | WinINET ProxyEnable | `1` (enabled) |
 | WinINET ProxyServer | `127.0.0.1:59081` |
 | Listener on port | None OR proxy HTTPS probe fails |
@@ -40,7 +40,7 @@ Browser shows `ERR_PROXY_CONNECTION_FAILED` while ping and DNS still work.
 ## Sample files
 
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `raw_proxy_status.sample.json` | Normalized proxy state snapshot |
 | `wininet_registry_export.sample.txt` | Synthetic HKCU export excerpt |
 | `winhttp_proxy.sample.txt` | WinHTTP direct-access excerpt |

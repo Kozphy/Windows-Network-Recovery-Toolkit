@@ -1,13 +1,13 @@
 # Decision Intelligence Platform — Foundry Blueprint
 
-**Role:** Palantir Forward Deployed Engineer × Technology Risk Architect  
-**Repository:** Windows Network Recovery Toolkit  
+**Role:** Palantir Forward Deployed Engineer × Technology Risk Architect
+**Repository:** Windows Network Recovery Toolkit
 **Quality bar:** Foundry-grade ontology, lineage, explainability, and governance — **not** EDR, chatbot, RAG warehouse, or autonomous remediation.
 
 **Epistemic constitution (non-negotiable):**
 
 | Principle | Platform enforcement |
-|-----------|---------------------|
+| ----------- | --------------------- |
 | **Observation ≠ Proof** | Evidence tiers T0–T4; `is_proof` flag on citations |
 | **Correlation ≠ Causation** | Hypothesis labels; blocked causal language in guardrails |
 | **Confidence ≠ Certainty** | Ordinal scores only; `confidence_semantics: ordinal_not_probability` |
@@ -41,7 +41,7 @@ The platform is a **decision intelligence layer** — like Foundry's ontology + 
 ### 2.1 Foundry-analog layers
 
 | Foundry concept | This platform | Implementation |
-|-----------------|---------------|----------------|
+| ----------------- | --------------- | ---------------- |
 | Ontology | Evidence Graph | `docs/decision-intelligence/ontology/` |
 | Pipeline | Evidence normalization → classify → score | `analytics_pipeline.py` |
 | Lineage | Domain events + audit hash chain | `src/platform_core/events/` |
@@ -128,7 +128,7 @@ flowchart LR
   API --> OBS
 ```
 
-**Today:** `docker-compose.yml` (Postgres, Redis, API, worker, Prometheus, Grafana)  
+**Today:** `docker-compose.yml` (Postgres, Redis, API, worker, Prometheus, Grafana)
 **Target:** K8s + Entra ID + immutable audit archive
 
 ---
@@ -283,7 +283,7 @@ flowchart TB
 ### 4.3 Code mapping
 
 | Component | Module |
-|-----------|--------|
+| ----------- | -------- |
 | Pipeline scorer | `windows_network_toolkit/risk_scoring_engine.py` |
 | Proof tier | `src/platform_core/governance/proof_tier.py` |
 | Fixture rating | `src/platform_core/risk/risk_rating.py` |
@@ -320,7 +320,7 @@ stateDiagram-v2
 ### 5.2 Stage definitions
 
 | Stage | Purpose | Artifact | Gate |
-|-------|---------|----------|------|
+| ------- | --------- | ---------- | ------ |
 | **Observation** | Raw signal capture | `trisk_observations` | None |
 | **Investigation** | Classify + hypothesize | `trisk_hypotheses`, incidents | Deterministic pipeline |
 | **Validation** | Control tests | `trisk_control_tests` | PASS ≠ safety guarantee |
@@ -329,8 +329,8 @@ stateDiagram-v2
 | **Audit** | Tamper evidence | `trisk_audit_logs` | Hash chain |
 | **Report** | Committee export | governance report JSON | limitations mandatory |
 
-**REVIEW_CLASSES:** `UNKNOWN_LOCAL_PROXY`, `SUSPICIOUS_PROXY`, `POSSIBLE_MITM_RISK`, `REVERTER_SUSPECTED`  
-**Module:** `src/platform_core/governance/human_review.py`  
+**REVIEW_CLASSES:** `UNKNOWN_LOCAL_PROXY`, `SUSPICIOUS_PROXY`, `POSSIBLE_MITM_RISK`, `REVERTER_SUSPECTED`
+**Module:** `src/platform_core/governance/human_review.py`
 **API:** `POST /v1/enterprise/reviews/{id}/approve`
 
 ---
@@ -397,13 +397,13 @@ flowchart TB
 ### 6.3 Copilot rules
 
 | Must do | Must not do |
-|---------|-------------|
+| --------- | ------------- |
 | Cite `evidence_id` + tier | Confirm malware/MITM |
 | State uncertainty explicitly | Recommend autonomous kill/reset |
 | Recommend **next investigative** steps | Approve remediation |
 | Pass `explanation_guardrails` | Override policy engine |
 
-**Modules:** `src/platform_core/ai_risk_analyst/` · `explanation_guardrails.py`  
+**Modules:** `src/platform_core/ai_risk_analyst/` · `explanation_guardrails.py`
 **Target API:** `POST /v1/copilot/explain/decision/{decision_id}`
 
 ---
@@ -424,7 +424,7 @@ flowchart LR
 ```
 
 | Report | Audience | Generator | Key sections |
-|--------|----------|-----------|--------------|
+| -------- | ---------- | ----------- | -------------- |
 | **Board** | C-suite / board risk committee | `governance_report.py` | Executive narrative, top themes, limitations |
 | **Audit** | Internal audit | `audit_report.py` v2 | Hash chain verify, control summary, evidence timeline |
 | **Compliance** | GRC / SOC2 workshop | `framework_mapping.md` + pack | NIST/ISO control evidence mapping |
@@ -432,8 +432,8 @@ flowchart LR
 
 ### 7.2 Power BI star schema (exists)
 
-**Facts:** `fact_incidents`, `fact_control_tests`, `fact_policy_decisions`, `fact_audit_events`, `fact_risk_decisions`  
-**Dims:** `dim_date`, `dim_classification`, `dim_proof_tier`, `dim_stakeholder` (+ `dim_tenant` target)  
+**Facts:** `fact_incidents`, `fact_control_tests`, `fact_policy_decisions`, `fact_audit_events`, `fact_risk_decisions`
+**Dims:** `dim_date`, `dim_classification`, `dim_proof_tier`, `dim_stakeholder` (+ `dim_tenant` target)
 **Export:** `src/platform_core/analytics/powerbi_star_export.py`
 
 ### 7.3 Report API (target)
@@ -490,7 +490,7 @@ Canonical envelope: [schemas/domain_event.schema.json](schemas/domain_event.sche
 ### 9.1 Lifecycle events
 
 | Event | When | Graph edge created |
-|-------|------|-------------------|
+| ------- | ------ | ------------------- |
 | `ObservationRecorded` | Raw signal ingested | Endpoint→Event |
 | `EvidenceCollected` | Normalized package stored | Event→Evidence |
 | `HypothesisProposed` | Triage label assigned | Evidence→Hypothesis |
@@ -503,7 +503,7 @@ Canonical envelope: [schemas/domain_event.schema.json](schemas/domain_event.sche
 | `GovernanceReportGenerated` | Committee export | — |
 | `ReplayCertified` | Deterministic replay pass | — |
 
-**Store:** `trisk_domain_events` + JSONL mirror  
+**Store:** `trisk_domain_events` + JSONL mirror
 **Replay:** `src/platform_core/events/replay.py`
 
 ---
@@ -513,7 +513,7 @@ Canonical envelope: [schemas/domain_event.schema.json](schemas/domain_event.sche
 ### 10.1 Surface map
 
 | Namespace | Auth | Purpose |
-|-----------|------|---------|
+| ----------- | ------ | --------- |
 | `/v1/evidence` | Token + RBAC | Ingest + read |
 | `/v1/enterprise/*` | Token + tenant | Decision services |
 | `/v1/graph/*` | Auditor+ | Evidence graph traversal |
@@ -635,7 +635,7 @@ erDiagram
 ### 12.2 Table inventory
 
 | Table | Graph node | Status |
-|-------|------------|--------|
+| ------- | ------------ | -------- |
 | `trisk_tenants` | — | ✅ |
 | `trisk_endpoints` | Endpoint | ✅ |
 | `trisk_observations` | Observation | ✅ |
@@ -679,7 +679,7 @@ CREATE TABLE trisk_ai_explanations (
 ### Q1 — Graph + Explainability Foundation
 
 | Month | Deliverable | Outcome |
-|-------|-------------|---------|
+| ------- | ------------- | --------- |
 | M1 | `trisk_graph_edges` + projector | Traversable Evidence Graph API |
 | M2 | `explainable_engine.py` unification | Factor breakdown on all risk scores |
 | M3 | Postgres RLS + `tenant_id` on events | True multi-tenant isolation |
@@ -688,7 +688,7 @@ CREATE TABLE trisk_ai_explanations (
 ### Q2 — Copilot + Lineage Hardening
 
 | Month | Deliverable | Outcome |
-|-------|-------------|---------|
+| ------- | ------------- | --------- |
 | M4 | `trisk_ai_explanations` + copilot API | Cited advisory narratives |
 | M5 | Retire JSONL dual-write | Postgres SSOT for review + audit |
 | M6 | Entra ID JWT middleware | Enterprise auth |
@@ -697,7 +697,7 @@ CREATE TABLE trisk_ai_explanations (
 ### Q3 — Multi-Endpoint + Report Factory
 
 | Month | Deliverable | Outcome |
-|-------|-------------|---------|
+| ------- | ------------- | --------- |
 | M7 | Signed fleet agent + `/v1/fleet/ingest` | Multi-endpoint at scale |
 | M8 | Browser evidence in default ingest | Playwright → pipeline |
 | M9 | Report factory: board + compliance packs | NIST/ISO automated bundles |
@@ -706,7 +706,7 @@ CREATE TABLE trisk_ai_explanations (
 ### Q4 — Production + Certification Path
 
 | Month | Deliverable | Outcome |
-|-------|-------------|---------|
+| ------- | ------------- | --------- |
 | M10 | K8s Helm chart (trisk stack) | Production deploy |
 | M11 | Scoring policy versioning + drift alerts | Explainability over time |
 | M12 | SOC2 evidence automation workshop | External audit readiness pack |
@@ -726,7 +726,7 @@ M12: Full Decision Intelligence Platform v1.0
 ## 14. Foundry-quality checklist
 
 | Criterion | Status |
-|-----------|--------|
+| ----------- | -------- |
 | Typed ontology with link types | ✅ YAML + ER diagrams |
 | Pipeline with deterministic replay | ✅ analytics_pipeline + replay |
 | Lineage on every decision | ✅ domain events + audit chain |
@@ -749,7 +749,7 @@ M12: Full Decision Intelligence Platform v1.0
 ## 16. Related documents
 
 | Document | Topic |
-|----------|-------|
+| ---------- | ------- |
 | [evidence_to_action_governance_model.md](../evidence_to_action_governance_model.md) | Six epistemic principles |
 | [domain-event-catalog.md](../domain-event-catalog.md) | Event types |
 | [control-matrix.md](../control-matrix.md) | CTRL-001–010 |

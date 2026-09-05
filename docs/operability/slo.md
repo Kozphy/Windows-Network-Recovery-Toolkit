@@ -1,7 +1,7 @@
 # SLO Targets (Prototype)
 
 | SLO | Target |
-|-----|--------|
+| ----- | -------- |
 | `diagnosis_latency_p95_ms` | < 500ms (fixture replay) |
 | `policy_evaluation_p99_ms` | < 50ms |
 | `audit_write_success_rate` | 99.9% |

@@ -5,7 +5,7 @@ Deterministic replay benchmark for the endpoint evidence analytics pipeline.
 ## Why deterministic replay matters
 
 | Audience | Value |
-|----------|-------|
+| ---------- | ------- |
 | Platform engineering | Regression tests catch classifier drift before deploy |
 | Auditability | Reviewers reproduce the same decision from stored evidence |
 | Incident review | Stable outputs support committee-ready narratives |
@@ -14,7 +14,7 @@ Deterministic replay benchmark for the endpoint evidence analytics pipeline.
 ## Metrics
 
 | Metric | Meaning |
-|--------|---------|
+| -------- | --------- |
 | `replay_count` | Pipeline runs per case |
 | `deterministic_match_rate` | Cases with identical canonical output hashes |
 | `nondeterministic_case_count` | Cases with hash mismatch across runs |

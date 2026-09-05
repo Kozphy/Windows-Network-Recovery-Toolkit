@@ -19,7 +19,7 @@ This platform treats proxy incidents as **risk decisions** with explicit uncerta
 ## Control themes
 
 | Theme | Platform answer |
-|-------|-----------------|
+| ------- | ----------------- |
 | **Identify** | 12-label classification + secondary signals |
 | **Protect** | Block destructive actions by default |
 | **Detect** | `proxy-watch`, reverter detection, timeline merge |
@@ -58,7 +58,7 @@ Workshop doc: [case-studies/dead-localhost-proxy.md](case-studies/dead-localhost
 ## Risk register items (honest)
 
 | Risk | Mitigation in platform | Residual |
-|------|------------------------|----------|
+| ------ | ------------------------ | ---------- |
 | Wrong remediation | Dry-run default, typed tokens | Operator error |
 | False MITM alert | ≥2 indicators required; limitations surfaced | Heuristic false positives |
 | Reverter respawn | `proxy-watch` + `REVERTER_SUSPECTED` | Parent process may survive |

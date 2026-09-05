@@ -24,7 +24,7 @@ docker compose up --build
 ```
 
 | Service | URL | Notes |
-|---------|-----|-------|
+| --------- | ----- | ------- |
 | API + OpenAPI | http://localhost:8000/docs | Bearer or `X-Operator-*` headers |
 | Liveness | http://localhost:8000/platform/health | Docker HEALTHCHECK target |
 | Readiness | http://localhost:8000/platform/ready | Fails 503 until startup checks pass |
@@ -38,14 +38,14 @@ docker compose up --build
 ### Compose files
 
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `docker-compose.yml` | Base stack (Postgres, API build, Prometheus, Grafana) |
 | `docker-compose.prod.yml` | **CD overlay** — API pulls `ghcr.io/<owner>/<repo>:${IMAGE_TAG}` |
 
 Required environment variables for production pull:
 
 | Variable | Example | Purpose |
-|----------|---------|---------|
+| ---------- | --------- | --------- |
 | `IMAGE_TAG` | `719b36a1b2c3...` (40-char SHA) | Immutable deploy tag — **never `latest`** |
 | `GHCR_IMAGE` | `ghcr.io/kozphy/windows-network-recovery-toolkit` | Lowercase GHCR repository path |
 
@@ -99,20 +99,20 @@ Or trigger **Actions → Deploy → Run workflow** and set `image_tag` to the pr
    - Set Postgres credentials if not using defaults
 4. **GHCR login** (if package is private):
 
-```bash
-echo "$GHCR_PAT" | docker login ghcr.io -u YOUR_GITHUB_USER --password-stdin
-```
+   ```bash
+   echo "$GHCR_PAT" | docker login ghcr.io -u YOUR_GITHUB_USER --password-stdin
+   ```
 
-Use a fine-scoped PAT with `read:packages`. Store credentials in root's docker config or a CI-managed secret on the server.
+   Use a fine-scoped PAT with `read:packages`. Store credentials in root's docker config or a CI-managed secret on the server.
 
 5. **Authorize deploy SSH key** — add the public half of `DEPLOY_SSH_KEY` to `~/.ssh/authorized_keys` for `DEPLOY_USER`.
 
 6. **First boot** (optional local build, or deploy a known SHA from GHCR):
 
-```bash
-export IMAGE_TAG=<sha-from-main> GHCR_IMAGE=ghcr.io/kozphy/windows-network-recovery-toolkit
-./scripts/deploy-compose-prod.sh
-```
+   ```bash
+   export IMAGE_TAG=<sha-from-main> GHCR_IMAGE=ghcr.io/kozphy/windows-network-recovery-toolkit
+   ./scripts/deploy-compose-prod.sh
+   ```
 
 ---
 
@@ -121,7 +121,7 @@ export IMAGE_TAG=<sha-from-main> GHCR_IMAGE=ghcr.io/kozphy/windows-network-recov
 ### Workflows
 
 | Workflow | Trigger | Purpose |
-|----------|---------|---------|
+| ---------- | --------- | --------- |
 | **Build** | Push/PR to `main`, `master`, `amd_version`, `feature/**`, `fix/**`, `ci/**` | Lint, test, build; push `ghcr.io/<owner>/<repo>:<SHA>` on non-PR |
 | **Deploy** | After successful **Build** on `main`/`master`/`amd_version`, or `workflow_dispatch` | SSH deploy with immutable `IMAGE_TAG` |
 
@@ -132,7 +132,7 @@ export IMAGE_TAG=<sha-from-main> GHCR_IMAGE=ghcr.io/kozphy/windows-network-recov
 Configure in **Settings → Secrets and variables → Actions**:
 
 | Secret | Description |
-|--------|-------------|
+| -------- | ------------- |
 | `DEPLOY_HOST` | VM hostname or IP |
 | `DEPLOY_USER` | SSH user (e.g. `deploy`) |
 | `DEPLOY_SSH_KEY` | Private key (PEM) for SSH — never logged |
@@ -206,7 +206,7 @@ Set `image.tag` to a **full git SHA**, not `latest`. See `deploy/helm/erp-platfo
 Validated via `platform_core.settings.PlatformSettings`:
 
 | Variable | Default | Purpose |
-|----------|---------|---------|
+| ---------- | --------- | --------- |
 | `PLATFORM_SAFE_MODE` | `1` | Safety-first defaults |
 | `PLATFORM_DATA_DIR` | `./platform_data` | Append-only JSONL root |
 | `PLATFORM_API_KEY` | unset | Optional Bearer auth |
@@ -221,7 +221,7 @@ Loads from repo-root `.env` and/or `backend/.env`.
 ## Linux vs Windows agents
 
 | Host | Diagnostics | Remediation |
-|------|-------------|-------------|
+| ------ | ------------- | ------------- |
 | Linux / Debian / Ubuntu / WSL | `LinuxNetworkDiagnostics` (observe-only) | Not in Linux container |
 | Windows endpoint | `WindowsNetworkDiagnostics` (WinINET/WinHTTP reads) | Policy-gated on agent; never automatic in API |
 

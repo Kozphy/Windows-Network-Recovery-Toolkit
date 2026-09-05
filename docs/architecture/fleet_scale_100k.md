@@ -9,7 +9,7 @@ Contracts: `platform_core/fleet/` · ADR: [`ADR-008`](../adr/ADR-008-fleet-scale
 ## 1. Capacity model
 
 | Assumption | Value |
-|------------|-------|
+| ------------ | ------- |
 | Endpoints | 100,000 |
 | Events / endpoint / day | 20 (telemetry + state + audit) |
 | Daily volume | **2M events/day** |
@@ -114,7 +114,7 @@ POST /platform/v3/ingest/batch
 ```
 
 | Step | Action | Failure mode |
-|------|--------|--------------|
+| ------ | -------- | -------------- |
 | 1 | JWT + tenant RBAC | 401/403 |
 | 2 | Schema validate envelope | 400 |
 | 3 | `IdempotencyStore.check_and_record` | 409 on conflict |
@@ -152,7 +152,7 @@ sequenceDiagram
 ### Topics (reference naming)
 
 | Topic | Partitions | Retention | Key |
-|-------|------------|-----------|-----|
+| ------- | ------------ | ----------- | ----- |
 | `erp.telemetry.shared` | 256 | 30d | `tenant_id:endpoint_id_hash` |
 | `erp.sre.domain.shared` | 256 | 90d | `tenant_id:incident_id` |
 | `erp.audit.signed` | 128 | 7y (tiered) | `tenant_id:decision_id` |
@@ -165,7 +165,7 @@ sequenceDiagram
 ### Consumer groups
 
 | Group | Purpose | Scale |
-|-------|---------|-------|
+| ------- | --------- | ------- |
 | `normalizer-v1` | Raw → `NormalizedPlatformEvent` | 32 workers |
 | `state-projector-v1` | Deterministic FSM projections | 32 workers |
 | `sre-incident-projector` | Incident read models | 16 workers |
@@ -182,7 +182,7 @@ partition_id = blake2b(f"{tenant_id}:{endpoint_id_hash}") % FLEET_PARTITION_COUN
 ```
 
 | Property | Guarantee |
-|----------|-----------|
+| ---------- | ----------- |
 | Per-endpoint ordering | Same `partition_key` → same partition |
 | Tenant fairness | Large tenants spread across all partitions |
 | Replay parallelism | One worker per `(tenant_id, partition_id, time_range)` |
@@ -209,7 +209,7 @@ flowchart LR
 ### Three layers
 
 | Layer | Key | Store | TTL |
-|-------|-----|-------|-----|
+| ------- | ----- | ------- | ----- |
 | HTTP | `Idempotency-Key` header | Gateway memory → Redis | 72h |
 | Envelope | `(tenant_id, producer_id, idempotency_key)` | Redis/Postgres | 72h |
 | Event | `event_id` (globally unique) | Stream log compaction | 90d |
@@ -217,7 +217,7 @@ flowchart LR
 ### Outcomes
 
 | `DedupDecision` | HTTP | Agent action |
-|-----------------|------|--------------|
+| ----------------- | ------ | -------------- |
 | `accepted` | 200 | Commit WAL |
 | `duplicate` | 200 | Commit WAL (retry OK) |
 | `conflict` | 409 | Alert + quarantine batch |
@@ -245,7 +245,7 @@ flowchart TB
 ```
 
 | Isolation | Mechanism |
-|-----------|-----------|
+| ----------- | ----------- |
 | Data plane | `tenant_id` on every envelope + stream headers |
 | Database | Postgres RLS: `tenant_id = current_setting('app.tenant_id')` |
 | Cache | Redis key prefix `t:{tenant_id}:` |
@@ -269,7 +269,7 @@ Demo headers (`X-Operator-Role`) are **replaced** by JWT claims:
 ```
 
 | Role | Ingest | Read metrics | Investigate | Replay | Postmortem | Cross-tenant |
-|------|--------|--------------|-------------|--------|------------|--------------|
+| ------ | -------- | -------------- | ------------- | -------- | ------------ | -------------- |
 | `tenant_viewer` | — | ✓ | — | — | read | — |
 | `tenant_operator` | — | ✓ | ✓ | — | read | — |
 | `tenant_admin` | — | ✓ | ✓ | ✓ | ✓ | — |
@@ -311,7 +311,7 @@ flowchart LR
 ### SLOs (100k fleet)
 
 | SLO | Target | Burn alert |
-|-----|--------|------------|
+| ----- | -------- | ------------ |
 | Ingest availability | 99.9% | 5xx > 0.1% 15m |
 | Ingest p99 latency | < 500ms | > 1s 10m |
 | Partition lag | < 60s p99 | > 300s 5m |
@@ -351,7 +351,7 @@ sequenceDiagram
 ```
 
 | Scope | Worker input | Output |
-|-------|--------------|--------|
+| ------- | -------------- | -------- |
 | `incident` | `sre.domain` events for `incident_id` | parity + postmortem input |
 | `decision_run` | telemetry + decision snapshot | policy/state/hypothesis parity |
 | `tenant_partition` | full partition time slice | projector rebuild benchmark |
@@ -363,7 +363,7 @@ Local dev: `ReplayCoordinator.run_local()` delegates to existing `TimeTravelRepl
 ## 11. Data store roles
 
 | Store | Role | Not source of truth for |
-|-------|------|-------------------------|
+| ------- | ------ | ------------------------- |
 | **Kafka/Redpanda** | Hot event log, ordering, replay input | Long-term compliance (tiered) |
 | **Postgres** | Idempotency, incident metadata, RBAC, API queries | Raw telemetry firehose |
 | **ClickHouse** | Fleet analytics, MTTR rollups, dashboards | Strong consistency writes |
@@ -377,7 +377,7 @@ Local dev: `ReplayCoordinator.run_local()` delegates to existing `TimeTravelRepl
 Existing `platform_core/sre/failure_domains.py` bulkheads extend to fleet tier:
 
 | Domain | Isolation at scale |
-|--------|-------------------|
+| -------- | ------------------- |
 | `telemetry_ingest` | Per-tenant rate limit + gateway circuit |
 | `stream_publish` | Separate cluster for enterprise tier |
 | `replay` | Dedicated worker pool; no shared CPU with ingest |
@@ -388,7 +388,7 @@ Existing `platform_core/sre/failure_domains.py` bulkheads extend to fleet tier:
 ## 13. Local vs fleet mode
 
 | `FLEET_MODE` | Behavior |
-|--------------|----------|
+| -------------- | ---------- |
 | `local` (default) | WAL → `fleet_ingest_wal.jsonl`; existing JSONL pipelines |
 | `stream` | Gateway publishes to configured `EventPublisher` adapter |
 

@@ -1,0 +1,16 @@
+{
+  "host": "fixture-host",
+  "pre_state": {"wininet_proxy": "direct", "winhttp_proxy": "direct"},
+  "post_state": {"wininet_proxy": "127.0.0.1:8080", "winhttp_proxy": "direct"},
+  "baseline_state": {"wininet_proxy": "direct", "winhttp_proxy": "direct"},
+  "telemetry_events": [
+    {
+      "source": "config_compare",
+      "event_type": "winhttp_wininet_mismatch",
+      "entity": "proxy_views",
+      "before": {"wininet_proxy": "direct", "winhttp_proxy": "direct"},
+      "after": {"wininet_proxy": "127.0.0.1:8080", "winhttp_proxy": "direct"},
+      "confidence": 0.97
+    }
+  ]
+}

@@ -31,6 +31,11 @@ def test_compute_slo_metrics_from_fixtures(tmp_path) -> None:
     assert slo.mean_time_to_explain_seconds is not None
     assert 0.0 <= slo.proof_unavailable_rate <= 1.0
     assert 0.0 <= slo.final_causation_rate <= 1.0
+    assert slo.false_clear_rate == 0.5
+    assert slo.dual_stack_ipv4_success_rate == 1.0
+    assert slo.dual_stack_ipv6_success_rate == 0.0
+    assert slo.time_to_direct_after_rewrite_seconds == 120.0
+    assert slo.slo_limitations
 
 
 def test_slo_metrics_dict_serializable(tmp_path) -> None:

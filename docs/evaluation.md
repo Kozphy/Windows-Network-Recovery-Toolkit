@@ -9,7 +9,7 @@ Harnesses: `classifier-benchmark`, `replay-benchmark`, `tests/evaluation/test_sc
 ## Metrics
 
 | Metric | Command | Target |
-|--------|---------|--------|
+| -------- | --------- | -------- |
 | Classification accuracy | `python -m windows_network_toolkit classifier-benchmark` | Primary label match on golden set |
 | Replay determinism | `python -m windows_network_toolkit replay-benchmark` | Identical outputs on re-run |
 | Safety regression | `pytest -q tests/test_policy_safety_contract.py` | Zero destructive bypass |
@@ -20,7 +20,7 @@ Harnesses: `classifier-benchmark`, `replay-benchmark`, `tests/evaluation/test_sc
 ## 15 Controlled Scenarios
 
 | ID | Description | Expected classification | Proof tier | Policy gate | Pass criteria |
-|----|-------------|----------------------|------------|-------------|---------------|
+| ---- | ------------- | ---------------------- | ------------ | ------------- | --------------- |
 | EV-001 | WinINET proxy enabled, localhost port closed | `DEAD_PROXY_CONFIG` | T2 | PREVIEW | Primary match + limitations |
 | EV-002 | WinHTTP direct, WinINET proxy enabled | `WININET_WINHTTP_MISMATCH` | T1–T2 | PREVIEW | Mismatch secondary or primary |
 | EV-003 | Known dev proxy owns localhost port | `KNOWN_DEV_PROXY` | T2 | ALLOW | Dev heuristic match |

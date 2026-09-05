@@ -37,7 +37,7 @@ for record in iter_proxy_reasoning_records():
 ## Canonical scenarios
 
 | Case ID | Pattern |
-|---------|---------|
+| --------- | --------- |
 | `CASE_WININET_PROXY_DRIFT` | WinINET on, localhost/unexpected server, WinHTTP may be direct |
 | `CASE_LOCALHOST_PROXY_LISTENER` | Loopback proxy + optional listener attribution |
 | `CASE_BROWSER_PROXY_PATH_ISSUE` | Ping/DNS ok, browser path fails, bypass may succeed |
@@ -58,7 +58,7 @@ Example record: `examples/proxy_reasoning_audit_record.json`
 ## Policy summary
 
 | Outcome | Examples |
-|---------|----------|
+| --------- | ---------- |
 | **ALLOW** | `diagnose`, `snapshot`, `remediation_preview`, confirmed low-risk `restore_proxy` |
 | **PREVIEW** | `clear_winhttp_proxy`, firewall rule cleanup preview, unverified mutations |
 | **BLOCK** | `kill`, `delete_cert`, `reset_firewall`, arbitrary shell, unlisted actions |

@@ -14,8 +14,8 @@ from src.platform_core.remediation.rollback import (
     ROLLBACK_LIMITATIONS,
     append_rollback_audit_record,
     attempt_rollback_execute,
-    build_rollback_preview_package,
     build_rollback_audit_record,
+    build_rollback_preview_package,
     can_execute_rollback,
     capture_pre_change_snapshot,
 )
@@ -31,7 +31,9 @@ def _sample_package(*, dry_run: bool = True, token: str = "") -> dict:
     )
     from src.platform_core.remediation.rollback import build_proposed_mutation_preview
 
-    mutation = build_proposed_mutation_preview(action_id="disable_wininet_proxy", endpoint_id="ep-1")
+    mutation = build_proposed_mutation_preview(
+        action_id="disable_wininet_proxy", endpoint_id="ep-1"
+    )
     return build_rollback_preview_package(
         endpoint_id="ep-1",
         incident_id="inc-1",

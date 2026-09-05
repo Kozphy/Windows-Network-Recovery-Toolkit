@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "research_dataset_sample.v1",
+  "title": "ResearchDatasetSample",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sample_id",
+    "scenario_id",
+    "os_version_category",
+    "evidence_features",
+    "ground_truth_failure",
+    "ground_truth_incident_class",
+    "severity",
+    "compound_failure",
+    "expected_action",
+    "repairable",
+    "provenance",
+    "generation_seed",
+    "split"
+  ],
+  "properties": {
+    "sample_id": { "type": "string", "minLength": 1 },
+    "scenario_id": { "type": "string", "minLength": 1 },
+    "os_version_category": {
+      "type": "string",
+      "enum": ["windows_10", "windows_11", "windows_server", "unspecified_fixture"]
+    },
+    "evidence_features": {
+      "type": "object",
+      "description": "Anonymized boolean/numeric/categorical features only."
+    },
+    "ground_truth_failure": {
+      "type": "string",
+      "description": "Taxonomy class id (F_*) when known.",
+      "pattern": "^F_[A-Z0-9_]+$"
+    },
+    "ground_truth_incident_class": {
+      "type": "string",
+      "description": "Benchmark incident class string used by experiments harness."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["none", "low", "medium", "high", "labeled", "ambiguous"]
+    },
+    "compound_failure": { "type": "boolean" },
+    "expected_action": { "type": "string" },
+    "repairable": { "type": "boolean" },
+    "provenance": { "type": "string" },
+    "generation_seed": { "type": ["integer", "null"] },
+    "split": {
+      "type": "string",
+      "enum": ["development", "held_out", "synthetic_generated"]
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

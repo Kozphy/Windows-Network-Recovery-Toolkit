@@ -12,7 +12,7 @@ Portfolio and PL-300 reviewers need dimensional analytics over incidents, contro
 
 Export star schema via `powerbi_star_export.py`:
 
-**Facts:** `fact_incidents`, `fact_control_tests`, `fact_policy_decisions`  
+**Facts:** `fact_incidents`, `fact_control_tests`, `fact_policy_decisions`
 **Dimensions:** `dim_classification`, `dim_proof_tier`, `dim_stakeholder`, `dim_date`
 
 Design choices:
@@ -27,7 +27,7 @@ Design choices:
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Single wide denormalized CSV | Poor DAX patterns; duplicate governance text |
 | Direct JSON import only | Harder PL-300 portfolio demonstration |
 | Omit policy fact table | Hides remediation gate story |

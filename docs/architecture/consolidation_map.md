@@ -1,7 +1,7 @@
 # Consolidation Map
 
 | Legacy path | Canonical path | Shim | Status |
-|-------------|----------------|------|--------|
+| ------------- | ---------------- | ------ | -------- |
 | `platform_core/evidence_model.py` | `src/platform_core/evidence/tiers.py` | Import guards from canonical | Migrated logic |
 | `platform_core/policy/engine.py` | `src/platform_core/policy/engine.py` | Re-export wrapper planned | Parallel |
 | `platform_core/audit.py` | `src/platform_core/audit/writer.py` | Legacy remains | Dual-write optional |

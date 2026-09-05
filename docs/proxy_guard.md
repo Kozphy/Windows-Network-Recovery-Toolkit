@@ -21,7 +21,7 @@ VPNs, interceptors, old dev tools, or malware may set a proxy to **loopback** on
 ### Layers you should know
 
 | Layer | What it affects | Typical tooling |
-|--------|-----------------|-----------------|
+| -------- | ----------------- | ----------------- |
 | **HKCU WinINET** (`ProxyEnable`, `ProxyServer`) | “Internet Options” user profile; many GUI apps and some WinHTTP callers indirectly | Settings app, Edge (some paths), legacy stacks |
 | **WinHTTP** (`netsh winhttp show proxy`) | Services and APIs using WinHTTP explicitly | Some Windows components, certain CLIs |
 | **Git global** (`http.proxy`, `https.proxy`) | `git clone`, `git fetch`, GitHub | `git config --global` |
@@ -33,7 +33,7 @@ VPNs, interceptors, old dev tools, or malware may set a proxy to **loopback** on
 ### Audit paths (canonical vs legacy)
 
 | Path | Role |
-|------|------|
+| ------ | ------ |
 | `reports/proxy_guard_watch.jsonl` | **Canonical** watch stream (v1 monitor + v2 proxy-guard rows). |
 | `logs/proxy_guard_pipeline_audit.jsonl` | Unified v1 pipeline detect→attribute→decide (secondary). |
 | `logs/proxy_guard_audit.jsonl` | Legacy mirror of v2 rows (compatibility). |
@@ -172,7 +172,7 @@ No firewall, routing, adapter, or certificate mutations are performed automatica
 ### Target architecture (modules)
 
 | Module | Role |
-|--------|------|
+| -------- | ------ |
 | `src/proxy_guard/registry.py` | HKCU reads via `reg query` (configurable per-query timeout) |
 | `src/proxy_guard/probes.py` | Retry/backoff wrapper for full snapshot reads |
 | `src/proxy_guard/parser.py` | Deterministic `ProxyServer` parse |
@@ -201,7 +201,7 @@ Optional JSON (see `shared/proxy_guard_service.config.example.json`) passed via 
 Environment overrides (after defaults + JSON file):
 
 | Variable | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | `PROXY_GUARD_PROBE_TIMEOUT` | Per-`reg query` timeout (seconds) |
 | `PROXY_GUARD_PROBE_MAX_ATTEMPTS` | Full snapshot retries |
 | `PROXY_GUARD_PROBE_BACKOFF` | Backoff base between attempts |
@@ -218,7 +218,7 @@ This is separate from **audit** JSONL (`--jsonl`): operational logs are for SRE 
 ### Unsafe operations (manual review)
 
 | Risk | Mitigation |
-|------|------------|
+| ------ | ------------ |
 | `--auto-rollback` / `--rollback` + `netsh winhttp` | Restores **prior** WinINET/WinHTTP literals; can disrupt apps relying on the *new* proxy until reconfigured. Opt-in; mirrored in JSONL. |
 | HKCU `reg` mutations | Affects **current user** WinINET only; replayed values come from the captured prior snapshot—may still race with MDM or security products. |
 | Default deny + wrong whitelist | Legitimate tools may be blocked; tune policy and use `allow_when_attribution_empty` / `observe_only_when_unknown_attribution` only with ops review. |
@@ -351,7 +351,7 @@ One line (pretty-printed for review):
 ### Safety model
 
 | Area | Allowed automatically | Blocked / manual |
-|------|----------------------|------------------|
+| ------ | ---------------------- | ------------------ |
 | Detection | Polling HKCU Internet Settings | — |
 | Attribution | Best-effort netstat/CIM | Perfect attribution (OS limits apply) |
 | Policy | Whitelist match on resolved `process_name` | Everything else (default deny) |

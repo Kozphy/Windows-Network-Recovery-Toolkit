@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import platform
 from pathlib import Path
 
 from src.core.windows_cli import exit_code_if_not_windows
+from src.proxy_drift.auto_fix import read_proxy_drift_status
 from src.proxy_drift.boot_trace import run_boot_trace_loop
 from src.proxy_drift.boot_trace_task import (
     install_boot_trace_task,
     preview_install_boot_trace_task,
     uninstall_boot_trace_task,
 )
+from src.proxy_drift.browser_stall import CONFIRM_RESTART_BROWSER, run_browser_stall_fix
 from src.proxy_drift.evidence_bundle import collect_evidence_bundle
 from src.proxy_drift.guardian import run_dead_proxy_guardian_loop, run_dead_proxy_guardian_once
 from src.proxy_drift.guardian_task import (
@@ -20,7 +23,18 @@ from src.proxy_drift.guardian_task import (
     preview_install_guardian_task,
     uninstall_guardian_task,
 )
+from src.proxy_drift.network_path_health import (
+    CONFIRM_PREFER_IPV4,
+    format_human,
+    run_network_path_health,
+)
+from src.proxy_drift.operator_incident_card import (
+    compose_operator_incident_card,
+    format_operator_incident_markdown,
+    load_operator_incident_fixture,
+)
 from src.proxy_drift.proxy_fix import apply_proxy_fix
+from src.proxy_drift.rewriter_containment import CONFIRM_CONTAIN, run_rewriter_containment
 from src.proxy_drift.safe_search import safe_search
 from src.proxy_drift.startup_inventory import collect_startup_inventory, format_startup_table
 from src.proxy_drift.startup_observability import (
@@ -302,7 +316,9 @@ def cmd_collect_evidence_bundle(args: argparse.Namespace) -> int:
 def cmd_startup_observability_report(args: argparse.Namespace) -> int:
     """Summarize startup observability logs for operators."""
     trace_path_arg = str(getattr(args, "trace_path", "") or "")
-    trace_path = Path(trace_path_arg) if trace_path_arg else Path.cwd() / "logs" / "proxy_boot_trace.jsonl"
+    trace_path = (
+        Path(trace_path_arg) if trace_path_arg else Path.cwd() / "logs" / "proxy_boot_trace.jsonl"
+    )
     result = summarize_boot_trace(trace_path.resolve())
     if getattr(args, "emit_json", False):
         _print_json(result)
@@ -312,6 +328,40 @@ def cmd_startup_observability_report(args: argparse.Namespace) -> int:
         print(f"Final proxy: {result.get('final_proxy_server')}")
         print(f"Delta events: {', '.join(result.get('delta_events_seen') or []) or '(none)'}")
         print(result.get("recommended_next_step") or "")
+    return 0
+
+
+def cmd_contain_localhost_rewriter(args: argparse.Namespace) -> int:
+    """Detect/preview/contain suspicious localhost rewriter persistence."""
+    if (code := exit_code_if_not_windows("contain-localhost-rewriter")) is not None:
+        return code
+    dry_run = bool(getattr(args, "dry_run", True))
+    confirm = str(getattr(args, "confirm_phrase", "") or "")
+    result = run_rewriter_containment(
+        dry_run=dry_run,
+        confirm=confirm,
+        repo_root=Path.cwd(),
+    )
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(f"Match: {result.get('match')}  Score: {result.get('score')}")
+        print(f"Signals: {', '.join(result.get('signals') or []) or '(none)'}")
+        print(f"Action: {result.get('action_taken')} — {result.get('reason')}")
+        for step in result.get("planned_steps") or []:
+            print(f"  - {step}")
+        if result.get("action_taken") == "preview_only":
+            print(
+                f"Apply: python -m src contain-localhost-rewriter "
+                f"--confirm {CONFIRM_CONTAIN} --dry-run false --json"
+            )
+        print("Audit: logs/rewriter_containment.jsonl")
+        print("Keep hold-direct: enable-proxy-autofix.cmd / reports/proxy_guardian_heartbeat.json")
+    action = str(result.get("action_taken") or "")
+    if action in {"failed", "blocked"}:
+        return 1
+    if not result.get("match"):
+        return 0
     return 0
 
 
@@ -335,7 +385,9 @@ def cmd_auto_fix_proxy(args: argparse.Namespace) -> int:
         _print_json(result)
     else:
         print(f"Outcome: {result.get('outcome')}")
-        print(f"Classification: {result.get('classification')} (legacy: {result.get('legacy_classification')})")
+        print(
+            f"Classification: {result.get('classification')} (legacy: {result.get('legacy_classification')})"
+        )
         if result.get("outcome") == "healthy":
             print("OK: Proxy path is clean. Restart your browser.")
         elif result.get("outcome") == "still_dead":
@@ -346,7 +398,9 @@ def cmd_auto_fix_proxy(args: argparse.Namespace) -> int:
                 "Re-run with --confirm PREFER_DIRECT_WININET"
             )
         elif result.get("outcome") == "localhost_proxy_active":
-            print("WARN: Localhost proxy still active — re-run with --prefer-direct --confirm PREFER_DIRECT_WININET")
+            print(
+                "WARN: Localhost proxy still active — re-run with --prefer-direct --confirm PREFER_DIRECT_WININET"
+            )
         elif result.get("outcome") == "needs_prefer_direct_confirm":
             print("WARN: prefer-direct blocked — supply --confirm PREFER_DIRECT_WININET")
         elif dry_run:
@@ -420,3 +474,105 @@ def cmd_dns_health(args: argparse.Namespace) -> int:
         for lim in result.get("limitations") or []:
             print(f"Limitation: {lim}")
     return 3 if result.get("primary_off_subnet") else 0
+
+
+def cmd_operator_incident(args: argparse.Namespace) -> int:
+    """Read-only unified incident card (fixture-first; never applies remediation)."""
+    fixture_path = str(getattr(args, "fixture", "") or "").strip()
+    if fixture_path:
+        payload = load_operator_incident_fixture(Path(fixture_path))
+    else:
+        proxy = rewriter = path_health = None
+        if platform.system() == "Windows":
+            try:
+                proxy = read_proxy_drift_status(skip_path_probe=True)
+            except OSError as exc:
+                proxy = {"classification": "INSUFFICIENT_DATA", "limitations": [str(exc)]}
+            rewriter = run_rewriter_containment(dry_run=True, confirm="", repo_root=Path.cwd())
+            path_health = run_network_path_health(
+                dry_run=True,
+                confirm="",
+                repo_root=Path.cwd(),
+            )
+        payload = compose_operator_incident_card(
+            proxy=proxy,
+            rewriter=rewriter,
+            path_health=path_health,
+        )
+    fmt = str(getattr(args, "output_format", "json") or "json")
+    if fmt == "markdown":
+        print(format_operator_incident_markdown(payload))
+    else:
+        _print_json(payload)
+    return 0
+
+
+def cmd_network_path_health(args: argparse.Namespace) -> int:
+    """Detect broken IPv6 with healthy IPv4; optional Prefer-IPv4 remediation."""
+    if (code := exit_code_if_not_windows("network-path-health")) is not None:
+        return code
+    dry_run = bool(getattr(args, "dry_run", True))
+    confirm = str(getattr(args, "confirm_phrase", "") or "")
+    interface = str(getattr(args, "interface_alias", "Wi-Fi") or "Wi-Fi")
+    result = run_network_path_health(
+        dry_run=dry_run,
+        confirm=confirm,
+        interface=interface,
+        all_adapters=bool(getattr(args, "all_adapters", True)),
+        force=bool(getattr(args, "force_prefer_ipv4", False)),
+        repo_root=Path.cwd(),
+    )
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(format_human(result))
+        if result.get("action_taken") == "preview_only":
+            print(
+                f"Apply: python -m src network-path-health "
+                f"--confirm {CONFIRM_PREFER_IPV4} --dry-run false --json"
+            )
+        print("Audit: logs/network_path_health.jsonl")
+        print("Browser stall: fix-browser-stall.cmd /APPLY (not fix-youtube.cmd alone)")
+    action = str(result.get("action_taken") or "")
+    if action in {"failed", "blocked"}:
+        return 1
+    if result.get("classification") in {
+        "IPV6_BROKEN_IPV4_OK",
+        "IPV6_PARTIAL_MITIGATION",
+        "HAPPY_EYEBALLS_STALL",
+    }:
+        return 3
+    if result.get("classification") == "PATH_UNREACHABLE":
+        return 2
+    return 0
+
+
+def cmd_fix_browser_stall(args: argparse.Namespace) -> int:
+    """Preview/apply Edge/Chrome cold-start with QUIC disabled."""
+    if (code := exit_code_if_not_windows("fix-browser-stall")) is not None:
+        return code
+    dry_run = bool(getattr(args, "dry_run", True))
+    confirm = str(getattr(args, "confirm_phrase", "") or "")
+    result = run_browser_stall_fix(
+        dry_run=dry_run,
+        confirm=confirm,
+        include_webview=bool(getattr(args, "include_webview", False)),
+        open_url=str(getattr(args, "open_url", "") or "https://www.youtube.com"),
+        repo_root=Path.cwd(),
+    )
+    if getattr(args, "emit_json", False):
+        _print_json(result)
+    else:
+        print(f"Action: {result.get('action_taken')} — {result.get('reason')}")
+        for step in result.get("planned_steps") or []:
+            print(f"  - {step}")
+        if result.get("action_taken") == "preview_only":
+            print(
+                f"Apply: python -m src fix-browser-stall "
+                f"--confirm {CONFIRM_RESTART_BROWSER} --dry-run false --json"
+            )
+        print("Audit: logs/browser_stall.jsonl")
+    action = str(result.get("action_taken") or "")
+    if action in {"failed", "blocked"}:
+        return 1
+    return 0

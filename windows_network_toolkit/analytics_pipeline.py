@@ -55,7 +55,9 @@ from windows_network_toolkit.control_tests import (
 from windows_network_toolkit.evidence_schema import (
     EvidenceEvent,
     events_to_json,
+    normalize_browser_stall,
     normalize_listener_state,
+    normalize_path_health,
     normalize_probe_result,
     normalize_proxy_change_event,
     normalize_proxy_state,
@@ -120,11 +122,19 @@ def normalize_events_from_fixture(fixture: dict[str, Any]) -> list[EvidenceEvent
         }
     if health_row:
         events.append(normalize_probe_result(health_row, source_command="proxy-health"))
+    if fixture.get("path_health"):
+        events.append(normalize_path_health(fixture["path_health"], source_command="fixture"))
+    if fixture.get("browser_stall"):
+        events.append(normalize_browser_stall(fixture["browser_stall"], source_command="fixture"))
     for item in fixture.get("timeline") or []:
         if item.get("new_state") or item.get("old_state"):
             events.append(normalize_proxy_change_event(item, source_command="proxy-watch"))
     for row in fixture.get("evidence_events") or []:
-        events.append(EvidenceEvent(**{k: v for k, v in row.items() if k in EvidenceEvent.__dataclass_fields__}))
+        events.append(
+            EvidenceEvent(
+                **{k: v for k, v in row.items() if k in EvidenceEvent.__dataclass_fields__}
+            )
+        )
     return events
 
 
@@ -135,7 +145,9 @@ def normalize_events_from_audit_rows(rows: list[dict[str, Any]]) -> list[Evidenc
         if event_type == "proxy_change":
             events.append(normalize_proxy_change_event(row, source_command="proxy-watch"))
             if row.get("health_audit"):
-                events.append(normalize_probe_result(row["health_audit"], source_command="proxy-health"))
+                events.append(
+                    normalize_probe_result(row["health_audit"], source_command="proxy-health")
+                )
             if row.get("owner"):
                 events.append(normalize_listener_state(row["owner"], source_command="proxy-owner"))
             state = row.get("new_state")
@@ -145,7 +157,10 @@ def normalize_events_from_audit_rows(rows: list[dict[str, Any]]) -> list[Evidenc
             events.append(normalize_proxy_state(row["state"], source_command="proxy-watch"))
         elif event_type == "proxy_health_check" or row.get("health"):
             events.append(normalize_probe_result(row, source_command="proxy-health"))
-        elif row.get("wininet_proxy_server") is not None or row.get("wininet_proxy_enabled") is not None:
+        elif (
+            row.get("wininet_proxy_server") is not None
+            or row.get("wininet_proxy_enabled") is not None
+        ):
             events.append(normalize_proxy_state(row, source_command="audit"))
         elif row.get("listener_found") is not None:
             events.append(normalize_listener_state(row, source_command="proxy-owner"))
@@ -233,7 +248,9 @@ def run_endpoint_analytics_pipeline(
         control_results,
         bucket=bucket,
     )
-    dashboard["charts"]["top_listener_processes"] = dashboard["charts"]["top_listener_processes"][:limit_processes]
+    dashboard["charts"]["top_listener_processes"] = dashboard["charts"]["top_listener_processes"][
+        :limit_processes
+    ]
 
     payload = {
         "schema_version": "endpoint_evidence_analytics.v1",
@@ -328,22 +345,26 @@ def render_analytics_evidence_report(payload: dict[str, Any]) -> str:
         lines.append(f"- `{row.get('outcome')}`: {row.get('count')}")
     lines.extend(["", "## Control test summary", ""])
     for ctrl in payload.get("control_tests") or []:
-        lines.append(f"- **{ctrl.get('control_id')}**: {ctrl.get('test_result')} (risk {ctrl.get('risk')})")
+        lines.append(
+            f"- **{ctrl.get('control_id')}**: {ctrl.get('test_result')} (risk {ctrl.get('risk')})"
+        )
     lines.extend(["", "## Evidence tier summary", ""])
     for row in charts.get("evidence_tiers") or []:
         lines.append(f"- `{row.get('evidence_tier')}`: {row.get('count')}")
     lines.extend(["", "## Key limitations", ""])
     for lim in payload.get("limitations") or []:
         lines.append(f"- {lim}")
-    lines.extend([
-        "",
-        "## Recommended next proof steps",
-        "",
-        "- Enable Sysmon Event ID 13 or Procmon registry trace for writer proof (T4).",
-        "- Run `proxy-watch --format human` during reproduction windows.",
-        "- Run `proxy-health --json` before any preview remediation.",
-        "- Export analytics CSV for Power BI governance dashboards.",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Recommended next proof steps",
+            "",
+            "- Enable Sysmon Event ID 13 or Procmon registry trace for writer proof (T4).",
+            "- Run `proxy-watch --format human` during reproduction windows.",
+            "- Run `proxy-health --json` before any preview remediation.",
+            "- Export analytics CSV for Power BI governance dashboards.",
+        ]
+    )
     return "\n".join(lines)
 
 

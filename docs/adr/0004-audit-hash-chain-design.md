@@ -23,7 +23,7 @@ Implementation: `src/platform_core/governance/chain_of_custody.py`, audit writer
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Unsigned JSONL only | No tamper detection |
 | Full asymmetric signatures per record | Key management burden for local toolkit |
 | Central database only | Conflicts with air-gapped / file-based audit export |

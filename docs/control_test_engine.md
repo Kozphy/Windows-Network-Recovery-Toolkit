@@ -7,7 +7,7 @@ Formal control tests for portfolio and audit-backed governance reports.
 ## Results
 
 | Result | Meaning |
-|--------|---------|
+| -------- | --------- |
 | `PASS` | Control objective met for available evidence |
 | `FAIL` | Control objective not met |
 | `EXCEPTION` | Human-approved exception (fixture-driven demo) |
@@ -16,7 +16,7 @@ Formal control tests for portfolio and audit-backed governance reports.
 ## Catalog (examples)
 
 | control_id | Objective |
-|------------|-----------|
+| ------------ | ----------- |
 | CT-AUDIT-001 | Proxy changes require audit evidence |
 | CT-REG-002 | Registry mutation requires typed confirmation |
 | CT-REM-003 | Remediation defaults to dry-run |

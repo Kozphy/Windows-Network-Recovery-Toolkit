@@ -9,7 +9,7 @@
 ## Principles (non-negotiable)
 
 | Principle | Implementation |
-|-----------|----------------|
+| ----------- | ---------------- |
 | No auto-start by default | Installers and service units are **opt-in** and documented only |
 | No background service by default | Agent loop and API server require explicit operator command |
 | Read-only commands work without admin | `version`, `principles`, `agent once --fixture`, analytics on fixtures |
@@ -21,7 +21,7 @@
 ## Distribution artifacts
 
 | Artifact | Audience | Admin required? |
-|----------|----------|-----------------|
+| ---------- | ---------- | ----------------- |
 | **Wheel** (`.whl`) | Developers, CI, pip/pipx | No for read-only CLI |
 | **pip / pipx install** | Operator workstations | No for read-only CLI |
 | **Windows zip** | Air-gapped / no-pip environments | No for read-only CLI |
@@ -110,7 +110,7 @@ pipx run windows-network-recovery-toolkit wnrt-api
 Defined in `pyproject.toml`:
 
 | Script | Module | Purpose |
-|--------|--------|---------|
+| -------- | -------- | --------- |
 | `wnrt` | `windows_network_toolkit.cli:console_main` | Main operator CLI |
 | `wnrt-api` | `backend.__main__:main` | FastAPI uvicorn launcher |
 
@@ -189,7 +189,7 @@ python -m windows_network_toolkit @args
 ### Design
 
 | Component | Role |
-|-----------|------|
+| ----------- | ------ |
 | Service name | `WNRTReadOnlyAgent` (example) |
 | Binary | `python.exe` or embedded Python from venv |
 | Arguments | `-m windows_network_toolkit agent run --interval 60` |
@@ -284,7 +284,7 @@ Linux collectors are **PARTIAL** — see [cross-platform-support.md](cross-platf
 ## Privilege matrix
 
 | Command class | Admin / elevation |
-|---------------|-------------------|
+| --------------- | ------------------- |
 | `version`, `principles`, `audit verify`, analytics on fixtures | **Not required** |
 | `agent once`, `agent health`, `agent spool-status` | **Not required** |
 | `proxy-status`, `proxy-health` (read-only) | Usually not required |

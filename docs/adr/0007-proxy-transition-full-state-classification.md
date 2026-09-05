@@ -25,7 +25,7 @@ WinINET proxy registry changes are multi-field (ProxyEnable, ProxyServer, PAC, A
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Diff-only ProxyServer field | Caused remote misclassification on removal |
 | Free-text LLM labels | Non-deterministic; audit unsafe |
 | Ignore WinHTTP in transition | Misses `WININET_WINHTTP_MISMATCH` class |

@@ -16,7 +16,6 @@ from windows_network_toolkit.analytics_pipeline import run_endpoint_analytics_pi
 from windows_network_toolkit.benchmark_quality import capture_environment_manifest
 from windows_network_toolkit.fleet_simulate import run_fleet_simulate
 
-
 DEFAULT_MEASUREMENT_CAP = 200
 
 

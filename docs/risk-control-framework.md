@@ -1,7 +1,7 @@
 # Risk Control Framework — Endpoint Proxy Technology Risk
 
-**Status:** Normative control catalog for workshops, internal audit, and portfolio demos  
-**Implementation:** `windows_network_toolkit/control_tests.py`, `src/platform_core/risk/control_test_mature.py`, `src/platform_core/governance/audit_report.py`  
+**Status:** Normative control catalog for workshops, internal audit, and portfolio demos
+**Implementation:** `windows_network_toolkit/control_tests.py`, `src/platform_core/risk/control_test_mature.py`, `src/platform_core/governance/audit_report.py`
 **Disclaimer:** Informational mapping — not SOC 2, ISO 27001, or regulatory attestation.
 
 ---
@@ -22,7 +22,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ## Control objectives (formal)
 
 | Objective ID | Statement |
-|--------------|-----------|
+| -------------- | ----------- |
 | OBJ-REL | Maintain reliable browser HTTPS access when WinINET proxy is enabled |
 | OBJ-ALIGN | WinINET and WinHTTP proxy stacks shall remain aligned per corporate policy |
 | OBJ-ATTR | Proxy configuration changes shall be attributable to a known process or approved change |
@@ -35,7 +35,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ## Control activities
 
 | Activity | Description | Primary modules |
-|----------|-------------|-----------------|
+| ---------- | ------------- | ----------------- |
 | ACT-OBSERVE | Read-only proxy state, listener, health probes | `proxy_state`, `proxy_health`, `proxy_owner` |
 | ACT-WATCH | Continuous drift detection via proxy-watch | `watch.py`, `proxy_state_machine.coalesce_proxy_events` |
 | ACT-CLASSIFY | Full-state transition and incident classification | `proxy_state_machine.py`, `incident_classifier.py` |
@@ -51,7 +51,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-001 — Dead WinINET Proxy Detection
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Detective / preventive (triage) |
 | **Objective** | Detect WinINET proxy pointing to localhost without a working forward path before remediation |
 | **Frequency** | Per incident; continuous when proxy-watch enabled |
@@ -69,7 +69,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-002 — WinINET / WinHTTP Stack Alignment
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Detective |
 | **Objective** | Identify inconsistent proxy configuration across WinINET and WinHTTP |
 | **Frequency** | Per diagnosis; quarterly sample for fleet governance |
@@ -87,7 +87,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-003 — Localhost Proxy Path Health
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Detective |
 | **Objective** | Localhost WinINET proxy must forward external HTTPS when enabled |
 | **Frequency** | Per incident involving localhost proxy |
@@ -105,7 +105,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-004 — Local Proxy Listener Governance & Attribution
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Detective / governance |
 | **Objective** | Proxy registry changes should have known, attributable owner when listener present |
 | **Frequency** | Per incident with enabled proxy |
@@ -123,7 +123,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-005 — PAC Configuration Observability
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Detective |
 | **Objective** | PAC URL changes are observable and subject to change management |
 | **Frequency** | Per PAC-related transition |
@@ -141,7 +141,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-006 — Unknown Local Proxy Triage (Non-Accusatory)
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Preventive (narrative) |
 | **Objective** | Prevent malware verdict without registry writer attribution proof |
 | **Frequency** | Per `UNKNOWN_LOCAL_PROXY` classification |
@@ -159,7 +159,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-007 — Proxy Reverter & Drift Detection
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Detective |
 | **Objective** | Detect proxy settings returning after disable without operator confirmation |
 | **Frequency** | Continuous during proxy-watch; per remediation window |
@@ -177,7 +177,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-008 — Direct vs Proxy Path Comparison
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Detective |
 | **Objective** | Compare direct HTTPS path with WinINET localhost proxy path |
 | **Frequency** | Per health audit |
@@ -195,7 +195,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-009 — Policy-Gated Safe Remediation
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Preventive |
 | **Objective** | Destructive remediation remains preview-only or requires typed confirmation |
 | **Frequency** | Every remediation attempt |
@@ -213,7 +213,7 @@ This framework defines **control objectives**, **activities**, and **test criter
 ### CTRL-010 — Audit Hash Chain & Evidence Integrity
 
 | Attribute | Value |
-|-----------|-------|
+| ----------- | ------- |
 | **Control type** | Detective / ITGC |
 | **Objective** | Decision audit trail is append-only and tamper-evident |
 | **Frequency** | Before governance export; per audit period close |
@@ -258,7 +258,7 @@ Every control test output in client-facing materials must include:
 ## Mapping to incident classes
 
 | Incident class | Primary controls exercised |
-|----------------|---------------------------|
+| ---------------- | --------------------------- |
 | `DEAD_PROXY_CONFIG` | CTRL-001, CTRL-003, CTRL-008, CTRL-004 |
 | `WININET_WINHTTP_MISMATCH` | CTRL-002 |
 | `LOCAL_PROXY_ACTIVE` | CTRL-003, CTRL-004 |

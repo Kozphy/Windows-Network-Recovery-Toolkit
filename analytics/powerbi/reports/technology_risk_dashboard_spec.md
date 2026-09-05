@@ -2,8 +2,8 @@
 
 Four-page Power BI report design for PL-300 portfolio demonstration.
 
-**Dataset:** `analytics/powerbi/data/*.csv`  
-**Model:** See [star_schema.md](../model/star_schema.md)  
+**Dataset:** `analytics/powerbi/data/*.csv`
+**Model:** See [star_schema.md](../model/star_schema.md)
 **Measures:** See [dax_measures.md](../model/dax_measures.md)
 
 ---
@@ -19,7 +19,7 @@ How many endpoint reliability incidents affect the organization, how severe are 
 ### Visuals
 
 | Visual | Fields |
-|--------|--------|
+| -------- | -------- |
 | KPI cards | Total Incidents, High Risk Rate, Preview Only Rate, Human Review Pending |
 | Clustered bar | Incidents by `classification` |
 | Donut | `risk_rating` distribution |
@@ -59,7 +59,7 @@ Is evidence strength sufficient before escalation or remediation narrative?
 ### Visuals
 
 | Visual | Fields |
-|--------|--------|
+| -------- | -------- |
 | Stacked bar | Incidents by `proof_tier` and `classification` |
 | KPI | T3 Plus Evidence Coverage |
 | Matrix | classification × proof_tier counts |
@@ -97,7 +97,7 @@ Are endpoint reliability controls operating as designed, and is remediation stay
 ### Visuals
 
 | Visual | Fields |
-|--------|--------|
+| -------- | -------- |
 | KPI cards | Control Pass Rate, Control Tests Failed, Preview Only Actions |
 | Bar | `control_test_result` by `control_name` |
 | Matrix | `control_id` × `classification` with PASS/FAIL counts |
@@ -135,7 +135,7 @@ Can we reconstruct decisions, verify audit integrity, and clear the human-review
 ### Visuals
 
 | Visual | Fields |
-|--------|--------|
+| -------- | -------- |
 | KPI | Audit Verification Pass Rate, Human Review Pending |
 | Table | Human-review queue — classification, proof_tier, recommended_action |
 | Timeline | `fact_audit_events` by `observed_at` |
@@ -165,7 +165,7 @@ Can we reconstruct decisions, verify audit integrity, and clear the human-review
 ## Global report settings
 
 | Setting | Value |
-|---------|-------|
+| --------- | ------- |
 | Theme | Corporate light + risk semantic colors (red = high ordinal risk only) |
 | Page footer | Governance disclaimer from `governance_and_security.md` |
 | Tooltip pages | Proof tier definitions, policy decision glossary |
@@ -176,7 +176,7 @@ Can we reconstruct decisions, verify audit integrity, and clear the human-review
 ## PL-300 skill mapping
 
 | PL-300 domain | This report |
-|---------------|-------------|
+| --------------- | ------------- |
 | Prepare the data | CSV import, Power Query types, date_key |
 | Model the data | Star schema relationships |
 | Visualize and analyze | Four stakeholder pages, DAX KPIs |

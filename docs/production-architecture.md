@@ -24,7 +24,7 @@ flowchart LR
 ## Component map
 
 | Layer | Module | Responsibility |
-|-------|--------|----------------|
+| ------- | -------- | ---------------- |
 | Collector | `windows_network_toolkit/cli.py` | Read-only WinINET/WinHTTP/proxy evidence |
 | Ingestion API | `backend/v1_routes.py` | Validate, idempotent store, enqueue |
 | Persistence | `backend/db/` | SQLModel tables — evidence through audit chain |

@@ -50,7 +50,7 @@ flowchart TB
 ## Domain adapters
 
 | Domain | Adapter | Primary signals |
-|--------|---------|-----------------|
+| -------- | --------- | ----------------- |
 | Windows | `WindowsAdapter` | Proxy drift, DNS, listener correlation |
 | Security | `SecurityAdapter` | Alert severity, IOC verification |
 | Cloud | `CloudAdapter` | Service health, error budget, failover |
@@ -83,7 +83,7 @@ Every `DomainAdapter.evaluate()` returns `DomainPipelineResult`:
 ## Failure modes
 
 | Failure | Symptom | Recovery |
-|---------|---------|----------|
+| --------- | --------- | ---------- |
 | Empty candidate specs | `ValueError` from `evaluate()` | Ensure adapter returns ≥1 candidate |
 | Unstable digest | Digest differs across replays | Set stable `evidence_id` on adapter evidence |
 | Unknown domain | `KeyError` from `get_adapter()` | Use `list_domains()` or `PlatformDomain` enum |
@@ -103,7 +103,7 @@ python -c "from platform_core.decision_platform import AdapterContext, PlatformD
 ## Module map
 
 | Path | Role |
-|------|------|
+| ------ | ------ |
 | `platform_core/decision_platform/` | Adapters, registry, unified models |
 | `src/decision_engine/` | Shared scoring + counterfactual engine |
 | `platform_core/outcome_learning/` | Post-decision accuracy metrics |

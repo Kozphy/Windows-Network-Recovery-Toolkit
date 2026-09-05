@@ -11,6 +11,9 @@ For **platform**, **SRE**, and **reliability** interviewers evaluating engineeri
 | Deterministic state machine | `windows_network_toolkit/proxy_state_machine.py` |
 | Fixture replay | `proxy-replay` CLI, `replay-benchmark`, `tests/test_proxy_state_transitions.py` |
 | Classifier evaluation | `classifier-benchmark` offline harness — [classifier-evaluation-report.md](classifier-evaluation-report.md) |
+| CI-gated eval | `.github/workflows/ci.yml` job `eval-benchmarks` (replay + classifier thresholds) |
+| Unified operator card | `python -m src operator-incident` — [ADR-017](adr/ADR-017-unified-operator-incident-card.md) |
+| Level honesty | [google-l11-reference.md](google-l11-reference.md) — L11 is a reference; L6–L7 is the implemented bar |
 | CI safety contracts | `tests/test_proxy_classifier_safety_contract.py`, `tests/test_policy_safety_contract.py` |
 | Hash-chained audit | `src/platform_core/governance/chain_of_custody.py` + tamper tests |
 | Human review queue | `src/platform_core/governance/human_review.py` — [human-review-workflow.md](human-review-workflow.md) |

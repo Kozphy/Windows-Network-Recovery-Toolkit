@@ -21,15 +21,31 @@ from .models import RemediationActionPreview
 
 # BLOCK tier — never auto-executed; policy BLOCK
 _BLOCKED: tuple[tuple[str, str, str], ...] = (
-    ("disable_firewall", "Disable Windows Firewall", "Disabling firewall is blocked from automated remediation."),
+    (
+        "disable_firewall",
+        "Disable Windows Firewall",
+        "Disabling firewall is blocked from automated remediation.",
+    ),
     (
         "delete_arbitrary_wfp_filters",
         "Delete arbitrary WFP filters",
         "Bulk WFP filter deletion is blocked; requires manual security review.",
     ),
-    ("kill_unknown_processes", "Kill unknown processes", "Process termination is blocked without explicit forensic workflow."),
-    ("delete_certificates", "Delete certificates", "Certificate deletion is blocked from this toolkit."),
-    ("arbitrary_shell", "Arbitrary shell execution", "Free-form shell is blocked from API/CLI remediation paths."),
+    (
+        "kill_unknown_processes",
+        "Kill unknown processes",
+        "Process termination is blocked without explicit forensic workflow.",
+    ),
+    (
+        "delete_certificates",
+        "Delete certificates",
+        "Certificate deletion is blocked from this toolkit.",
+    ),
+    (
+        "arbitrary_shell",
+        "Arbitrary shell execution",
+        "Free-form shell is blocked from API/CLI remediation paths.",
+    ),
 )
 
 # MEDIUM — preview only
@@ -49,8 +65,13 @@ _MEDIUM: tuple[tuple[str, str, str | None], ...] = (
 )
 
 # LOW — ALLOW with operator confirmation when not dry-run
-_LOW: tuple[tuple[str, str, str | None], ...] = (
-    ("flush_dns", "Flush DNS cache", "Low risk: ipconfig /flushdns (preview by default).", r"scripts\reset_dns.bat"),
+_LOW: tuple[tuple[str, str, str, str | None], ...] = (
+    (
+        "flush_dns",
+        "Flush DNS cache",
+        "Low risk: ipconfig /flushdns (preview by default).",
+        r"scripts\reset_dns.bat",
+    ),
     (
         "reset_winhttp_proxy",
         "Reset WinHTTP proxy to direct",
@@ -61,6 +82,13 @@ _LOW: tuple[tuple[str, str, str | None], ...] = (
         "restart_chatgpt_app",
         "Restart ChatGPT desktop app",
         "Low risk: close and relaunch ChatGPT.exe — does not kill arbitrary processes.",
+        None,
+    ),
+    (
+        "cold_restart_chatgpt_network_state",
+        "Cold-restart ChatGPT and quarantine Chromium network state",
+        "Confirmation-gated: stop ChatGPT.exe, rename only Network Persistent State to a "
+        "reversible backup, then relaunch. Cookies, sessions, history, and extensions are untouched.",
         None,
     ),
 )

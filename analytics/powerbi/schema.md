@@ -9,7 +9,7 @@ Detailed column definitions: [model/star_schema.md](model/star_schema.md) · Exp
 ## Tables
 
 | Table | Role |
-|-------|------|
+| ------- | ------ |
 | `fact_incidents` | One row per classified incident |
 | `fact_evidence` | Evidence events linked to incidents |
 | `fact_control_tests` | Control test PASS/FAIL rows |

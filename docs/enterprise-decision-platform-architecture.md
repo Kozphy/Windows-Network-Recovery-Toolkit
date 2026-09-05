@@ -63,7 +63,7 @@ flowchart TB
 ## Five services
 
 | Service | Responsibility | Key tables | API prefix |
-|---------|----------------|------------|------------|
+| --------- | ---------------- | ------------ | ------------ |
 | **Evidence** | Observations + structured evidence ingest | `trisk_observations`, `trisk_evidence_events` | `/v1/enterprise/observations`, `/evidence` |
 | **Classification** | Deterministic pipeline + hypothesis proposals | `trisk_hypotheses`, `trisk_incidents` | `/v1/enterprise/classify`, pipeline stage |
 | **Policy** | YAML policy packs + canonical `evaluate_policy` | `trisk_policy_packs` | `/v1/enterprise/policy/*` |
@@ -95,7 +95,7 @@ Trigger: `POST /v1/enterprise/pipeline/run`
 ## RBAC
 
 | Role | Ingest | Pipeline | Policy admin | Review | Audit read |
-|------|--------|----------|--------------|--------|------------|
+| ------ | -------- | ---------- | -------------- | -------- | ------------ |
 | `admin` | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `operator` | ✓ | ✓ | | | |
 | `risk_reviewer` | | ✓ | | ✓ | |

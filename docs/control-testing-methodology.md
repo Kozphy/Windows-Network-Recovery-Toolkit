@@ -1,7 +1,7 @@
 # Control Testing Methodology
 
-**Status:** Operational methodology for endpoint proxy control tests  
-**Modules:** `windows_network_toolkit/control_tests.py`, `src/platform_core/controls/control_test.py`, `src/platform_core/risk/control_test_mature.py`  
+**Status:** Operational methodology for endpoint proxy control tests
+**Modules:** `windows_network_toolkit/control_tests.py`, `src/platform_core/controls/control_test.py`, `src/platform_core/risk/control_test_mature.py`
 **Disclaimer:** Control tests evaluate **design effectiveness for scoped evidence** — not regulatory operating effectiveness over a full population.
 
 ---
@@ -53,7 +53,7 @@ python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/r
 ## Outcome semantics
 
 | Outcome | Meaning | Audit language |
-|---------|---------|----------------|
+| --------- | --------- | ---------------- |
 | **PASS** | Control objective met for scoped evidence | "Control operated as designed for this incident scope." |
 | **FAIL** | Control objective not met — action or review needed | "Control gap identified — see evidence and recommendation." |
 | **PARTIAL** | Some evidence present; proof incomplete | "Additional evidence required — see limitations." |
@@ -73,7 +73,7 @@ python -m windows_network_toolkit governance-report --audit-dir tests/fixtures/r
 From `run_endpoint_control_tests()` — stable order:
 
 | Order | control_id | CTRL framework |
-|-------|------------|----------------|
+| ------- | ------------ | ---------------- |
 | 1 | `WININET_LOCALHOST_PROXY_HEALTH` | CTRL-001, CTRL-003 |
 | 2 | `WININET_PROXY_OWNER_VERIFICATION` | CTRL-004 |
 | 3 | `PROXY_REVERTER_DETECTION` | CTRL-007 |
@@ -84,7 +84,7 @@ From `run_endpoint_control_tests()` — stable order:
 ### Inputs per test
 
 | Test | Required inputs |
-|------|-----------------|
+| ------ | ----------------- |
 | Localhost health | `proxy_state`, `health_audit` |
 | Owner verification | `proxy_state`, `owner`, optional `health_audit` |
 | Reverter | `reverter_diagnosis` |
@@ -99,7 +99,7 @@ From `run_endpoint_control_tests()` — stable order:
 `map_control_tests_from_incident()` refines outcomes based on `incident.incident_class`:
 
 | Incident class | Refinement behavior |
-|--------------|---------------------|
+| -------------- | --------------------- |
 | `DEAD_PROXY_CONFIG` | Forces FAIL on localhost health |
 | `LOCAL_PROXY_ACTIVE`, `UNKNOWN_LOCAL_PROXY` | Owner PASS only if T4 writer proof in events |
 | `DIRECT_ONLY_WORKS`, `BOTH_DIRECT_AND_PROXY_FAIL` | Path comparison FAIL |
@@ -187,7 +187,7 @@ This methodology is **per-incident**. Fleet-wide operating effectiveness require
 `risk_scoring_engine` aggregates control outcomes:
 
 | Aggregate | Score impact |
-|-----------|--------------|
+| ----------- | -------------- |
 | FAIL | Increases score; triggers `human_review_recommended` |
 | PARTIAL | Moderate increase |
 | PASS | Neutral or slight decrease |
@@ -198,7 +198,7 @@ This methodology is **per-incident**. Fleet-wide operating effectiveness require
 ## CI vs live Windows
 
 | Environment | Behavior |
-|-------------|----------|
+| ------------- | ---------- |
 | Linux CI | Golden fixtures drive PASS/FAIL/PARTIAL deterministically |
 | Windows live | Registry reads, netstat, HTTPS probes — network dependent |
 | Air-gapped | Fixture mode only; mark path controls PARTIAL or NOT_TESTED |

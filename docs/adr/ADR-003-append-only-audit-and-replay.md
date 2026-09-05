@@ -23,7 +23,7 @@ Incident review requires knowing **what was observed**, **what was inferred**, a
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | SQLite mutable audit table | Harder to treat as event stream; merge conflicts in demos |
 | Re-run live probes on replay | Non-deterministic; unsafe on contested hosts |
 | No audit for previews | Loses accountability for near-miss execute attempts |

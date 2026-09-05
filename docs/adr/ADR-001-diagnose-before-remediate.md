@@ -21,7 +21,7 @@ All remediation paths must be preceded by read-only diagnosis that produces stru
 ## Alternatives considered
 
 | Alternative | Why rejected |
-|-------------|--------------|
+| ------------- | -------------- |
 | Auto-repair on high confidence | Violates safety posture; confidence is ordinal, not calibrated probability |
 | Single “fix network” button | Hides layer separation and policy gates |
 | Cloud-only diagnosis | Conflicts with local-first, air-gapped operator requirements |

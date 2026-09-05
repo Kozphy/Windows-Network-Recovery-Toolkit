@@ -43,7 +43,7 @@ In the UI, set **FastAPI Base URL** to `http://localhost:8010`.
 ## Safety boundaries
 
 | Operation | Risk | Gate |
-|-----------|------|------|
+| ----------- | ------ | ------ |
 | `POST /diagnose` | Read-only probes | None beyond API reachability |
 | `POST /repair/preview` | Shows commands only | No execution |
 | `POST /repair/execute` | **May run host shell commands** | Requires `confirm: true` in JSON body |

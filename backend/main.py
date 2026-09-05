@@ -57,6 +57,7 @@ except ImportError:  # pragma: no cover - optional Stripe SDK for SaaS demo rout
     def verify_webhook(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
         raise RuntimeError("stripe package not installed")
 
+
 from .engine import DiagnoseInput, classify_root_cause, detect_anomaly
 from .jwt_auth import AuthUser, get_current_user
 from .legacy_sqlite import (
@@ -230,8 +231,14 @@ app = FastAPI(
     ),
     version=_settings.service_version,
     openapi_tags=[
-        {"name": "platform", "description": "Fleet, incidents, correlation, policy-gated remediation"},
-        {"name": "platform-v2", "description": "Versioned reliability pipeline (events, state, replay)"},
+        {
+            "name": "platform",
+            "description": "Fleet, incidents, correlation, policy-gated remediation",
+        },
+        {
+            "name": "platform-v2",
+            "description": "Versioned reliability pipeline (events, state, replay)",
+        },
         {"name": "platform-sre", "description": "SRE incidents, RCA, MTTR, postmortems"},
         {"name": "platform-fleet", "description": "Fleet-scale ingest, dedup, partition replay"},
         {
@@ -306,7 +313,11 @@ try:
     app.include_router(erp_platform_router)
     _DASHBOARD_DIR = _REPO_ROOT_MAIN / "windows_network_toolkit" / "platform" / "dashboard"
     if _DASHBOARD_DIR.is_dir():
-        app.mount("/dashboard", StaticFiles(directory=str(_DASHBOARD_DIR), html=True), name="erp-dashboard")
+        app.mount(
+            "/dashboard",
+            StaticFiles(directory=str(_DASHBOARD_DIR), html=True),
+            name="erp-dashboard",
+        )
 except ImportError:  # pragma: no cover
     pass
 
@@ -394,7 +405,9 @@ def prometheus_metrics() -> Response:
     except ImportError:  # pragma: no cover
         pass
     try:
-        from src.platform_core.operability.metrics_registry import render_prometheus_text as render_operability_metrics
+        from src.platform_core.operability.metrics_registry import (
+            render_prometheus_text as render_operability_metrics,
+        )
 
         operability = render_operability_metrics()
         if operability:

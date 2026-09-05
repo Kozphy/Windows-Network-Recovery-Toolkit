@@ -5,14 +5,14 @@
 ## Local JSONL audit
 
 | Data | Default retention | Notes |
-|------|-------------------|-------|
+| ------ | ------------------- | ------- |
 | `audit.jsonl`, `incidents.jsonl` | Until operator deletes | Append-only; hash chain |
 | `human_review.jsonl` | Same as audit dir | Governance decisions |
 
 ## Postgres (demo stack)
 
 | Table | Default | Production gap |
-|-------|---------|----------------|
+| ------- | --------- | ---------------- |
 | `trisk_evidence_events` | Docker volume lifetime | No automated purge in demo |
 | Incidents, controls, audit chain | Co-retained with evidence | Enterprise: tiered retention + legal hold |
 

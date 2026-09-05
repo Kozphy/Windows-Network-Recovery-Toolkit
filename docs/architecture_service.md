@@ -5,7 +5,7 @@ This document describes the **containerized Endpoint Reliability Platform servic
 ## Epistemic boundaries (non-negotiable)
 
 | Principle | Meaning in this service |
-|-----------|-------------------------|
+| ----------- | ------------------------- |
 | **Observation != Proof** | DNS, proxy registry reads, and listener hints are labeled `observation` — not writer proof. |
 | **Correlation != Causation** | The correlation engine ranks hypotheses; it does not assert root cause. |
 | **Policy ALLOW != Safety Guarantee** | `ALLOW` means the policy registry permits a *human-gated* preview/execute path — not autonomous repair. |
@@ -105,7 +105,7 @@ Optional extensions (dashboard, Loki, Promtail): `docker-compose.full.yml`.
 ## Module map
 
 | Module | Responsibility |
-|--------|----------------|
+| -------- | ---------------- |
 | `platform_core/settings.py` | Typed env + `.env` validation |
 | `platform_core/startup_checks.py` | Dependency / filesystem / config checks |
 | `platform_core/network_diagnostics/` | OS abstraction (Windows vs Linux) |
@@ -119,7 +119,7 @@ Optional extensions (dashboard, Loki, Promtail): `docker-compose.full.yml`.
 ## Health vs readiness
 
 | Endpoint | Purpose | HTTP when unhealthy |
-|----------|---------|---------------------|
+| ---------- | --------- | --------------------- |
 | `GET /platform/health` | **Liveness** — process up, safety flags | Always 200 if reachable |
 | `GET /platform/ready` | **Readiness** — startup checks passed | 503 with check details |
 | `GET /metrics` | Prometheus scrape | 200 |
@@ -130,6 +130,6 @@ Docker `HEALTHCHECK` uses **liveness** (`/platform/health`). Orchestrators may g
 
 ## Related docs
 
-- [production_deployment.md](production_deployment.md) — commands and env vars  
-- [production_readiness.md](production_readiness.md) — safety checklist  
-- [operator_safety.md](operator_safety.md) — human approval model  
+- [production_deployment.md](production_deployment.md) — commands and env vars
+- [production_readiness.md](production_readiness.md) — safety checklist
+- [operator_safety.md](operator_safety.md) — human approval model

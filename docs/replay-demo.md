@@ -16,14 +16,14 @@ python -m windows_network_toolkit proxy-replay --input tests/fixtures/proxy_tran
 
 **Expected summary fields:**
 
-- `coalesced_event_count` — merged transitions  
-- `reverter_loop_detected: true` — for flapping fixture  
-- `controls[]` — Big 4 audit controls (PASS/FAIL)  
+- `coalesced_event_count` — merged transitions
+- `reverter_loop_detected: true` — for flapping fixture
+- `controls[]` — Big 4 audit controls (PASS/FAIL)
 
 ## Fixture library
 
 | Fixture | Teaches |
-|---------|---------|
+| --------- | --------- |
 | `localhost_proxy_removed.json` | Empty ProxyServer ≠ remote proxy |
 | `localhost_proxy_disabled_and_removed.json` | Coalesced disable + removal |
 | `localhost_to_remote_proxy.json` | Remote transition when after server non-empty |
@@ -40,15 +40,15 @@ Same input → same `transition_class`, `event_id`, and `primary_classification`
 
 ## What replay proves
 
-- Classifier is **pure** and **fixture-testable**  
-- Coalescing merges rapid sub-events  
-- Safety violations are empty for removal fixtures  
+- Classifier is **pure** and **fixture-testable**
+- Coalescing merges rapid sub-events
+- Safety violations are empty for removal fixtures
 
 ## What replay does not prove
 
-- Registry writer identity  
-- Live network path on your machine  
-- That remediation was applied or stayed sticky  
+- Registry writer identity
+- Live network path on your machine
+- That remediation was applied or stayed sticky
 
 ## Related
 

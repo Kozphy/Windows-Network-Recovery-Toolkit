@@ -68,6 +68,9 @@ class SignalBundle:
     chatgpt_process_detected: bool
     electron_process_detected: bool
     vpn_adapter_hint: bool
+    chatgpt_process_count: int | None = None
+    chatgpt_network_state_file_count: int | None = None
+    chatgpt_network_state_locations: tuple[str, ...] = ()
     collector_notes: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
@@ -87,6 +90,9 @@ class SignalBundle:
             "chatgpt_process_detected": self.chatgpt_process_detected,
             "electron_process_detected": self.electron_process_detected,
             "vpn_adapter_hint": self.vpn_adapter_hint,
+            "chatgpt_process_count": self.chatgpt_process_count,
+            "chatgpt_network_state_file_count": self.chatgpt_network_state_file_count,
+            "chatgpt_network_state_locations": list(self.chatgpt_network_state_locations),
             "collector_notes": list(self.collector_notes),
         }
 

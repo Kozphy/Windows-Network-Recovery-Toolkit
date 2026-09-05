@@ -90,7 +90,9 @@ def default_endpoint_id() -> str:
         return "local-endpoint"
 
 
-def normalize_proxy_state(raw: dict[str, Any], *, source_command: str = "proxy-status") -> EvidenceEvent:
+def normalize_proxy_state(
+    raw: dict[str, Any], *, source_command: str = "proxy-status"
+) -> EvidenceEvent:
     ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
     endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
     enabled = bool(raw.get("wininet_proxy_enabled") or raw.get("proxy_enable"))
@@ -99,7 +101,9 @@ def normalize_proxy_state(raw: dict[str, Any], *, source_command: str = "proxy-s
     normalized = {
         "wininet_proxy_enabled": enabled,
         "wininet_proxy_server": server,
-        "wininet_auto_config_url": str(raw.get("wininet_auto_config_url") or raw.get("auto_config_url") or ""),
+        "wininet_auto_config_url": str(
+            raw.get("wininet_auto_config_url") or raw.get("auto_config_url") or ""
+        ),
         "winhttp_direct_access": winhttp_direct,
         "localhost_port": raw.get("localhost_port"),
         "wininet_winhttp_mismatch": bool(enabled and winhttp_direct),
@@ -119,7 +123,9 @@ def normalize_proxy_state(raw: dict[str, Any], *, source_command: str = "proxy-s
     )
 
 
-def normalize_listener_state(raw: dict[str, Any], *, source_command: str = "proxy-owner") -> EvidenceEvent:
+def normalize_listener_state(
+    raw: dict[str, Any], *, source_command: str = "proxy-owner"
+) -> EvidenceEvent:
     ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
     endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
     proc = raw.get("process") if isinstance(raw.get("process"), dict) else {}
@@ -151,7 +157,9 @@ def normalize_listener_state(raw: dict[str, Any], *, source_command: str = "prox
     )
 
 
-def normalize_probe_result(raw: dict[str, Any], *, source_command: str = "proxy-health") -> EvidenceEvent:
+def normalize_probe_result(
+    raw: dict[str, Any], *, source_command: str = "proxy-health"
+) -> EvidenceEvent:
     ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
     endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
     health = raw.get("health") if isinstance(raw.get("health"), dict) else raw
@@ -183,7 +191,9 @@ def normalize_probe_result(raw: dict[str, Any], *, source_command: str = "proxy-
     )
 
 
-def normalize_proxy_change_event(raw: dict[str, Any], *, source_command: str = "proxy-watch") -> EvidenceEvent:
+def normalize_proxy_change_event(
+    raw: dict[str, Any], *, source_command: str = "proxy-watch"
+) -> EvidenceEvent:
     ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
     endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
     old_state = raw.get("old_state") or raw.get("before") or {}
@@ -216,6 +226,63 @@ def normalize_proxy_change_event(raw: dict[str, Any], *, source_command: str = "
     )
 
 
+def normalize_path_health(
+    raw: dict[str, Any], *, source_command: str = "network-path-health"
+) -> EvidenceEvent:
+    """Normalize dual-stack path-health observation (T3 path evidence)."""
+    ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
+    endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
+    classification = str(raw.get("classification") or "")
+    normalized = {
+        "classification": classification,
+        "match_broken_ipv6": bool(raw.get("match_broken_ipv6")),
+        "happy_eyeballs_stall": bool(raw.get("happy_eyeballs_stall")),
+        "mitigated": bool(raw.get("mitigated")),
+        "proxy_enable": raw.get("proxy_enable"),
+    }
+    return EvidenceEvent(
+        event_id=make_event_id(ts, "path_health", {"classification": classification}),
+        timestamp_utc=ts,
+        endpoint_id=str(endpoint_id) if endpoint_id else None,
+        evidence_type="path_health",
+        source_command=source_command,
+        raw_snapshot=dict(raw),
+        normalized_fields=normalized,
+        evidence_tier=EvidenceTier.T3_PATH_EVIDENCE.value,
+        evidence_summary=f"path_health={classification or 'unknown'}",
+        limitations=list(STANDARD_LIMITATIONS)
+        + [
+            "IPv4-ok + IPv6-fail is path observation — not proof of ISP root cause.",
+        ],
+    )
+
+
+def normalize_browser_stall(
+    raw: dict[str, Any], *, source_command: str = "fix-browser-stall"
+) -> EvidenceEvent:
+    """Normalize browser QUIC/stall observation (T3 path evidence)."""
+    ts = str(raw.get("timestamp_utc") or raw.get("timestamp") or "")
+    endpoint_id = raw.get("endpoint_id") or default_endpoint_id()
+    classification = str(raw.get("classification") or "BROWSER_QUIC_STALL")
+    normalized = {
+        "classification": classification,
+        "action_taken": raw.get("action_taken"),
+    }
+    return EvidenceEvent(
+        event_id=make_event_id(ts, "browser_stall", {"classification": classification}),
+        timestamp_utc=ts,
+        endpoint_id=str(endpoint_id) if endpoint_id else None,
+        evidence_type="browser_stall",
+        source_command=source_command,
+        raw_snapshot=dict(raw),
+        normalized_fields=normalized,
+        evidence_tier=EvidenceTier.T3_PATH_EVIDENCE.value,
+        evidence_summary=f"browser_stall={classification}",
+        limitations=list(STANDARD_LIMITATIONS)
+        + ["Browser QUIC stall is observation — restart is policy-gated, not proof of malware."],
+    )
+
+
 def events_to_json(events: list[EvidenceEvent]) -> list[dict[str, Any]]:
     return [e.to_dict() for e in events]
 
@@ -223,5 +290,9 @@ def events_to_json(events: list[EvidenceEvent]) -> list[dict[str, Any]]:
 def events_from_dicts(rows: list[dict[str, Any]]) -> list[EvidenceEvent]:
     out: list[EvidenceEvent] = []
     for row in rows:
-        out.append(EvidenceEvent(**{k: v for k, v in row.items() if k in EvidenceEvent.__dataclass_fields__}))
+        out.append(
+            EvidenceEvent(
+                **{k: v for k, v in row.items() if k in EvidenceEvent.__dataclass_fields__}
+            )
+        )
     return out

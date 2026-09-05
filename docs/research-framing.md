@@ -23,7 +23,7 @@ Organizations treat proxy drift, dead localhost listeners, and WinINET/WinHTTP m
 ## Methodology
 
 | Phase | Activity |
-|-------|----------|
+| ------- | ---------- |
 | Observe | Read-only collectors (WinINET, WinHTTP, netstat, optional TLS/browser) |
 | Normalize | Fixture-safe JSON evidence packages |
 | Classify | Rule engine (`src/platform_core/classification/engine.py`) |

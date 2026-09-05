@@ -12,7 +12,7 @@ make prod-demo-health
 ## Services
 
 | Service | Port | Role |
-|---------|------|------|
+| --------- | ------ | ------ |
 | postgres | 5432 | Platform + decision intelligence + `trisk` schema (`03_trisk_schema.sql`) |
 | redis | 6379 | RQ job queue |
 | api | 8000 | FastAPI — `/platform/*`, `/trisk/*`, `/v1/*` |
@@ -23,7 +23,7 @@ make prod-demo-health
 ## Environment
 
 | Variable | Default | Purpose |
-|----------|---------|---------|
+| ---------- | --------- | --------- |
 | `TRISK_DATABASE_URL` | postgres DSN | SQLModel persistence |
 | `REDIS_URL` | `redis://redis:6379/0` | Queue |
 | `QUEUE_BACKEND` | `rq` | Use RQ (CI uses `memory`) |

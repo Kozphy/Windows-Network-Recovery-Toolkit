@@ -15,7 +15,7 @@ Browser shows `ERR_PROXY_CONNECTION_FAILED`; ping and DNS still succeed.
 ## Known / Not proven
 
 | Known | Not proven |
-|-------|------------|
+| ------- | ------------ |
 | Stale WinINET proxy points at dead localhost port | Malware or MITM |
 | Browser path fails while ICMP/DNS may work | Which process last wrote the proxy key |
 

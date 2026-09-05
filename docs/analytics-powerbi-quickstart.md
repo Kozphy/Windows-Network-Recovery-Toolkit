@@ -24,7 +24,7 @@ python -m windows_network_toolkit governance-report `
 ## Documentation
 
 | Doc | Topic |
-|-----|-------|
+| ----- | ------- |
 | [../analytics/powerbi/schema.md](../analytics/powerbi/schema.md) | Star-schema tables |
 | [../analytics/powerbi/report_blueprint.md](../analytics/powerbi/report_blueprint.md) | Four-page blueprint |
 | [control-matrix.md](control-matrix.md) | CTRL-001–010 |

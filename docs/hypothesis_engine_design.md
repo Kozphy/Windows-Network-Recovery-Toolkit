@@ -1,7 +1,7 @@
 # Hypothesis Engine Design — Security Detection Engineering
 
-**Status:** Design + reference implementation  
-**Module:** `src/platform_core/hypothesis/`  
+**Status:** Design + reference implementation
+**Module:** `src/platform_core/hypothesis/`
 **Audience:** Detection engineers, incident responders, platform engineers
 
 ---
@@ -13,7 +13,7 @@ The Hypothesis Engine transforms **four evidence domains** into **competing, cit
 ### Inputs
 
 | Domain | Examples |
-|--------|----------|
+| -------- | ---------- |
 | **Registry** | ProxyEnable, ProxyServer, WinHTTP direct, Sysmon E13 writer |
 | **Process** | Listener PID, process name, signature, known-dev allowlist |
 | **Timeline** | Ordered signals (proxy drift → browser fail → direct path OK) |
@@ -22,7 +22,7 @@ The Hypothesis Engine transforms **four evidence domains** into **competing, cit
 ### Outputs (per hypothesis)
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | **Hypothesis** | Cautious explanation — not a verdict |
 | **Confidence** | Ordinal 0.10–0.98 (capped) |
 | **Supporting Evidence** | Cited refs with tier + observation/proof flag |
@@ -107,7 +107,7 @@ MultievidenceInput
 ### 3.2 Signal derivation (examples)
 
 | Signal | Derivation |
-|--------|------------|
+| -------- | ------------ |
 | `proxy_enabled` | `registry.proxy_enable == 1` |
 | `localhost_proxy` | ProxyServer contains 127.0.0.1 / localhost |
 | `listener_absent` | `process.listener_found == False` |
@@ -121,7 +121,7 @@ MultievidenceInput
 ### 3.3 Scenario library
 
 | hypothesis_id | incident_type | base_rank |
-|---------------|---------------|-----------|
+| --------------- | --------------- | ----------- |
 | hyp-dead-wininet-proxy | DEAD_PROXY_CONFIG | high |
 | hyp-unknown-local-listener | UNKNOWN_LOCAL_PROXY | low |
 | hyp-dns-ok-browser-fail | DNS_OK_BROWSER_FAIL | medium |
@@ -151,13 +151,13 @@ rank  = high if ≥0.80 | medium if ≥0.58 | else low
 ```
 
 | base_rank | Base score |
-|-----------|------------|
+| ----------- | ------------ |
 | low | 0.45 |
 | medium | 0.72 |
 | high | 0.88 |
 
 | Evidence tier | Bonus |
-|---------------|-------|
+| --------------- | ------- |
 | OBSERVED_ONLY | 0.00 |
 | CORRELATED | 0.04 |
 | PROVEN_REGISTRY_WRITER | 0.08 |
@@ -246,7 +246,7 @@ rank  = high if ≥0.80 | medium if ≥0.58 | else low
 ## 6. Test cases
 
 | Test | Asserts |
-|------|---------|
+| ------ | --------- |
 | `test_cs1_dead_proxy_primary_hypothesis` | DEAD_PROXY_CONFIG, confidence ≤ 0.98, missing writer telemetry |
 | `test_always_provides_competing_hypotheses` | ≥2 distinct hypothesis titles |
 | `test_observation_separated_from_proof` | OBSERVED_ONLY refs have `is_proof=False` |
@@ -267,7 +267,7 @@ pytest -q tests/test_hypothesis_engine_multievidence.py
 ## 7. Integration points
 
 | Consumer | Usage |
-|----------|-------|
+| ---------- | ------- |
 | Investigation orchestrator | `evaluate_hypotheses()` after proof envelope |
 | RAG retrieval | Index `hypothesis_id` + `incident_type` as metadata |
 | Policy engine | `recommended_actions` → preview only |

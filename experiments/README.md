@@ -1,10 +1,42 @@
 # Experiments
 
-This directory defines the reproducible evaluation workflow for the Technology Risk & Control Analytics Platform.
+Reproducible evaluation workflow for the Technology Risk & Control Analytics Platform. Research questions: [`../RESEARCH.md`](../RESEARCH.md).
 
-The experiments are intended to answer research questions from [`../RESEARCH.md`](../RESEARCH.md). They must not be used to manufacture impressive metrics. Raw outputs, failures, and negative results are part of the evidence.
+## Frozen experimental contract (v1)
 
-## Directory contract
+```text
+experiments/
+  manifest.schema.json       # JSON schema for manifests
+  manifests/v1.json          # Default B0–B3 benchmark manifest
+  configs/v1.json            # Smoke config (8-case limit)
+  contract.py                # ExperimentManifest + ExperimentRunRecord
+  raw_results/<run_id>/      # predictions.csv, run_records.csv
+  processed_results/<run_id>/ # metrics.csv, latency.csv
+  results/<run_id>/          # Full artifact bundle + latest/
+```
+
+**Run:**
+
+```powershell
+python -m experiments.run_benchmark --manifest experiments/manifests/v1.json
+python -m experiments.run_all   # benchmark + datasets export + research docs + interactions
+```
+
+Every run records: `experiment_id`, git SHA, dataset version, manifest version, seed, per-scenario predictions, and bootstrap CIs in `benchmarks/bootstrap_ci.csv`.
+
+**Visualize:**
+
+```powershell
+python -m experiments.viz --open   # HTML dashboard + Power BI CSV export
+```
+
+See [`../analytics/powerbi/research/README.md`](../analytics/powerbi/research/README.md) for Power BI Desktop import.
+
+See [`../REPRODUCING.md`](../REPRODUCING.md) for full reproduction steps.
+
+---
+
+## Directory contract (legacy reference)
 
 ```text
 experiments/

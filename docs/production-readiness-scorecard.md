@@ -3,7 +3,7 @@
 Weighted self-assessment for senior reviewer conversations. **Not a certification.**
 
 | Area | Weight | Current (portfolio) | Target (enterprise) | Score /10 |
-|------|--------|---------------------|---------------------|-----------|
+| ------ | -------- | --------------------- | --------------------- | ----------- |
 | Durable storage | 15% | Postgres + SQLModel `/v1` | Multi-AZ, backups | 6 |
 | Async processing | 15% | RQ + abstraction | K8s autoscale workers | 6 |
 | Fleet ingestion | 10% | `/v1/evidence` + fleet-benchmark | Signed agent fleet | 5 |

@@ -1,7 +1,7 @@
 # Security review pack
 
-**Status:** Portfolio / pre-production security posture — local-first endpoint reliability platform.  
-**Audience:** Internal audit, IT risk, platform engineering, security reviewers.  
+**Status:** Portfolio / pre-production security posture — local-first endpoint reliability platform.
+**Audience:** Internal audit, IT risk, platform engineering, security reviewers.
 **Last reviewed:** Phase 7 enterprise hardening.
 
 **Related:** [threat-model.md](threat-model.md) · [security_boundaries.md](security_boundaries.md) · [security-abuse-cases.md](security-abuse-cases.md) · [AGENTS.md](../AGENTS.md)
@@ -12,19 +12,19 @@
 
 This toolkit is a **local-first evidence and policy-gated remediation preview** system. It is **not** antivirus, EDR, XDR, or autonomous containment. Security design prioritizes:
 
-1. **Dry-run by default** for state-changing operations  
-2. **Typed human confirmation** before allowlisted registry/network mutations  
-3. **Hard-blocked destructive actions** (process kill, firewall reset, adapter disable, WinHTTP modify)  
-4. **AI advisory only** — models cannot authorize execution  
-5. **Append-only hash-chained audit** for tamper detection on local JSONL  
-6. **Explicit limitations[]** on classifications and exports  
+1. **Dry-run by default** for state-changing operations
+2. **Typed human confirmation** before allowlisted registry/network mutations
+3. **Hard-blocked destructive actions** (process kill, firewall reset, adapter disable, WinHTTP modify)
+4. **AI advisory only** — models cannot authorize execution
+5. **Append-only hash-chained audit** for tamper detection on local JSONL
+6. **Explicit limitations[]** on classifications and exports
 
 ---
 
 ## 1. Assets
 
 | Asset | Location / form | Sensitivity |
-|-------|-----------------|-------------|
+| ------- | ----------------- | ------------- |
 | Endpoint proxy/registry observations | CLI output, spool JSONL, `platform_data/` | Operational — may reveal misconfig |
 | Audit / decision JSONL | `logs/`, `.audit/`, `platform_data/audit.jsonl` | Governance — tamper-evident |
 | Agent spool | `.audit/agent-spool.jsonl` | Read-only evidence rows |
@@ -66,7 +66,7 @@ This toolkit is a **local-first evidence and policy-gated remediation preview** 
 ```
 
 | Boundary | Trust assumption |
-|----------|------------------|
+| ---------- | ------------------ |
 | Operator → CLI | Human supplies confirmation; CLI validates exact phrase |
 | CLI → OS | Only allowlisted commands after policy ALLOW + confirm |
 | API client → backend | Demo RBAC headers — treat as **no auth** in production |
@@ -78,7 +78,7 @@ This toolkit is a **local-first evidence and policy-gated remediation preview** 
 ## 3. Threat model (summary)
 
 | Threat actor | Goal | Primary controls |
-|--------------|------|------------------|
+| -------------- | ------ | ------------------ |
 | Mistaken operator | Auto-apply destructive fix | Dry-run default, typed confirmation, BLOCKED_ACTIONS |
 | Malicious API caller | Force execute via HTTP | Policy gate `execute_allowed=False`; forbidden action registry |
 | Over-trusting AI output | Execute because model said "safe" | `enforce_advisory_only`, explanation guardrails |
@@ -94,7 +94,7 @@ Full tables: [threat-model.md](threat-model.md), [threat_model.md](threat_model.
 ## 4. Abuse cases
 
 | # | Abuse case | Expected behavior | Tests |
-|---|------------|-------------------|-------|
+| --- | ------------ | ------------------- | ------- |
 | A1 | Call `proxy-disable` without `--dry-run false` + token | Preview only, no registry write | `test_safety_contract.py`, security review pack |
 | A2 | POST fake execute to API | 404/405/422 — no execute route | `tests/security/test_policy_bypass_blocked.py` |
 | A3 | AI says "execute automatically" | Authority downgraded to `human_required` | `test_security_review_pack.py`, governance contracts |
@@ -113,7 +113,7 @@ More: [security-abuse-cases.md](security-abuse-cases.md).
 Canonical registry: `windows_network_toolkit/safety.py`
 
 | Action ID | Blocked | Rationale |
-|-----------|---------|-----------|
+| ----------- | --------- | ----------- |
 | `KILL_PROXY_PROCESS` | Yes | No silent process termination |
 | `FIREWALL_RESET` | Yes | Network-wide impact |
 | `ADAPTER_DISABLE` | Yes | Denial of connectivity |
@@ -128,7 +128,7 @@ Platform policy mirrors via forbidden keys: `process_kill_forbidden`, `reset_fir
 ## 6. Policy gates
 
 | Layer | Module | Outcomes |
-|-------|--------|----------|
+| ------- | -------- | ---------- |
 | WNT facade | `windows_network_toolkit/platform/policy.py` | `allowed`, `requires_confirmation` |
 | Platform core | `platform_core/policy.py` | `execute_allowed`, `preview_allowed`, `reason_codes` |
 | Hypothesis | `src/policy/hypothesis_gates.py` | ALLOW / PREVIEW / BLOCK by proof tier |
@@ -142,7 +142,7 @@ Platform policy mirrors via forbidden keys: `process_kill_forbidden`, `reset_fir
 ## 7. Local file permissions
 
 | Path | Git | Permissions guidance |
-|------|-----|----------------------|
+| ------ | ----- | ---------------------- |
 | `.env`, `.env.local` | **Ignored** | Operator-only read; never commit |
 | `platform_data/` | Ignored | Local JSONL — restrict ACL to service account |
 | `logs/`, `.audit/` | Often ignored | Append-only audit — backup for integrity |
@@ -150,8 +150,8 @@ Platform policy mirrors via forbidden keys: `process_kill_forbidden`, `reset_fir
 
 Repository `.gitignore` excludes secrets and runtime data. Production deployments should:
 
-- Run read-only agent under least-privilege account  
-- Restrict write access to spool/audit directories  
+- Run read-only agent under least-privilege account
+- Restrict write access to spool/audit directories
 - Not run API on `0.0.0.0` without TLS + real auth (out of repo scope)
 
 ---
@@ -160,11 +160,11 @@ Repository `.gitignore` excludes secrets and runtime data. Production deployment
 
 Implementation: `src/platform_core/governance/chain_of_custody.py`, `src/platform_core/audit/writer.py`
 
-- Each record: `previous_hash` → `current_hash` (SHA-256 over canonical body)  
-- CLI: `python -m windows_network_toolkit audit verify <path.jsonl>`  
-- Tampering with payload breaks chain at first altered index  
+- Each record: `previous_hash` → `current_hash` (SHA-256 over canonical body)
+- CLI: `python -m windows_network_toolkit audit verify <path.jsonl>`
+- Tampering with payload breaks chain at first altered index
 
-**Proves:** post-hoc edit detection on local JSONL.  
+**Proves:** post-hoc edit detection on local JSONL.
 **Does not prove:** completeness, off-tool actions, or append-only forgery without external anchor.
 
 Tests: `tests/platform_core/governance/test_audit_tamper_detection.py`, `tests/test_governance_safety_contracts.py`.
@@ -174,7 +174,7 @@ Tests: `tests/platform_core/governance/test_audit_tamper_detection.py`, `tests/t
 ## 9. Dependency / supply-chain risks
 
 | Risk | Mitigation in repo |
-|------|-------------------|
+| ------ | ------------------- |
 | Vulnerable PyPI packages | `pip-audit` in `[dev]` optional deps |
 | Static analysis gaps | `bandit`, `ruff` in CI/dev |
 | Unpinned transitive deps | `requirements.txt` + lock discipline (operator) |
@@ -187,7 +187,7 @@ Tests: `tests/platform_core/governance/test_audit_tamper_detection.py`, `tests/t
 ## 10. Secrets handling
 
 | Secret type | Handling |
-|-------------|----------|
+| ------------- | ---------- |
 | API tokens | Env vars; `.env` gitignored; `test_no_secret_leakage.py` — 401 must not echo token |
 | Stripe / DB URLs | Env only — not in fixtures |
 | Confirmation phrases | Documented in code — safety control, not authentication secret |
@@ -200,7 +200,7 @@ Operators: use `.env.example` as template; rotate tokens if leaked; never paste 
 ## 11. Safe defaults
 
 | Control | Default |
-|---------|---------|
+| --------- | --------- |
 | `proxy-disable` | `dry_run=True` |
 | `evaluate_policy` | `dry_run=True` |
 | Agent loop | Read-only, no remediation |
@@ -215,14 +215,14 @@ Operators: use `.env.example` as template; rotate tokens if leaked; never paste 
 
 This platform **does not**:
 
-- Detect or remove malware  
-- Replace EDR/XDR/antivirus  
-- Prove MITM or compromise without appropriate telemetry tiers  
-- Guarantee endpoint safety after remediation preview  
-- Provide production-grade multi-tenant authentication in demo API mode  
-- Autonomously kill processes, reset firewalls, or disable adapters  
-- Treat AI narrative as authorization to execute  
-- Claim Linux/macOS WinINET/WinHTTP parity ([cross-platform-support.md](cross-platform-support.md))  
+- Detect or remove malware
+- Replace EDR/XDR/antivirus
+- Prove MITM or compromise without appropriate telemetry tiers
+- Guarantee endpoint safety after remediation preview
+- Provide production-grade multi-tenant authentication in demo API mode
+- Autonomously kill processes, reset firewalls, or disable adapters
+- Treat AI narrative as authorization to execute
+- Claim Linux/macOS WinINET/WinHTTP parity ([cross-platform-support.md](cross-platform-support.md))
 
 Classifications are **triage labels** with mandatory `limitations[]` — not accusations.
 
@@ -243,7 +243,7 @@ pytest -q tests/platform_core/governance/test_audit_tamper_detection.py
 ```
 
 | Requirement | Primary test file |
-|-------------|-------------------|
+| ------------- | ------------------- |
 | Registry mutation blocked by default | `test_security_review_pack.py`, `test_safety_contract.py` |
 | Process kill blocked | `test_security_review_pack.py`, `BLOCKED_ACTIONS` |
 | Firewall reset blocked | `test_security_review_pack.py`, `test_safety_boundaries.py` |
@@ -257,21 +257,21 @@ pytest -q tests/platform_core/governance/test_audit_tamper_detection.py
 
 ## 14. Review checklist (human)
 
-- [ ] Confirm `DEMO_MODE` / `PLATFORM_SAFE_MODE` documented for reviewer environments  
-- [ ] Confirm production API will replace unsigned RBAC headers  
-- [ ] Confirm audit JSONL backup and verify run before governance export  
-- [ ] Confirm operators trained on confirmation phrases vs blocked actions  
-- [ ] Confirm AI outputs reviewed before any live apply  
-- [ ] Run CI safety slice before release tag  
+- [ ] Confirm `DEMO_MODE` / `PLATFORM_SAFE_MODE` documented for reviewer environments
+- [ ] Confirm production API will replace unsigned RBAC headers
+- [ ] Confirm audit JSONL backup and verify run before governance export
+- [ ] Confirm operators trained on confirmation phrases vs blocked actions
+- [ ] Confirm AI outputs reviewed before any live apply
+- [ ] Run CI safety slice before release tag
 
 ---
 
 ## 15. Gaps and future work
 
-- Formal penetration test (out of repo scope)  
-- WORM / external hash tip for audit chain — **partial**: local tip anchor (`.audit/*.tip.json`); relocate/sign for stronger custody (see [audit-custody.md](audit-custody.md))  
-- Production IdP integration for API  
-- Signed release artifacts and SBOM  
-- Agent-side double-confirmation for fleet deploy  
+- Formal penetration test (out of repo scope)
+- WORM / external hash tip for audit chain — **partial**: local tip anchor (`.audit/*.tip.json`); relocate/sign for stronger custody (see [audit-custody.md](audit-custody.md))
+- Production IdP integration for API
+- Signed release artifacts and SBOM
+- Agent-side double-confirmation for fleet deploy
 
 See [enterprise-hardening-roadmap.md](enterprise-hardening-roadmap.md) Phases 7–8.

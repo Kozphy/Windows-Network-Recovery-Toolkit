@@ -5,7 +5,7 @@
 ## Five layers
 
 | Layer | Responsibility | Key modules |
-|-------|----------------|-------------|
+| ------- | ---------------- | ------------- |
 | **L1 Evidence** | Deterministic collection | `windows_network_toolkit/collectors/`, `playwright_collector.py`, `browser_evidence.py` |
 | **L2 Risk Intelligence** | Classification, controls, risk | `analytics_pipeline.py`, `incident_classifier.py`, `risk_scoring_engine.py` |
 | **L3 Agent Contracts** | Structured JSON I/O, human gates | `src/platform_core/agents/contracts/`, `orchestrator.py` |

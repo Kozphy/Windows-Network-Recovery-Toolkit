@@ -1,0 +1,64 @@
+{
+  "schema_version": "research_benchmark.v1",
+  "description": "Label schema for Windows Network Recovery Toolkit benchmark dataset v1.",
+  "incident_classes": [
+    "DEAD_PROXY_CONFIG",
+    "WININET_WINHTTP_MISMATCH",
+    "REVERTER_SUSPECTED",
+    "BOTH_DIRECT_AND_PROXY_WORK",
+    "LOCAL_PROXY_ACTIVE",
+    "UNKNOWN_LOCAL_PROXY",
+    "IPV6_BROKEN_IPV4_OK",
+    "HAPPY_EYEBALLS_STALL",
+    "BROWSER_QUIC_STALL",
+    "POSSIBLE_MITM_RISK",
+    "PAC_CONFIGURED",
+    "PROXY_SERVER_CHANGED_TO_REMOTE",
+    "DIRECT_OK",
+    "ERROR_INSUFFICIENT_DATA",
+    "INSUFFICIENT_DATA"
+  ],
+  "proof_tiers": [
+    "T0_OBSERVATION_ONLY",
+    "T1_LOCAL_CONFIG_EVIDENCE",
+    "T2_RUNTIME_CORROBORATION",
+    "T3_BEHAVIORAL_REPRODUCTION",
+    "T4_OPERATOR_CONFIRMED",
+    "T5_GOVERNANCE_PROOF"
+  ],
+  "policy_postures": [
+    "OBSERVE",
+    "PREVIEW_ONLY",
+    "HUMAN_REVIEW",
+    "REQUIRE_HUMAN_REVIEW",
+    "BLOCK",
+    "ALLOW"
+  ],
+  "remediation_postures": [
+    "NONE",
+    "PREVIEW_ONLY",
+    "REQUIRE_TYPED_CONFIRMATION",
+    "BLOCK"
+  ],
+  "provenance_categories": [
+    "synthetic_fixture",
+    "derived_from_existing_fixture",
+    "adversarial_edge_case",
+    "incomplete_evidence",
+    "contradictory_evidence"
+  ],
+  "case_fields": {
+    "required": [
+      "case_id",
+      "split",
+      "provenance_category",
+      "expected_incident_class",
+      "expected_min_proof_tier",
+      "expected_policy_posture",
+      "expected_remediation_posture",
+      "limitations",
+      "failure_family"
+    ],
+    "input_one_of": ["input_fixture_path", "fixture"]
+  }
+}

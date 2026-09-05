@@ -10,7 +10,7 @@ FastAPI /platform/* → platform_core/storage.py → dashboard
 ## Extension points
 
 | Hook | Use |
-|------|-----|
+| ------ | ----- |
 | `DomainAdapter` | Multi-domain decision platform |
 | `config/policies/*.yaml` | Org policy profiles |
 | `case_studies/` | Portfolio incident narratives |

@@ -5,7 +5,7 @@
 ## KEEP / MERGE / DEPRECATE
 
 | Component | Action | Canonical target | Legacy location(s) |
-|-----------|--------|------------------|-------------------|
+| ----------- | -------- | ------------------ | ------------------- |
 | **NormalizedEvent** | **MERGE → KEEP** | `src/platform/models.py` | `src/core/event.py`, `backend/decision_intelligence/models.EventCreate`, `platform_core/decision_platform/models.Observation` (map via shim) |
 | **EvidenceItem** | **MERGE → KEEP** | `src/platform/models.py` | `src/core/evidence.py`, `platform_core/decision_platform/models.Evidence`, `platform_core/evidence_model` (Windows tiers — **KEEP** separate for endpoint reliability) |
 | **Hypothesis** | **MERGE → KEEP** | `src/platform/models.py` | `src/core/decision.py`, `platform_core/reliability/models.RankedHypothesis`, `proxy_reasoning/models.ProxyHypothesis` |
@@ -29,7 +29,7 @@
 ## Duplicate systems summary
 
 | Duplicate | Count | Resolution |
-|-----------|-------|------------|
+| ----------- | ------- | ------------ |
 | Event models | 4+ | Canonical `NormalizedEvent`; shims + migration table |
 | Evidence models | 3+ MDP + 1 Windows tier model | MDP unified; Windows tiers retained |
 | Hypothesis models | 5+ | Canonical `Hypothesis` for MDP |
@@ -40,7 +40,7 @@
 ## Migration table (old → canonical)
 
 | Legacy type | Canonical type | Shim module |
-|-------------|----------------|-------------|
+| ------------- | ---------------- | ------------- |
 | `src.core.event.NormalizedEvent` | `src.platform.models.NormalizedEvent` | `src/core/event.py` |
 | `src.core.evidence.EvidenceItem` | `src.platform.models.EvidenceItem` | `src/core/evidence.py` |
 | `platform_core.decision_platform.models.Observation` | Map fields → `NormalizedEvent.observations[]` | `src/platform/compat/decision_platform_shim.py` |

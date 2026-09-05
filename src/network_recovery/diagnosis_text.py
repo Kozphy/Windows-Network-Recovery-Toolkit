@@ -49,7 +49,9 @@ def format_diagnosis_report(
         f"  WinINET ProxyServer:        {signals.wininet_proxy_server or '(empty)'}",
         f"  Localhost listeners:        {list(signals.localhost_listener_ports) or 'none'}",
         f"  ChatGPT process:            {signals.chatgpt_process_detected}",
+        f"  ChatGPT process count:      {signals.chatgpt_process_count}",
         f"  Electron process:           {signals.electron_process_detected}",
+        f"  Network-state files:        {signals.chatgpt_network_state_file_count}",
         "",
         "EVENTS",
     ]
@@ -87,9 +89,13 @@ def format_diagnosis_report(
             ]
         )
     elif verification_status == "contradicted_by_recovery_evidence":
-        lines.append("\nVERIFICATION: Recovery evidence contradicts the primary firewall hypothesis.")
+        lines.append(
+            "\nVERIFICATION: Recovery evidence contradicts the primary firewall hypothesis."
+        )
     else:
-        lines.append("\nVERIFICATION: not_run (provide --recovery-feedback after a controlled test).")
+        lines.append(
+            "\nVERIFICATION: not_run (provide --recovery-feedback after a controlled test)."
+        )
 
     if recovery_firewall_reset_helped is True:
         lines.append("  Operator feedback: firewall reset helped restore the app.")

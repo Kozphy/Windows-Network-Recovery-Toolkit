@@ -1,8 +1,8 @@
 # Power BI Semantic Model Explained
 
-**Status:** Portfolio and PL-300 reference  
-**Exporter:** `src/platform_core/analytics/powerbi_star_export.py`  
-**Schema version:** `powerbi_star_export.v1`  
+**Status:** Portfolio and PL-300 reference
+**Exporter:** `src/platform_core/analytics/powerbi_star_export.py`
+**Schema version:** `powerbi_star_export.v1`
 **Disclaimer:** Demo seed rows may be included — distinguish portfolio sample from production fleet data.
 
 ---
@@ -52,7 +52,7 @@ fact_control_tests  fact_policy_decisions
 ### fact_incidents
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `incident_id` | **PK** | Stable incident identifier |
 | `audit_id` | Attribute | Source audit bundle reference |
 | `date_key` | **FK** → dim_date | YYYYMMDD integer |
@@ -72,7 +72,7 @@ fact_control_tests  fact_policy_decisions
 ### fact_control_tests
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `control_test_id` | **PK** | e.g. `CT-{incident_id}-{control}` |
 | `incident_id` | **FK** → fact_incidents | Parent incident |
 | `date_key` | **FK** → dim_date | Test date |
@@ -89,7 +89,7 @@ fact_control_tests  fact_policy_decisions
 ### fact_policy_decisions
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `decision_id` | **PK** | e.g. `DEC-{incident_id}` |
 | `incident_id` | **FK** → fact_incidents | Parent incident |
 | `date_key` | **FK** → dim_date | Decision date |
@@ -108,7 +108,7 @@ fact_control_tests  fact_policy_decisions
 ### dim_classification (PK: classification_key)
 
 | Key | classification | default_risk_level | is_security_accusation |
-|-----|----------------|-------------------|------------------------|
+| ----- | ---------------- | ------------------- | ------------------------ |
 | 1 | DEAD_PROXY_CONFIG | MEDIUM | false |
 | 2 | WININET_WINHTTP_MISMATCH | MEDIUM | false |
 | 3 | LOCAL_PROXY_ACTIVE | LOW | false |
@@ -127,7 +127,7 @@ fact_control_tests  fact_policy_decisions
 ### dim_proof_tier (PK: proof_tier_key)
 
 | Key | proof_tier | maturity_order |
-|-----|------------|----------------|
+| ----- | ------------ | ---------------- |
 | 0 | T0_OBSERVATION_ONLY | 0 |
 | 1 | T1_LOCAL_CONFIG_EVIDENCE | 1 |
 | 2 | T2_RUNTIME_CORROBORATION | 2 |
@@ -153,7 +153,7 @@ Standard date spine: `date`, `year`, `quarter`, `month`, `month_name`, `week`, `
 ## Relationships (recommended)
 
 | From | To | Cardinality |
-|------|-----|-------------|
+| ------ | ----- | ------------- |
 | fact_incidents.date_key | dim_date.date_key | Many-to-one |
 | fact_incidents.classification_key | dim_classification.classification_key | Many-to-one |
 | fact_incidents.proof_tier_key | dim_proof_tier.proof_tier_key | Many-to-one |
@@ -235,7 +235,7 @@ Full library: [examples/powerbi/dax/measures.md](../examples/powerbi/dax/measure
 ## PL-300 mapping
 
 | PL-300 skill area | How this model demonstrates it |
-|-------------------|-------------------------------|
+| ------------------- | ------------------------------- |
 | **Prepare data** | CSV import, type enforcement, date table |
 | **Model data** | Star schema, surrogate keys, relationships |
 | **Visualize** | Risk by classification, control failure trends, policy gates |

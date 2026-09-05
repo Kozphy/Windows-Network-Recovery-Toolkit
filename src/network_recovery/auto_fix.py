@@ -11,7 +11,7 @@ System placement:
 
 Key invariants:
     * ``DEMO_MODE`` forces dry-run (no mutations).
-    * Live LOW-risk apply uses ``APPLY_CHATGPT_LOW_RISK`` when confirm omitted.
+    * Dry-run is the default; live LOW-risk apply requires an explicit typed token.
     * BLOCK/MEDIUM catalog actions are never executed here.
 
 Side effects:
@@ -43,6 +43,7 @@ from windows_network_toolkit.diagnostics.bad_gateway import run_bad_gateway_diag
 from windows_network_toolkit.diagnostics.proxy import run_proxy_status
 from windows_network_toolkit.proxy_guardian import run_proxy_guardian_once
 
+from ..proxy_drift.guardian import CONFIRM_CLEAR_DEAD
 from .audit import append_network_recovery_audit
 from .collectors import collect_signals
 from .engine import run_scenario_diagnosis
@@ -62,8 +63,9 @@ def _repo_root(explicit: Path | None) -> Path:
 
 def run_auto_fix_chatgpt(
     *,
-    dry_run: bool = False,
+    dry_run: bool = True,
     confirm: str = "",
+    proxy_confirm: str = "",
     skip_proxy_auto_fix: bool = False,
     skip_guardian_install: bool = False,
     chatgpt_url: str = "https://chatgpt.com",
@@ -74,7 +76,8 @@ def run_auto_fix_chatgpt(
 
     Args:
         dry_run: When True, preview only (forced when DEMO_MODE env is set).
-        confirm: Typed token for live LOW-risk apply; defaults to CONFIRMATION_PHRASE when live.
+        confirm: Typed token for live LOW-risk apply; never inferred or filled automatically.
+        proxy_confirm: Separate typed token for live dead-proxy guardian apply.
         skip_proxy_auto_fix: Skip proxy-guardian and live proxy-status steps.
         skip_guardian_install: Reserved for PS orchestrator metadata only.
         chatgpt_url: HTTPS URL passed to bad-gateway diagnose.
@@ -101,17 +104,26 @@ def run_auto_fix_chatgpt(
 
     repo = _repo_root(repo_root)
     run_fn = run or subprocess.run
-    effective_confirm = confirm if confirm else (CONFIRMATION_PHRASE if not dry_run else "")
     steps: list[dict[str, Any]] = []
 
     if not skip_proxy_auto_fix:
-        guardian = run_proxy_guardian_once(dry_run=dry_run)
-        steps.append({"step": "proxy_guardian", "result": guardian})
+        proxy_apply_confirmed = not dry_run and proxy_confirm == CONFIRM_CLEAR_DEAD
+        guardian = run_proxy_guardian_once(dry_run=not proxy_apply_confirmed)
+        steps.append(
+            {
+                "step": "proxy_guardian",
+                "result": guardian,
+                "live_apply_confirmed": proxy_apply_confirmed,
+                "confirmation_required": CONFIRM_CLEAR_DEAD,
+            }
+        )
         proxy_status = run_proxy_status()
         steps.append({"step": "proxy_status", "result": proxy_status})
     else:
         proxy_status = run_proxy_status()
-        steps.append({"step": "proxy_status", "result": proxy_status, "note": "proxy auto-fix skipped"})
+        steps.append(
+            {"step": "proxy_status", "result": proxy_status, "note": "proxy auto-fix skipped"}
+        )
 
     bad_gateway = run_bad_gateway_diagnose(chatgpt_url, dry_run=True)
     steps.append({"step": "bad_gateway_diagnose", "url": chatgpt_url, "result": bad_gateway})
@@ -124,12 +136,16 @@ def run_auto_fix_chatgpt(
     )
     last_path = repo / "reports" / "last_network_recovery_diagnosis.json"
     last_path.parent.mkdir(parents=True, exist_ok=True)
-    last_path.write_text(json.dumps(diagnosis.to_audit_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+    last_path.write_text(
+        json.dumps(diagnosis.to_audit_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     steps.append(
         {
             "step": "chatgpt_scenario_diagnose",
             "run_id": diagnosis.run_id,
-            "primary_hypothesis": diagnosis.hypotheses[0].hypothesis_id if diagnosis.hypotheses else None,
+            "primary_hypothesis": diagnosis.hypotheses[0].hypothesis_id
+            if diagnosis.hypotheses
+            else None,
             "signals": diagnosis.signals.to_dict(),
             "report_path": str(last_path),
         }
@@ -139,7 +155,7 @@ def run_auto_fix_chatgpt(
     remediation = execute_selected_low_risk_actions(
         selected,
         dry_run=dry_run,
-        confirm=effective_confirm,
+        confirm=confirm,
         previews=diagnosis.recommended_actions,
         run=run_fn,
     )
@@ -153,13 +169,20 @@ def run_auto_fix_chatgpt(
             "openai_https_ok": post_signals.openai_https_ok,
             "browser_https_ok": post_signals.browser_https_ok,
             "dns_ok": post_signals.dns_ok,
+            "chatgpt_process_count": post_signals.chatgpt_process_count,
+            "chatgpt_network_state_file_count": post_signals.chatgpt_network_state_file_count,
         }
         steps.append({"step": "post_check", "result": diagnosis.post_check_results})
 
+    last_path.write_text(
+        json.dumps(diagnosis.to_audit_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     append_network_recovery_audit(repo, diagnosis)
 
     classification = str(proxy_status.get("classification") or "")
-    chatgpt_ok = diagnosis.signals.chatgpt_https_ok
+    chatgpt_ok = diagnosis.post_check_results.get(
+        "chatgpt_https_ok", diagnosis.signals.chatgpt_https_ok
+    )
     outcome = "healthy"
     if chatgpt_ok is False or classification == "DEAD_PROXY_CONFIG":
         outcome = "degraded"

@@ -9,14 +9,15 @@ It is a portfolio contract, not a production broker implementation.
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable, Generic, TypeVar
+from enum import StrEnum
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
 
-class DeliveryDisposition(str, Enum):
+class DeliveryDisposition(StrEnum):
     ACK = "ACK"
     RETRY = "RETRY"
     DEAD_LETTER = "DEAD_LETTER"
@@ -31,7 +32,7 @@ class DeliveryEnvelope(Generic[T]):
     payload: T
     attempt: int = 1
 
-    def next_attempt(self) -> "DeliveryEnvelope[T]":
+    def next_attempt(self) -> DeliveryEnvelope[T]:
         return DeliveryEnvelope(
             event_id=self.event_id,
             idempotency_key=self.idempotency_key,

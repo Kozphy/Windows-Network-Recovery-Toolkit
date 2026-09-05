@@ -90,7 +90,7 @@ git push -u origin <branch>
 ## Synthetic data locations
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | `tests/fixtures/` | Automated test inputs |
 | `examples/` | Documentation samples |
 | `demo_data/manifest.json` | Demo scenario catalog |

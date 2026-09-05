@@ -13,7 +13,7 @@ HTTPS failures or security alerts may indicate TLS interception, corporate proxy
 ## Evidence Collected
 
 | Check | Purpose | Tier |
-|-------|---------|------|
+| ------- | --------- | ------ |
 | Direct TLS handshake | Baseline certificate chain | Observation |
 | Proxied TLS handshake | Contrast path | Observation |
 | Issuer / root comparison | Detect mismatch | Proof (if ≥2 indicators) |
@@ -35,14 +35,14 @@ Requires **multiple independent indicators** per platform policy. Single signal 
 ## Risk Assessment
 
 | Dimension | Rating |
-|-----------|--------|
+| ----------- | -------- |
 | Inherent risk | High if proof-supported |
 | Residual risk | Requires certificate store and network path validation |
 | False positive risk | High if based on heuristics only |
 
 ## Policy Decision
 
-**Outcome:** Typically `REQUIRE_TYPED_CONFIRMATION` or security escalation — not autonomous block.  
+**Outcome:** Typically `REQUIRE_TYPED_CONFIRMATION` or security escalation — not autonomous block.
 Remediation previews remain non-destructive; no silent cert deletion.
 
 ## Remediation Preview

@@ -32,29 +32,29 @@ Wrong: ~~`python -m src diagnose --repo-root D:\checkout`~~ (unrecognized).
 Implementation reference: `**exit_code_if_not_windows**` / `**platform.system()**` in `[src/command_handlers.py](../src/command_handlers.py)`, `[src/cli.py](../src/cli.py)`, `[src/network_state/cli_handlers.py](../src/network_state/cli_handlers.py)`, `[src/proxy_guard/proxy_snapshot_commands.py](../src/proxy_guard/proxy_snapshot_commands.py)`.
 
 
-| Subcommand                                                                                                                                           | OS                                                                        | Prerequisites / notes                                                                                                                     |
+| Subcommand | OS | Prerequisites / notes |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **diagnose**                                                                                                                                         | **Windows**, unless `**--fixture <features.json>`**                       | Without fixture uses `reg`, netsh, PowerShell probes. Fixture mode is CI/off-Windows friendly.                                            |
-| **explain**                                                                                                                                          | Any                                                                       | `**reports/last_diagnosis.json`** from `**diagnose**`. Or `**--live**` + `**reports/last_diagnosis_live.json**` from `**diagnose-live**`. |
-| **recommend**                                                                                                                                        | Any                                                                       | Same as **explain**.                                                                                                                      |
-| **repair-safe**                                                                                                                                      | Preview: any (**needs artifacts** below). `**--apply`**: **Windows only** | Default: `**last_diagnosis.json`**. `**--live**`: `**last_diagnosis_live.json**`.                                                         |
-| **repair-preview**                                                                                                                                   | Any                                                                       | Loads `**last_diagnosis_live.json`** if present, else `**last_diagnosis.json**` (`**diagnose-live**` / `**diagnose**`).                   |
-| **repair-apply**                                                                                                                                     | **Windows**                                                               | Same artifact rule as **repair-preview**. May elevate via PowerShell (`Start-Process -Verb RunAs`).                                       |
-| **feedback**                                                                                                                                         | Any                                                                       | Writes `**logs/decision_feedback.jsonl`**.                                                                                                |
-| **export-report**                                                                                                                                    | Any                                                                       | `**last_diagnosis.json`**, or `**--live**` + `**last_diagnosis_live.json**`.                                                              |
-| **diagnose-live**                                                                                                                                    | **Windows**                                                               | Live snapshot + v2 hypotheses; writes `**reports/last_diagnosis_live.json`**.                                                             |
-| **snapshot**                                                                                                                                         | **Windows**                                                               | Full `**LiveNetworkSnapshot`** under `**reports/snapshots/**`.                                                                            |
-| **proxy-status**, **proxy-owner**, **proxy-investigate**, **proxy-monitor**, **proxy-watch**, **proxy-guard**, **proxy-diagnose**, **proxy-attribution**, **proxy-disable** | **Windows**                                                               | HKCU WinINET / `reg` / netstat-style probes. (`**proxy-guard`** is guarded before `**--show-lkg**` too.)                                  |
-| **proxy-report**                                                                                                                                     | Any                                                                       | Reads `**logs/proxy_guard.jsonl`** under repo root.                                                                                       |
-| **proxy-rollback**                                                                                                                                   | **Windows**                                                               | `**--snapshot-id`** or `**--from-snapshot**` per help; typed confirm for destructive paths.                                               |
-| **proxy-snapshot save**, **diff**, **restore**                                                                                                       | **Windows**                                                               | Live capture/compare/restore of allowlisted surfaces.                                                                                     |
-| **proxy-snapshot list**, **show**                                                                                                                    | Any                                                                       | Read `**logs/proxy_known_good_snapshots.jsonl`** (and related paths).                                                                     |
-| **network-state snapshot save**                                                                                                                      | **Windows**                                                               | Live capture path.                                                                                                                        |
-| **network-state snapshot list**, **show**, **set-default**                                                                                           | Any                                                                       | Baseline metadata / JSONL only.                                                                                                           |
-| **network-state diff**                                                                                                                               | **Windows**                                                               | Compares live machine to saved profile.                                                                                                   |
-| **network-state report**                                                                                                                             | Any (see notes)                                                           | Aggregates JSONL events; `**drift_vs_default`** may be `**capture_unavailable**` if `**capture_proxy_snapshot**` fails off-Windows.       |
-| **network-state restore**                                                                                                                            | **Windows**                                                               | Gated confirmations; previews without live apply unless confirm phrase matches.                                                           |
-| **network-state evidence import**                                                                                                                    | Any                                                                       | Appends `**logs/network_state_evidence.jsonl`** from CSV.                                                                                 |
+| **diagnose** | **Windows**, unless `**--fixture <features.json>`** | Without fixture uses `reg`, netsh, PowerShell probes. Fixture mode is CI/off-Windows friendly. |
+| **explain** | Any | `**reports/last_diagnosis.json`** from `**diagnose**`. Or `**--live**` + `**reports/last_diagnosis_live.json**` from `**diagnose-live**`. |
+| **recommend** | Any | Same as **explain**. |
+| **repair-safe** | Preview: any (**needs artifacts** below). `**--apply`**: **Windows only** | Default: `**last_diagnosis.json`**. `**--live**`: `**last_diagnosis_live.json**`. |
+| **repair-preview** | Any | Loads `**last_diagnosis_live.json`** if present, else `**last_diagnosis.json**` (`**diagnose-live**` / `**diagnose**`). |
+| **repair-apply** | **Windows** | Same artifact rule as **repair-preview**. May elevate via PowerShell (`Start-Process -Verb RunAs`). |
+| **feedback** | Any | Writes `**logs/decision_feedback.jsonl`**. |
+| **export-report** | Any | `**last_diagnosis.json`**, or `**--live**` + `**last_diagnosis_live.json**`. |
+| **diagnose-live** | **Windows** | Live snapshot + v2 hypotheses; writes `**reports/last_diagnosis_live.json`**. |
+| **snapshot** | **Windows** | Full `**LiveNetworkSnapshot`** under `**reports/snapshots/**`. |
+| **proxy-status**, **proxy-owner**, **proxy-investigate**, **proxy-monitor**, **proxy-watch**, **proxy-guard**, **proxy-diagnose**, **proxy-attribution**, **proxy-disable** | **Windows** | HKCU WinINET / `reg` / netstat-style probes. (`**proxy-guard`** is guarded before `**--show-lkg**` too.) |
+| **proxy-report** | Any | Reads `**logs/proxy_guard.jsonl`** under repo root. |
+| **proxy-rollback** | **Windows** | `**--snapshot-id`** or `**--from-snapshot**` per help; typed confirm for destructive paths. |
+| **proxy-snapshot save**, **diff**, **restore** | **Windows** | Live capture/compare/restore of allowlisted surfaces. |
+| **proxy-snapshot list**, **show** | Any | Read `**logs/proxy_known_good_snapshots.jsonl`** (and related paths). |
+| **network-state snapshot save** | **Windows** | Live capture path. |
+| **network-state snapshot list**, **show**, **set-default** | Any | Baseline metadata / JSONL only. |
+| **network-state diff** | **Windows** | Compares live machine to saved profile. |
+| **network-state report** | Any (see notes) | Aggregates JSONL events; `**drift_vs_default`** may be `**capture_unavailable**` if `**capture_proxy_snapshot**` fails off-Windows. |
+| **network-state restore** | **Windows** | Gated confirmations; previews without live apply unless confirm phrase matches. |
+| **network-state evidence import** | Any | Appends `**logs/network_state_evidence.jsonl`** from CSV. |
 
 
 **Exit semantics (typical):** non-Windows guarded commands exit `**2`** with a stderr line; missing diagnosis files exit `**1**` or raise a handled `**FileNotFoundError**` (`**explain`/`recommend`/`repair-safe`/`export-report**` print a hint).
@@ -303,8 +303,8 @@ python -m endpoint_agent --service --interval 30 --dry-run
 
 Environment:
 
-- `ENDPOINT_AGENT_API` — default base URL  
-- `ENDPOINT_AGENT_DRY_RUN=1` — skip HTTP POSTs (local JSONL still written)  
+- `ENDPOINT_AGENT_API` — default base URL
+- `ENDPOINT_AGENT_DRY_RUN=1` — skip HTTP POSTs (local JSONL still written)
 - `PLATFORM_DATA_DIR` — JSONL root for `platform_core.storage`
 
 HTTP sync uses `**/platform/ingest/***` routes with exponential backoff retries.

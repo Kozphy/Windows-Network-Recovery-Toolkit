@@ -9,7 +9,7 @@
 ## What this is (and is not)
 
 | Claim | Supported? |
-|-------|------------|
+| ------- | ------------ |
 | Synthetic 100 / 1k / 10k endpoint events ingest locally | **Yes** — `tests/scale/` |
 | Concurrent JSONL append/read contracts hold on one host | **Yes** — `tests/concurrency/` |
 | Hash-chained audit verifies after concurrent writers | **Yes** — with advisory file locks |
@@ -24,7 +24,7 @@ All results are **synthetic local scale testing** on a developer machine. Do not
 ## Test layout
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | `tests/scale/test_synthetic_endpoint_events.py` | 100, 1,000, 10,000 unique synthetic fleet envelopes |
 | `tests/concurrency/test_concurrent_io.py` | Concurrent ingest, spool, audit chain, replay, locked JSONL |
 | `src/platform_core/scale/synthetic.py` | Deterministic envelope + spool row builders |

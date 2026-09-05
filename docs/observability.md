@@ -9,7 +9,7 @@
 ## Design principles
 
 | Principle | Implementation |
-|-----------|----------------|
+| ----------- | ---------------- |
 | Local-first | In-process counters/gauges; logs to stderr |
 | Optional | Disable structured logs with `WNRT_STRUCTURED_LOG=0` |
 | No safety weakening | Metrics describe platform behavior — not malware verdicts |
@@ -68,7 +68,7 @@ Wired into:
 Module: `src/platform_core/operability/metrics_registry.py`
 
 | Metric | Type | Labels |
-|--------|------|--------|
+| -------- | ------ | -------- |
 | `evidence_events_collected_total` | counter | `source` |
 | `incidents_classified_total` | counter | `classification` |
 | `control_tests_executed_total` | counter | `control_id`, `result` |
@@ -124,7 +124,7 @@ Each `agent once` cycle:
 ## Endpoints summary
 
 | URL | Purpose |
-|-----|---------|
+| ----- | --------- |
 | `GET /health` | API liveness |
 | `GET /metrics` | Prometheus text (includes operability counters) |
 | `GET /platform/health` | Platform liveness |

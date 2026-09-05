@@ -61,9 +61,9 @@ Policy permission is not a safety guarantee. Dry-run / preview-only remediation 
 3. Clone this repo to a dedicated path, for example `C:\OpenClaw\workspaces\wnrt` (placeholder only).
 4. Set `PYTHONPATH` to the repo root when running toolkit or runner scripts:
 
-```powershell
-$env:PYTHONPATH = (Get-Location).Path
-```
+   ```powershell
+   $env:PYTHONPATH = (Get-Location).Path
+   ```
 
 5. Copy `.openclaw/openclaw.example.json5` into your local OpenClaw config and set `workspace`
    to the isolated clone. Do not commit real tokens or private absolute paths.
@@ -141,7 +141,7 @@ Draft PR after successful validation (requires `gh` auth and a pushed branch):
 python scripts/openclaw_task_runner.py --task-json .openclaw/task.example.json --validate --create-draft-pr
 ```
 
-Commit message format: `agent: <concise change summary>`  
+Commit message format: `agent: <concise change summary>`
 Draft PR title: `[OpenClaw Draft] <task title>`
 
 ## Inspecting the generated branch
@@ -182,7 +182,7 @@ Do not commit live audit logs.
 Preferred token / app permissions:
 
 | Scope | Access |
-|-------|--------|
+| ------- | -------- |
 | Contents | read/write (feature branches) |
 | Pull requests | read/write (draft create) |
 | Issues | read |
@@ -216,7 +216,7 @@ Where GitHub cannot distinguish pushing a branch from pushing the default branch
 ## Troubleshooting
 
 | Symptom | Check |
-|---------|--------|
+| --------- | -------- |
 | `policy_blocked` | `approved`, risk level, forbidden phrases, allowlisted paths |
 | `stage1_failed` | ruff / pytest output in runner JSON |
 | Draft PR failed | `gh auth status`, branch pushed, base branch name |
@@ -240,7 +240,7 @@ Then:
 ## Related files
 
 | Path | Role |
-|------|------|
+| ------ | ------ |
 | `skills/wnrt-coder/SKILL.md` | Agent skill instructions |
 | `.openclaw/openclaw.example.json5` | Example sandboxed config |
 | `scripts/openclaw_task_runner.py` | Policy + validation + draft PR helper |

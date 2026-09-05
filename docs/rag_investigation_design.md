@@ -1,8 +1,8 @@
 # RAG System Design — Endpoint Investigation Platform
 
-**Status:** Design (2026)  
-**Author role:** Staff AI Engineer  
-**Baseline:** Windows Network Recovery Toolkit · [AI Investigation Architecture](ai_investigation_platform_architecture.md)  
+**Status:** Design (2026)
+**Author role:** Staff AI Engineer
+**Baseline:** Windows Network Recovery Toolkit · [AI Investigation Architecture](ai_investigation_platform_architecture.md)
 **Constraints:** Local-first · SQLite → PostgreSQL · Evidence citations · Explainability · No autonomous remediation
 
 ---
@@ -21,7 +21,7 @@ RAG **never** upgrades evidence tier, **never** executes remediation, and **alwa
 ### Failure domains indexed
 
 | Domain | Example signals | Primary classification examples |
-|--------|-----------------|------------------------------|
+| -------- | ----------------- | ------------------------------ |
 | **Proxy** | `wininet_proxy_enabled`, `listener_found`, `DEAD_PROXY_CONFIG` | WinINET drift, dead localhost proxy |
 | **DNS** | `dns_resolve_ok`, `nslookup_status` | DNS path failure, split-horizon |
 | **TLS** | `cert_fingerprint`, `tls_mismatch` | `POSSIBLE_MITM_RISK`, cert contrast |
@@ -296,7 +296,7 @@ CREATE INDEX IF NOT EXISTS idx_rag_hits_session ON rag_retrieval_hits (session_i
 **SQLite vector options (pick one at deploy):**
 
 | Option | When | Notes |
-|--------|------|-------|
+| -------- | ------ | ------- |
 | **A. sqlite-vec** | Recommended local MVP | Virtual table `vec0`; ANN in-process |
 | **B. BLOB + brute force** | CI / tiny corpus (<5k chunks) | Zero native deps; O(n) scan |
 | **C. numpy memmap cache** | Dev laptops | Load embeddings at startup |
@@ -361,7 +361,7 @@ Limitations: Does not prove malware or MITM.
 Separate chunk types per failure domain:
 
 | Chunk type | Source | Embed? | Filter key |
-|------------|--------|--------|------------|
+| ------------ | -------- | -------- | ------------ |
 | Observation | `proxy_state`, DNS probe | Yes | `failure_domain`, `tier=OBSERVED_ONLY` |
 | Proof attempt | `proof_attempts[]` | Yes | `tier>=CORRELATED` |
 | Classification | `classification_result` | Yes | `primary_classification` |
@@ -372,7 +372,7 @@ Separate chunk types per failure domain:
 ### 5.2 Embedding models
 
 | Phase | Model | Dims | Storage |
-|-------|-------|------|---------|
+| ------- | ------- | ------ | --------- |
 | MVP / CI | `null-hash-v1` | 384 | Deterministic feature hash — no ML deps |
 | Local prod | `all-MiniLM-L6-v2` | 384 | sentence-transformers, runs offline |
 | Enterprise | Configurable | 384–1536 | Azure OpenAI / Foundry embeddings API |
@@ -511,7 +511,7 @@ POST: citation_validator + principles.validator
 Router: `backend/rag_routes.py` · Prefix: `/v1/rag`
 
 | Method | Path | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `POST` | `/v1/rag/index/incident` | Index single incident/fixture |
 | `POST` | `/v1/rag/index/cases` | Bulk index from `case_studies/index.yaml` |
 | `POST` | `/v1/rag/search` | Hybrid retrieval + explainability |
@@ -524,7 +524,7 @@ Router: `backend/rag_routes.py` · Prefix: `/v1/rag`
 Integration with investigations:
 
 | Method | Path | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `POST` | `/v1/investigations/{id}/retrieve` | Proxy to `/v1/rag/search` with investigation context |
 | `POST` | `/v1/investigations/{id}/brief` | RAG context + optional LLM (cited) |
 
@@ -710,7 +710,7 @@ Operator UI renders:
 ## 10. Local-first → PostgreSQL migration
 
 | Concern | SQLite MVP | PostgreSQL |
-|---------|------------|------------|
+| --------- | ------------ | ------------ |
 | Driver | stdlib `sqlite3` | `psycopg2` (existing) |
 | Vectors | sqlite-vec / BLOB | pgvector HNSW |
 | JSON | TEXT | JSONB + GIN |
@@ -749,7 +749,7 @@ Default DB path: `platform_data/rag.db` (gitignored) — separate from `backend/
 ## 11. MVP vs enterprise
 
 | Capability | MVP (SQLite) | Enterprise (PostgreSQL) |
-|------------|--------------|-------------------------|
+| ------------ | -------------- | ------------------------- |
 | Index case studies | ✅ | ✅ |
 | Hybrid search | Feature + hash embedding | + MiniLM / API embeddings |
 | ANN | Brute force / sqlite-vec | pgvector HNSW |

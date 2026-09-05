@@ -28,7 +28,7 @@ Fixture paths resolve under `examples/lan/` and `examples/router/`.
 ## Classifications
 
 | Label | Meaning |
-|-------|---------|
+| ------- | --------- |
 | `NORMAL_DISCOVERY` | Benign SOHO discovery patterns |
 | `NEW_DEVICE_OBSERVED` | New neighbor in inventory |
 | `FREQUENT_DISCOVERY` | High broadcast rate (may include smart TVs) |
@@ -40,7 +40,7 @@ Fixture paths resolve under `examples/lan/` and `examples/router/`.
 ## Demo fixtures
 
 | File | Scenario |
-|------|----------|
+| ------ | ---------- |
 | `examples/lan/normal_home_network.jsonl` | Normal home |
 | `examples/lan/smart_tv_frequent_discovery.jsonl` | Smart TV SSDP/mDNS |
 | `examples/lan/unknown_broad_probing.jsonl` | Subnet probing |

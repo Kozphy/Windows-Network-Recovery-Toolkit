@@ -5,7 +5,7 @@
 This repository uses GitHub Actions workflows under [`.github/workflows/`](../.github/workflows/):
 
 | Workflow | File | Purpose |
-|----------|------|---------|
+| ---------- | ------ | --------- |
 | **CI (primary PR gate)** | `ci.yml` | `lint` · `typecheck` · `test` · `test-windows` · `build-smoke` · `frontend-build` |
 | **Build (release)** | `build.yml` | Docker image push to GHCR on default branch |
 | **Deploy (CD)** | `deploy.yml` | SSH + compose deploy after successful Build |
@@ -27,7 +27,7 @@ Configure in **GitHub → Settings → Branches → Branch protection rules**.
 Enable **Require status checks to pass before merging** and select:
 
 | Check name (job) | Workflow | Rationale |
-|------------------|----------|-----------|
+| ------------------ | ---------- | ----------- |
 | `lint` | CI | Ruff lint + format, Bandit |
 | `typecheck` | CI | Mypy on portfolio modules |
 | `test` | CI | Safety contracts, full pytest + `tests/integration_linux`, fixture CLI smoke |
@@ -44,7 +44,7 @@ Optional (stricter teams): require **all** workflows on `schedule` security runs
 ### Review policy
 
 | Setting | Recommendation |
-|---------|----------------|
+| --------- | ---------------- |
 | **Require a pull request before merging** | Enabled |
 | **Required approving reviews** | **1** (2 for production release branches) |
 | **Dismiss stale pull request approvals when new commits are pushed** | Enabled |
@@ -68,7 +68,7 @@ Optional (stricter teams): require **all** workflows on `schedule` security runs
 On push to the **default branch** (`build.yml`):
 
 | Tag | Example |
-|-----|---------|
+| ----- | --------- |
 | `latest` | `ghcr.io/<org>/<repo>:latest` |
 | Commit SHA | `ghcr.io/<org>/<repo>:<full-sha>` |
 

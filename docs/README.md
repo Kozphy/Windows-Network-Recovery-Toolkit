@@ -7,15 +7,15 @@
 ### Repository map (what lives where)
 
 
-| Path                                        | Responsibility                                                                                          |
+| Path | Responsibility |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `scripts/`                                  | Beginner-facing `.bat/.ps1` wrappers; safety headers describe privilege + dry-run cues.                 |
-| `src/`                                      | `python -m src` — collectors, heuristic + policy pipelines, Proof Engine adapters, argparse + handlers. |
-| `src/proxy_drift/`                          | Startup observability, boot trace, dead-proxy guardian, evidence bundle (`install-startup-observability`). |
-| `failure_system/`                           | Failure Knowledge System — FailureBlocks + read-only probes (distinct CLI entry).                       |
-| `platform_core/` + `backend/` + `frontend/` | Optional localhost platform prototype (policy, JSONL, FastAPI `/platform`, Next.js).                    |
-| `endpoint_agent/`                           | Optional observe-only cycles with optional ingest; no bundled cloud.                                    |
-| `tests/`                                    | Offline regressions covering scoring, audits, remediation guards — run before risky edits.              |
+| `scripts/` | Beginner-facing `.bat/.ps1` wrappers; safety headers describe privilege + dry-run cues. |
+| `src/` | `python -m src` — collectors, heuristic + policy pipelines, Proof Engine adapters, argparse + handlers. |
+| `src/proxy_drift/` | Startup observability, boot trace, dead-proxy guardian, evidence bundle (`install-startup-observability`). |
+| `failure_system/` | Failure Knowledge System — FailureBlocks + read-only probes (distinct CLI entry). |
+| `platform_core/` + `backend/` + `frontend/` | Optional localhost platform prototype (policy, JSONL, FastAPI `/platform`, Next.js). |
+| `endpoint_agent/` | Optional observe-only cycles with optional ingest; no bundled cloud. |
+| `tests/` | Offline regressions covering scoring, audits, remediation guards — run before risky edits. |
 
 
 ### Reading order (~10 minutes)
@@ -48,24 +48,24 @@ Reading order (~10 minutes for new engineers): root `README.md` → `[architectu
 ## Failure Knowledge System (start here)
 
 
-| Doc                                                                      | Purpose                                                                                            |
+| Doc | Purpose |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `[architecture.md](architecture.md)`                                     | End-to-end layers: signals → features → rules → FailureBlocks → JSONL → interfaces → human repair. |
-| `[failure_block_contract.md](failure_block_contract.md)`                 | FailureBlock field contract and safe example.                                                      |
-| `[failure_system_output_contract.md](failure_system_output_contract.md)` | CLI output-layer contract for `python -m failure_system diagnose` (human/json/markdown/verbose).   |
-| `[interview_pitch.md](interview_pitch.md)`                               | Concise portfolio / interview framing.                                                             |
-| `[safety_model.md](safety_model.md)`                                     | Diagnose-first rules; FKS never auto-repairs; local-only logs.                                     |
+| `[architecture.md](architecture.md)` | End-to-end layers: signals → features → rules → FailureBlocks → JSONL → interfaces → human repair. |
+| `[failure_block_contract.md](failure_block_contract.md)` | FailureBlock field contract and safe example. |
+| `[failure_system_output_contract.md](failure_system_output_contract.md)` | CLI output-layer contract for `python -m failure_system diagnose` (human/json/markdown/verbose). |
+| `[interview_pitch.md](interview_pitch.md)` | Concise portfolio / interview framing. |
+| `[safety_model.md](safety_model.md)` | Diagnose-first rules; FKS never auto-repairs; local-only logs. |
 
 
 ## Architecture (where these docs fit)
 
 
-| Area                                                            | Role                                                                                                                                                                                                                                                 |
+| Area | Role |
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/*.bat`, `scripts/monitor_network.ps1`                  | Operator-facing probes and repairs; primary beginner path.                                                                                                                                                                                           |
-| `src/` (`python -m src`)                                        | Stdlib **observe → Hypotheses(v2)** + **legacy v1** scoring + Proxy Guard CLI.                                                                                                                                                                       |
-| `network_agent/` + `hybrid_frontend/`                           | Local FastAPI + collector/decision/report flow (see component docstrings).                                                                                                                                                                           |
-| `failure_system/`                                               | Failure Knowledge System — read-only probes, FailureBlocks, JSONL, FastAPI + CLI (**no repair execution**).                                                                                                                                          |
+| `scripts/*.bat`, `scripts/monitor_network.ps1` | Operator-facing probes and repairs; primary beginner path. |
+| `src/` (`python -m src`) | Stdlib **observe → Hypotheses(v2)** + **legacy v1** scoring + Proxy Guard CLI. |
+| `network_agent/` + `hybrid_frontend/` | Local FastAPI + collector/decision/report flow (see component docstrings). |
+| `failure_system/` | Failure Knowledge System — read-only probes, FailureBlocks, JSONL, FastAPI + CLI (**no repair execution**). |
 | `backend/` + `frontend/` + `endpoint_agent/` + `platform_core/` | Optional **Endpoint Reliability Platform** prototype: FastAPI `/platform/*`, Next.js dashboard, append-only `platform_data/*.jsonl`, local collector (**no silent auto-repair**). Same paths may also host other demo APIs—see component docstrings. |
 
 
@@ -91,36 +91,36 @@ Reading order (~10 minutes for new engineers): root `README.md` → `[architectu
 ## Critical paths (where state changes matter)
 
 
-| Path                                                                          | Mutation / risk surface                                            | Verification focus                                                                                               |
+| Path | Mutation / risk surface | Verification focus |
 | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Guided `.bat` repairs                                                         | Executes elevated Windows commands after confirmation              | Logs under `logs/`, script exit prompts, rerun `auto_diagnose.bat`                                               |
-| `python -m src repair-safe --apply`                                           | First LOW-risk `scripts/*.bat` via `RunAs`; appends feedback JSONL | `logs/decision_feedback.jsonl`, rerun `diagnose`                                                                 |
-| `python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY` | Mutates targeted HKCU WinINET proxy keys only                      | Compare `logs/repair_audit.jsonl`, rerun `proxy-status`, capture new `snapshot`                                  |
-| `python -m src diagnose-live`                                                 | Writes live diagnosis JSON plus JSONL context                      | Verify `reports/last_diagnosis_live.json` timestamps vs `logs/decision_audit.jsonl`                              |
-| `python -m src proxy-watch`                                                   | Appends drift/attribution NDJSON rows (no live rollback)           | Correlate `logs/proxy_guard.jsonl` with stderr banners; optional `--evidence-csv`                                |
-| Hybrid `POST /repair/execute`                                                 | Host shell commands with `confirm: true`                           | JSON `results` array (`returncode`, stdout/stderr)                                                               |
-| SaaS `/diagnose` (optional backend)                                           | SQLite usage metering + persisted rows per call                    | `/usage`, `/history` responses                                                                                   |
-| Remote agent loop                                                             | Repeated HTTP posts with local probes                              | Backend logs/DB counters; bearer token posture                                                                   |
-| `POST /platform/remediation/execute` (prototype)                              |                                                                    | Rows in `platform_data/remediation_executions.jsonl`, matching `audit.jsonl`, compare `SAFE_MODE` / RBAC headers |
+| Guided `.bat` repairs | Executes elevated Windows commands after confirmation | Logs under `logs/`, script exit prompts, rerun `auto_diagnose.bat` |
+| `python -m src repair-safe --apply` | First LOW-risk `scripts/*.bat` via `RunAs`; appends feedback JSONL | `logs/decision_feedback.jsonl`, rerun `diagnose` |
+| `python -m src proxy disable --dry-run false --confirm DISABLE_WININET_PROXY` | Mutates targeted HKCU WinINET proxy keys only | Compare `logs/repair_audit.jsonl`, rerun `proxy-status`, capture new `snapshot` |
+| `python -m src diagnose-live` | Writes live diagnosis JSON plus JSONL context | Verify `reports/last_diagnosis_live.json` timestamps vs `logs/decision_audit.jsonl` |
+| `python -m src proxy-watch` | Appends drift/attribution NDJSON rows (no live rollback) | Correlate `logs/proxy_guard.jsonl` with stderr banners; optional `--evidence-csv` |
+| Hybrid `POST /repair/execute` | Host shell commands with `confirm: true` | JSON `results` array (`returncode`, stdout/stderr) |
+| SaaS `/diagnose` (optional backend) | SQLite usage metering + persisted rows per call | `/usage`, `/history` responses |
+| Remote agent loop | Repeated HTTP posts with local probes | Backend logs/DB counters; bearer token posture |
+| `POST /platform/remediation/execute` (prototype) | | Rows in `platform_data/remediation_executions.jsonl`, matching `audit.jsonl`, compare `SAFE_MODE` / RBAC headers |
 
 
 ### Endpoint Reliability Platform docs
 
 
-| Doc                                                                          | Topic                                                                                                               |
+| Doc | Topic |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `[architecture_platform.md](architecture_platform.md)`                       | Platform diagrams + pipeline vocabulary                                                                             |
-| `[cli_reference.md](cli_reference.md)`                                       | Long CLI / agent / uvicorn inventories                                                                              |
-| `[demo_script.md](demo_script.md)`                                           | Safe local demo including `demo_fleet`                                                                              |
-| `[endpoint_reliability_platform.md](endpoint_reliability_platform.md)`       | Vision — toolkit vs platform                                                                                        |
-| `[evidence_pipeline.md](evidence_pipeline.md)`                               | `evidence/` — attribution inputs + honest telemetry boundary                                                        |
-| `[rbac_and_remediation.md](rbac_and_remediation.md)`                         | Roles vs preview / execute / ingest gates                                                                           |
-| `[metrics.md](metrics.md)`                                                   | `platform_signals.jsonl` KPI names merged into `GET /platform/metrics`                                              |
-| `[platform_architecture.md](platform_architecture.md)`                       | Diagrams (agent → JSONL → API)                                                                                      |
-| `[platform_api_contract.md](platform_api_contract.md)`                       | `/platform/*` payloads, RBAC headers                                                                                |
-| `[demo_walkthrough.md](demo_walkthrough.md)`                                 | Safe demo script incl. attribution fixture hooks                                                                    |
-| `[safety_and_privacy.md](safety_and_privacy.md)`                             | Allowed / redacted fields                                                                                           |
-| `[test_strategy.md](test_strategy.md)`                                       | pytest safety boundaries — offline regressions without repair scripts                                               |
+| `[architecture_platform.md](architecture_platform.md)` | Platform diagrams + pipeline vocabulary |
+| `[cli_reference.md](cli_reference.md)` | Long CLI / agent / uvicorn inventories |
+| `[demo_script.md](demo_script.md)` | Safe local demo including `demo_fleet` |
+| `[endpoint_reliability_platform.md](endpoint_reliability_platform.md)` | Vision — toolkit vs platform |
+| `[evidence_pipeline.md](evidence_pipeline.md)` | `evidence/` — attribution inputs + honest telemetry boundary |
+| `[rbac_and_remediation.md](rbac_and_remediation.md)` | Roles vs preview / execute / ingest gates |
+| `[metrics.md](metrics.md)` | `platform_signals.jsonl` KPI names merged into `GET /platform/metrics` |
+| `[platform_architecture.md](platform_architecture.md)` | Diagrams (agent → JSONL → API) |
+| `[platform_api_contract.md](platform_api_contract.md)` | `/platform/*` payloads, RBAC headers |
+| `[demo_walkthrough.md](demo_walkthrough.md)` | Safe demo script incl. attribution fixture hooks |
+| `[safety_and_privacy.md](safety_and_privacy.md)` | Allowed / redacted fields |
+| `[test_strategy.md](test_strategy.md)` | pytest safety boundaries — offline regressions without repair scripts |
 | `[extension_points_multi_host_saas.md](extension_points_multi_host_saas.md)` | **Design only:** ingestion + optional remote-control interfaces; multi-host → SaaS extension points (no cloud code) |
 
 
@@ -131,11 +131,11 @@ Automated suites live under `**tests/`** (see `**docs/test_strategy.md**` for de
 ## Supplementary tooling paths
 
 
-| Path                                  | Purpose                                                                           |
+| Path | Purpose |
 | ------------------------------------- | --------------------------------------------------------------------------------- |
-| `proxy_attribution/`                  | Read-only classifier/diagnostic CLI layering on Windows proxy artefacts.          |
-| `src/proxy_investigation/`            | Read-only localhost proxy drift investigation → JSONL + markdown report.          |
-| `proxy_reasoning/`                    | Proxy scenario ranking, verification, policy, replay audit (root package).        |
+| `proxy_attribution/` | Read-only classifier/diagnostic CLI layering on Windows proxy artefacts. |
+| `src/proxy_investigation/` | Read-only localhost proxy drift investigation → JSONL + markdown report. |
+| `proxy_reasoning/` | Proxy scenario ranking, verification, policy, replay audit (root package). |
 | `network_agent/` + `hybrid_frontend/` | Alternate demo stacks documented in-repo; not required for `python -m src` flows. |
 
 

@@ -80,7 +80,7 @@ Document additionally:
 ## Evidence-based wording
 
 | Use | Avoid |
-|-----|-------|
+| ----- | ------- |
 | observation, hypothesis, proof tier, triage label | malware detected, compromise confirmed |
 | correlation, pattern suggests | proves causality, guaranteed safe |
 | preview-only, policy decision | autonomous fix, AI-authorized execution |

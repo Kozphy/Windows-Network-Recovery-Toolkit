@@ -111,7 +111,7 @@ python -m windows_network_toolkit analytics-summary --audit-dir tests/fixtures/a
 ## Troubleshooting
 
 | Issue | Fix |
-|-------|-----|
+| ------- | ----- |
 | `ModuleNotFoundError` | `$env:PYTHONPATH = (Get-Location).Path` |
 | Fixture not found | Use full path or short name `case_1_dead_wininet_proxy.json` |
 | `proxy-disable` on Linux | Expected — returns `unsupported_platform`; explain dry-run contract still applies on Windows |

@@ -9,7 +9,7 @@ This folder contains a **Power BI-ready analytics layer** for the Technology Ris
 ## Audit notes (for reviewers)
 
 | Topic | Guidance |
-|-------|----------|
+| ------- | ---------- |
 | Source of truth | Append-only JSONL audit dirs (e.g. `tests/fixtures/risk_analytics/audit_sample/`) — CSV exports are **point-in-time snapshots** |
 | Classification fields | Triage labels — not malware verdicts; every row should carry `limitations` where exported |
 | KPI measures | Ordinal confidence — not calibrated probability (see `docs/proxy-proof-ladder.md`) |
@@ -23,7 +23,7 @@ To verify export integrity: re-run `powerbi-export` with the same `--audit-dir` 
 ## Contents
 
 | Path | Purpose |
-|------|---------|
+| ------ | --------- |
 | [report_blueprint.md](report_blueprint.md) | Four-page report spec (Executive, Risk Trend, Control Testing, Drilldown) |
 | [dax/measures.md](dax/measures.md) | KPI DAX measures |
 | [rls_design.md](rls_design.md) | Row-level security roles |
@@ -69,7 +69,7 @@ python -m windows_network_toolkit analytics-export-powerbi --portfolio-sample --
 ## Related platform commands
 
 | Command | Role |
-|---------|------|
+| --------- | ------ |
 | `risk-assess` | Produces `RiskDecisionRecord` JSON |
 | `control-test` | Mature control test results |
 | `governance-report` | Management narrative + KPI context |

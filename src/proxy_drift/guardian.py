@@ -192,7 +192,13 @@ def run_dead_proxy_guardian_once(
     path: dict[str, Any] = {}
     proxy_probe_ok: bool | None = None
     direct_probe_ok: bool | None = None
-    need_path = (clear_broken or hold_direct) and enabled and parsed.is_localhost_proxy and port and listener
+    need_path = (
+        (clear_broken or hold_direct)
+        and enabled
+        and parsed.is_localhost_proxy
+        and port
+        and listener
+    )
     if need_path and clear_broken:
         broken, path = _assess_broken(
             enabled=enabled,
@@ -287,7 +293,9 @@ def run_dead_proxy_guardian_once(
         blocked_reason = f"Confirmation required: {CONFIRM_CLEAR_DEAD}"
     elif hold_hit:
         result["recommended_action"] = (
-            f"Hold-direct: clear localhost WinINET rewrite (confirm {CONFIRM_HOLD_DIRECT})."
+            f"Hold-direct: clear localhost WinINET rewrite (confirm {CONFIRM_HOLD_DIRECT}). "
+            "If rewrite recurs with Session-0 / VersionUpdater-like persistence, "
+            "run contain-localhost-rewriter.cmd (confirm CONTAIN_LOCALHOST_REWRITER)."
         )
         required = CONFIRM_HOLD_DIRECT
         confirm_ok = confirm_broken == CONFIRM_HOLD_DIRECT

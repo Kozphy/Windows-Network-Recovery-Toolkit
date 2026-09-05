@@ -9,7 +9,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## NO_PROXY
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | Proxy disabled; no PAC URL |
 | **Required evidence** | `ProxyEnable=0`, empty AutoConfigURL |
 | **Optional** | WinHTTP direct confirmation |
@@ -24,7 +24,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## DEAD_PROXY_CONFIG
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | WinINET points to localhost port with no listener |
 | **Required evidence** | `ProxyEnable=1`, localhost `ProxyServer`, listener check failed |
 | **Optional** | WinHTTP mismatch secondary; path contrast T2 |
@@ -39,7 +39,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## LOCAL_PROXY_ACTIVE
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | Listener bound on configured localhost port |
 | **Required evidence** | Matching port in netstat + config |
 | **Optional** | Process name/path |
@@ -54,7 +54,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## UNKNOWN_LOCAL_PROXY
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | Active listener; process not in allowlist |
 | **Required evidence** | Listener + PID without dev/security match |
 | **Optional** | Parent process tree |
@@ -69,7 +69,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## KNOWN_DEV_PROXY
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | Listener matches dev-tool heuristics (Node, Cursor, etc.) |
 | **Required evidence** | Process/path allowlist match |
 | **Optional** | Port correlation |
@@ -84,7 +84,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## KNOWN_SECURITY_TOOL
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | Listener matches security product heuristics |
 | **Required evidence** | Vendor/path match |
 | **Proof tier** | T2 |
@@ -97,7 +97,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## SUSPICIOUS_PROXY
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | External or non-localhost suspicious proxy config |
 | **Required evidence** | Remote proxy server or anomalous config |
 | **Proof tier** | T1–T2 |
@@ -111,7 +111,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## POSSIBLE_MITM_RISK
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | ≥2 independent MITM **indicators** (never confirmed MITM) |
 | **Required evidence** | TLS mismatch + proxy/listener signals |
 | **Proof tier** | T2–T3 |
@@ -125,7 +125,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## PAC_CONFIGURED
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | AutoConfigURL set |
 | **Required evidence** | Non-empty PAC URL in registry |
 | **Proof tier** | T1 |
@@ -139,7 +139,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## WININET_WINHTTP_MISMATCH
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | WinINET proxy path differs from WinHTTP |
 | **Required evidence** | Both stacks read; paths differ |
 | **Proof tier** | T1–T2 |
@@ -153,7 +153,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## REVERTER_SUSPECTED
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | Watch history shows repeated proxy reappearance |
 | **Required evidence** | Timeline with disable→re-enable pattern |
 | **Optional** | Parent PID on writer |
@@ -168,7 +168,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## TLS_PATH_MISMATCH
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | Browser and curl/system TLS paths diverge (when primary) |
 | **Required evidence** | `tls-proof` contrast results |
 | **Proof tier** | T3 |
@@ -184,7 +184,7 @@ Each label includes definition, evidence requirements, proof tier guidance, poli
 ## ERROR_INSUFFICIENT_DATA
 
 | Attribute | Detail |
-|-----------|--------|
+| ----------- | -------- |
 | **Definition** | Missing proxy state or permission denied |
 | **Required evidence** | Collector failure or empty state |
 | **Proof tier** | T0 |

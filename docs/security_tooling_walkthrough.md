@@ -3,7 +3,7 @@
 ## Evidence ladder
 
 | Level | Source | Claim strength |
-|-------|--------|----------------|
+| ------- | -------- | ---------------- |
 | Observation | WinINET read, listener | Weak |
 | Correlation | Port aligns with ProxyServer | Candidate only |
 | Proof | Sysmon E13 / Procmon | Writer attribution |

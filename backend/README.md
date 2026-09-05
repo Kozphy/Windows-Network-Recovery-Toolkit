@@ -9,7 +9,7 @@ FastAPI application for **technology risk analytics** and the optional **Endpoin
 ## Ten-minute orientation
 
 | Layer | Path | Responsibility |
-|-------|------|----------------|
+| ------- | ------ | ---------------- |
 | Entry | `backend/main.py` | App factory, router mounts, `/metrics` merge |
 | TRISK API | `backend/canonical_routes.py`, `backend/trisk_metrics.py` | Read-only incidents, risks, controls, executive report |
 | Platform API | `backend/platform_routes.py` | JSONL-backed fleet, diagnosis, remediation preview/execute gates |
@@ -60,7 +60,7 @@ make demo-api
 ## API surfaces (verified routes)
 
 | Prefix | Auth | Mutation default | Notes |
-|--------|------|------------------|-------|
+| -------- | ------ | ------------------ | ------- |
 | `GET /trisk/*` | Optional token in demo | Read-only | Technology risk portfolio API |
 | `GET /health` | None | Read-only | Liveness |
 | `GET /metrics` | None | Read-only | Prometheus text + in-memory counters |
@@ -77,7 +77,7 @@ Remediation **execute** paths require typed confirmation and policy allow — th
 Copy `.env.example` to `.env` and set as needed:
 
 | Variable | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | `TRISK_DATABASE_URL` | SQLModel engine URL; default local `sqlite:///./trisk_local.db` (gitignored) |
 | `TRISK_API_TOKEN` | `/v1/*` demo token (default `dev-trisk-token`) |
 | `PLATFORM_DATA_DIR` | Override `platform_data/` JSONL root |
@@ -94,7 +94,7 @@ Billing routes return **503** when the `stripe` package is missing; `/v1/*` and 
 ## Persistence
 
 | Store | When used | Audit notes |
-|-------|-----------|-------------|
+| ------- | ----------- | ------------- |
 | `trisk_local.db` | Local dev without Docker | SQLite file at repo root; tests use ephemeral `trisk.db` in `tmp_path` |
 | Postgres (`docker-compose.yml`) | Production-shaped demo | Schema in `backend/db/schema.sql` |
 | `platform_data/*.jsonl` | Platform prototype | Append-only; correlate `audit.jsonl` with `remediation_executions.jsonl` |
@@ -106,7 +106,7 @@ Tests reset the engine via `tests/backend/conftest.py` — do not point CI at a 
 ## Docker
 
 | Stack | File | Services |
-|-------|------|----------|
+| ------- | ------ | ---------- |
 | Full platform | `docker-compose.yml` | API + Postgres + Prometheus + Grafana |
 | Reviewer demo | `docker-compose.demo.yml` | API only (`DEMO_MODE=true`) |
 

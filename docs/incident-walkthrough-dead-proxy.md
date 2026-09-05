@@ -7,7 +7,7 @@ Step-by-step narrative moved from the root README. Fixture pack: [../fixtures/de
 Browser fails with `ERR_PROXY_CONNECTION_FAILED`. Ping and DNS work. WinINET shows proxy enabled toward `127.0.0.1:59081`. No listener on that port. WinHTTP is direct. Process owner unclear.
 
 | Step | Action | Result |
-|------|--------|--------|
+| ------ | -------- | -------- |
 | 1 | `proxy-status` | Structured WinINET/WinHTTP state |
 | 2 | `proxy-owner` | Listener check; owner unknown or absent |
 | 3 | `diagnose --proof` | Path contrast; proof envelope with limitations |

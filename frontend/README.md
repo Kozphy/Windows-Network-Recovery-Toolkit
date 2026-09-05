@@ -35,7 +35,7 @@ Start the API first:
 Copy `.env.local.example` to `.env.local` and set:
 
 | Variable | Purpose |
-|----------|---------|
+| ---------- | --------- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (auth demo) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
 | `NEXT_PUBLIC_API_BASE` | FastAPI origin (default `http://localhost:8000`) |

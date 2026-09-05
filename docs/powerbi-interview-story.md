@@ -96,7 +96,7 @@ python -m windows_network_toolkit governance-report `
 ## Anticipated questions
 
 | Question | Answer |
-|----------|--------|
+| ---------- | -------- |
 | Is this real-time SIEM? | No — batch export from audit JSONL; portfolio demonstrates semantic modeling. |
 | Can users fix proxies from the report? | No — read-only analytics; remediation is preview-only in CLI. |
 | Why star schema vs single flat table? | Separate control test grain from incident grain; avoids fan-out on joins. |

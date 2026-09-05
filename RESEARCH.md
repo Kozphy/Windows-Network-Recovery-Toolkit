@@ -2,7 +2,17 @@
 
 This repository is primarily an engineering and technology-risk platform. This document adds a research-style evaluation layer so that claims about the system can be tested rather than inferred from feature count.
 
-## Research question
+**Formal RQ1–RQ3 (diagnostic effectiveness, component contribution, remediation safety):**
+[`docs/research/research_questions.md`](docs/research/research_questions.md)
+
+**Architecture map / gap analysis / threats:**
+[`docs/research/research_architecture.md`](docs/research/research_architecture.md) ·
+[`docs/research/research_grade_gap_analysis.md`](docs/research/research_grade_gap_analysis.md) ·
+[`docs/research/threats_to_validity.md`](docs/research/threats_to_validity.md)
+
+**Purple Team control-validation RQs (orthogonal):** [`research/questions.md`](research/questions.md)
+
+## Research question (engineering evaluation layer)
 
 **Can deterministic, evidence-tiered endpoint diagnosis improve classification quality, auditability, and decision reproducibility compared with simpler rule-based troubleshooting baselines?**
 

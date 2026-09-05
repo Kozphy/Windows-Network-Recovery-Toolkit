@@ -4,8 +4,9 @@
 
 ## What this repository is
 
-A **local-first Windows endpoint reliability toolkit** with a growing **Decision Intelligence Platform**:
+A **local-first Windows endpoint reliability toolkit** evolving into a **Purple Team Security Validation Platform** (fixture-driven control effectiveness — not malware/EDR):
 
+- **Purple Team CLI:** `python -m src.purple_team` (scenarios, validate/dry-run, benchmark, baselines, evidence verify)
 - **Primary CLI:** JSON-first diagnostics and policy-gated remediation (`python -m windows_network_toolkit`)
 - **Extended Windows operator CLI:** `python -m src` (startup observability, proxy drift, network-state, platform handlers)
 - Append-only JSONL audit trails (`.audit/` + legacy `logs/`) and deterministic replay
@@ -13,21 +14,71 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 - Multi-domain adapters (Windows, Security, Cloud, Infrastructure, Market Events)
 - Research-only market catalyst monitoring (no trade execution)
 
-## Portfolio pack (recruiters, Big 4, FAANG, PL-300)
+### Purple Team docs
 
 | Doc | Purpose |
-|-----|---------|
-| **[README.md](../README.md)** | **30-second positioning + non-claims (start here)** |
+| ----- | --------- |
+| [purple-team-gap-analysis.md](purple-team-gap-analysis.md) | Phase 0 assessment |
+| [purple_team/architecture.md](purple_team/architecture.md) | Lifecycle architecture |
+| [purple_team/safety-model.md](purple_team/safety-model.md) | Deny-by-default gates |
+| [purple_team/threat-model.md](purple_team/threat-model.md) | Threats against the platform |
+| [purple_team/detection-engine.md](purple_team/detection-engine.md) | DET-* rules |
+| [purple_team/evaluation.md](purple_team/evaluation.md) | Benchmarks / metrics |
+| [purple_team/evidence-model.md](purple_team/evidence-model.md) | Tamper-evident bundles |
+| [purple_team/scenario-authoring.md](purple_team/scenario-authoring.md) | How to add scenarios |
+| [purple-team-upgrade-report.md](purple-team-upgrade-report.md) | Before → after upgrade report |
+| [open-source-checklist.md](open-source-checklist.md) | Secrets, git hygiene, pre-commit gitleaks, public release |
+| [../research/questions.md](../research/questions.md) | Purple Team research questions |
+| [research_question.md](research_question.md) | Alias → formal RQ1–RQ3 |
+| [dataset.md](dataset.md) | Alias → dataset v1 + research façade |
+| [methodology.md](methodology.md) | Evaluation methodology |
+| [failure_taxonomy.md](failure_taxonomy.md) | Alias → F_* taxonomy |
+| [threats_to_validity.md](threats_to_validity.md) | Alias → threats docs |
+| [../paper/outline.md](../paper/outline.md) | Preprint outline (no invented results) |
+| [research/research_architecture.md](research/research_architecture.md) | Research pipeline architecture |
+| [research/research_grade_gap_analysis.md](research/research_grade_gap_analysis.md) | Research-grade gap analysis |
+| [research/threats_to_validity.md](research/threats_to_validity.md) | Diagnostic threats to validity |
+| [research/data_leakage_controls.md](research/data_leakage_controls.md) | Train/test and label leakage controls |
+| [../research/dataset/README.md](../research/dataset/README.md) | Public research dataset façade |
+
+## Portfolio pack (recruiters, Big 4, FAANG, PL-300)
+
+### Enterprise case study pack (start here for hiring managers)
+
+| Doc | Purpose |
+| ----- | --------- |
+| **[executive-summary.md](executive-summary.md)** | 1–2 page CIO/CISO/Risk summary |
+| **[case-study.md](case-study.md)** | Full hiring-manager case study |
+| **[portfolio-summary.md](portfolio-summary.md)** | GitHub / resume / LinkedIn / 60s interview |
+| **[business-case.md](business-case.md)** | Problem, target state, benefits (no fabricated ROI) |
+| **[stakeholder-map.md](stakeholder-map.md)** | Goals, decisions, evidence by role |
+| **[system-boundary.md](system-boundary.md)** | In scope / out of scope / automation vs approval |
+| **[decision-model.md](decision-model.md)** | Pipeline and decision points |
+| **[requirements.md](requirements.md)** | FR / NFR / GR with implementation status |
+| **[kpi-framework.md](kpi-framework.md)** | Operational, risk, engineering, governance KPIs |
+| **[risk-register.md](risk-register.md)** | Enterprise risk register (ordinal) |
+| **[failure-taxonomy.md](failure-taxonomy.md)** | F1–F9 fail-safe taxonomy |
+| **[tradeoffs.md](tradeoffs.md)** | Architecture trade-off judgments |
+| **[uat-plan.md](uat-plan.md)** | Given/When/Then acceptance scenarios |
+| **[auditability.md](auditability.md)** | Who/what/when/why audit framework |
+| **[adr/0001-system-boundary.md](adr/0001-system-boundary.md)** | ADR: system boundary |
+
+| Doc | Purpose |
+| ----- | --------- |
+| **[README.md](../README.md)** | **Enterprise README + quick commands (start here)** |
 | [production-readiness-gap.md](production-readiness-gap.md) | Honest 15-row production gap table |
 | [threat-model.md](threat-model.md) | 10 abuse scenarios + test mapping |
 | [docker-demo.md](docker-demo.md) | Reviewer Docker Demo (Option C) |
 | [../real_evidence/case-001-dead-proxy/](../real_evidence/case-001-dead-proxy/) | Sanitized evidence case pack |
 | [architecture-infographic.md](architecture-infographic.md) | Mermaid evidence pipeline |
+| [infographics/wnrt-project-instructions.pdf](infographics/wnrt-project-instructions.pdf) | Canva project-instructions one-pager |
 | [interview-demo-3min.md](interview-demo-3min.md) | FAANG / Big 4 / mixed panel demo paths |
 | [one-page-case-study-dead-proxy.md](one-page-case-study-dead-proxy.md) | Dead proxy case study |
 | [replay-demo.md](replay-demo.md) | Deterministic proxy replay |
 | [test-strategy.md](test-strategy.md) | Fixtures, safety contracts, tamper detection |
 | [faang-platform-review.md](faang-platform-review.md) | Platform / SRE reviewer pack |
+| [google-l11-reference.md](google-l11-reference.md) | Google L11 is a **reference**, not a claim; L6–L7 is the implemented bar |
+| [slo-endpoint-reliability.md](slo-endpoint-reliability.md) | Local operator SLIs (false-clear, time-to-direct, dual-stack) |
 | [state-machine.md](state-machine.md) | Proxy transition state diagram |
 | [api-trisk-examples.md](api-trisk-examples.md) | FastAPI read-only `/trisk/*` examples |
 | [adr/ADR-portfolio-positioning.md](adr/ADR-portfolio-positioning.md) | Evidence pipeline ADR |
@@ -41,7 +92,7 @@ A **local-first Windows endpoint reliability toolkit** with a growing **Decision
 ## Portfolio pack (legacy index)
 
 | Doc | Purpose |
-|-----|---------|
+| ----- | --------- |
 | **[README_BIG4_PORTFOLIO.md](README_BIG4_PORTFOLIO.md)** | **Big 4 / Risk Advisory portfolio index** |
 | [big4_interview_positioning.md](big4_interview_positioning.md) | Core Big 4 framing and STAR story |
 | [technology_risk_control_matrix.md](technology_risk_control_matrix.md) | Control testing matrix |
@@ -260,7 +311,7 @@ Entry: `platform_core/outcome_learning/` · Fixture: `fixtures/outcome_learning/
 ## Safety boundaries (non-negotiable)
 
 | Boundary | Enforcement |
-|----------|-------------|
+| ---------- | ------------- |
 | No silent remediation | Policy gates + dry-run defaults on API previews |
 | Observation ≠ proof | Documented in adapters and market events module |
 | Research ≠ execution | Market module blocks trade execution paths |
@@ -270,7 +321,7 @@ Entry: `platform_core/outcome_learning/` · Fixture: `fixtures/outcome_learning/
 ## Module map
 
 | Path | Responsibility |
-|------|----------------|
+| ------ | ---------------- |
 | `src/` | Extended Windows CLI (`python -m src`), collectors, market events CLI |
 | `src/proxy_drift/` | Startup observability, boot trace, guardian, evidence bundle, safe search |
 | `src/network_recovery/` | ChatGPT app-path scenario diagnose, LOW-risk auto-fix orchestrator |
@@ -302,7 +353,7 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 ## Related docs
 
 | Doc | Topic |
-|-----|-------|
+| ----- | ------- |
 | `docs/case-studies/dead-localhost-proxy.md` | Golden 59081 dead proxy case |
 | `docs/classification-model.md` | 12 primary labels + secondary signals |
 | `docs/proof-vs-observation.md` | Proof envelope vs observation |
@@ -340,7 +391,10 @@ pytest -q tests/test_proxy_drift_toolkit.py --basetemp=.pytest_tmp
 | [rollback-strategy.md](rollback-strategy.md) | Preview-first rollback six-part model |
 | [startup-observability.md](startup-observability.md) | v0.3.0 startup observability architecture and CLI |
 | [localhost-diagnose.md](localhost-diagnose.md) | Localhost ERR_CONNECTION_REFUSED evidence pipeline |
-| [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery runbook |
+| [dead-proxy-guardian.md](dead-proxy-guardian.md) | Dead localhost WinINET proxy recovery (rewriter containment, IPv6 path, browser stall) |
+| [adr/ADR-015-no-silent-kill-rewriter-containment.md](adr/ADR-015-no-silent-kill-rewriter-containment.md) | Containment ≠ silent kill |
+| [adr/ADR-016-prefer-ipv4-blast-radius.md](adr/ADR-016-prefer-ipv4-blast-radius.md) | Prefer-IPv4 blast radius |
+| [adr/ADR-017-unified-operator-incident-card.md](adr/ADR-017-unified-operator-incident-card.md) | Unified operator incident card |
 | [openclaw-coding-agent.md](openclaw-coding-agent.md) | Policy-gated OpenClaw coding agent (draft PR only) |
 | [audit-custody.md](audit-custody.md) | Level 1 hash-chained custody + tip anchor verify |
 | [procmon_proxy_filter.md](procmon_proxy_filter.md) | Procmon RegSetValue filter set + CSV import |

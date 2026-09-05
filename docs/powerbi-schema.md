@@ -1,6 +1,6 @@
 # Power BI Schema — Technology Risk Analytics
 
-**Status:** Phase 1  
+**Status:** Phase 1
 **Canonical exporters:** `analytics-export` (endpoint CSV) · `powerbi-export` (star schema)
 
 This document consolidates Power BI contracts for the Technology Risk & Control Analytics Platform. Detailed star-schema design also lives in [analytics/powerbi/model/star_schema.md](../analytics/powerbi/model/star_schema.md).
@@ -24,7 +24,7 @@ python -m windows_network_toolkit powerbi-export `
 Phase 1 `reporting.export_technology_risk_report()` adds:
 
 | File | Content |
-|------|---------|
+| ------ | --------- |
 | `risk_scores.json` / `risk_scores.csv` | Typed scoring output per incident |
 | `executive_report.json` | Committee-ready KPI bundle |
 | `incidents.json`, `control_tests.json` | Pipeline artefacts |
@@ -35,7 +35,7 @@ Phase 1 `reporting.export_technology_risk_report()` adds:
 ## Endpoint analytics CSV tables (`analytics-export`)
 
 | CSV | Grain | Key columns |
-|-----|-------|-------------|
+| ----- | ------- | ------------- |
 | `incident_classes.csv` | Aggregate | `incident_class`, `count` |
 | `risk_levels.csv` | Aggregate | `risk_level`, `count` |
 | `control_results.csv` | Aggregate | `test_result`, `count` |
@@ -50,7 +50,7 @@ Phase 1 `reporting.export_technology_risk_report()` adds:
 ## Star schema tables (`powerbi-export`)
 
 | Table | Type | Purpose |
-|-------|------|---------|
+| ------- | ------ | --------- |
 | `fact_incidents` | Fact | Incident grain with classification and risk rating |
 | `fact_control_tests` | Fact | Control test results |
 | `fact_audit_events` | Fact | Audit trail events |
@@ -60,15 +60,15 @@ Phase 1 `reporting.export_technology_risk_report()` adds:
 | `dim_time` | Dimension | Date spine |
 | `dim_endpoint` | Dimension | Endpoint identifiers |
 
-DAX measures: [examples/powerbi/dax/measures.md](../examples/powerbi/dax/measures.md)  
-Report blueprint: [examples/powerbi/report_blueprint.md](../examples/powerbi/report_blueprint.md)  
+DAX measures: [examples/powerbi/dax/measures.md](../examples/powerbi/dax/measures.md)
+Report blueprint: [examples/powerbi/report_blueprint.md](../examples/powerbi/report_blueprint.md)
 RLS design: [examples/powerbi/rls_design.md](../examples/powerbi/rls_design.md)
 
 ---
 
 ## Warehouse DDL (SQL analytics)
 
-Portfolio warehouse schema: [schemas/analytics_warehouse.sql](../schemas/analytics_warehouse.sql)  
+Portfolio warehouse schema: [schemas/analytics_warehouse.sql](../schemas/analytics_warehouse.sql)
 Data model notes: [analytics_data_model.md](analytics_data_model.md)
 
 ---
@@ -77,9 +77,9 @@ Data model notes: [analytics_data_model.md](analytics_data_model.md)
 
 Import CSV from `reports/analytics/` or `examples/powerbi/export/`:
 
-1. Set `incident_class` and `control_id` as dimension keys.  
-2. Join `risk_scores` to `incidents` on `incident_id`.  
-3. Display `limitations` as tooltip text — never hide governance caveats.  
+1. Set `incident_class` and `control_id` as dimension keys.
+2. Join `risk_scores` to `incidents` on `incident_id`.
+3. Display `limitations` as tooltip text — never hide governance caveats.
 4. Do not infer malware from `risk_level=HIGH`.
 
 Full walkthrough: [examples/powerbi/power_query_guidance.md](../examples/powerbi/power_query_guidance.md)
@@ -89,7 +89,7 @@ Full walkthrough: [examples/powerbi/power_query_guidance.md](../examples/powerbi
 ## Schema versions
 
 | Artefact | Version key |
-|----------|-------------|
+| ---------- | ------------- |
 | Endpoint analytics payload | `endpoint_evidence_analytics.v1` |
 | Risk scoring API | `technology_risk_scoring.v1` |
 | Executive report | `technology_risk_executive_report.v1` |

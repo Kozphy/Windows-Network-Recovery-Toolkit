@@ -1,0 +1,15 @@
+{
+  "schema_version": "research_powerbi_export.v1",
+  "run_id": "20260902T104552Z",
+  "git_sha": "e09566bbffa7",
+  "dataset_version": "v1",
+  "case_count": "22",
+  "tables": [
+    "dim_baseline.csv",
+    "fact_benchmark_metrics.csv",
+    "fact_bootstrap_ci.csv",
+    "fact_ablations.csv",
+    "fact_b3_failures.csv",
+    "fact_confusion_matrix_b3.csv"
+  ]
+}

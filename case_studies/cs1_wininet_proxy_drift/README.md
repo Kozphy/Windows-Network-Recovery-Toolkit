@@ -16,7 +16,7 @@ python -m windows_network_toolkit proxy-report --include-principles --fixture ca
 ## Files
 
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `fixture.json` | Full incident payload |
 | `timeline.jsonl` | Drift timeline |
 | `expected_classification.json` | Expected DEAD_PROXY_CONFIG output |

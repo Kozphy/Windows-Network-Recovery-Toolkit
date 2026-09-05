@@ -16,7 +16,7 @@ DNS → TCP → HTTP (system proxy) → HTTP (direct) → evidence tier → hypo
 ## Cause codes
 
 | Code | Meaning |
-|------|---------|
+| ------ | --------- |
 | `LOCAL_PROXY_MISCONFIG` | Proxy enabled; split-path suggests local misconfig |
 | `LOCAL_LOOPBACK_PROXY` | 127.0.0.1 listener correlated (not writer proof) |
 | `VPN_SECURITY_PROXY` | Enterprise/VPN proxy hints |

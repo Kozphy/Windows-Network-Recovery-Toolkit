@@ -18,11 +18,11 @@ Side effects:
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from .models import EvidenceSource, LAN_LIMITATIONS, LanClassification
+from .models import LAN_LIMITATIONS, EvidenceSource, LanClassification
 
 # Component caps per plan
 CAP_BREADTH = 20
@@ -119,7 +119,10 @@ def _external_domain_risk(router_events: list[dict[str, Any]]) -> tuple[float, s
             risky += 1
     unique = len(set(domains))
     score = min(CAP_EXTERNAL_DOMAIN, risky * 5 + min(unique, 5) * 2)
-    return score, f"Router DNS queries observed: {unique} unique domains ({risky} telemetry-pattern matches)"
+    return (
+        score,
+        f"Router DNS queries observed: {unique} unique domains ({risky} telemetry-pattern matches)",
+    )
 
 
 def _recurrence(observations: list[dict[str, Any]]) -> tuple[float, str]:
@@ -164,7 +167,9 @@ def compute_privacy_risk_score(
     """Compute transparent Privacy Risk Score with component breakdown."""
     devices = devices or []
     router_events = router_events or []
-    sources = {o.get("evidence_source", EvidenceSource.HOST_LEVEL_OBSERVATION.value) for o in observations}
+    sources = {
+        o.get("evidence_source", EvidenceSource.HOST_LEVEL_OBSERVATION.value) for o in observations
+    }
     for e in router_events:
         sources.add(e.get("evidence_source", EvidenceSource.ROUTER_LEVEL_EVIDENCE.value))
 
@@ -190,14 +195,10 @@ def compute_privacy_risk_score(
         f"applied ({d_rationale}). This is ordinal governance input — not proof of spying or data theft."
     )
 
-    human_review = (
-        level == "HIGH"
-        or classification
-        in {
-            LanClassification.POSSIBLE_LATERAL_RECON.value,
-            LanClassification.BROAD_SUBNET_PROBING.value,
-        }
-    )
+    human_review = level == "HIGH" or classification in {
+        LanClassification.POSSIBLE_LATERAL_RECON.value,
+        LanClassification.BROAD_SUBNET_PROBING.value,
+    }
 
     return PrivacyRiskScoreResult(
         numeric_score=round(numeric, 1),

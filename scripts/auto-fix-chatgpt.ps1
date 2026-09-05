@@ -1,10 +1,10 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  One-shot automatic fix for ChatGPT blank messages / connectivity (no prompts).
+  Preview-first recovery for ChatGPT blank messages / connectivity.
 .DESCRIPTION
   Chains proxy auto-fix, read-only diagnosis, and policy-gated LOW-risk remediations.
-  See docs/chatgpt-auto-fix.md for limits (does not fix session/cache/server-side issues).
+  Can quarantine Chromium Network Persistent State when bounded evidence selects that action.
 
   Steps:
     1. auto-fix-proxy.ps1 — Cursor no-proxy + dead proxy guardian
@@ -15,7 +15,10 @@
   Inputs:
     -SkipProxyAutoFix     Skip step 1
     -SkipGuardianInstall  Forwarded to auto-fix-proxy.ps1
-    -DryRun               Pass --dry-run true to step 4 (no mutations)
+    -Apply                Enable the confirmed LOW-risk recovery path
+    -Confirm              Must equal APPLY_CHATGPT_LOW_RISK with -Apply
+    -ProxyConfirm         Optional separate CLEAR_DEAD_LOCALHOST_PROXY token for live proxy repair
+    -DryRun               Legacy explicit preview switch; preview is now the default
     -Url                  HTTPS URL for bad-gateway step (default https://chatgpt.com)
 
   Outputs:
@@ -26,11 +29,13 @@
 
   Side effects (live run, step 4):
     - Same as auto-fix-proxy.ps1 for step 1
-    - ipconfig /flushdns, netsh winhttp reset proxy, ChatGPT.exe restart when evidence-gated
+    - ipconfig /flushdns, netsh winhttp reset proxy, or a bounded ChatGPT cold restart
+    - Network Persistent State is renamed to a reversible .wnrt-backup-* file, never deleted
     - reports/last_network_recovery_diagnosis.json, logs/network_recovery_events.jsonl
 
   Safety boundaries:
     MEDIUM/BLOCK actions (firewall reset, disable firewall) are never auto-executed.
+    Proxy mutation remains preview-only unless -ProxyConfirm CLEAR_DEAD_LOCALHOST_PROXY is typed.
     Does not claim malware or prove registry writer identity.
 
   Idempotency:
@@ -42,7 +47,7 @@
 
   Example:
     .\scripts\auto-fix-chatgpt.ps1
-    .\scripts\auto-fix-chatgpt.ps1 -DryRun
+    .\scripts\auto-fix-chatgpt.ps1 -Apply -Confirm APPLY_CHATGPT_LOW_RISK
     .\scripts\auto-fix-chatgpt.ps1 -SkipProxyAutoFix -Url https://chatgpt.com
 .NOTES
   Audit: logs/network_recovery_events.jsonl and proxy-disable.jsonl after live apply.
@@ -50,11 +55,24 @@
 param(
     [switch]$SkipProxyAutoFix,
     [switch]$SkipGuardianInstall,
+    [switch]$Apply,
     [switch]$DryRun,
+    [string]$Confirm = "",
+    [string]$ProxyConfirm = "",
     [string]$Url = "https://chatgpt.com"
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Apply -and $DryRun) {
+    throw "Choose either -Apply or -DryRun, not both."
+}
+if ($Apply -and $Confirm -cne 'APPLY_CHATGPT_LOW_RISK') {
+    throw "-Apply requires -Confirm APPLY_CHATGPT_LOW_RISK"
+}
+if ($ProxyConfirm -and $ProxyConfirm -cne 'CLEAR_DEAD_LOCALHOST_PROXY') {
+    throw "-ProxyConfirm must equal CLEAR_DEAD_LOCALHOST_PROXY"
+}
+$EffectiveDryRun = -not $Apply
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $Python = Join-Path $RepoRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $Python)) {
@@ -72,6 +90,9 @@ if (-not $SkipProxyAutoFix) {
     $proxyArgs = @()
     if ($SkipGuardianInstall) {
         $proxyArgs += '-SkipGuardianInstall'
+    }
+    if ($EffectiveDryRun -or $ProxyConfirm -cne 'CLEAR_DEAD_LOCALHOST_PROXY') {
+        $proxyArgs += '-DryRun'
     }
     & (Join-Path $PSScriptRoot 'auto-fix-proxy.ps1') @proxyArgs
     if ($LASTEXITCODE -gt 1) {
@@ -102,8 +123,13 @@ $fixArgs = @(
 if ($SkipGuardianInstall) {
     $fixArgs += '--skip-guardian-install'
 }
-if ($DryRun) {
+if ($EffectiveDryRun) {
     $fixArgs += '--dry-run', 'true'
+} else {
+    $fixArgs += '--dry-run', 'false', '--confirm', $Confirm
+    if ($ProxyConfirm) {
+        $fixArgs += '--proxy-confirm', $ProxyConfirm
+    }
 }
 
 $fixJson = & $Python @fixArgs 2>&1 | Out-String
@@ -117,7 +143,7 @@ if ($fixJson -match '"outcome":\s*"healthy"') {
     Write-Host "OK: Path looks healthy. Restart browser and retest messages." -ForegroundColor Green
     exit 0
 }
-if ($DryRun) {
+if ($EffectiveDryRun) {
     Write-Host "Dry-run complete — no mutations applied." -ForegroundColor Yellow
     exit 0
 }

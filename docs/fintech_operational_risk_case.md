@@ -21,7 +21,7 @@ Endpoint proxy drift, TLS path mismatch, and application-layer URL failures mirr
 ## Parallels to FinTech incidents
 
 | Endpoint case (this repo) | FinTech analogue |
-|---------------------------|------------------|
+| --------------------------- | ------------------ |
 | Dead localhost WinINET proxy | Stale load-balancer / sidecar config breaking app traffic |
 | WinINET vs WinHTTP mismatch | Split-brain config between edge proxy and service mesh |
 | Unknown local proxy listener | Unapproved middleware intercepting traffic |
@@ -50,7 +50,7 @@ python -m windows_network_toolkit governance-report --fixture tests/fixtures/cas
 ## Control themes for FinTech risk committees
 
 | Theme | Platform capability |
-|-------|---------------------|
+| ------- | --------------------- |
 | **Detective controls** | Proxy drift detection, TLS contrast, timeline merge |
 | **Preventive controls** | Dry-run default; blocked destructive actions |
 | **Corrective controls** | Allowlisted WinINET disable with rollback snapshot |
