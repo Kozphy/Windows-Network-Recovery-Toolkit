@@ -6,6 +6,13 @@ provided by the platform.
 """
 
 from riskclaw.policy import ToolPolicyEngine
+from riskclaw.runtime import (
+    AgentRunResult,
+    GovernedToolRunner,
+    RuntimeStatus,
+    ToolCallRequest,
+    ToolExecutionRecord,
+)
 from riskclaw.schemas import (
     AgentDefinition,
     ApprovalRecord,
@@ -30,19 +37,24 @@ from riskclaw.tools import (
 
 __all__ = [
     "AgentDefinition",
+    "AgentRunResult",
     "ApprovalRecord",
     "ApprovalStatus",
     "DuplicateToolError",
+    "GovernedToolRunner",
     "InvestigationSession",
     "RegisteredTool",
     "RiskClawAuditEvent",
+    "RuntimeStatus",
     "SessionStatus",
     "SkillDefinition",
     "SkillLoadError",
     "SkillLoader",
     "SkillRiskLevel",
+    "ToolCallRequest",
     "ToolDefinition",
     "ToolDecision",
+    "ToolExecutionRecord",
     "ToolNotFoundError",
     "ToolPolicyEngine",
     "ToolPolicyResult",
