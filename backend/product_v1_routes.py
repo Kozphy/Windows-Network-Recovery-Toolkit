@@ -384,3 +384,192 @@ def list_product_endpoints(
                 }
             )
         return {"organization_id": principal.tenant_id, "total": len(items), "items": items}
+
+
+class AgentEvidenceRequest(BaseModel):
+    """Evidence payload whose identity scope is derived from the Agent credential."""
+
+    source_event_id: str | None = Field(default=None, max_length=128)
+    evidence_type: str = Field(min_length=1, max_length=64)
+    timestamp_utc: str = Field(min_length=10)
+    raw_snapshot: dict[str, Any] = Field(default_factory=dict)
+    normalized_fields: dict[str, Any] = Field(default_factory=dict)
+    evidence_tier: str = Field(default="T1_STATE_EVIDENCE", max_length=64)
+    limitations: list[str] = Field(default_factory=list)
+    endpoint_id: str | None = Field(default=None, max_length=128)
+    organization_id: str | None = Field(default=None, max_length=64)
+
+
+@router.post("/agents/evidence", status_code=status.HTTP_202_ACCEPTED)
+def agent_evidence(
+    body: AgentEvidenceRequest,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> dict[str, Any]:
+    """Ingest evidence only for the endpoint and tenant bound to the credential."""
+    from backend.db.models import EvidenceEvent, IncidentRecord
+    from backend.db.repositories import content_hash
+    from backend.queue import get_queue_backend
+    from windows_network_toolkit.evidence_schema import STANDARD_LIMITATIONS, make_event_id
+
+    credential, session = _authenticate_agent(authorization)
+    try:
+        if body.endpoint_id and body.endpoint_id != credential.endpoint_id:
+            raise HTTPException(status_code=403, detail="agent cannot submit evidence for another endpoint")
+        if body.organization_id and body.organization_id != credential.organization_id:
+            raise HTTPException(status_code=403, detail="agent cannot override organization scope")
+        if not body.raw_snapshot:
+            raise HTTPException(status_code=422, detail="raw_snapshot must not be empty")
+
+        endpoint = session.exec(
+            select(Endpoint).where(
+                Endpoint.endpoint_id == credential.endpoint_id,
+                Endpoint.tenant_id == credential.organization_id,
+            )
+        ).first()
+        if not endpoint:
+            raise HTTPException(status_code=409, detail="credential endpoint mapping is invalid")
+
+        c_hash = content_hash(credential.endpoint_id, body.source_event_id, body.raw_snapshot)
+        existing = session.exec(
+            select(EvidenceEvent).where(EvidenceEvent.content_hash == c_hash)
+        ).first()
+        if existing:
+            if existing.endpoint_id != credential.endpoint_id or existing.tenant_id != credential.organization_id:
+                raise HTTPException(status_code=409, detail="evidence hash collision across tenant boundary")
+            return {
+                "event_id": existing.event_id,
+                "endpoint_id": existing.endpoint_id,
+                "organization_id": existing.tenant_id,
+                "classification_status": existing.classification_status,
+                "created": False,
+            }
+
+        stable = {"endpoint_id": credential.endpoint_id, "type": body.evidence_type}
+        event_id = make_event_id(body.timestamp_utc, body.evidence_type, stable)
+        limitations = list(body.limitations or []) + list(STANDARD_LIMITATIONS[:2])
+        row = EvidenceEvent(
+            event_id=event_id,
+            source_event_id=body.source_event_id,
+            content_hash=c_hash,
+            endpoint_id=credential.endpoint_id,
+            evidence_type=body.evidence_type,
+            evidence_tier=body.evidence_tier,
+            raw_snapshot=body.raw_snapshot,
+            normalized_fields=body.normalized_fields,
+            limitations=limitations,
+            tenant_id=credential.organization_id,
+        )
+        session.add(row)
+        credential.last_used_at = _utc_now()
+        session.add(credential)
+        _audit(
+            session,
+            event_type="agent.evidence_ingested",
+            principal=None,
+            organization_id=credential.organization_id,
+            resource_type="evidence",
+            resource_id=event_id,
+            details={"endpoint_id": credential.endpoint_id, "evidence_type": body.evidence_type},
+        )
+        session.commit()
+
+        job = get_queue_backend().enqueue_classification_job(event_id=event_id, idempotency_key=c_hash)
+
+        # Sync local/test classification can immediately bind the created incident.
+        # Async workers also receive tenant_id from the evidence row in the worker
+        # hardening added alongside this route.
+        session.expire_all()
+        incident = session.exec(
+            select(IncidentRecord).where(IncidentRecord.evidence_event_id == event_id)
+        ).first()
+        if incident and not incident.tenant_id:
+            incident.tenant_id = credential.organization_id
+            session.add(incident)
+            session.commit()
+
+        refreshed = session.exec(select(EvidenceEvent).where(EvidenceEvent.event_id == event_id)).first()
+        return {
+            "event_id": event_id,
+            "job_id": job.job_id,
+            "endpoint_id": credential.endpoint_id,
+            "organization_id": credential.organization_id,
+            "classification_status": refreshed.classification_status if refreshed else "pending",
+            "created": True,
+        }
+    finally:
+        session.close()
+
+
+@router.get("/endpoints/{endpoint_id}")
+def get_product_endpoint(
+    endpoint_id: str,
+    principal: Annotated[V1Principal, Depends(get_v1_principal)],
+) -> dict[str, Any]:
+    """Return tenant-scoped liveness and evidence-backed state separately."""
+    from backend.db.models import EvidenceEvent, IncidentRecord
+
+    with _session() as session:
+        endpoint = session.exec(
+            select(Endpoint).where(
+                Endpoint.endpoint_id == endpoint_id,
+                Endpoint.tenant_id == principal.tenant_id,
+            )
+        ).first()
+        if not endpoint:
+            raise HTTPException(status_code=404, detail="endpoint not found")
+
+        heartbeat = session.exec(
+            select(AgentHeartbeat)
+            .where(
+                AgentHeartbeat.organization_id == principal.tenant_id,
+                AgentHeartbeat.endpoint_id == endpoint_id,
+            )
+            .order_by(AgentHeartbeat.received_at.desc())
+        ).first()
+        evidence = session.exec(
+            select(EvidenceEvent)
+            .where(
+                EvidenceEvent.tenant_id == principal.tenant_id,
+                EvidenceEvent.endpoint_id == endpoint_id,
+            )
+            .order_by(EvidenceEvent.created_at.desc())
+        ).first()
+        incident = session.exec(
+            select(IncidentRecord)
+            .where(
+                IncidentRecord.tenant_id == principal.tenant_id,
+                IncidentRecord.endpoint_id == endpoint_id,
+            )
+            .order_by(IncidentRecord.created_at.desc())
+        ).first()
+
+        return {
+            "endpoint_id": endpoint.endpoint_id,
+            "hostname": endpoint.hostname,
+            "organization_id": endpoint.tenant_id,
+            "liveness": {
+                "status": heartbeat.status if heartbeat else "ENROLLED_NO_HEARTBEAT",
+                "last_heartbeat_at": heartbeat.received_at.isoformat() if heartbeat else None,
+                "agent_version": heartbeat.agent_version if heartbeat else None,
+            },
+            "evidence_state": {
+                "event_id": evidence.event_id if evidence else None,
+                "classification_status": evidence.classification_status if evidence else "NOT_ASSESSED",
+                "evidence_tier": evidence.evidence_tier if evidence else None,
+            },
+            "latest_incident": (
+                {
+                    "incident_id": incident.incident_id,
+                    "classification": incident.primary_classification,
+                    "proof_tier": incident.proof_tier,
+                    "confidence": incident.confidence,
+                    "limitations": incident.limitations,
+                }
+                if incident
+                else None
+            ),
+            "limitations": [
+                "Heartbeat proves authenticated liveness only; health requires evidence.",
+                "Confidence is ordinal and not a calibrated probability.",
+            ],
+        }
