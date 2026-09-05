@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "thresholds": {
+    "min_evidence_coverage": 0.25,
+    "min_confidence": 0.20,
+    "high_risk_threshold": 0.75,
+    "max_unknowns_without_flag": 1
+  },
+  "blocking_flags": [
+    "LOW_EVIDENCE_COVERAGE",
+    "HIGH_RISK_RECOMMENDATION"
+  ]
+}
