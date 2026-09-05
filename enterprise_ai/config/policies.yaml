@@ -1,0 +1,22 @@
+version: 1
+policies:
+  low_risk:
+    min_confidence: 0.85
+    require_human_review: false
+    allowed_actions:
+      - diagnose
+      - recommend
+  medium_risk:
+    min_confidence: 0.90
+    require_human_review: true
+    allowed_actions:
+      - diagnose
+      - recommend
+      - propose_remediation
+  high_risk:
+    min_confidence: 0.95
+    require_human_review: true
+    allowed_actions:
+      - diagnose
+      - recommend
+    execution: denied
