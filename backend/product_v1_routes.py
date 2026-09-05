@@ -25,7 +25,12 @@ from backend.auth.rbac import V1Principal, V1Role
 from backend.db import get_engine, init_trisk_schema
 from backend.db.models import Endpoint
 from backend.db.repositories import append_audit_chain_row
-from backend.product_v1_models import AgentCredential, AgentHeartbeat, EnrollmentToken, ProductOrganization
+from backend.product_v1_models import (
+    AgentCredential,
+    AgentHeartbeat,
+    EnrollmentToken,
+    ProductOrganization,
+)
 
 router = APIRouter(tags=["product-control-plane"])
 
@@ -47,7 +52,7 @@ def _secret_hash(secret: str) -> str:
             status_code=500,
             detail="TRISK_AGENT_TOKEN_PEPPER (or TRISK_API_TOKEN fallback) is not configured",
         )
-    return hashlib.sha256(f"{pepper}:{secret}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{pepper}:{secret}".encode()).hexdigest()
 
 
 def _session() -> Session:
@@ -59,11 +64,21 @@ def _session() -> Session:
 
 def _require_admin(principal: V1Principal) -> None:
     if principal.role != V1Role.ADMIN:
-        raise HTTPException(status_code=403, detail="organization/enrollment management requires admin")
+        raise HTTPException(
+            status_code=403, detail="organization/enrollment management requires admin"
+        )
 
 
-def _audit(session: Session, *, event_type: str, principal: V1Principal | None, organization_id: str,
-           resource_type: str, resource_id: str, details: dict[str, Any] | None = None) -> None:
+def _audit(
+    session: Session,
+    *,
+    event_type: str,
+    principal: V1Principal | None,
+    organization_id: str,
+    resource_type: str,
+    resource_id: str,
+    details: dict[str, Any] | None = None,
+) -> None:
     append_audit_chain_row(
         session,
         {
@@ -117,7 +132,9 @@ def create_organization(
     organization_id = principal.tenant_id
     with _session() as session:
         existing = session.exec(
-            select(ProductOrganization).where(ProductOrganization.organization_id == organization_id)
+            select(ProductOrganization).where(
+                ProductOrganization.organization_id == organization_id
+            )
         ).first()
         if existing:
             return existing.model_dump(mode="json")
@@ -153,7 +170,9 @@ def create_enrollment_token(
     now = _utc_now()
     with _session() as session:
         organization = session.exec(
-            select(ProductOrganization).where(ProductOrganization.organization_id == organization_id)
+            select(ProductOrganization).where(
+                ProductOrganization.organization_id == organization_id
+            )
         ).first()
         if not organization:
             raise HTTPException(status_code=404, detail="organization not found for current tenant")
@@ -165,6 +184,7 @@ def create_enrollment_token(
             max_uses=1,
             created_by_actor=principal.actor_id,
         )
+        expires_at = row.expires_at
         session.add(row)
         _audit(
             session,
@@ -173,14 +193,15 @@ def create_enrollment_token(
             organization_id=organization_id,
             resource_type="enrollment_token",
             resource_id=token_id,
-            details={"expires_at": row.expires_at.isoformat(), "max_uses": 1},
+            details={"expires_at": expires_at.isoformat(), "max_uses": 1},
         )
         session.commit()
+    # Capture scalars before the session closes — expire_on_commit detaches ORM attrs.
     return {
         "token_id": token_id,
         "organization_id": organization_id,
         "enrollment_token": plaintext,
-        "expires_at": row.expires_at.isoformat(),
+        "expires_at": expires_at.isoformat(),
         "single_use": True,
         "warning": "This plaintext token is returned once; store it securely.",
     }
@@ -222,7 +243,9 @@ def enroll_agent(body: AgentEnrollRequest) -> dict[str, Any]:
     token_hash = _secret_hash(body.enrollment_token)
     now = _utc_now()
     with _session() as session:
-        token = session.exec(select(EnrollmentToken).where(EnrollmentToken.token_hash == token_hash)).first()
+        token = session.exec(
+            select(EnrollmentToken).where(EnrollmentToken.token_hash == token_hash)
+        ).first()
         if not token:
             raise HTTPException(status_code=401, detail="invalid enrollment token")
         if token.revoked_at is not None:
@@ -232,6 +255,7 @@ def enroll_agent(body: AgentEnrollRequest) -> dict[str, Any]:
         if token.use_count >= token.max_uses or token.consumed_at is not None:
             raise HTTPException(status_code=409, detail="enrollment token already consumed")
 
+        organization_id = token.organization_id
         endpoint_id = f"ep_{uuid.uuid4().hex}"
         credential_id = f"ac_{uuid.uuid4().hex}"
         plaintext_secret = f"agt_{secrets.token_urlsafe(32)}"
@@ -239,13 +263,13 @@ def enroll_agent(body: AgentEnrollRequest) -> dict[str, Any]:
         endpoint = Endpoint(
             endpoint_id=endpoint_id,
             hostname=body.hostname,
-            tenant_id=token.organization_id,
+            tenant_id=organization_id,
             created_at=now,
             updated_at=now,
         )
         credential = AgentCredential(
             credential_id=credential_id,
-            organization_id=token.organization_id,
+            organization_id=organization_id,
             endpoint_id=endpoint_id,
             secret_hash=_secret_hash(plaintext_secret),
         )
@@ -258,7 +282,7 @@ def enroll_agent(body: AgentEnrollRequest) -> dict[str, Any]:
             session,
             event_type="agent.enrolled",
             principal=None,
-            organization_id=token.organization_id,
+            organization_id=organization_id,
             resource_type="endpoint",
             resource_id=endpoint_id,
             details={"credential_id": credential_id, "hostname": body.hostname},
@@ -266,7 +290,7 @@ def enroll_agent(body: AgentEnrollRequest) -> dict[str, Any]:
         session.commit()
 
     return {
-        "organization_id": token.organization_id,
+        "organization_id": organization_id,
         "endpoint_id": endpoint_id,
         "credential_id": credential_id,
         "agent_secret": plaintext_secret,
@@ -335,11 +359,13 @@ def agent_heartbeat(
             raise HTTPException(status_code=409, detail="credential endpoint mapping is invalid")
         endpoint.updated_at = _utc_now()
         session.add(endpoint)
+        endpoint_id = credential.endpoint_id
+        organization_id = credential.organization_id
         session.commit()
         return {
             "heartbeat_id": heartbeat_id,
-            "endpoint_id": credential.endpoint_id,
-            "organization_id": credential.organization_id,
+            "endpoint_id": endpoint_id,
+            "organization_id": organization_id,
             "status": "ONLINE_UNASSESSED",
             "duplicate": False,
         }
@@ -414,7 +440,9 @@ def agent_evidence(
     credential, session = _authenticate_agent(authorization)
     try:
         if body.endpoint_id and body.endpoint_id != credential.endpoint_id:
-            raise HTTPException(status_code=403, detail="agent cannot submit evidence for another endpoint")
+            raise HTTPException(
+                status_code=403, detail="agent cannot submit evidence for another endpoint"
+            )
         if body.organization_id and body.organization_id != credential.organization_id:
             raise HTTPException(status_code=403, detail="agent cannot override organization scope")
         if not body.raw_snapshot:
@@ -434,8 +462,13 @@ def agent_evidence(
             select(EvidenceEvent).where(EvidenceEvent.content_hash == c_hash)
         ).first()
         if existing:
-            if existing.endpoint_id != credential.endpoint_id or existing.tenant_id != credential.organization_id:
-                raise HTTPException(status_code=409, detail="evidence hash collision across tenant boundary")
+            if (
+                existing.endpoint_id != credential.endpoint_id
+                or existing.tenant_id != credential.organization_id
+            ):
+                raise HTTPException(
+                    status_code=409, detail="evidence hash collision across tenant boundary"
+                )
             return {
                 "event_id": existing.event_id,
                 "endpoint_id": existing.endpoint_id,
@@ -471,9 +504,13 @@ def agent_evidence(
             resource_id=event_id,
             details={"endpoint_id": credential.endpoint_id, "evidence_type": body.evidence_type},
         )
+        endpoint_id = credential.endpoint_id
+        organization_id = credential.organization_id
         session.commit()
 
-        job = get_queue_backend().enqueue_classification_job(event_id=event_id, idempotency_key=c_hash)
+        job = get_queue_backend().enqueue_classification_job(
+            event_id=event_id, idempotency_key=c_hash
+        )
 
         # Sync local/test classification can immediately bind the created incident.
         # Async workers also receive tenant_id from the evidence row in the worker
@@ -483,16 +520,18 @@ def agent_evidence(
             select(IncidentRecord).where(IncidentRecord.evidence_event_id == event_id)
         ).first()
         if incident and not incident.tenant_id:
-            incident.tenant_id = credential.organization_id
+            incident.tenant_id = organization_id
             session.add(incident)
             session.commit()
 
-        refreshed = session.exec(select(EvidenceEvent).where(EvidenceEvent.event_id == event_id)).first()
+        refreshed = session.exec(
+            select(EvidenceEvent).where(EvidenceEvent.event_id == event_id)
+        ).first()
         return {
             "event_id": event_id,
             "job_id": job.job_id,
-            "endpoint_id": credential.endpoint_id,
-            "organization_id": credential.organization_id,
+            "endpoint_id": endpoint_id,
+            "organization_id": organization_id,
             "classification_status": refreshed.classification_status if refreshed else "pending",
             "created": True,
         }
@@ -554,7 +593,9 @@ def get_product_endpoint(
             },
             "evidence_state": {
                 "event_id": evidence.event_id if evidence else None,
-                "classification_status": evidence.classification_status if evidence else "NOT_ASSESSED",
+                "classification_status": evidence.classification_status
+                if evidence
+                else "NOT_ASSESSED",
                 "evidence_tier": evidence.evidence_tier if evidence else None,
             },
             "latest_incident": (
